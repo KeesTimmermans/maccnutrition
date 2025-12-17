@@ -16,21 +16,21 @@
     --popover: 0 0% 100%;
     --popover-foreground: 150 25% 15%;
 
-    /* Fresh sage green - main brand */
-    --primary: 152 45% 45%;
+    /* MACC-Nutrition bold green - main brand */
+    --primary: 120 55% 38%;
     --primary-foreground: 0 0% 100%;
 
-    /* Warm coral accent */
-    --secondary: 16 85% 65%;
+    /* Lighter green accent */
+    --secondary: 120 45% 50%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Soft mint for muted elements */
-    --muted: 150 20% 92%;
-    --muted-foreground: 150 15% 45%;
+    /* Soft green for muted elements */
+    --muted: 120 15% 92%;
+    --muted-foreground: 120 15% 40%;
 
-    /* Light sage accent */
-    --accent: 152 35% 90%;
-    --accent-foreground: 152 45% 35%;
+    /* Light green accent */
+    --accent: 120 30% 90%;
+    --accent-foreground: 120 55% 30%;
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -45,17 +45,17 @@
     --protein: 262 60% 55%;
     --carbs: 35 90% 55%;
     --fats: 16 85% 60%;
-    --calories: 152 45% 45%;
+    --calories: 120 55% 38%;
 
     /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(152 45% 45%) 0%, hsl(165 50% 50%) 100%);
-    --gradient-warm: linear-gradient(135deg, hsl(16 85% 65%) 0%, hsl(35 90% 60%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(45 30% 98%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(120 55% 38%) 0%, hsl(120 50% 45%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(120 45% 50%) 0%, hsl(120 55% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(120 15% 98%) 100%);
 
     /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsl(150 25% 15% / 0.08);
-    --shadow-medium: 0 8px 30px -6px hsl(150 25% 15% / 0.12);
-    --shadow-glow: 0 0 40px hsl(152 45% 45% / 0.15);
+    --shadow-soft: 0 4px 20px -4px hsl(120 25% 15% / 0.08);
+    --shadow-medium: 0 8px 30px -6px hsl(120 25% 15% / 0.12);
+    --shadow-glow: 0 0 40px hsl(120 55% 38% / 0.2);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -77,24 +77,24 @@
     --popover: 150 18% 12%;
     --popover-foreground: 45 30% 95%;
 
-    --primary: 152 50% 50%;
-    --primary-foreground: 150 20% 8%;
+    --primary: 120 55% 45%;
+    --primary-foreground: 120 20% 8%;
 
-    --secondary: 16 80% 60%;
-    --secondary-foreground: 150 20% 8%;
+    --secondary: 120 45% 55%;
+    --secondary-foreground: 120 20% 8%;
 
-    --muted: 150 15% 18%;
-    --muted-foreground: 150 15% 60%;
+    --muted: 120 15% 18%;
+    --muted-foreground: 120 15% 60%;
 
-    --accent: 152 30% 20%;
-    --accent-foreground: 152 50% 70%;
+    --accent: 120 30% 20%;
+    --accent-foreground: 120 50% 70%;
 
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 150 15% 20%;
-    --input: 150 15% 20%;
-    --ring: 152 50% 50%;
+    --border: 120 15% 20%;
+    --input: 120 15% 20%;
+    --ring: 120 55% 45%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
