@@ -5,7 +5,7 @@ import { AICoachCard } from "@/components/AICoachCard";
 import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
-import { saveMeal, getTodaysMeals, MealInput, Meal } from "@/lib/mealService";
+import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { toast } from "sonner";
 
@@ -95,6 +95,34 @@ export const Dashboard = () => {
     } catch (error) {
       console.error("Error saving meal:", error);
       toast.error("Failed to save meal. Please try again.");
+    }
+  };
+
+  const handleEditMeal = async (editedMeal: DashboardMeal) => {
+    try {
+      await updateMeal(editedMeal.id, {
+        name: editedMeal.name,
+        calories: editedMeal.calories,
+        protein: editedMeal.protein,
+        carbs: editedMeal.carbs,
+        fats: editedMeal.fats,
+      });
+      setMeals(prev => prev.map(m => m.id === editedMeal.id ? editedMeal : m));
+      toast.success("Meal updated!");
+    } catch (error) {
+      console.error("Error updating meal:", error);
+      toast.error("Failed to update meal.");
+    }
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    try {
+      await deleteMeal(mealId);
+      setMeals(prev => prev.filter(m => m.id !== mealId));
+      toast.success("Meal deleted");
+    } catch (error) {
+      console.error("Error deleting meal:", error);
+      toast.error("Failed to delete meal.");
     }
   };
 
@@ -199,7 +227,11 @@ export const Dashboard = () => {
             ) : (
               meals.map((meal, index) => (
                 <div key={meal.id} style={{ animationDelay: `${index * 100}ms` }}>
-                  <MealCard meal={meal} />
+                  <MealCard 
+                    meal={meal} 
+                    onEdit={handleEditMeal}
+                    onDelete={handleDeleteMeal}
+                  />
                 </div>
               ))
             )}

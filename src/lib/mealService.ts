@@ -118,3 +118,40 @@ export const analyzeFoodSearch = async (searchQuery: string): Promise<{
 
   return data;
 };
+
+export const updateMeal = async (
+  mealId: string,
+  updates: Partial<MealInput>
+): Promise<Meal | null> => {
+  const { data, error } = await supabase
+    .from("meals")
+    .update({
+      name: updates.name,
+      calories: updates.calories,
+      protein: updates.protein,
+      carbs: updates.carbs,
+      fats: updates.fats,
+    })
+    .eq("id", mealId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating meal:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteMeal = async (mealId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("meals")
+    .delete()
+    .eq("id", mealId);
+
+  if (error) {
+    console.error("Error deleting meal:", error);
+    throw error;
+  }
+};
