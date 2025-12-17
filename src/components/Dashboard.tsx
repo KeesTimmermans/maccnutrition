@@ -7,6 +7,7 @@ import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { StreakCard } from "@/components/StreakCard";
+import { WaterTracker } from "@/components/WaterTracker";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
@@ -216,6 +217,11 @@ export const Dashboard = () => {
               />
             </div>
           </div>
+        </section>
+
+        {/* Water Tracker */}
+        <section>
+          <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
         </section>
 
         {/* Streak Card */}
