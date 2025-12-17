@@ -4,6 +4,7 @@ import { WearableConnection } from "@/components/WearableConnection";
 import { OnboardingQuestionnaire } from "@/components/OnboardingQuestionnaire";
 import { Dashboard } from "@/components/Dashboard";
 import { Sparkles, Heart, Brain, Zap } from "lucide-react";
+import maccLogo from "@/assets/macc-logo.png";
 
 type AppState = "welcome" | "connection" | "questionnaire" | "dashboard";
 
@@ -12,7 +13,7 @@ const Index = () => {
 
   // Check if user has completed onboarding
   useEffect(() => {
-    const hasOnboarded = localStorage.getItem("nutriCoach_onboarded");
+    const hasOnboarded = localStorage.getItem("macc_onboarded");
     if (hasOnboarded) {
       setAppState("dashboard");
     }
@@ -28,15 +29,15 @@ const Index = () => {
     } else {
       // In a real app, this would open wearable connection flow
       // For now, skip to dashboard
-      localStorage.setItem("nutriCoach_onboarded", "true");
+      localStorage.setItem("macc_onboarded", "true");
       setAppState("dashboard");
     }
   };
 
   const handleQuestionnaireComplete = (answers: Record<number, string>) => {
     console.log("Questionnaire answers:", answers);
-    localStorage.setItem("nutriCoach_onboarded", "true");
-    localStorage.setItem("nutriCoach_answers", JSON.stringify(answers));
+    localStorage.setItem("macc_onboarded", "true");
+    localStorage.setItem("macc_answers", JSON.stringify(answers));
     setAppState("dashboard");
   };
 
@@ -57,22 +58,21 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Hero Section */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        {/* Logo/Icon */}
-        <div className="relative mb-8">
-          <div className="w-28 h-28 rounded-[2rem] gradient-hero flex items-center justify-center shadow-glow animate-float">
-            <Sparkles className="w-14 h-14 text-primary-foreground" />
-          </div>
-          <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shadow-medium">
-            <Heart className="w-5 h-5 text-secondary-foreground" />
-          </div>
+        {/* Logo */}
+        <div className="relative mb-8 animate-float">
+          <img 
+            src={maccLogo} 
+            alt="MACC-Nutrition Logo" 
+            className="w-48 h-auto"
+          />
         </div>
 
         {/* Title */}
-        <h1 className="text-4xl font-bold text-foreground mb-3 animate-slide-up">
-          NutriCoach
+        <h1 className="text-4xl font-bold text-primary mb-3 animate-slide-up">
+          MACC-Nutrition
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-sm animate-slide-up delay-100">
-          Your personal nutrition coach, powered by AI
+          Nutrition with intention, powered by AI
         </p>
 
         {/* Features */}
@@ -100,7 +100,7 @@ const Index = () => {
             "Finally, a nutrition app that actually understands my lifestyle. It's like having a coach in my pocket!"
           </p>
           <p className="text-xs text-muted-foreground">
-            — Sarah M., lost 20 lbs
+            — MACC-Nutrition user
           </p>
         </div>
       </div>
