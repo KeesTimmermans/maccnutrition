@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { MacroRing } from "@/components/MacroRing";
 import { MealCard, AddMealCard } from "@/components/MealCard";
 import { AICoachCard } from "@/components/AICoachCard";
+import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
 import { saveMeal, getTodaysMeals, MealInput, Meal } from "@/lib/mealService";
@@ -25,6 +26,7 @@ interface DashboardMeal {
 
 export const Dashboard = () => {
   const [showMealLogger, setShowMealLogger] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -164,6 +166,7 @@ export const Dashboard = () => {
             greeting="Good morning! You're making excellent progress today."
             insights={mockInsights}
             tip="Try adding avocado to your next meal - it's a great source of healthy fats and will help you reach your daily target!"
+            onChatOpen={() => setShowAIChat(true)}
           />
         </section>
 
@@ -224,6 +227,11 @@ export const Dashboard = () => {
           onClose={() => setShowMealLogger(false)}
           onSubmit={handleAddMeal}
         />
+      )}
+
+      {/* AI Coach Chat Modal */}
+      {showAIChat && (
+        <AICoachChat onClose={() => setShowAIChat(false)} />
       )}
     </div>
   );

@@ -1,15 +1,18 @@
-import { Bot, Lightbulb, TrendingUp, Zap } from "lucide-react";
+import { Bot, Lightbulb, TrendingUp, Zap, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface AICoachCardProps {
   greeting?: string;
   insights: string[];
   tip?: string;
+  onChatOpen?: () => void;
 }
 
 export const AICoachCard = ({ 
   greeting = "Good morning! Here's your daily insight:",
   insights,
-  tip
+  tip,
+  onChatOpen
 }: AICoachCardProps) => {
   return (
     <div className="relative overflow-hidden bg-card rounded-2xl shadow-medium p-6 animate-slide-up">
@@ -19,14 +22,27 @@ export const AICoachCard = ({
       
       <div className="relative">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-2xl gradient-hero flex items-center justify-center shadow-soft">
-            <Bot className="w-6 h-6 text-primary-foreground" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl gradient-hero flex items-center justify-center shadow-soft">
+              <Bot className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground">Your AI Coach</h3>
+              <p className="text-sm text-muted-foreground">Powered by your data</p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-foreground">Your AI Coach</h3>
-            <p className="text-sm text-muted-foreground">Powered by your data</p>
-          </div>
+          {onChatOpen && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onChatOpen}
+              className="gap-2"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Chat
+            </Button>
+          )}
         </div>
 
         {/* Greeting */}
