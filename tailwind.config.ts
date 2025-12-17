@@ -65,6 +65,11 @@ export default {
         carbs: "hsl(var(--carbs))",
         fats: "hsl(var(--fats))",
         calories: "hsl(var(--calories))",
+        chart: {
+          protein: "hsl(var(--protein))",
+          carbs: "hsl(var(--carbs))",
+          fats: "hsl(var(--fats))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
