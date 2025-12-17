@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { WearableConnection } from "@/components/WearableConnection";
-import { OnboardingQuestionnaire } from "@/components/OnboardingQuestionnaire";
+import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { Dashboard } from "@/components/Dashboard";
 import { Sparkles, Heart, Brain, Zap } from "lucide-react";
-import maccLogo from "@/assets/macc-logo.png";
+import cjtLogo from "@/assets/cjt-logo.png";
 
 type AppState = "welcome" | "connection" | "questionnaire" | "dashboard";
 
@@ -13,7 +13,7 @@ const Index = () => {
 
   // Check if user has completed onboarding
   useEffect(() => {
-    const hasOnboarded = localStorage.getItem("macc_onboarded");
+    const hasOnboarded = localStorage.getItem("cjt_onboarded");
     if (hasOnboarded) {
       setAppState("dashboard");
     }
@@ -29,15 +29,15 @@ const Index = () => {
     } else {
       // In a real app, this would open wearable connection flow
       // For now, skip to dashboard
-      localStorage.setItem("macc_onboarded", "true");
+      localStorage.setItem("cjt_onboarded", "true");
       setAppState("dashboard");
     }
   };
 
-  const handleQuestionnaireComplete = (answers: Record<number, string>) => {
-    console.log("Questionnaire answers:", answers);
-    localStorage.setItem("macc_onboarded", "true");
-    localStorage.setItem("macc_answers", JSON.stringify(answers));
+  const handleQuestionnaireComplete = (data: OnboardingData) => {
+    console.log("Onboarding data:", data);
+    localStorage.setItem("cjt_onboarded", "true");
+    localStorage.setItem("cjt_user_data", JSON.stringify(data));
     setAppState("dashboard");
   };
 
@@ -59,20 +59,17 @@ const Index = () => {
       {/* Hero Section */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         {/* Logo */}
-        <div className="relative mb-8 animate-float">
+        <div className="relative mb-6 animate-float">
           <img 
-            src={maccLogo} 
-            alt="MACC-Nutrition Logo" 
-            className="w-48 h-auto"
+            src={cjtLogo} 
+            alt="CJT Nutrition Logo" 
+            className="w-64 h-auto"
           />
         </div>
 
-        {/* Title */}
-        <h1 className="text-4xl font-bold text-primary mb-3 animate-slide-up">
-          MACC-Nutrition
-        </h1>
+        {/* Tagline */}
         <p className="text-xl text-muted-foreground mb-8 max-w-sm animate-slide-up delay-100">
-          Nutrition with intention, powered by AI
+          Your AI-powered nutrition coach in your pocket
         </p>
 
         {/* Features */}
@@ -97,10 +94,10 @@ const Index = () => {
         {/* Testimonial */}
         <div className="bg-card rounded-2xl p-4 shadow-soft max-w-sm mb-8 animate-slide-up delay-300">
           <p className="text-sm text-foreground italic mb-2">
-            "Finally, a nutrition app that actually understands my lifestyle. It's like having a coach in my pocket!"
+            "Finally, a nutrition app that actually understands my lifestyle. It is like having a coach in my pocket!"
           </p>
           <p className="text-xs text-muted-foreground">
-            — MACC-Nutrition user
+            — CJT Nutrition user
           </p>
         </div>
       </div>

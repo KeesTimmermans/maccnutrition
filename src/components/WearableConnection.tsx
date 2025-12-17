@@ -1,5 +1,6 @@
 import { Watch, Smartphone, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import cjtLogo from "@/assets/cjt-logo.png";
 
 interface WearableConnectionProps {
   onConnect: (type: "wearable" | "questionnaire") => void;
@@ -10,14 +11,12 @@ export const WearableConnection = ({ onConnect }: WearableConnectionProps) => {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       {/* Header */}
       <div className="text-center mb-10 animate-slide-up">
-        <div className="w-24 h-24 rounded-full gradient-hero flex items-center justify-center mx-auto mb-6 animate-float">
-          <Watch className="w-12 h-12 text-primary-foreground" />
-        </div>
+        <img src={cjtLogo} alt="CJT Nutrition" className="h-16 mx-auto mb-6" />
         <h1 className="text-3xl font-bold text-foreground mb-3">
-          Let's Personalize Your Experience
+          Let us Personalize Your Experience
         </h1>
         <p className="text-muted-foreground max-w-md">
-          Connect your wearable for personalized insights, or answer a few quick questions to get started.
+          Connect your wearable for real-time insights, or complete our onboarding questionnaire to get started.
         </p>
       </div>
 
@@ -49,12 +48,12 @@ export const WearableConnection = ({ onConnect }: WearableConnectionProps) => {
             <Smartphone className="w-7 h-7 text-secondary" />
           </div>
           <div className="flex-1 text-left">
-            <h3 className="font-bold text-foreground mb-1">Quick Questionnaire</h3>
+            <h3 className="font-bold text-foreground mb-1">Onboarding Questionnaire</h3>
             <p className="text-sm text-muted-foreground">
-              5 questions • Takes 2 minutes
+              5 steps • Takes 3-5 minutes
             </p>
           </div>
-          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-secondary group-hover:translate-x-1 transition-all" />
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
         </button>
       </div>
 
