@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { MacroRing } from "@/components/MacroRing";
 import { MealCard, AddMealCard } from "@/components/MealCard";
 import { AICoachCard } from "@/components/AICoachCard";
@@ -26,6 +27,7 @@ interface DashboardMeal {
 }
 
 export const Dashboard = () => {
+  const navigate = useNavigate();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
@@ -211,7 +213,10 @@ export const Dashboard = () => {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-foreground">Today's Meals</h2>
-            <button className="text-sm font-semibold text-primary flex items-center gap-1 hover:underline">
+            <button 
+              onClick={() => navigate("/history")}
+              className="text-sm font-semibold text-primary flex items-center gap-1 hover:underline"
+            >
               View all
               <TrendingUp className="w-4 h-4" />
             </button>

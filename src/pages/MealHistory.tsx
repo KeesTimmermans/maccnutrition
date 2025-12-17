@@ -1,0 +1,227 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MealCard } from "@/components/MealCard";
+import { getMealsByDateRange, updateMeal, deleteMeal, Meal } from "@/lib/mealService";
+import { format, startOfDay, endOfDay, subDays, addDays, isSameDay, isToday } from "date-fns";
+import { toast } from "sonner";
+
+interface DayData {
+  date: Date;
+  meals: Meal[];
+  totals: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+  };
+}
+
+const MealHistory = () => {
+  const navigate = useNavigate();
+  const [days, setDays] = useState<DayData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [startDate, setStartDate] = useState(() => subDays(new Date(), 6));
+
+  useEffect(() => {
+    loadMeals();
+  }, [startDate]);
+
+  const loadMeals = async () => {
+    setIsLoading(true);
+    try {
+      const endDate = addDays(startDate, 6);
+      const meals = await getMealsByDateRange(
+        startOfDay(startDate),
+        endOfDay(endDate)
+      );
+
+      // Group meals by day
+      const daysMap = new Map<string, Meal[]>();
+      
+      // Initialize all days in range
+      for (let i = 0; i <= 6; i++) {
+        const day = addDays(startDate, i);
+        daysMap.set(format(day, "yyyy-MM-dd"), []);
+      }
+
+      // Add meals to their respective days
+      meals.forEach(meal => {
+        const dayKey = format(new Date(meal.logged_at), "yyyy-MM-dd");
+        const existing = daysMap.get(dayKey) || [];
+        daysMap.set(dayKey, [...existing, meal]);
+      });
+
+      // Convert to array with totals
+      const daysArray: DayData[] = Array.from(daysMap.entries())
+        .map(([dateStr, dayMeals]) => ({
+          date: new Date(dateStr),
+          meals: dayMeals.sort((a, b) => 
+            new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime()
+          ),
+          totals: {
+            calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
+            protein: dayMeals.reduce((sum, m) => sum + m.protein, 0),
+            carbs: dayMeals.reduce((sum, m) => sum + m.carbs, 0),
+            fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
+          }
+        }))
+        .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      setDays(daysArray);
+    } catch (error) {
+      console.error("Error loading meal history:", error);
+      toast.error("Failed to load meal history");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrevWeek = () => {
+    setStartDate(prev => subDays(prev, 7));
+  };
+
+  const handleNextWeek = () => {
+    const nextStart = addDays(startDate, 7);
+    if (nextStart <= new Date()) {
+      setStartDate(nextStart);
+    }
+  };
+
+  const handleEditMeal = async (editedMeal: any) => {
+    try {
+      await updateMeal(editedMeal.id, {
+        name: editedMeal.name,
+        calories: editedMeal.calories,
+        protein: editedMeal.protein,
+        carbs: editedMeal.carbs,
+        fats: editedMeal.fats,
+      });
+      loadMeals();
+      toast.success("Meal updated!");
+    } catch (error) {
+      toast.error("Failed to update meal.");
+    }
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    try {
+      await deleteMeal(mealId);
+      loadMeals();
+      toast.success("Meal deleted");
+    } catch (error) {
+      toast.error("Failed to delete meal.");
+    }
+  };
+
+  const endDate = addDays(startDate, 6);
+  const canGoNext = addDays(startDate, 7) <= new Date();
+
+  return (
+    <div className="min-h-screen bg-background pb-8">
+      {/* Header */}
+      <header className="sticky top-0 z-40 glass border-b border-border/50">
+        <div className="container flex items-center gap-4 py-4">
+          <button 
+            onClick={() => navigate("/")}
+            className="p-2 hover:bg-muted rounded-xl transition-colors"
+          >
+            <ArrowLeft className="w-6 h-6 text-foreground" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Meal History</h1>
+            <p className="text-sm text-muted-foreground">View your past nutrition</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="container py-6 space-y-6">
+        {/* Week Navigation */}
+        <div className="flex items-center justify-between bg-card rounded-2xl p-4 shadow-soft">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handlePrevWeek}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex items-center gap-2 text-foreground">
+            <Calendar className="w-5 h-5 text-primary" />
+            <span className="font-medium">
+              {format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")}
+            </span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleNextWeek}
+            disabled={!canGoNext}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Days List */}
+        {isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">Loading history...</div>
+        ) : (
+          <div className="space-y-6">
+            {days.map((day) => (
+              <div key={day.date.toISOString()} className="space-y-3">
+                {/* Day Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-bold text-foreground">
+                      {isToday(day.date) ? "Today" : format(day.date, "EEEE")}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {format(day.date, "MMMM d, yyyy")}
+                    </p>
+                  </div>
+                  {day.meals.length > 0 && (
+                    <div className="text-right">
+                      <p className="font-bold text-calories">{day.totals.calories} cal</p>
+                      <p className="text-xs text-muted-foreground">
+                        P: {day.totals.protein}g · C: {day.totals.carbs}g · F: {day.totals.fats}g
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Meals */}
+                {day.meals.length === 0 ? (
+                  <div className="bg-muted/50 rounded-2xl p-6 text-center">
+                    <p className="text-muted-foreground text-sm">No meals logged</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {day.meals.map((meal) => (
+                      <MealCard
+                        key={meal.id}
+                        meal={{
+                          id: meal.id,
+                          name: meal.name,
+                          time: format(new Date(meal.logged_at), "h:mm a"),
+                          calories: meal.calories,
+                          protein: meal.protein,
+                          carbs: meal.carbs,
+                          fats: meal.fats,
+                          imageUrl: meal.image_url || undefined,
+                        }}
+                        onEdit={handleEditMeal}
+                        onDelete={handleDeleteMeal}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default MealHistory;

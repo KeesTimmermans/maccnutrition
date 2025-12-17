@@ -77,6 +77,29 @@ export const getTodaysMeals = async (): Promise<Meal[]> => {
   return data || [];
 };
 
+export const getMealsByDateRange = async (startDate: Date, endDate: Date): Promise<Meal[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("meals")
+    .select("*")
+    .eq("user_id", user.id)
+    .gte("logged_at", startDate.toISOString())
+    .lte("logged_at", endDate.toISOString())
+    .order("logged_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching meals:", error);
+    return [];
+  }
+
+  return data || [];
+};
+
 export const analyzeFoodImage = async (imageBase64: string): Promise<{
   name: string;
   calories: number;
