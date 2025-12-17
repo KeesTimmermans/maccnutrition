@@ -5,9 +5,12 @@ import { MealCard, AddMealCard } from "@/components/MealCard";
 import { AICoachCard } from "@/components/AICoachCard";
 import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
+import { ProgressCharts } from "@/components/ProgressCharts";
+import { StreakCard } from "@/components/StreakCard";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
+import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { toast } from "sonner";
 
 const mockInsights = [
@@ -32,6 +35,8 @@ export const Dashboard = () => {
   const [showAIChat, setShowAIChat] = useState(false);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
+  const [loginStreak, setLoginStreak] = useState<UserStreak | null>(null);
+  const [coachingStreak, setCoachingStreak] = useState<UserStreak | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,10 +45,22 @@ export const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline] = await Promise.all([
+      const [dbMeals, userBaseline, streaks] = await Promise.all([
         getTodaysMeals(),
-        getUserBaseline()
+        getUserBaseline(),
+        getStreaks(),
       ]);
+      
+      // Update login streak on dashboard load
+      updateStreak('login').then(streak => {
+        if (streak) setLoginStreak(streak);
+      });
+      
+      // Set streaks from database
+      const login = streaks.find(s => s.streak_type === 'login');
+      const coaching = streaks.find(s => s.streak_type === 'coaching');
+      if (login) setLoginStreak(login);
+      if (coaching) setCoachingStreak(coaching);
       
       const formattedMeals: DashboardMeal[] = dbMeals.map((meal: Meal) => ({
         id: meal.id,
@@ -159,7 +176,9 @@ export const Dashboard = () => {
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 rounded-full">
               <Flame className="w-4 h-4 text-secondary" />
-              <span className="text-sm font-semibold text-secondary">7 day streak</span>
+              <span className="text-sm font-semibold text-secondary">
+                {loginStreak?.current_streak || 0} day streak
+              </span>
             </div>
           </div>
 
@@ -199,13 +218,28 @@ export const Dashboard = () => {
           </div>
         </section>
 
+        {/* Streak Card */}
+        <section>
+          <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
+        </section>
+
+        {/* Progress Charts */}
+        <section>
+          <ProgressCharts />
+        </section>
+
         {/* AI Coach */}
         <section>
           <AICoachCard 
             greeting="Good morning! You're making excellent progress today."
             insights={mockInsights}
             tip="Try adding avocado to your next meal - it's a great source of healthy fats and will help you reach your daily target!"
-            onChatOpen={() => setShowAIChat(true)}
+            onChatOpen={() => {
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
           />
         </section>
 
