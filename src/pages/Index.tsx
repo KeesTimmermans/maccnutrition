@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { WearableConnection } from "@/components/WearableConnection";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
 import { Sparkles, Heart, Brain, Zap } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { getUserBaseline, saveUserBaseline } from "@/lib/userService";
+import { calculateBaseline } from "@/lib/baselineCalculations";
+import { useToast } from "@/hooks/use-toast";
 import cjtLogo from "@/assets/cjt-logo.png";
 
 type AppState = "welcome" | "connection" | "questionnaire" | "baseline" | "dashboard";
@@ -12,38 +17,86 @@ type AppState = "welcome" | "connection" | "questionnaire" | "baseline" | "dashb
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
   const [userData, setUserData] = useState<OnboardingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Check if user has completed onboarding
+  // Check for existing baseline data
   useEffect(() => {
-    const hasOnboarded = localStorage.getItem("cjt_onboarded");
-    if (hasOnboarded) {
-      const savedData = localStorage.getItem("cjt_user_data");
-      if (savedData) {
-        setUserData(JSON.parse(savedData));
+    const checkUserBaseline = async () => {
+      if (authLoading) return;
+      
+      if (user) {
+        try {
+          const baseline = await getUserBaseline(user.id);
+          if (baseline) {
+            // User has completed onboarding
+            setAppState("dashboard");
+          } else {
+            // User is authenticated but hasn't completed onboarding
+            setAppState("connection");
+          }
+        } catch (error) {
+          console.error("Error checking baseline:", error);
+        }
+      } else {
+        // Check localStorage for non-authenticated flow
+        const hasOnboarded = localStorage.getItem("cjt_onboarded");
+        if (hasOnboarded) {
+          const savedData = localStorage.getItem("cjt_user_data");
+          if (savedData) {
+            setUserData(JSON.parse(savedData));
+          }
+          setAppState("dashboard");
+        }
       }
-      setAppState("dashboard");
-    }
-  }, []);
+      setLoading(false);
+    };
+
+    checkUserBaseline();
+  }, [user, authLoading]);
 
   const handleGetStarted = () => {
-    setAppState("connection");
+    if (user) {
+      setAppState("connection");
+    } else {
+      navigate("/auth");
+    }
   };
 
   const handleConnectionChoice = (type: "wearable" | "questionnaire") => {
     if (type === "questionnaire") {
       setAppState("questionnaire");
     } else {
-      // In a real app, this would open wearable connection flow
-      // For now, skip to dashboard
-      localStorage.setItem("cjt_onboarded", "true");
       setAppState("dashboard");
     }
   };
 
-  const handleQuestionnaireComplete = (data: OnboardingData) => {
+  const handleQuestionnaireComplete = async (data: OnboardingData) => {
     console.log("Onboarding data:", data);
-    localStorage.setItem("cjt_user_data", JSON.stringify(data));
     setUserData(data);
+    
+    if (user) {
+      try {
+        const baseline = calculateBaseline(data);
+        await saveUserBaseline(user.id, data, baseline);
+        toast({
+          title: "Profile saved!",
+          description: "Your personalized baseline has been created.",
+        });
+      } catch (error) {
+        console.error("Error saving baseline:", error);
+        toast({
+          title: "Error saving profile",
+          description: "Your data has been saved locally.",
+          variant: "destructive",
+        });
+      }
+    }
+    
+    // Save to localStorage as backup
+    localStorage.setItem("cjt_user_data", JSON.stringify(data));
     setAppState("baseline");
   };
 
@@ -51,6 +104,17 @@ const Index = () => {
     localStorage.setItem("cjt_onboarded", "true");
     setAppState("dashboard");
   };
+
+  if (loading || authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <img src={cjtLogo} alt="CJT Nutrition" className="w-32 h-auto opacity-50" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (appState === "dashboard") {
     return <Dashboard />;
@@ -126,11 +190,19 @@ const Index = () => {
           onClick={handleGetStarted}
         >
           <Sparkles className="w-5 h-5 mr-2" />
-          Get Started Free
+          {user ? "Continue Setup" : "Get Started Free"}
         </Button>
-        <p className="text-center text-sm text-muted-foreground">
-          No credit card required • Cancel anytime
-        </p>
+        {!user && (
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <button 
+              onClick={() => navigate("/auth")}
+              className="text-primary font-semibold hover:underline"
+            >
+              Log In
+            </button>
+          </p>
+        )}
       </div>
     </div>
   );

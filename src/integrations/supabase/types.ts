@@ -14,7 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_baselines: {
+        Row: {
+          activity_level: string | null
+          age: number | null
+          allergies: string[] | null
+          carbs_grams: number | null
+          coaching_tone: string | null
+          conditions: string[] | null
+          created_at: string
+          current_phase: string | null
+          cycle_regularity: string | null
+          cycle_symptoms: string[] | null
+          diet_type: string | null
+          fats_grams: number | null
+          focus_points: string[] | null
+          food_dislikes: string | null
+          height_cm: number | null
+          height_feet: number | null
+          height_inches: number | null
+          id: string
+          magnesium_mg: number | null
+          meals_per_day: string | null
+          occupation: string | null
+          potassium_mg: number | null
+          primary_goal: string | null
+          protein_grams: number | null
+          secondary_goals: string[] | null
+          sex: string | null
+          sleep_hours: string | null
+          sodium_mg: number | null
+          stress_level: string | null
+          target_calories: number | null
+          tdee: number | null
+          training_days: string | null
+          training_intensity: string | null
+          unit_system: string | null
+          updated_at: string
+          user_id: string
+          water_liters: number | null
+          weight: number | null
+          work_hours: string | null
+        }
+        Insert: {
+          activity_level?: string | null
+          age?: number | null
+          allergies?: string[] | null
+          carbs_grams?: number | null
+          coaching_tone?: string | null
+          conditions?: string[] | null
+          created_at?: string
+          current_phase?: string | null
+          cycle_regularity?: string | null
+          cycle_symptoms?: string[] | null
+          diet_type?: string | null
+          fats_grams?: number | null
+          focus_points?: string[] | null
+          food_dislikes?: string | null
+          height_cm?: number | null
+          height_feet?: number | null
+          height_inches?: number | null
+          id?: string
+          magnesium_mg?: number | null
+          meals_per_day?: string | null
+          occupation?: string | null
+          potassium_mg?: number | null
+          primary_goal?: string | null
+          protein_grams?: number | null
+          secondary_goals?: string[] | null
+          sex?: string | null
+          sleep_hours?: string | null
+          sodium_mg?: number | null
+          stress_level?: string | null
+          target_calories?: number | null
+          tdee?: number | null
+          training_days?: string | null
+          training_intensity?: string | null
+          unit_system?: string | null
+          updated_at?: string
+          user_id: string
+          water_liters?: number | null
+          weight?: number | null
+          work_hours?: string | null
+        }
+        Update: {
+          activity_level?: string | null
+          age?: number | null
+          allergies?: string[] | null
+          carbs_grams?: number | null
+          coaching_tone?: string | null
+          conditions?: string[] | null
+          created_at?: string
+          current_phase?: string | null
+          cycle_regularity?: string | null
+          cycle_symptoms?: string[] | null
+          diet_type?: string | null
+          fats_grams?: number | null
+          focus_points?: string[] | null
+          food_dislikes?: string | null
+          height_cm?: number | null
+          height_feet?: number | null
+          height_inches?: number | null
+          id?: string
+          magnesium_mg?: number | null
+          meals_per_day?: string | null
+          occupation?: string | null
+          potassium_mg?: number | null
+          primary_goal?: string | null
+          protein_grams?: number | null
+          secondary_goals?: string[] | null
+          sex?: string | null
+          sleep_hours?: string | null
+          sodium_mg?: number | null
+          stress_level?: string | null
+          target_calories?: number | null
+          tdee?: number | null
+          training_days?: string | null
+          training_intensity?: string | null
+          unit_system?: string | null
+          updated_at?: string
+          user_id?: string
+          water_liters?: number | null
+          weight?: number | null
+          work_hours?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
