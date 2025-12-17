@@ -1,60 +1,90 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MacroRing } from "@/components/MacroRing";
 import { MealCard, AddMealCard } from "@/components/MealCard";
 import { AICoachCard } from "@/components/AICoachCard";
 import { MealLogger } from "@/components/MealLogger";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
-
-// Mock data
-const mockMeals = [
-  {
-    id: "1",
-    name: "Greek Yogurt Bowl",
-    time: "8:30 AM",
-    calories: 320,
-    protein: 22,
-    carbs: 35,
-    fats: 8,
-  },
-  {
-    id: "2",
-    name: "Grilled Chicken Wrap",
-    time: "12:45 PM",
-    calories: 520,
-    protein: 38,
-    carbs: 42,
-    fats: 18,
-  },
-];
+import { saveMeal, getTodaysMeals, MealInput, Meal } from "@/lib/mealService";
+import { toast } from "sonner";
 
 const mockInsights = [
   "You're 82% to your protein goal! Great job prioritizing lean proteins today.",
   "Your carb intake is balanced. Consider adding more fiber-rich vegetables with dinner.",
 ];
 
+interface DashboardMeal {
+  id: string;
+  name: string;
+  time: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  imageUrl?: string;
+}
+
 export const Dashboard = () => {
   const [showMealLogger, setShowMealLogger] = useState(false);
-  const [meals, setMeals] = useState(mockMeals);
+  const [meals, setMeals] = useState<DashboardMeal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadMeals();
+  }, []);
+
+  const loadMeals = async () => {
+    try {
+      const dbMeals = await getTodaysMeals();
+      const formattedMeals: DashboardMeal[] = dbMeals.map((meal: Meal) => ({
+        id: meal.id,
+        name: meal.name,
+        time: new Date(meal.logged_at).toLocaleTimeString("en-US", { 
+          hour: "numeric", 
+          minute: "2-digit" 
+        }),
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fats: meal.fats,
+        imageUrl: meal.image_url || undefined,
+      }));
+      setMeals(formattedMeals);
+    } catch (error) {
+      console.error("Error loading meals:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
   const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
   const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
 
-  const handleAddMeal = (meal: {
-    name: string;
-    imageUrl?: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fats: number;
-  }) => {
-    const newMeal = {
-      id: Date.now().toString(),
-      time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-      ...meal,
-    };
-    setMeals(prev => [...prev, newMeal]);
+  const handleAddMeal = async (meal: MealInput) => {
+    try {
+      const savedMeal = await saveMeal(meal);
+      if (savedMeal) {
+        const newMeal: DashboardMeal = {
+          id: savedMeal.id,
+          name: savedMeal.name,
+          time: new Date(savedMeal.logged_at).toLocaleTimeString("en-US", { 
+            hour: "numeric", 
+            minute: "2-digit" 
+          }),
+          calories: savedMeal.calories,
+          protein: savedMeal.protein,
+          carbs: savedMeal.carbs,
+          fats: savedMeal.fats,
+          imageUrl: savedMeal.image_url || undefined,
+        };
+        setMeals(prev => [...prev, newMeal]);
+        toast.success("Meal logged successfully!");
+      }
+    } catch (error) {
+      console.error("Error saving meal:", error);
+      toast.error("Failed to save meal. Please try again.");
+    }
   };
 
   return (
@@ -148,11 +178,19 @@ export const Dashboard = () => {
           </div>
 
           <div className="space-y-3">
-            {meals.map((meal, index) => (
-              <div key={meal.id} style={{ animationDelay: `${index * 100}ms` }}>
-                <MealCard meal={meal} />
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading meals...</div>
+            ) : meals.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                No meals logged yet today. Add your first meal!
               </div>
-            ))}
+            ) : (
+              meals.map((meal, index) => (
+                <div key={meal.id} style={{ animationDelay: `${index * 100}ms` }}>
+                  <MealCard meal={meal} />
+                </div>
+              ))
+            )}
             <AddMealCard onClick={() => setShowMealLogger(true)} />
           </div>
         </section>
