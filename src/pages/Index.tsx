@@ -2,19 +2,25 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { WearableConnection } from "@/components/WearableConnection";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
+import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
 import { Sparkles, Heart, Brain, Zap } from "lucide-react";
 import cjtLogo from "@/assets/cjt-logo.png";
 
-type AppState = "welcome" | "connection" | "questionnaire" | "dashboard";
+type AppState = "welcome" | "connection" | "questionnaire" | "baseline" | "dashboard";
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
+  const [userData, setUserData] = useState<OnboardingData | null>(null);
 
   // Check if user has completed onboarding
   useEffect(() => {
     const hasOnboarded = localStorage.getItem("cjt_onboarded");
     if (hasOnboarded) {
+      const savedData = localStorage.getItem("cjt_user_data");
+      if (savedData) {
+        setUserData(JSON.parse(savedData));
+      }
       setAppState("dashboard");
     }
   }, []);
@@ -36,13 +42,22 @@ const Index = () => {
 
   const handleQuestionnaireComplete = (data: OnboardingData) => {
     console.log("Onboarding data:", data);
-    localStorage.setItem("cjt_onboarded", "true");
     localStorage.setItem("cjt_user_data", JSON.stringify(data));
+    setUserData(data);
+    setAppState("baseline");
+  };
+
+  const handleBaselineContinue = () => {
+    localStorage.setItem("cjt_onboarded", "true");
     setAppState("dashboard");
   };
 
   if (appState === "dashboard") {
     return <Dashboard />;
+  }
+
+  if (appState === "baseline" && userData) {
+    return <BaselineSummary userData={userData} onContinue={handleBaselineContinue} />;
   }
 
   if (appState === "connection") {
