@@ -8,6 +8,7 @@ import { MealLogger } from "@/components/MealLogger";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { StreakCard } from "@/components/StreakCard";
 import { WaterTracker } from "@/components/WaterTracker";
+import { MealPlanner } from "@/components/MealPlanner";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
@@ -247,6 +248,11 @@ export const Dashboard = () => {
               });
             }}
           />
+        </section>
+
+        {/* Meal Planner */}
+        <section>
+          <MealPlanner baseline={baseline} />
         </section>
 
         {/* Meals Section */}
