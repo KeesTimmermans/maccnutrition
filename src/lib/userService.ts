@@ -98,11 +98,19 @@ export const saveUserBaseline = async (
   return data;
 };
 
-export const getUserBaseline = async (userId: string): Promise<UserBaseline | null> => {
+export const getUserBaseline = async (userId?: string): Promise<UserBaseline | null> => {
+  let uid = userId;
+  
+  if (!uid) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    uid = user.id;
+  }
+
   const { data, error } = await supabase
     .from("user_baselines")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", uid)
     .maybeSingle();
 
   if (error) {
