@@ -6,6 +6,7 @@ import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
 import { saveMeal, getTodaysMeals, MealInput, Meal } from "@/lib/mealService";
+import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { toast } from "sonner";
 
 const mockInsights = [
@@ -28,15 +29,20 @@ export const Dashboard = () => {
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
+  const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadMeals();
+    loadData();
   }, []);
 
-  const loadMeals = async () => {
+  const loadData = async () => {
     try {
-      const dbMeals = await getTodaysMeals();
+      const [dbMeals, userBaseline] = await Promise.all([
+        getTodaysMeals(),
+        getUserBaseline()
+      ]);
+      
       const formattedMeals: DashboardMeal[] = dbMeals.map((meal: Meal) => ({
         id: meal.id,
         name: meal.name,
@@ -50,13 +56,16 @@ export const Dashboard = () => {
         fats: meal.fats,
         imageUrl: meal.image_url || undefined,
       }));
+      
       setMeals(formattedMeals);
+      setBaseline(userBaseline);
     } catch (error) {
-      console.error("Error loading meals:", error);
+      console.error("Error loading data:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
@@ -128,7 +137,7 @@ export const Dashboard = () => {
           <div className="flex justify-around items-center">
             <MacroRing 
               value={totalCalories} 
-              max={2000} 
+              max={baseline?.target_calories || 2000} 
               label="Calories" 
               color="calories"
               size="lg"
@@ -137,21 +146,21 @@ export const Dashboard = () => {
             <div className="space-y-4">
               <MacroRing 
                 value={totalProtein} 
-                max={120} 
+                max={baseline?.protein_grams || 120} 
                 label="Protein" 
                 color="protein"
                 size="sm"
               />
               <MacroRing 
                 value={totalCarbs} 
-                max={200} 
+                max={baseline?.carbs_grams || 200} 
                 label="Carbs" 
                 color="carbs"
                 size="sm"
               />
               <MacroRing 
                 value={totalFats} 
-                max={65} 
+                max={baseline?.fats_grams || 65} 
                 label="Fats" 
                 color="fats"
                 size="sm"
