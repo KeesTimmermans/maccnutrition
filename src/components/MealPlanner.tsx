@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb } from "lucide-react";
+import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { UserBaseline } from "@/lib/userService";
+import { GroceryList } from "@/components/GroceryList";
 import { toast } from "sonner";
 
 interface Meal {
@@ -34,6 +34,24 @@ interface MealPlan {
   tips: string[];
 }
 
+interface GroceryItem {
+  name: string;
+  quantity: string;
+  notes?: string;
+}
+
+interface GroceryCategory {
+  name: string;
+  icon: string;
+  items: GroceryItem[];
+}
+
+interface GroceryListData {
+  categories: GroceryCategory[];
+  estimatedCost: string;
+  shoppingTips: string[];
+}
+
 interface MealPlannerProps {
   baseline: UserBaseline | null;
 }
@@ -42,8 +60,11 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
+  const [groceryList, setGroceryList] = useState<GroceryListData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingGrocery, setIsLoadingGrocery] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0);
+  const [showGroceryList, setShowGroceryList] = useState(false);
 
   const generateMealPlan = async () => {
     setIsLoading(true);
@@ -89,6 +110,37 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       toast.error('Failed to generate meal plan. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const generateGroceryList = async () => {
+    if (!mealPlan) return;
+    
+    setIsLoadingGrocery(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-grocery-list', {
+        body: { mealPlan }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.groceryList) {
+        setGroceryList(data.groceryList);
+        setShowGroceryList(true);
+        toast.success('Grocery list generated!');
+      } else {
+        toast.error('Failed to generate grocery list.');
+      }
+    } catch (error) {
+      console.error('Error generating grocery list:', error);
+      toast.error('Failed to generate grocery list.');
+    } finally {
+      setIsLoadingGrocery(false);
     }
   };
 
@@ -138,6 +190,16 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   }
 
   const currentDay = mealPlan.days[selectedDay];
+
+  // Show grocery list if generated
+  if (showGroceryList && groceryList) {
+    return (
+      <GroceryList 
+        groceryList={groceryList} 
+        onClose={() => setShowGroceryList(false)} 
+      />
+    );
+  }
 
   return (
     <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
@@ -247,7 +309,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
 
         {/* Tips */}
         {mealPlan.tips && mealPlan.tips.length > 0 && (
-          <div className="bg-primary/5 rounded-xl p-3">
+          <div className="bg-primary/5 rounded-xl p-3 mb-4">
             <div className="flex items-center gap-2 mb-2">
               <Lightbulb className="w-4 h-4 text-primary" />
               <p className="text-sm font-medium text-foreground">Meal Prep Tips</p>
@@ -262,6 +324,26 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
             </ul>
           </div>
         )}
+
+        {/* Generate Grocery List Button */}
+        <Button
+          onClick={generateGroceryList}
+          disabled={isLoadingGrocery}
+          variant="outline"
+          className="w-full gap-2"
+        >
+          {isLoadingGrocery ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Generating Grocery List...
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="w-4 h-4" />
+              Generate Grocery List
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   );
