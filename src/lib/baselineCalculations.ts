@@ -60,18 +60,27 @@ const MACRO_RATIOS: Record<string, { proteinPerKg: number; fatPercent: number }>
   general_health: { proteinPerKg: 1.8, fatPercent: 0.39 },
 };
 
-// Convert lbs to kg
+// Unit conversions
 const lbsToKg = (lbs: number): number => lbs / 2.205;
+const kgToLbs = (kg: number): number => kg * 2.205;
 
 // Convert feet/inches to cm
 const heightToCm = (feet: number, inches: number): number => (feet * 30.48) + (inches * 2.54);
+
+// Helper to get weight in both units from data
+function getWeightFromData(data: OnboardingData): { weightLbs: number; weightKg: number } {
+  const rawWeight = parseFloat(data.weight) || 150;
+  if (data.unitSystem === "metric") {
+    return { weightKg: rawWeight, weightLbs: kgToLbs(rawWeight) };
+  }
+  return { weightLbs: rawWeight, weightKg: lbsToKg(rawWeight) };
+}
 
 /**
  * Step 1: Calculate TDEE (Total Daily Energy Expenditure)
  */
 function calculateTDEE(data: OnboardingData): { tdee: number; target: number; deficit: number } {
-  const weightLbs = parseFloat(data.weight) || 150;
-  const weightKg = lbsToKg(weightLbs);
+  const { weightLbs } = getWeightFromData(data);
   const sex = data.sex || "male";
   const activityLevel = (data.activityLevel || "semi_active") as keyof typeof ACTIVITY_MULTIPLIERS.male;
   const goal = data.primaryGoal || "general_health";
@@ -104,7 +113,7 @@ function calculateMacros(
   data: OnboardingData, 
   targetCalories: number
 ): BaselineResults["macros"] {
-  const weightKg = lbsToKg(parseFloat(data.weight) || 150);
+  const { weightKg } = getWeightFromData(data);
   const goal = data.primaryGoal || "general_health";
   const sex = data.sex || "male";
 
@@ -161,7 +170,7 @@ function calculateMacros(
  * Step 3: Calculate Hydration & Electrolyte Baseline
  */
 function calculateHydration(data: OnboardingData): BaselineResults["hydration"] {
-  const weightKg = lbsToKg(parseFloat(data.weight) || 150);
+  const { weightKg } = getWeightFromData(data);
   const sex = data.sex || "male";
   const trainingDays = data.trainingDays || "2-3";
 
