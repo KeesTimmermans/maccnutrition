@@ -23,8 +23,10 @@ interface OnboardingData {
   // Demographics
   age: string;
   sex: "male" | "female" | "";
+  unitSystem: "imperial" | "metric";
   heightFeet: string;
   heightInches: string;
+  heightCm: string;
   weight: string;
   
   // Medical & Allergies
@@ -59,8 +61,10 @@ interface OnboardingData {
 const initialData: OnboardingData = {
   age: "",
   sex: "",
+  unitSystem: "imperial",
   heightFeet: "",
   heightInches: "",
+  heightCm: "",
   weight: "",
   conditions: [],
   allergies: [],
@@ -136,7 +140,8 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   const canProceed = () => {
     switch (currentStep.id) {
       case "demographics":
-        return data.age && data.sex && data.heightFeet && data.weight;
+        const hasHeight = data.unitSystem === "imperial" ? data.heightFeet : data.heightCm;
+        return data.age && data.sex && hasHeight && data.weight;
       case "medical":
         return true; // Optional
       case "lifestyle":
@@ -298,35 +303,73 @@ const DemographicsStep = ({ data, updateData }: {
       </div>
     </div>
 
+    {/* Unit System Toggle */}
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">Height</Label>
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <Input
-            type="number"
-            placeholder="Feet"
-            value={data.heightFeet}
-            onChange={(e) => updateData("heightFeet", e.target.value)}
-            className="h-12 rounded-xl"
-          />
-        </div>
-        <div className="flex-1">
-          <Input
-            type="number"
-            placeholder="Inches"
-            value={data.heightInches}
-            onChange={(e) => updateData("heightInches", e.target.value)}
-            className="h-12 rounded-xl"
-          />
-        </div>
+      <Label className="text-sm font-semibold">Measurement System</Label>
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: "Imperial", desc: "ft, in, lbs", value: "imperial" as const },
+          { label: "Metric", desc: "cm, kg", value: "metric" as const },
+        ].map((option) => (
+          <button
+            key={option.value}
+            onClick={() => updateData("unitSystem", option.value)}
+            className={`p-3 rounded-xl text-center transition-all ${
+              data.unitSystem === option.value
+                ? "bg-primary text-primary-foreground shadow-medium"
+                : "bg-card shadow-soft hover:shadow-medium"
+            }`}
+          >
+            <span className="font-semibold block">{option.label}</span>
+            <span className={`text-xs ${data.unitSystem === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+              {option.desc}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
 
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">Current Weight (lbs)</Label>
+      <Label className="text-sm font-semibold">Height</Label>
+      {data.unitSystem === "imperial" ? (
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Feet"
+              value={data.heightFeet}
+              onChange={(e) => updateData("heightFeet", e.target.value)}
+              className="h-12 rounded-xl"
+            />
+          </div>
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Inches"
+              value={data.heightInches}
+              onChange={(e) => updateData("heightInches", e.target.value)}
+              className="h-12 rounded-xl"
+            />
+          </div>
+        </div>
+      ) : (
+        <Input
+          type="number"
+          placeholder="Height in cm"
+          value={data.heightCm}
+          onChange={(e) => updateData("heightCm", e.target.value)}
+          className="h-12 rounded-xl"
+        />
+      )}
+    </div>
+
+    <div className="space-y-2">
+      <Label className="text-sm font-semibold">
+        Current Weight ({data.unitSystem === "imperial" ? "lbs" : "kg"})
+      </Label>
       <Input
         type="number"
-        placeholder="Enter your weight"
+        placeholder={`Enter your weight in ${data.unitSystem === "imperial" ? "lbs" : "kg"}`}
         value={data.weight}
         onChange={(e) => updateData("weight", e.target.value)}
         className="h-12 rounded-xl"
