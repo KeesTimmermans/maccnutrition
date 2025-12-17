@@ -1,0 +1,120 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export interface Meal {
+  id: string;
+  user_id: string;
+  name: string;
+  image_url?: string | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  logged_at: string;
+  created_at: string;
+}
+
+export interface MealInput {
+  name: string;
+  imageUrl?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
+export const saveMeal = async (meal: MealInput): Promise<Meal | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data, error } = await supabase
+    .from("meals")
+    .insert({
+      user_id: user.id,
+      name: meal.name,
+      image_url: meal.imageUrl || null,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fats: meal.fats,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error saving meal:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const getTodaysMeals = async (): Promise<Meal[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
+  // Get start of today in user's local timezone
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("meals")
+    .select("*")
+    .eq("user_id", user.id)
+    .gte("logged_at", today.toISOString())
+    .order("logged_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching meals:", error);
+    return [];
+  }
+
+  return data || [];
+};
+
+export const analyzeFoodImage = async (imageBase64: string): Promise<{
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  confidence: string;
+  notes: string;
+}> => {
+  const { data, error } = await supabase.functions.invoke("analyze-food", {
+    body: { imageBase64 },
+  });
+
+  if (error) {
+    console.error("Error analyzing food:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const analyzeFoodSearch = async (searchQuery: string): Promise<{
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  confidence: string;
+  notes: string;
+}> => {
+  const { data, error } = await supabase.functions.invoke("analyze-food", {
+    body: { searchQuery },
+  });
+
+  if (error) {
+    console.error("Error analyzing food:", error);
+    throw error;
+  }
+
+  return data;
+};

@@ -1,4 +1,7 @@
 project_id = "nfqaanowocbcnymcqcig"
 
+[functions.analyze-food]
+verify_jwt = false
+
 [functions.ai-coach]
 verify_jwt = false
