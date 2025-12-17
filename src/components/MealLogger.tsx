@@ -1,0 +1,177 @@
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Camera, X, Sparkles, Search, Loader2 } from "lucide-react";
+
+interface MealLoggerProps {
+  onClose: () => void;
+  onSubmit: (meal: {
+    name: string;
+    imageUrl?: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+  }) => void;
+}
+
+export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
+  const [image, setImage] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result as string);
+        // Simulate AI analysis
+        setIsAnalyzing(true);
+        setTimeout(() => {
+          setIsAnalyzing(false);
+        }, 2000);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitMeal = () => {
+    // Mock data - in real app this would come from AI analysis
+    onSubmit({
+      name: searchQuery || "Grilled Chicken Salad",
+      imageUrl: image || undefined,
+      calories: 420,
+      protein: 35,
+      carbs: 25,
+      fats: 18,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background z-50 flex flex-col animate-slide-up">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <button onClick={onClose} className="p-2 hover:bg-muted rounded-xl transition-colors">
+          <X className="w-6 h-6 text-foreground" />
+        </button>
+        <h2 className="font-bold text-lg text-foreground">Log Meal</h2>
+        <div className="w-10" />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-6">
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search for a food..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-muted rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        {/* Or divider */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-sm text-muted-foreground">or snap a photo</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {/* Camera capture */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleImageCapture}
+          className="hidden"
+        />
+
+        {image ? (
+          <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted mb-6">
+            <img src={image} alt="Meal" className="w-full h-full object-cover" />
+            {isAnalyzing && (
+              <div className="absolute inset-0 bg-foreground/50 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
+                <p className="text-primary-foreground font-semibold">AI analyzing your meal...</p>
+              </div>
+            )}
+            <button
+              onClick={() => setImage(null)}
+              className="absolute top-3 right-3 p-2 bg-foreground/50 rounded-full hover:bg-foreground/70 transition-colors"
+            >
+              <X className="w-5 h-5 text-primary-foreground" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full aspect-square rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-accent/50 transition-all duration-300 mb-6"
+          >
+            <div className="w-20 h-20 rounded-full gradient-hero flex items-center justify-center">
+              <Camera className="w-10 h-10 text-primary-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-foreground">Take a Photo</p>
+              <p className="text-sm text-muted-foreground">AI will analyze your meal</p>
+            </div>
+          </button>
+        )}
+
+        {/* AI Analysis Preview (shown when image is uploaded and analyzed) */}
+        {image && !isAnalyzing && (
+          <div className="bg-card rounded-2xl p-6 shadow-soft animate-scale-in">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h3 className="font-bold text-foreground">AI Analysis</h3>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Detected:</span>
+                <span className="font-semibold text-foreground">Grilled Chicken Salad</span>
+              </div>
+              <div className="h-px bg-border" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-accent rounded-xl text-center">
+                  <p className="text-2xl font-bold text-calories">420</p>
+                  <p className="text-xs text-muted-foreground">Calories</p>
+                </div>
+                <div className="p-3 bg-protein/10 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-protein">35g</p>
+                  <p className="text-xs text-muted-foreground">Protein</p>
+                </div>
+                <div className="p-3 bg-carbs/10 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-carbs">25g</p>
+                  <p className="text-xs text-muted-foreground">Carbs</p>
+                </div>
+                <div className="p-3 bg-fats/10 rounded-xl text-center">
+                  <p className="text-2xl font-bold text-fats">18g</p>
+                  <p className="text-xs text-muted-foreground">Fats</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="p-6 border-t border-border">
+        <Button
+          variant="hero"
+          size="xl"
+          className="w-full"
+          disabled={!image && !searchQuery}
+          onClick={handleSubmitMeal}
+        >
+          <Sparkles className="w-5 h-5 mr-2" />
+          Log This Meal
+        </Button>
+      </div>
+    </div>
+  );
+};
