@@ -225,39 +225,9 @@ export const Dashboard = () => {
           </div>
         </section>
 
-        {/* Water Tracker */}
-        <section>
-          <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
-        </section>
-
         {/* Streak Card */}
         <section>
           <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
-        </section>
-
-        {/* Progress Charts */}
-        <section>
-          <ProgressCharts />
-        </section>
-
-        {/* AI Coach */}
-        <section>
-          <AICoachCard 
-            greeting="Good morning! You're making excellent progress today."
-            insights={mockInsights}
-            tip="Try adding avocado to your next meal - it's a great source of healthy fats and will help you reach your daily target!"
-            onChatOpen={() => {
-              setShowAIChat(true);
-              updateStreak('coaching').then(streak => {
-                if (streak) setCoachingStreak(streak);
-              });
-            }}
-          />
-        </section>
-
-        {/* Meal Planner */}
-        <section>
-          <MealPlanner baseline={baseline} />
         </section>
 
         {/* Meals Section */}
@@ -293,6 +263,36 @@ export const Dashboard = () => {
             )}
             <AddMealCard onClick={() => setShowMealLogger(true)} />
           </div>
+        </section>
+
+        {/* Water Tracker */}
+        <section>
+          <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
+        </section>
+
+        {/* Progress Charts */}
+        <section>
+          <ProgressCharts />
+        </section>
+
+        {/* AI Coach */}
+        <section>
+          <AICoachCard 
+            greeting="Good morning! You're making excellent progress today."
+            insights={mockInsights}
+            tip="Try adding avocado to your next meal - it's a great source of healthy fats and will help you reach your daily target!"
+            onChatOpen={() => {
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
+          />
+        </section>
+
+        {/* Meal Planner */}
+        <section>
+          <MealPlanner baseline={baseline} />
         </section>
       </main>
 
