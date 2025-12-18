@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart, Heart } from "lucide-react";
+import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart, Heart, Repeat } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,14 @@ import { UserBaseline } from "@/lib/userService";
 import { GroceryList } from "@/components/GroceryList";
 import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface Meal {
   type: string;
@@ -66,6 +74,10 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const [isLoadingGrocery, setIsLoadingGrocery] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0);
   const [showGroceryList, setShowGroceryList] = useState(false);
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false);
+  const [mealToSwap, setMealToSwap] = useState<{ meal: Meal; dayIndex: number; mealIndex: number } | null>(null);
+  const [swapPreference, setSwapPreference] = useState("");
+  const [isSwapping, setIsSwapping] = useState(false);
 
   const generateMealPlan = async () => {
     setIsLoading(true);
@@ -152,6 +164,64 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       case 'dinner': return 'bg-blue-100 text-blue-800';
       case 'snack': return 'bg-purple-100 text-purple-800';
       default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const handleSwapMeal = async () => {
+    if (!mealToSwap || !swapPreference.trim()) return;
+    
+    setIsSwapping(true);
+    try {
+      const userContext = {
+        dietType: baseline?.diet_type,
+        allergies: baseline?.allergies,
+        foodDislikes: baseline?.food_dislikes,
+      };
+
+      const { data, error } = await supabase.functions.invoke('swap-meal', {
+        body: { 
+          currentMeal: mealToSwap.meal,
+          userPreference: swapPreference,
+          userContext 
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.newMeal) {
+        // Update the meal plan with the new meal
+        setMealPlan(prev => {
+          if (!prev) return prev;
+          const newDays = [...prev.days];
+          newDays[mealToSwap.dayIndex].meals[mealToSwap.mealIndex] = data.newMeal;
+          
+          // Recalculate day totals
+          const dayMeals = newDays[mealToSwap.dayIndex].meals;
+          newDays[mealToSwap.dayIndex].totals = {
+            calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
+            protein: dayMeals.reduce((sum, m) => sum + m.protein, 0),
+            carbs: dayMeals.reduce((sum, m) => sum + m.carbs, 0),
+            fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
+          };
+          
+          return { ...prev, days: newDays };
+        });
+        
+        toast.success(`Swapped to ${data.newMeal.name}!`);
+        setSwapDialogOpen(false);
+        setSwapPreference("");
+        setMealToSwap(null);
+      }
+    } catch (error) {
+      console.error('Error swapping meal:', error);
+      toast.error('Failed to swap meal. Please try again.');
+    } finally {
+      setIsSwapping(false);
     }
   };
 
@@ -293,28 +363,43 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                       </Badge>
                       <h4 className="font-semibold text-foreground">{meal.name}</h4>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={async () => {
-                        try {
-                          await saveFavoriteMeal({
-                            name: meal.name,
-                            calories: meal.calories,
-                            protein: meal.protein,
-                            carbs: meal.carbs,
-                            fats: meal.fats,
-                            ingredients: meal.description,
-                          });
-                          toast.success(`${meal.name} saved to favorites!`);
-                        } catch (error) {
-                          toast.error("Failed to save favorite");
-                        }
-                      }}
-                    >
-                      <Heart className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          setMealToSwap({ meal, dayIndex: selectedDay, mealIndex: index });
+                          setSwapDialogOpen(true);
+                        }}
+                        title="Swap meal"
+                      >
+                        <Repeat className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={async () => {
+                          try {
+                            await saveFavoriteMeal({
+                              name: meal.name,
+                              calories: meal.calories,
+                              protein: meal.protein,
+                              carbs: meal.carbs,
+                              fats: meal.fats,
+                              ingredients: meal.description,
+                            });
+                            toast.success(`${meal.name} saved to favorites!`);
+                          } catch (error) {
+                            toast.error("Failed to save favorite");
+                          }
+                        }}
+                        title="Save to favorites"
+                      >
+                        <Heart className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">{meal.description}</p>
                   <div className="flex gap-3 text-xs">
@@ -367,6 +452,50 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
           )}
         </Button>
       </CardContent>
+
+      {/* Swap Meal Dialog */}
+      <Dialog open={swapDialogOpen} onOpenChange={setSwapDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Swap Meal</DialogTitle>
+            <DialogDescription>
+              {mealToSwap && (
+                <>Replacing <strong>{mealToSwap.meal.name}</strong>. Tell us what you'd prefer instead.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Input
+              placeholder="e.g., I don't like eggs, suggest something with oats instead"
+              value={swapPreference}
+              onChange={(e) => setSwapPreference(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && swapPreference.trim()) {
+                  handleSwapMeal();
+                }
+              }}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setSwapDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSwapMeal} 
+                disabled={isSwapping || !swapPreference.trim()}
+              >
+                {isSwapping ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Swapping...
+                  </>
+                ) : (
+                  'Swap Meal'
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
