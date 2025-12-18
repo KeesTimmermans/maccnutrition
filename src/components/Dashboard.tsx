@@ -5,12 +5,12 @@ import { MealCard, AddMealCard } from "@/components/MealCard";
 import { AICoachCard } from "@/components/AICoachCard";
 import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
-
+import { SettingsSheet } from "@/components/SettingsSheet";
 import { StreakCard } from "@/components/StreakCard";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { MealPlanner } from "@/components/MealPlanner";
-import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
+import { Bell, Flame, TrendingUp } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
@@ -166,9 +166,7 @@ export const Dashboard = () => {
               <Bell className="w-6 h-6 text-foreground" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-secondary rounded-full" />
             </button>
-            <button className="p-2 hover:bg-muted rounded-xl transition-colors">
-              <Settings className="w-6 h-6 text-foreground" />
-            </button>
+            <SettingsSheet baseline={baseline} onSettingsChange={loadData} />
           </div>
         </div>
       </header>

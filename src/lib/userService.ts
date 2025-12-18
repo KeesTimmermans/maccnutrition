@@ -146,3 +146,22 @@ export const getAICoachingResponse = async (
 
   return data;
 };
+
+export const updateUserSettings = async (settings: { unit_system?: string }) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("user_baselines")
+    .update(settings)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating user settings:", error);
+    throw error;
+  }
+
+  return data as UserBaseline;
+};
