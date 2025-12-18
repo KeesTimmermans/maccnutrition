@@ -5,7 +5,7 @@ import { WearableConnection } from "@/components/WearableConnection";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
-import { Sparkles, Heart, Brain, Zap } from "lucide-react";
+import { Sparkles, Heart, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserBaseline, saveUserBaseline } from "@/lib/userService";
 import { calculateBaseline } from "@/lib/baselineCalculations";
@@ -147,16 +147,19 @@ const Index = () => {
         </div>
 
         {/* Tagline */}
-        <p className="text-xl text-muted-foreground mb-8 max-w-sm animate-slide-up delay-100">
-          Your AI-powered nutrition coach in your pocket
+        <h2 className="text-2xl font-bold text-foreground mb-2 animate-slide-up delay-100">
+          Nutrition with intention
+        </h2>
+        <p className="text-lg text-muted-foreground mb-8 max-w-sm animate-slide-up delay-150">
+          Like having a nutrition coach in your pocket
         </p>
 
         {/* Features */}
         <div className="grid grid-cols-3 gap-4 mb-10 w-full max-w-sm animate-slide-up delay-200">
           {[
-            { icon: <Brain className="w-6 h-6" />, label: "AI Powered" },
-            { icon: <Zap className="w-6 h-6" />, label: "Quick Logging" },
             { icon: <Heart className="w-6 h-6" />, label: "Personalized" },
+            { icon: <Zap className="w-6 h-6" />, label: "Quick Logging" },
+            { icon: <Sparkles className="w-6 h-6" />, label: "Smart Insights" },
           ].map((feature, index) => (
             <div
               key={feature.label}
@@ -173,7 +176,7 @@ const Index = () => {
         {/* Testimonial */}
         <div className="bg-card rounded-2xl p-4 shadow-soft max-w-sm mb-8 animate-slide-up delay-300">
           <p className="text-sm text-foreground italic mb-2">
-            "Finally, a nutrition app that actually understands my lifestyle. It is like having a coach in my pocket!"
+            "Finally, a nutrition app that actually understands my lifestyle and helps me stay on track!"
           </p>
           <p className="text-xs text-muted-foreground">
             — CJT Nutrition user
