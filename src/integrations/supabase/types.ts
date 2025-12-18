@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_checkins: {
+        Row: {
+          check_in_date: string
+          created_at: string
+          energy_level: number | null
+          hunger_level: number | null
+          hydration_feeling: number | null
+          id: string
+          mood: number | null
+          notes: string | null
+          sleep_hours: number | null
+          sleep_quality: number | null
+          stress_level: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          check_in_date?: string
+          created_at?: string
+          energy_level?: number | null
+          hunger_level?: number | null
+          hydration_feeling?: number | null
+          id?: string
+          mood?: number | null
+          notes?: string | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          stress_level?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          check_in_date?: string
+          created_at?: string
+          energy_level?: number | null
+          hunger_level?: number | null
+          hydration_feeling?: number | null
+          id?: string
+          mood?: number | null
+          notes?: string | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          stress_level?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorite_meals: {
         Row: {
           calories: number
