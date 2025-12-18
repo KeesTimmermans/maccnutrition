@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import MealHistory from "./pages/MealHistory";
 import Progress from "./pages/Progress";
+import WhoopDemo from "./pages/WhoopDemo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/history" element={<MealHistory />} />
           <Route path="/progress" element={<Progress />} />
+          <Route path="/whoop-demo" element={<WhoopDemo />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
