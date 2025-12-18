@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      favorite_meals: {
+        Row: {
+          calories: number
+          carbs: number
+          created_at: string
+          fats: number
+          id: string
+          ingredients: string | null
+          name: string
+          protein: number
+          user_id: string
+        }
+        Insert: {
+          calories?: number
+          carbs?: number
+          created_at?: string
+          fats?: number
+          id?: string
+          ingredients?: string | null
+          name: string
+          protein?: number
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          carbs?: number
+          created_at?: string
+          fats?: number
+          id?: string
+          ingredients?: string | null
+          name?: string
+          protein?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       meals: {
         Row: {
           calories: number
