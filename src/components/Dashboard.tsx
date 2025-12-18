@@ -5,7 +5,7 @@ import { MealCard, AddMealCard } from "@/components/MealCard";
 import { AICoachCard } from "@/components/AICoachCard";
 import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
-import { ProgressCharts } from "@/components/ProgressCharts";
+
 import { StreakCard } from "@/components/StreakCard";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
@@ -270,10 +270,6 @@ export const Dashboard = () => {
           <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
         </section>
 
-        {/* Progress Charts */}
-        <section>
-          <ProgressCharts />
-        </section>
 
         {/* AI Coach */}
         <section>
