@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart, Heart, Repeat } from "lucide-react";
+import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart, Heart, Repeat, Download, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { jsPDF } from "jspdf";
 
 interface Meal {
   type: string;
@@ -225,6 +226,120 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     }
   };
 
+  const exportToPDF = () => {
+    if (!mealPlan) return;
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let yPos = 20;
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("Weekly Meal Plan", pageWidth / 2, yPos, { align: "center" });
+    yPos += 15;
+    
+    mealPlan.days.forEach((day, dayIndex) => {
+      // Check if we need a new page
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      // Day header
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text(day.day, 14, yPos);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${day.totals.calories} cal | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g`, 14, yPos + 5);
+      yPos += 12;
+      
+      // Meals
+      day.meals.forEach((meal) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+        
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${meal.type}: ${meal.name}`, 18, yPos);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        
+        // Wrap description text
+        const descLines = doc.splitTextToSize(meal.description, pageWidth - 40);
+        doc.text(descLines, 18, yPos + 4);
+        yPos += 4 + (descLines.length * 4);
+        
+        doc.text(`${meal.calories} cal | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g`, 18, yPos);
+        yPos += 8;
+      });
+      
+      yPos += 5;
+    });
+    
+    // Tips on last page
+    if (mealPlan.tips && mealPlan.tips.length > 0) {
+      if (yPos > 230) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Meal Prep Tips", 14, yPos);
+      yPos += 7;
+      
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      mealPlan.tips.forEach((tip) => {
+        if (yPos > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+        const tipLines = doc.splitTextToSize(`• ${tip}`, pageWidth - 28);
+        doc.text(tipLines, 18, yPos);
+        yPos += tipLines.length * 4 + 2;
+      });
+    }
+    
+    doc.save("meal-plan.pdf");
+    toast.success("Meal plan exported to PDF!");
+  };
+
+  const shareAsText = async () => {
+    if (!mealPlan) return;
+    
+    let text = "🍽️ MY WEEKLY MEAL PLAN\n\n";
+    
+    mealPlan.days.forEach((day) => {
+      text += `📅 ${day.day.toUpperCase()}\n`;
+      text += `Total: ${day.totals.calories} cal | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g\n\n`;
+      
+      day.meals.forEach((meal) => {
+        text += `${meal.type}: ${meal.name}\n`;
+        text += `  ${meal.calories} cal | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g\n`;
+      });
+      text += "\n";
+    });
+    
+    if (mealPlan.tips && mealPlan.tips.length > 0) {
+      text += "💡 TIPS\n";
+      mealPlan.tips.forEach((tip) => {
+        text += `• ${tip}\n`;
+      });
+    }
+    
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Meal plan copied to clipboard!");
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
+  };
+
   if (!mealPlan) {
     return (
       <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
@@ -280,14 +395,32 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
             <ChefHat className="w-5 h-5 text-primary" />
             Weekly Meal Plan
           </CardTitle>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={generateMealPlan}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
+          <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={shareAsText}
+              title="Copy to clipboard"
+            >
+              <Share2 className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={exportToPDF}
+              title="Export as PDF"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={generateMealPlan}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       
