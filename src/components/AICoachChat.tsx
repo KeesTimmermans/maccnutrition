@@ -50,18 +50,35 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
         body: {
           messages: newMessages,
           userContext: baseline ? {
+            // Core profile
             primaryGoal: baseline.primary_goal,
+            secondaryGoals: baseline.secondary_goals,
+            sex: baseline.sex,
+            age: baseline.age,
+            // Nutrition targets
             targetCalories: baseline.target_calories,
             proteinGrams: baseline.protein_grams,
             carbsGrams: baseline.carbs_grams,
             fatsGrams: baseline.fats_grams,
+            waterLiters: baseline.water_liters,
+            // Lifestyle
             activityLevel: baseline.activity_level,
             trainingDays: baseline.training_days,
+            trainingIntensity: baseline.training_intensity,
             sleepHours: baseline.sleep_hours,
             stressLevel: baseline.stress_level,
+            occupation: baseline.occupation,
+            // Preferences
             dietType: baseline.diet_type,
             foodDislikes: baseline.food_dislikes,
+            allergies: baseline.allergies,
+            conditions: baseline.conditions,
             coachingTone: baseline.coaching_tone,
+            focusPoints: baseline.focus_points,
+            // Female-specific
+            currentPhase: baseline.current_phase,
+            cycleRegularity: baseline.cycle_regularity,
+            cycleSymptoms: baseline.cycle_symptoms,
           } : {},
           todaysMeals: todaysMeals.map(m => ({
             name: m.name,
