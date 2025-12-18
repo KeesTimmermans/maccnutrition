@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from "recharts";
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { getMealsByDateRange, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
@@ -191,10 +191,10 @@ const Progress = () => {
           </Card>
         )}
 
-        {/* Charts */}
+        {/* Combined Chart */}
         <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-bold text-foreground">Trends</CardTitle>
+            <CardTitle className="text-lg font-bold text-foreground">Nutrition Trends</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
             <Tabs defaultValue="weekly" className="w-full">
@@ -203,142 +203,115 @@ const Progress = () => {
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="weekly" className="space-y-6">
-                {/* Calorie Chart */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-foreground">Calories</p>
-                    <p className="text-xs text-muted-foreground">Goal: {calorieGoal}/day</p>
-                  </div>
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={weeklyData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                        <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                          }}
-                          formatter={(value: number) => [`${value} cal`, 'Calories']}
-                        />
-                        <Bar 
-                          dataKey="calories" 
-                          fill="hsl(var(--primary))" 
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+              <TabsContent value="weekly">
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={weeklyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                      <YAxis 
+                        yAxisId="calories" 
+                        orientation="left"
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                        label={{ value: 'Calories', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                      />
+                      <YAxis 
+                        yAxisId="macros" 
+                        orientation="right"
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                        label={{ value: 'Grams', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number, name: string) => {
+                          if (name === 'calories') return [`${value} cal`, 'Calories'];
+                          return [`${value}g`, name.charAt(0).toUpperCase() + name.slice(1)];
+                        }}
+                      />
+                      <Legend />
+                      <Bar yAxisId="calories" dataKey="calories" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
+                      <Line yAxisId="macros" type="monotone" dataKey="protein" stroke="hsl(var(--protein))" strokeWidth={2} dot={{ fill: 'hsl(var(--protein))' }} />
+                      <Line yAxisId="macros" type="monotone" dataKey="carbs" stroke="hsl(var(--carbs))" strokeWidth={2} dot={{ fill: 'hsl(var(--carbs))' }} />
+                      <Line yAxisId="macros" type="monotone" dataKey="fats" stroke="hsl(var(--fats))" strokeWidth={2} dot={{ fill: 'hsl(var(--fats))' }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
                 </div>
-
-                {/* Macro Chart */}
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-2">Macros</p>
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={weeklyData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                        <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                          }}
-                          formatter={(value: number, name: string) => [`${value}g`, name]}
-                        />
-                        <Area type="monotone" dataKey="protein" stackId="1" stroke="hsl(var(--protein))" fill="hsl(var(--protein))" fillOpacity={0.6} />
-                        <Area type="monotone" dataKey="carbs" stackId="1" stroke="hsl(var(--carbs))" fill="hsl(var(--carbs))" fillOpacity={0.6} />
-                        <Area type="monotone" dataKey="fats" stackId="1" stroke="hsl(var(--fats))" fill="hsl(var(--fats))" fillOpacity={0.6} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                <div className="flex flex-wrap justify-center gap-4 mt-4">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded bg-primary" />
+                    <span className="text-xs text-muted-foreground">Calories ({calorieGoal}/day)</span>
                   </div>
-                  <div className="flex justify-center gap-4 mt-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
-                      <span className="text-xs text-muted-foreground">Protein ({proteinGoal}g)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
-                      <span className="text-xs text-muted-foreground">Carbs ({carbsGoal}g)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
-                      <span className="text-xs text-muted-foreground">Fats ({fatsGoal}g)</span>
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
+                    <span className="text-xs text-muted-foreground">Protein ({proteinGoal}g)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
+                    <span className="text-xs text-muted-foreground">Carbs ({carbsGoal}g)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
+                    <span className="text-xs text-muted-foreground">Fats ({fatsGoal}g)</span>
                   </div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="monthly" className="space-y-6">
-                {/* Monthly Calorie Chart */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-foreground">Calories (30 days)</p>
-                    <p className="text-xs text-muted-foreground">Goal: {calorieGoal}/day</p>
-                  </div>
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
-                        <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                          }}
-                          labelFormatter={(label, payload) => payload?.[0]?.payload?.fullDate || label}
-                          formatter={(value: number) => [`${value} cal`, 'Calories']}
-                        />
-                        <Line type="monotone" dataKey="calories" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+              <TabsContent value="monthly">
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
+                      <YAxis 
+                        yAxisId="calories" 
+                        orientation="left"
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <YAxis 
+                        yAxisId="macros" 
+                        orientation="right"
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => payload?.[0]?.payload?.fullDate || label}
+                        formatter={(value: number, name: string) => {
+                          if (name === 'calories') return [`${value} cal`, 'Calories'];
+                          return [`${value}g`, name.charAt(0).toUpperCase() + name.slice(1)];
+                        }}
+                      />
+                      <Legend />
+                      <Line yAxisId="calories" type="monotone" dataKey="calories" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                      <Line yAxisId="macros" type="monotone" dataKey="protein" stroke="hsl(var(--protein))" strokeWidth={2} dot={false} />
+                      <Line yAxisId="macros" type="monotone" dataKey="carbs" stroke="hsl(var(--carbs))" strokeWidth={2} dot={false} />
+                      <Line yAxisId="macros" type="monotone" dataKey="fats" stroke="hsl(var(--fats))" strokeWidth={2} dot={false} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
                 </div>
-
-                {/* Monthly Macro Chart */}
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-2">Macros (30 days)</p>
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
-                        <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(var(--card))', 
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                          }}
-                          labelFormatter={(label, payload) => payload?.[0]?.payload?.fullDate || label}
-                          formatter={(value: number, name: string) => [`${value}g`, name]}
-                        />
-                        <Line type="monotone" dataKey="protein" stroke="hsl(var(--protein))" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="carbs" stroke="hsl(var(--carbs))" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="fats" stroke="hsl(var(--fats))" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                <div className="flex flex-wrap justify-center gap-4 mt-4">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-primary" />
+                    <span className="text-xs text-muted-foreground">Calories</span>
                   </div>
-                  <div className="flex justify-center gap-4 mt-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
-                      <span className="text-xs text-muted-foreground">Protein</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
-                      <span className="text-xs text-muted-foreground">Carbs</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
-                      <span className="text-xs text-muted-foreground">Fats</span>
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
+                    <span className="text-xs text-muted-foreground">Protein</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
+                    <span className="text-xs text-muted-foreground">Carbs</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
+                    <span className="text-xs text-muted-foreground">Fats</span>
                   </div>
                 </div>
               </TabsContent>

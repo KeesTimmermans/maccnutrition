@@ -7,6 +7,7 @@ import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { StreakCard } from "@/components/StreakCard";
+import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { MealPlanner } from "@/components/MealPlanner";
 import { Bell, Settings, Flame, TrendingUp } from "lucide-react";
@@ -40,6 +41,7 @@ export const Dashboard = () => {
   const [loginStreak, setLoginStreak] = useState<UserStreak | null>(null);
   const [coachingStreak, setCoachingStreak] = useState<UserStreak | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showStreakCelebration, setShowStreakCelebration] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -55,7 +57,10 @@ export const Dashboard = () => {
       
       // Update login streak on dashboard load
       updateStreak('login').then(streak => {
-        if (streak) setLoginStreak(streak);
+        if (streak) {
+          setLoginStreak(streak);
+          setShowStreakCelebration(true);
+        }
       });
       
       // Set streaks from database
@@ -325,6 +330,14 @@ export const Dashboard = () => {
       {/* AI Coach Chat Modal */}
       {showAIChat && (
         <AICoachChat onClose={() => setShowAIChat(false)} />
+      )}
+
+      {/* Streak Celebration */}
+      {showStreakCelebration && (
+        <StreakCelebration 
+          streak={loginStreak} 
+          onClose={() => setShowStreakCelebration(false)} 
+        />
       )}
     </div>
   );
