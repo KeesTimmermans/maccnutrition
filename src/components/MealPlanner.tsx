@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart } from "lucide-react";
+import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart, Heart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { UserBaseline } from "@/lib/userService";
 import { GroceryList } from "@/components/GroceryList";
+import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { toast } from "sonner";
 
 interface Meal {
@@ -292,7 +293,28 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                       </Badge>
                       <h4 className="font-semibold text-foreground">{meal.name}</h4>
                     </div>
-                    <Utensils className="w-4 h-4 text-muted-foreground" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={async () => {
+                        try {
+                          await saveFavoriteMeal({
+                            name: meal.name,
+                            calories: meal.calories,
+                            protein: meal.protein,
+                            carbs: meal.carbs,
+                            fats: meal.fats,
+                            ingredients: meal.description,
+                          });
+                          toast.success(`${meal.name} saved to favorites!`);
+                        } catch (error) {
+                          toast.error("Failed to save favorite");
+                        }
+                      }}
+                    >
+                      <Heart className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">{meal.description}</p>
                   <div className="flex gap-3 text-xs">
