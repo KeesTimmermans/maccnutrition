@@ -10,10 +10,12 @@ import { StreakCard } from "@/components/StreakCard";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { MealPlanner } from "@/components/MealPlanner";
-import { Bell, Flame, TrendingUp } from "lucide-react";
+import { DailyCheckIn } from "@/components/DailyCheckIn";
+import { Bell, Flame, TrendingUp, Sun } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
+import { getTodaysCheckIn } from "@/lib/checkinService";
 import { toast } from "sonner";
 
 const mockInsights = [
@@ -42,6 +44,8 @@ export const Dashboard = () => {
   const [coachingStreak, setCoachingStreak] = useState<UserStreak | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showStreakCelebration, setShowStreakCelebration] = useState(false);
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -49,11 +53,14 @@ export const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, todaysCheckIn] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
+        getTodaysCheckIn(),
       ]);
+      
+      setHasCheckedInToday(!!todaysCheckIn);
       
       // Update login streak on dashboard load
       updateStreak('login').then(streak => {
@@ -180,6 +187,25 @@ export const Dashboard = () => {
       </header>
 
       <main className="container py-6 space-y-6">
+        {/* Check-In Prompt */}
+        {!hasCheckedInToday && (
+          <section>
+            <button 
+              onClick={() => setShowCheckIn(true)}
+              className="w-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center gap-4 hover:shadow-medium transition-all"
+            >
+              <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                <Sun className="w-6 h-6 text-amber-500" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="font-semibold text-foreground">Morning Check-In</h3>
+                <p className="text-sm text-muted-foreground">How are you feeling today?</p>
+              </div>
+              <div className="text-2xl">👋</div>
+            </button>
+          </section>
+        )}
+
         {/* Streak Card */}
         <section>
           <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
@@ -338,6 +364,17 @@ export const Dashboard = () => {
         <StreakCelebration 
           streak={loginStreak} 
           onClose={() => setShowStreakCelebration(false)} 
+        />
+      )}
+
+      {/* Daily Check-In Modal */}
+      {showCheckIn && (
+        <DailyCheckIn 
+          onClose={() => setShowCheckIn(false)}
+          onComplete={() => {
+            setShowCheckIn(false);
+            setHasCheckedInToday(true);
+          }}
         />
       )}
     </div>

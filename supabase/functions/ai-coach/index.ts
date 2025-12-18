@@ -195,6 +195,7 @@ ${userContext?.sex === 'female' ? `CYCLE INFORMATION:
 - Current Phase: ${userContext?.currentPhase || 'not tracked'}
 - Cycle Regularity: ${userContext?.cycleRegularity || 'not specified'}
 - Symptoms: ${userContext?.cycleSymptoms?.join(', ') || 'none reported'}` : ''}
+${userContext?.checkInContext || ''}
 ${mealsContext}${mealsAnalysis}`;
 
     const systemPrompt = `${CJT_CORE_SYSTEM}
@@ -208,6 +209,8 @@ RESPONSE GUIDELINES:
 - If they're close to a target, celebrate it!
 - If they're struggling, be supportive and offer ONE clear next step
 - Adapt tone based on their preference: ${userContext?.coachingTone || 'supportive'}
+- USE CHECK-IN DATA: If check-in data is available, reference their mood, energy, sleep, and stress levels to personalize advice
+- ADAPT RECOMMENDATIONS: Based on check-in patterns, adjust suggestions (e.g., if sleep is poor, suggest sleep-supportive foods)
 - Remember: Education over prescription, consistency over perfection`;
 
     // Build messages array for chat

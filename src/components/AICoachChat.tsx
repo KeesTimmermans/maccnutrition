@@ -4,6 +4,7 @@ import { X, Send, Bot, User, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals } from "@/lib/mealService";
 import { getUserBaseline } from "@/lib/userService";
+import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI } from "@/lib/checkinService";
 
 interface Message {
   role: "user" | "assistant";
@@ -40,11 +41,16 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
     setIsLoading(true);
 
     try {
-      // Fetch user context and meals
-      const [baseline, todaysMeals] = await Promise.all([
+      // Fetch user context, meals, and check-ins
+      const [baseline, todaysMeals, recentCheckIns] = await Promise.all([
         getUserBaseline(),
-        getTodaysMeals()
+        getTodaysMeals(),
+        getRecentCheckIns(7)
       ]);
+
+      // Analyze check-in patterns
+      const checkInAnalysis = analyzeCheckIns(recentCheckIns);
+      const checkInContext = formatCheckInsForAI(recentCheckIns, checkInAnalysis);
 
       const { data, error } = await supabase.functions.invoke("ai-coach", {
         body: {
@@ -79,6 +85,9 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
             currentPhase: baseline.current_phase,
             cycleRegularity: baseline.cycle_regularity,
             cycleSymptoms: baseline.cycle_symptoms,
+            // Check-in data
+            checkInContext: checkInContext,
+            checkInAnalysis: checkInAnalysis.recommendations.length > 0 ? checkInAnalysis : null,
           } : {},
           todaysMeals: todaysMeals.map(m => ({
             name: m.name,
