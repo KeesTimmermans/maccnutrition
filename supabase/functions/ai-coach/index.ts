@@ -94,13 +94,15 @@ AVOID:
 - Perfectionist expectations
 - Medical diagnoses or treatment recommendations
 - Unsupported or fad-based claims
+- Imperial units (NEVER use lbs, oz, feet, inches, cups, tablespoons)
 
 EMBRACE:
 - Practical, real-world tips
 - Celebrating consistency
 - Personalizing based on their data
 - Explaining the science simply
-- Flexible approaches`;
+- Flexible approaches
+- ALWAYS use metric units: kg for weight, cm for height, liters/ml for liquids, grams for food portions`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
