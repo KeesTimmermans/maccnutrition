@@ -341,6 +341,126 @@ export type Database = {
         }
         Relationships: []
       }
+      wearable_connections: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          external_user_id: string | null
+          id: string
+          is_connected: boolean
+          last_sync_at: string | null
+          provider: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          external_user_id?: string | null
+          id?: string
+          is_connected?: boolean
+          last_sync_at?: string | null
+          provider: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          external_user_id?: string | null
+          id?: string
+          is_connected?: boolean
+          last_sync_at?: string | null
+          provider?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wearable_data: {
+        Row: {
+          active_calories: number | null
+          active_minutes: number | null
+          awake_minutes: number | null
+          body_battery: number | null
+          created_at: string
+          data_date: string
+          deep_sleep_minutes: number | null
+          hrv_average: number | null
+          hrv_rmssd: number | null
+          id: string
+          light_sleep_minutes: number | null
+          provider: string
+          raw_data: Json | null
+          recovery_score: number | null
+          rem_sleep_minutes: number | null
+          resting_heart_rate: number | null
+          sleep_duration_minutes: number | null
+          sleep_quality_score: number | null
+          steps: number | null
+          strain_score: number | null
+          stress_score: number | null
+          total_calories: number | null
+          user_id: string
+        }
+        Insert: {
+          active_calories?: number | null
+          active_minutes?: number | null
+          awake_minutes?: number | null
+          body_battery?: number | null
+          created_at?: string
+          data_date: string
+          deep_sleep_minutes?: number | null
+          hrv_average?: number | null
+          hrv_rmssd?: number | null
+          id?: string
+          light_sleep_minutes?: number | null
+          provider: string
+          raw_data?: Json | null
+          recovery_score?: number | null
+          rem_sleep_minutes?: number | null
+          resting_heart_rate?: number | null
+          sleep_duration_minutes?: number | null
+          sleep_quality_score?: number | null
+          steps?: number | null
+          strain_score?: number | null
+          stress_score?: number | null
+          total_calories?: number | null
+          user_id: string
+        }
+        Update: {
+          active_calories?: number | null
+          active_minutes?: number | null
+          awake_minutes?: number | null
+          body_battery?: number | null
+          created_at?: string
+          data_date?: string
+          deep_sleep_minutes?: number | null
+          hrv_average?: number | null
+          hrv_rmssd?: number | null
+          id?: string
+          light_sleep_minutes?: number | null
+          provider?: string
+          raw_data?: Json | null
+          recovery_score?: number | null
+          rem_sleep_minutes?: number | null
+          resting_heart_rate?: number | null
+          sleep_duration_minutes?: number | null
+          sleep_quality_score?: number | null
+          steps?: number | null
+          strain_score?: number | null
+          stress_score?: number | null
+          total_calories?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
