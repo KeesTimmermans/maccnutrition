@@ -295,13 +295,14 @@ export const Dashboard = () => {
       <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50">
         <div className="container flex justify-around py-3">
           {[
-            { icon: "🏠", label: "Home", active: true },
-            { icon: "📊", label: "Progress", active: false },
-            { icon: "🍽️", label: "Meals", active: false },
-            { icon: "👤", label: "Profile", active: false },
+            { icon: "🏠", label: "Home", path: "/", active: true },
+            { icon: "📊", label: "Progress", path: "/progress", active: false },
+            { icon: "🍽️", label: "Meals", path: "/history", active: false },
+            { icon: "👤", label: "Profile", path: "/", active: false },
           ].map((item) => (
             <button
               key={item.label}
+              onClick={() => navigate(item.path)}
               className={`flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-colors ${
                 item.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
