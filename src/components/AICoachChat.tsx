@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Send, Bot, User, Loader2 } from "lucide-react";
+import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getTodaysMeals } from "@/lib/mealService";
-import { getUserBaseline } from "@/lib/userService";
-import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI } from "@/lib/checkinService";
+import { getTodaysMeals, Meal } from "@/lib/mealService";
+import { getUserBaseline, UserBaseline } from "@/lib/userService";
+import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
 
 interface Message {
   role: "user" | "assistant";
@@ -15,20 +15,87 @@ interface AICoachChatProps {
   onClose: () => void;
 }
 
+const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
+
 export const AICoachChat = ({ onClose }: AICoachChatProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hi! I'm your AI nutrition coach. I can see your meals and goals - ask me anything about nutrition, meal suggestions, or how you're tracking today!"
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [todaysCheckIn, setTodaysCheckIn] = useState<DailyCheckIn | null>(null);
+  const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
+  const [todaysMeals, setTodaysMeals] = useState<Meal[]>([]);
+  const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    initializeChat();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const initializeChat = async () => {
+    try {
+      const [userBaseline, meals, recentCheckIns] = await Promise.all([
+        getUserBaseline(),
+        getTodaysMeals(),
+        getRecentCheckIns(7)
+      ]);
+
+      setBaseline(userBaseline);
+      setTodaysMeals(meals);
+
+      const today = new Date().toISOString().split('T')[0];
+      const todayCheck = recentCheckIns.find(c => c.check_in_date === today);
+      setTodaysCheckIn(todayCheck || null);
+
+      const analysis = analyzeCheckIns(recentCheckIns);
+      setCheckInAnalysis(analysis);
+
+      // Generate personalized greeting based on data
+      let greeting = "Hi! I'm your AI nutrition coach. ";
+      
+      if (todayCheck) {
+        const moodEmoji = EMOJI_SCALE[todayCheck.mood - 1] || '😐';
+        greeting += `I see you checked in today ${moodEmoji}. `;
+        
+        if (todayCheck.energy_level <= 2) {
+          greeting += "Looks like energy is low — let's focus on foods that can help boost it. ";
+        } else if (todayCheck.energy_level >= 4) {
+          greeting += "Great energy today! ";
+        }
+        
+        if (todayCheck.sleep_quality <= 2) {
+          greeting += "Sleep was rough — I'll factor that into my suggestions. ";
+        }
+        
+        if (todayCheck.stress_level >= 4) {
+          greeting += "I notice stress is high — I'll recommend foods that support calm and steady energy. ";
+        }
+      }
+
+      if (meals.length > 0) {
+        const totalCals = meals.reduce((s, m) => s + m.calories, 0);
+        const targetCals = userBaseline?.target_calories || 2000;
+        const percent = Math.round((totalCals / targetCals) * 100);
+        greeting += `You're at ${percent}% of your calorie target so far. `;
+      }
+
+      greeting += "Ask me anything about nutrition, meal suggestions, or how you're tracking!";
+
+      setMessages([{ role: "assistant", content: greeting }]);
+    } catch (error) {
+      console.error("Error initializing chat:", error);
+      setMessages([{
+        role: "assistant",
+        content: "Hi! I'm your AI nutrition coach. Ask me anything about nutrition, meal suggestions, or how you're tracking today!"
+      }]);
+    } finally {
+      setIsInitializing(false);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -41,16 +108,10 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
     setIsLoading(true);
 
     try {
-      // Fetch user context, meals, and check-ins
-      const [baseline, todaysMeals, recentCheckIns] = await Promise.all([
-        getUserBaseline(),
-        getTodaysMeals(),
-        getRecentCheckIns(7)
-      ]);
-
-      // Analyze check-in patterns
-      const checkInAnalysis = analyzeCheckIns(recentCheckIns);
-      const checkInContext = formatCheckInsForAI(recentCheckIns, checkInAnalysis);
+      // Refresh check-in data
+      const recentCheckIns = await getRecentCheckIns(7);
+      const analysis = analyzeCheckIns(recentCheckIns);
+      const checkInContext = formatCheckInsForAI(recentCheckIns, analysis);
 
       const { data, error } = await supabase.functions.invoke("ai-coach", {
         body: {
@@ -87,7 +148,7 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
             cycleSymptoms: baseline.cycle_symptoms,
             // Check-in data
             checkInContext: checkInContext,
-            checkInAnalysis: checkInAnalysis.recommendations.length > 0 ? checkInAnalysis : null,
+            checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
           } : {},
           todaysMeals: todaysMeals.map(m => ({
             name: m.name,
@@ -120,6 +181,23 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
     }
   };
 
+  const getTrendIcon = (trend: "improving" | "declining" | "stable") => {
+    if (trend === "improving") return <TrendingUp className="w-3 h-3 text-green-500" />;
+    if (trend === "declining") return <TrendingDown className="w-3 h-3 text-red-500" />;
+    return <Minus className="w-3 h-3 text-muted-foreground" />;
+  };
+
+  if (isInitializing) {
+    return (
+      <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading your data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col animate-slide-up">
       {/* Header */}
@@ -137,6 +215,74 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
           <X className="w-6 h-6 text-foreground" />
         </button>
       </div>
+
+      {/* Check-In Summary Card */}
+      {(todaysCheckIn || checkInAnalysis) && (
+        <div className="px-4 pt-4">
+          <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-2xl p-4">
+            <h3 className="text-xs font-semibold text-primary mb-3 uppercase tracking-wide">Today's Status</h3>
+            
+            {todaysCheckIn ? (
+              <div className="grid grid-cols-4 gap-3">
+                <div className="text-center">
+                  <div className="text-xl mb-1">{EMOJI_SCALE[todaysCheckIn.mood - 1]}</div>
+                  <p className="text-xs text-muted-foreground">Mood</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Battery className={`w-4 h-4 ${todaysCheckIn.energy_level >= 3 ? 'text-green-500' : 'text-orange-500'}`} />
+                    <span className="text-sm font-semibold">{todaysCheckIn.energy_level}/5</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Energy</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Moon className={`w-4 h-4 ${todaysCheckIn.sleep_quality >= 3 ? 'text-blue-500' : 'text-orange-500'}`} />
+                    <span className="text-sm font-semibold">{todaysCheckIn.sleep_quality}/5</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Sleep</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Brain className={`w-4 h-4 ${todaysCheckIn.stress_level <= 3 ? 'text-purple-500' : 'text-orange-500'}`} />
+                    <span className="text-sm font-semibold">{todaysCheckIn.stress_level}/5</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Stress</p>
+                </div>
+              </div>
+            ) : checkInAnalysis && checkInAnalysis.averageMood > 0 ? (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">No check-in today. 7-day averages:</p>
+                <div className="flex justify-center gap-4 text-xs">
+                  <span className="flex items-center gap-1">
+                    <Smile className="w-3 h-3" /> {checkInAnalysis.averageMood}/5
+                    {getTrendIcon(checkInAnalysis.trends.mood)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Battery className="w-3 h-3" /> {checkInAnalysis.averageEnergy}/5
+                    {getTrendIcon(checkInAnalysis.trends.energy)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Moon className="w-3 h-3" /> {checkInAnalysis.averageSleep}/5
+                    {getTrendIcon(checkInAnalysis.trends.sleep)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-center text-muted-foreground">
+                Complete a daily check-in to see your status here
+              </p>
+            )}
+
+            {/* Pattern-based insight */}
+            {checkInAnalysis && checkInAnalysis.recommendations.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-primary/10">
+                <p className="text-xs text-primary font-medium">💡 {checkInAnalysis.recommendations[0]}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
@@ -183,14 +329,16 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
           <div className="flex flex-wrap gap-2">
             {[
               "How am I tracking today?",
-              "What should I eat for dinner?",
-              "How can I hit my protein goal?",
+              todaysCheckIn?.energy_level && todaysCheckIn.energy_level <= 2 
+                ? "What can I eat to boost energy?" 
+                : "What should I eat for dinner?",
+              todaysCheckIn?.sleep_quality && todaysCheckIn.sleep_quality <= 2
+                ? "Foods to help me sleep better?"
+                : "How can I hit my protein goal?",
             ].map((suggestion) => (
               <button
                 key={suggestion}
-                onClick={() => {
-                  setInput(suggestion);
-                }}
+                onClick={() => setInput(suggestion)}
                 className="px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-full text-foreground transition-colors"
               >
                 {suggestion}
