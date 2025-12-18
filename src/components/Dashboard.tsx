@@ -174,6 +174,26 @@ export const Dashboard = () => {
       </header>
 
       <main className="container py-6 space-y-6">
+        {/* Streak Card */}
+        <section>
+          <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
+        </section>
+
+        {/* AI Coach */}
+        <section>
+          <AICoachCard 
+            greeting="Good morning! You're making excellent progress today."
+            insights={mockInsights}
+            tip="Try adding avocado to your next meal - it's a great source of healthy fats and will help you reach your daily target!"
+            onChatOpen={() => {
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
+          />
+        </section>
+
         {/* Daily Summary Card */}
         <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
           <div className="flex items-center justify-between mb-6">
@@ -225,11 +245,6 @@ export const Dashboard = () => {
           </div>
         </section>
 
-        {/* Streak Card */}
-        <section>
-          <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
-        </section>
-
         {/* Meals Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -268,22 +283,6 @@ export const Dashboard = () => {
         {/* Water Tracker */}
         <section>
           <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
-        </section>
-
-
-        {/* AI Coach */}
-        <section>
-          <AICoachCard 
-            greeting="Good morning! You're making excellent progress today."
-            insights={mockInsights}
-            tip="Try adding avocado to your next meal - it's a great source of healthy fats and will help you reach your daily target!"
-            onChatOpen={() => {
-              setShowAIChat(true);
-              updateStreak('coaching').then(streak => {
-                if (streak) setCoachingStreak(streak);
-              });
-            }}
-          />
         </section>
 
         {/* Meal Planner */}
