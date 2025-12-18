@@ -196,6 +196,7 @@ ${userContext?.sex === 'female' ? `CYCLE INFORMATION:
 - Cycle Regularity: ${userContext?.cycleRegularity || 'not specified'}
 - Symptoms: ${userContext?.cycleSymptoms?.join(', ') || 'none reported'}` : ''}
 ${userContext?.checkInContext || ''}
+${userContext?.wearableContext || ''}
 ${mealsContext}${mealsAnalysis}`;
 
     const systemPrompt = `${CJT_CORE_SYSTEM}
@@ -211,6 +212,8 @@ RESPONSE GUIDELINES:
 - Adapt tone based on their preference: ${userContext?.coachingTone || 'supportive'}
 - USE CHECK-IN DATA: If check-in data is available, reference their mood, energy, sleep, and stress levels to personalize advice
 - ADAPT RECOMMENDATIONS: Based on check-in patterns, adjust suggestions (e.g., if sleep is poor, suggest sleep-supportive foods)
+- USE WEARABLE DATA: If wearable data is available (sleep hours, HRV, recovery, strain), use it to give specific, data-driven recommendations
+- WEARABLE INSIGHTS: Low HRV = suggest recovery foods, high strain = more carbs/protein, low recovery = rest and anti-inflammatory foods
 - Remember: Education over prescription, consistency over perfection`;
 
     // Build messages array for chat

@@ -11,11 +11,13 @@ import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { MealPlanner } from "@/components/MealPlanner";
 import { DailyCheckIn } from "@/components/DailyCheckIn";
-import { Bell, Flame, TrendingUp, Sun } from "lucide-react";
+import { WearableSettings } from "@/components/WearableSettings";
+import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn } from "@/lib/checkinService";
+import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
 import { toast } from "sonner";
 
 const mockInsights = [
@@ -46,6 +48,9 @@ export const Dashboard = () => {
   const [showStreakCelebration, setShowStreakCelebration] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
+  const [showWearableSettings, setShowWearableSettings] = useState(false);
+  const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
+  const [hasWearableConnections, setHasWearableConnections] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -53,14 +58,18 @@ export const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks, todaysCheckIn] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, todaysCheckIn, wearable, wearableConns] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
         getTodaysCheckIn(),
+        getTodaysWearableData(),
+        getWearableConnections(),
       ]);
       
       setHasCheckedInToday(!!todaysCheckIn);
+      setWearableData(wearable);
+      setHasWearableConnections(wearableConns.length > 0);
       
       // Update login streak on dashboard load
       updateStreak('login').then(streak => {
@@ -317,6 +326,35 @@ export const Dashboard = () => {
           <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
         </section>
 
+        {/* Wearable Data Card */}
+        <section>
+          <button 
+            onClick={() => setShowWearableSettings(true)}
+            className="w-full bg-card rounded-2xl shadow-soft p-4 flex items-center gap-4 hover:shadow-medium transition-all text-left"
+          >
+            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <Watch className="w-6 h-6 text-blue-500" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground">Wearable Devices</h3>
+              {wearableData ? (
+                <p className="text-sm text-muted-foreground">
+                  {wearableData.sleepHours && `${wearableData.sleepHours}h sleep`}
+                  {wearableData.hrv && ` • HRV ${wearableData.hrv}ms`}
+                  {wearableData.steps && ` • ${wearableData.steps.toLocaleString()} steps`}
+                </p>
+              ) : hasWearableConnections ? (
+                <p className="text-sm text-muted-foreground">Waiting for data sync...</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Connect Garmin, WHOOP, or Fitbit</p>
+              )}
+            </div>
+            {wearableData && (
+              <span className="text-xs text-green-500 font-medium">Synced</span>
+            )}
+          </button>
+        </section>
+
         {/* Meal Planner */}
         <section>
           <MealPlanner baseline={baseline} />
@@ -376,6 +414,11 @@ export const Dashboard = () => {
             setHasCheckedInToday(true);
           }}
         />
+      )}
+
+      {/* Wearable Settings Modal */}
+      {showWearableSettings && (
+        <WearableSettings onClose={() => setShowWearableSettings(false)} />
       )}
     </div>
   );

@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, Watch } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
+import { getTodaysWearableData, getRecentWearableData, formatWearableDataForAI, type WearableSummary } from "@/lib/wearableService";
 
 interface Message {
   role: "user" | "assistant";
@@ -26,6 +27,8 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
   const [todaysMeals, setTodaysMeals] = useState<Meal[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
+  const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
+  const [wearableContext, setWearableContext] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,14 +41,21 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
 
   const initializeChat = async () => {
     try {
-      const [userBaseline, meals, recentCheckIns] = await Promise.all([
+      const [userBaseline, meals, recentCheckIns, wearableSummary, recentWearable] = await Promise.all([
         getUserBaseline(),
         getTodaysMeals(),
-        getRecentCheckIns(7)
+        getRecentCheckIns(7),
+        getTodaysWearableData(),
+        getRecentWearableData(7)
       ]);
 
       setBaseline(userBaseline);
       setTodaysMeals(meals);
+      setWearableData(wearableSummary);
+
+      // Build wearable context for AI
+      const wearableCtx = formatWearableDataForAI(wearableSummary, recentWearable);
+      setWearableContext(wearableCtx);
 
       const today = new Date().toISOString().split('T')[0];
       const todayCheck = recentCheckIns.find(c => c.check_in_date === today);
@@ -57,9 +67,25 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
       // Generate personalized greeting based on data
       let greeting = "Hi! I'm your AI nutrition coach. ";
       
+      // Include wearable data in greeting
+      if (wearableSummary) {
+        greeting += `I see your ${wearableSummary.provider} data: `;
+        if (wearableSummary.sleepHours) {
+          greeting += `${wearableSummary.sleepHours}h sleep`;
+          if (wearableSummary.sleepHours < 6) greeting += " (low) ";
+        }
+        if (wearableSummary.recoveryScore) {
+          greeting += `, recovery ${wearableSummary.recoveryScore}/5`;
+        }
+        if (wearableSummary.hrv) {
+          greeting += `, HRV ${wearableSummary.hrv}ms`;
+        }
+        greeting += ". ";
+      }
+      
       if (todayCheck) {
         const moodEmoji = EMOJI_SCALE[todayCheck.mood - 1] || '😐';
-        greeting += `I see you checked in today ${moodEmoji}. `;
+        greeting += `Check-in today ${moodEmoji}. `;
         
         if (todayCheck.energy_level <= 2) {
           greeting += "Looks like energy is low — let's focus on foods that can help boost it. ";
@@ -149,6 +175,8 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
             // Check-in data
             checkInContext: checkInContext,
             checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
+            // Wearable data
+            wearableContext: wearableContext,
           } : {},
           todaysMeals: todaysMeals.map(m => ({
             name: m.name,
