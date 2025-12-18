@@ -52,6 +52,9 @@ MACRO DISTRIBUTION BY GOAL:
 - Fat Loss: 2.0-2.4g/kg protein, 35-40% fat, remaining carbs (protein prioritized for satiety)
 - Muscle Gain: 2.0-2.4g/kg protein, 35% fat, remaining carbs (carb bias for performance)
 - Performance: 1.8-2.2g/kg protein, 30-35% fat, remaining carbs
+- Recovery: 2.0-2.2g/kg protein, 35% fat, remaining carbs (balanced recovery support)
+- Energy: 1.8-2.0g/kg protein, 40% fat, remaining carbs (higher fats for sustained energy)
+- Health Markers: 1.6-2.0g/kg protein, 38-40% fat, remaining carbs (focused on sustainability)
 - General Health: 1.6-2.0g/kg protein, 38-40% fat, remaining carbs
 
 MODIFIERS TO APPLY:

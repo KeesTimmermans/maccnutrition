@@ -565,6 +565,9 @@ const GoalsStep = ({ data, updateData, toggleArrayItem }: {
     { label: "Fat Loss", desc: "Reduce body fat while preserving muscle", value: "fat_loss", icon: "🔥" },
     { label: "Muscle Gain", desc: "Build lean muscle mass", value: "muscle_gain", icon: "💪" },
     { label: "Performance", desc: "Optimize athletic performance", value: "performance", icon: "⚡" },
+    { label: "Recovery", desc: "Support faster recovery from training", value: "recovery", icon: "🔄" },
+    { label: "Energy", desc: "Improve daily energy levels", value: "energy", icon: "✨" },
+    { label: "Health Markers", desc: "Improve blood work and health metrics", value: "health_markers", icon: "📊" },
     { label: "General Health", desc: "Maintain health and wellbeing", value: "general_health", icon: "🌿" },
   ];
 

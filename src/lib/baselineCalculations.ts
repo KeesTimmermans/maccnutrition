@@ -49,6 +49,9 @@ const GOAL_ADJUSTMENTS: Record<string, { min: number; max: number; default: numb
   fat_loss: { min: -0.20, max: -0.10, default: -0.15 },
   muscle_gain: { min: 0.10, max: 0.15, default: 0.12 },
   performance: { min: 0, max: 0.05, default: 0.02 },
+  recovery: { min: 0, max: 0.05, default: 0.02 },
+  energy: { min: 0, max: 0.05, default: 0 },
+  health_markers: { min: 0, max: 0, default: 0 },
   general_health: { min: 0, max: 0, default: 0 },
 };
 
@@ -57,6 +60,9 @@ const MACRO_RATIOS: Record<string, { proteinPerKg: number; fatPercent: number }>
   fat_loss: { proteinPerKg: 2.2, fatPercent: 0.37 },
   muscle_gain: { proteinPerKg: 2.2, fatPercent: 0.35 },
   performance: { proteinPerKg: 2.0, fatPercent: 0.32 },
+  recovery: { proteinPerKg: 2.0, fatPercent: 0.35 },
+  energy: { proteinPerKg: 1.8, fatPercent: 0.40 }, // Higher fats for sustained energy
+  health_markers: { proteinPerKg: 1.8, fatPercent: 0.39 },
   general_health: { proteinPerKg: 1.8, fatPercent: 0.39 },
 };
 
@@ -254,50 +260,70 @@ function generateMealPattern(data: OnboardingData): MealTiming[] {
 
 /**
  * Step 5: Generate Behavioral Focus Points
+ * Based on onboarding data, identifies 1-3 key focus habits for the first week.
+ * Each is presented as an educational anchor — "what to do" and why it matters.
  */
 function generateFocusPoints(data: OnboardingData): string[] {
   const points: string[] = [];
   const goal = data.primaryGoal || "general_health";
 
-  // Always include protein focus
+  // Always include protein focus - core habit
   points.push("Focus on consistent protein at every meal to support recovery and satiety.");
 
-  // Hydration focus
+  // Hydration focus - especially important for certain conditions
   if (data.sleepHours === "<5" || data.sleepHours === "5-6" || data.stressLevel === "high") {
     points.push("Prioritize hydration early — aim for 1L before lunch to support energy levels.");
   }
 
-  // Goal-specific
+  // Goal-specific focus points
   if (goal === "fat_loss") {
     points.push("Aim for 90% of food intake from whole, minimally processed foods.");
+    points.push("Keep added sugar intake under 10g per day for optimal results.");
   } else if (goal === "muscle_gain") {
     points.push("Add complex carbs around training to sustain performance and recovery.");
   } else if (goal === "performance") {
     points.push("Time your largest carb intake 2-3 hours before training sessions.");
+  } else if (goal === "recovery") {
+    points.push("Prioritize anti-inflammatory foods like fatty fish, berries, and leafy greens.");
+  } else if (goal === "energy") {
+    points.push("Distribute calories evenly throughout the day to maintain steady energy.");
+  } else if (goal === "health_markers") {
+    points.push("Focus on fiber-rich foods and limit processed options to support overall health markers.");
   }
 
-  // Sleep-based
+  // Whole foods focus for all goals
+  if (goal !== "fat_loss") {
+    points.push("Aim for 90% of food intake from whole, minimally processed foods.");
+  }
+
+  // Sleep-based recommendations
   if (data.sleepHours === "<5" || data.sleepHours === "5-6") {
     points.push("Include magnesium-rich foods in your evening meal to support sleep quality.");
   }
 
-  // Stress-based
+  // Stress-based recommendations
   if (data.stressLevel === "high") {
     points.push("Focus on steady energy through balanced meals — avoid large gaps between eating.");
   }
 
-  // Activity-based
+  // Activity-based recommendations
   if (data.activityLevel === "not_active" || data.activityLevel === "semi_active") {
     points.push("Start with a 10-minute post-meal walk to support digestion and blood sugar.");
   }
 
-  // Female cycle-based
+  // Meal planning for busy lifestyles
+  if (data.workHours === "10+") {
+    points.push("Increase meal planning on workdays to reduce skipped meals.");
+  }
+
+  // Female cycle-based recommendations
   if (data.sex === "female" && data.currentPhase === "luteal") {
     points.push("Honor increased appetite this week — your body needs slightly more fuel.");
   }
 
-  // Return top 3 focus points
-  return points.slice(0, 3);
+  // Return top 3 focus points (unique, prioritized)
+  const uniquePoints = [...new Set(points)];
+  return uniquePoints.slice(0, 3);
 }
 
 /**

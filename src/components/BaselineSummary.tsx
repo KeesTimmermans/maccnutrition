@@ -98,6 +98,9 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
     fat_loss: "Fat Loss",
     muscle_gain: "Muscle Gain",
     performance: "Performance",
+    recovery: "Recovery",
+    energy: "Energy",
+    health_markers: "Health Markers",
     general_health: "General Health",
   };
 
@@ -358,7 +361,33 @@ const FocusTab = ({ baseline }: { baseline: BaselineResults }) => (
       </div>
     ))}
 
+    {/* Quick Start Guide */}
     <div className="bg-card rounded-2xl p-5 shadow-soft mt-6">
+      <div className="flex items-center gap-3 mb-3">
+        <Target className="w-5 h-5 text-primary" />
+        <h4 className="font-semibold text-foreground">Quick Start Guide</h4>
+      </div>
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-primary">1.</span>
+          <span>Log meals by tapping the + button on your dashboard</span>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-primary">2.</span>
+          <span>Track water intake throughout the day</span>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-primary">3.</span>
+          <span>Chat with your AI coach for personalized guidance</span>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="font-bold text-primary">4.</span>
+          <span>Check your progress charts to see trends over time</span>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-card rounded-2xl p-5 shadow-soft mt-4">
       <div className="flex items-center gap-3 mb-3">
         <Sparkles className="w-5 h-5 text-primary" />
         <h4 className="font-semibold text-foreground">Remember</h4>
