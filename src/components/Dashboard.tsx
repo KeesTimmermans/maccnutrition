@@ -59,7 +59,15 @@ export const Dashboard = () => {
       updateStreak('login').then(streak => {
         if (streak) {
           setLoginStreak(streak);
-          setShowStreakCelebration(true);
+          
+          // Only show celebration once per day
+          const today = new Date().toDateString();
+          const lastCelebration = localStorage.getItem('cjt_streak_celebration_date');
+          
+          if (lastCelebration !== today) {
+            setShowStreakCelebration(true);
+            localStorage.setItem('cjt_streak_celebration_date', today);
+          }
         }
       });
       
