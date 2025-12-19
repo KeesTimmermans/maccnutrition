@@ -1,9 +1,61 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const messageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string().max(5000, "Message content too long")
+});
+
+const mealSchema = z.object({
+  name: z.string().max(200),
+  calories: z.number().min(0).max(10000),
+  protein: z.number().min(0).max(1000),
+  carbs: z.number().min(0).max(1000),
+  fats: z.number().min(0).max(1000)
+}).passthrough();
+
+const userContextSchema = z.object({
+  primaryGoal: z.string().max(100).optional(),
+  secondaryGoals: z.array(z.string().max(100)).max(10).optional(),
+  sex: z.string().max(20).optional(),
+  age: z.number().min(1).max(150).optional(),
+  activityLevel: z.string().max(50).optional(),
+  trainingDays: z.string().max(20).optional(),
+  trainingIntensity: z.string().max(50).optional(),
+  sleepHours: z.string().max(20).optional(),
+  stressLevel: z.string().max(50).optional(),
+  occupation: z.string().max(100).optional(),
+  targetCalories: z.number().min(0).max(20000).optional(),
+  proteinGrams: z.number().min(0).max(1000).optional(),
+  carbsGrams: z.number().min(0).max(2000).optional(),
+  fatsGrams: z.number().min(0).max(1000).optional(),
+  waterLiters: z.number().min(0).max(20).optional(),
+  dietType: z.string().max(50).optional(),
+  foodDislikes: z.string().max(500).optional(),
+  allergies: z.array(z.string().max(100)).max(20).optional(),
+  conditions: z.array(z.string().max(100)).max(20).optional(),
+  coachingTone: z.string().max(50).optional(),
+  focusPoints: z.array(z.string().max(100)).max(10).optional(),
+  currentPhase: z.string().max(50).optional(),
+  cycleRegularity: z.string().max(50).optional(),
+  cycleSymptoms: z.array(z.string().max(100)).max(20).optional(),
+  checkInContext: z.string().max(2000).optional(),
+  wearableContext: z.string().max(2000).optional()
+}).passthrough().optional();
+
+const requestSchema = z.object({
+  message: z.string().max(5000, "Message too long").optional(),
+  messages: z.array(messageSchema).max(50, "Too many messages").optional(),
+  userContext: userContextSchema,
+  todaysMeals: z.array(mealSchema).max(20, "Too many meals").optional(),
+  type: z.enum(['chat', 'meal_feedback', 'daily_checkin', 'focus_tip']).optional()
+});
 
 // CJT Nutrition Core Values and Guidelines
 const CJT_CORE_SYSTEM = `You are the CJTnutrition AI Coach — a supportive, evidence-based nutrition guide focused on whole foods, education, and sustainable habit change.
@@ -113,7 +165,22 @@ serve(async (req) => {
   }
 
   try {
-    const { message, messages, userContext, todaysMeals, type } = await req.json();
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = requestSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.errors);
+      return new Response(JSON.stringify({ 
+        error: "Invalid input", 
+        details: validationResult.error.errors.map(e => e.message).join(", ")
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { message, messages, userContext, todaysMeals, type } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {

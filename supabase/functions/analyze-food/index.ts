@@ -1,9 +1,27 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Input validation schema
+const requestSchema = z.object({
+  imageBase64: z.string()
+    .max(10 * 1024 * 1024, "Image too large (max 10MB)")
+    .refine(
+      (val) => !val || val.startsWith('data:image/') || /^[A-Za-z0-9+/=]+$/.test(val.substring(0, 100)),
+      "Invalid image format"
+    )
+    .optional(),
+  searchQuery: z.string()
+    .max(500, "Search query too long")
+    .optional()
+}).refine(
+  (data) => data.imageBase64 || data.searchQuery,
+  "Either imageBase64 or searchQuery is required"
+);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -12,7 +30,22 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, searchQuery } = await req.json();
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = requestSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid input", 
+          details: validationResult.error.errors.map(e => e.message).join(", ")
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { imageBase64, searchQuery } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
