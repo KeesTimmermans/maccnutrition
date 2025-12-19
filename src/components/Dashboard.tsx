@@ -16,13 +16,12 @@ import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
-import { getTodaysCheckIn } from "@/lib/checkinService";
+import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis } from "@/lib/checkinService";
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
 import { toast } from "sonner";
 
-const mockInsights = [
-  "You're 82% to your protein goal! Great job prioritizing lean proteins today.",
-  "Your carb intake is balanced. Consider adding more fiber-rich vegetables with dinner.",
+const defaultInsights = [
+  "Complete your daily check-in to get personalized insights based on your mood, energy, and sleep patterns.",
 ];
 
 interface DashboardMeal {
@@ -51,6 +50,7 @@ export const Dashboard = () => {
   const [showWearableSettings, setShowWearableSettings] = useState(false);
   const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
   const [hasWearableConnections, setHasWearableConnections] = useState(false);
+  const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
 
   useEffect(() => {
     loadData();
@@ -58,18 +58,25 @@ export const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks, todaysCheckIn, wearable, wearableConns] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, todaysCheckIn, wearable, wearableConns, recentCheckIns] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
         getTodaysCheckIn(),
         getTodaysWearableData(),
         getWearableConnections(),
+        getRecentCheckIns(7),
       ]);
       
       setHasCheckedInToday(!!todaysCheckIn);
       setWearableData(wearable);
       setHasWearableConnections(wearableConns.length > 0);
+      
+      // Analyze check-in data for AI coach insights
+      if (recentCheckIns.length > 0) {
+        const analysis = analyzeCheckIns(recentCheckIns);
+        setCheckInAnalysis(analysis);
+      }
       
       // Update login streak on dashboard load
       updateStreak('login').then(streak => {
@@ -223,9 +230,15 @@ export const Dashboard = () => {
         {/* AI Coach */}
         <section>
           <AICoachCard 
-            greeting="Good morning! You're making excellent progress today."
-            insights={mockInsights}
-            tip="Try adding avocado to your next meal - it's a great source of healthy fats and will help you reach your daily target!"
+            greeting={checkInAnalysis && checkInAnalysis.recommendations.length > 0 
+              ? `Based on your recent check-ins (avg mood: ${checkInAnalysis.averageMood}/5, energy: ${checkInAnalysis.averageEnergy}/5):`
+              : "Good morning! Complete your daily check-in to get personalized insights."}
+            insights={checkInAnalysis?.recommendations.length ? checkInAnalysis.recommendations : defaultInsights}
+            tip={checkInAnalysis?.trends.energy === "declining" 
+              ? "Your energy has been declining. Consider adding more protein and complex carbs to your meals."
+              : checkInAnalysis?.trends.sleep === "declining"
+              ? "Sleep quality is trending down. Try magnesium-rich foods in your evening meals."
+              : "Stay consistent with your meals and hydration for best results!"}
             onChatOpen={() => {
               setShowAIChat(true);
               updateStreak('coaching').then(streak => {
