@@ -16,7 +16,7 @@ import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
-import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis } from "@/lib/checkinService";
+import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, UserTargets } from "@/lib/checkinService";
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
 import { toast } from "sonner";
 
@@ -72,9 +72,17 @@ export const Dashboard = () => {
       setWearableData(wearable);
       setHasWearableConnections(wearableConns.length > 0);
       
-      // Analyze check-in data for AI coach insights
+      // Analyze check-in data for AI coach insights with user-specific targets
       if (recentCheckIns.length > 0) {
-        const analysis = analyzeCheckIns(recentCheckIns);
+        const userTargets: UserTargets = {
+          targetCalories: userBaseline?.target_calories || undefined,
+          proteinGrams: userBaseline?.protein_grams || undefined,
+          carbsGrams: userBaseline?.carbs_grams || undefined,
+          fatsGrams: userBaseline?.fats_grams || undefined,
+          waterLiters: userBaseline?.water_liters || undefined,
+          sleepHours: userBaseline?.sleep_hours || undefined,
+        };
+        const analysis = analyzeCheckIns(recentCheckIns, userTargets);
         setCheckInAnalysis(analysis);
       }
       
