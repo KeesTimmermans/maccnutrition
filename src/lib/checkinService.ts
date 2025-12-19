@@ -113,10 +113,19 @@ export async function getRecentCheckIns(days: number = 7): Promise<DailyCheckIn[
   return (data || []) as DailyCheckIn[];
 }
 
+export interface UserTargets {
+  targetCalories?: number;
+  proteinGrams?: number;
+  carbsGrams?: number;
+  fatsGrams?: number;
+  waterLiters?: number;
+  sleepHours?: string;
+}
+
 /**
- * Analyze check-in patterns and generate recommendations
+ * Analyze check-in patterns and generate recommendations with specific targets
  */
-export function analyzeCheckIns(checkIns: DailyCheckIn[]): CheckInAnalysis {
+export function analyzeCheckIns(checkIns: DailyCheckIn[], userTargets?: UserTargets): CheckInAnalysis {
   if (checkIns.length === 0) {
     return {
       averageMood: 0,
@@ -139,7 +148,8 @@ export function analyzeCheckIns(checkIns: DailyCheckIn[]): CheckInAnalysis {
     energy: acc.energy + (c.energy_level || 0),
     sleep: acc.sleep + (c.sleep_quality || 0),
     stress: acc.stress + (c.stress_level || 0),
-  }), { mood: 0, energy: 0, sleep: 0, stress: 0 });
+    sleepHours: acc.sleepHours + (c.sleep_hours || 0),
+  }), { mood: 0, energy: 0, sleep: 0, stress: 0, sleepHours: 0 });
 
   const count = checkIns.length;
   const averages = {
@@ -147,11 +157,12 @@ export function analyzeCheckIns(checkIns: DailyCheckIn[]): CheckInAnalysis {
     energy: sum.energy / count,
     sleep: sum.sleep / count,
     stress: sum.stress / count,
+    sleepHours: sum.sleepHours / count,
   };
 
   // Calculate trends (compare first half vs second half)
   const midpoint = Math.floor(count / 2);
-  const getTrend = (metric: keyof typeof sum): "improving" | "declining" | "stable" => {
+  const getTrend = (metric: 'mood' | 'energy' | 'sleep' | 'stress'): "improving" | "declining" | "stable" => {
     if (count < 3) return "stable";
     
     const recentHalf = checkIns.slice(0, midpoint);
@@ -186,32 +197,63 @@ export function analyzeCheckIns(checkIns: DailyCheckIn[]): CheckInAnalysis {
     stress: getTrend('stress'),
   };
 
-  // Generate recommendations based on patterns
+  // Generate specific recommendations based on patterns AND user targets
   const recommendations: string[] = [];
+  const protein = userTargets?.proteinGrams || 120;
+  const water = userTargets?.waterLiters || 2.5;
+  const targetSleep = userTargets?.sleepHours ? parseFloat(userTargets.sleepHours) : 8;
 
+  // Sleep-specific recommendations
   if (averages.sleep < 3) {
-    recommendations.push("Your sleep quality has been low. Consider magnesium-rich foods in your evening meal and limiting caffeine after 2pm.");
+    const sleepDeficit = targetSleep - averages.sleepHours;
+    if (sleepDeficit > 1) {
+      recommendations.push(`Your sleep is ${Math.round(sleepDeficit)}h below target. Aim for bed by 10:30 PM tonight to hit ${targetSleep}h.`);
+    } else {
+      recommendations.push(`Sleep quality is low (${averages.sleep.toFixed(1)}/5). Try 400mg magnesium with dinner and no screens after 9 PM.`);
+    }
   }
 
+  // Energy-specific recommendations
   if (averages.energy < 3) {
-    recommendations.push("Energy levels are below optimal. Focus on balanced meals with complex carbs and protein throughout the day.");
+    const proteinTarget = Math.round(protein * 0.3); // 30% at breakfast
+    recommendations.push(`Energy averaging ${averages.energy.toFixed(1)}/5. Hit ${proteinTarget}g protein at breakfast and drink ${Math.round(water * 0.4)}L water by noon.`);
   }
 
+  // Stress-specific recommendations
   if (averages.stress > 3.5) {
-    recommendations.push("Stress has been elevated. Consider shifting some carb calories to healthy fats for more sustained energy.");
+    const carbReduction = Math.round((userTargets?.carbsGrams || 200) * 0.1);
+    recommendations.push(`Stress is elevated (${averages.stress.toFixed(1)}/5). Reduce refined carbs by ${carbReduction}g and add 10min walk after lunch.`);
   }
 
+  // Mood + sleep correlation
   if (averages.mood < 3 && averages.sleep < 3) {
-    recommendations.push("Low mood often correlates with poor sleep. Prioritizing sleep hygiene may help both metrics.");
+    recommendations.push(`Mood (${averages.mood.toFixed(1)}/5) correlates with sleep. Prioritize ${targetSleep}h sleep tonight — mood typically improves within 2-3 days.`);
   }
 
+  // Energy trend declining
   if (trends.energy === "declining") {
-    recommendations.push("Your energy trend is declining. Check your protein and hydration consistency.");
+    recommendations.push(`Energy trend is down. Increase protein to ${protein}g/day and ensure ${water}L water. Check iron-rich foods if fatigue persists.`);
   }
 
-  if (trends.stress === "declining") {
-    recommendations.push("Great job — your stress levels are improving! Keep up the habits that are working.");
+  // Positive reinforcement for improving stress
+  if (trends.stress === "improving") {
+    recommendations.push(`Stress is improving! Keep up your current routine — consistency is driving these results.`);
   }
+
+  // Hydration feeling check (if available in recent check-ins)
+  const recentHydration = checkIns[0]?.hydration_feeling;
+  if (recentHydration && recentHydration < 3) {
+    recommendations.push(`Hydration feeling is low. Target ${water}L water today — set reminders for 250ml every 2 hours.`);
+  }
+
+  // Hunger level check
+  const recentHunger = checkIns[0]?.hunger_level;
+  if (recentHunger && recentHunger > 4) {
+    recommendations.push(`High hunger reported. Add ${Math.round(protein * 0.25)}g protein and fiber-rich veggies to your next meal to stay satiated.`);
+  }
+
+  // Limit to top 3 most relevant recommendations
+  const prioritizedRecs = recommendations.slice(0, 3);
 
   return {
     averageMood: Math.round(averages.mood * 10) / 10,
@@ -219,7 +261,7 @@ export function analyzeCheckIns(checkIns: DailyCheckIn[]): CheckInAnalysis {
     averageSleep: Math.round(averages.sleep * 10) / 10,
     averageStress: Math.round(averages.stress * 10) / 10,
     trends,
-    recommendations,
+    recommendations: prioritizedRecs,
   };
 }
 
