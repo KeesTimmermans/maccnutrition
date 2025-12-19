@@ -89,16 +89,14 @@ export const WEARABLE_PROVIDERS: Record<WearableProvider, {
 };
 
 /**
- * Get all wearable connections for the current user
+ * Get all wearable connections for the current user (using secure function that excludes tokens)
  */
 export async function getWearableConnections(): Promise<WearableConnection[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from('wearable_connections')
-    .select('id, user_id, provider, is_connected, last_sync_at, created_at')
-    .eq('user_id', user.id);
+  // Use secure function that excludes OAuth tokens from response
+  const { data, error } = await supabase.rpc('get_user_wearable_connections');
 
   if (error) {
     console.error('Error fetching wearable connections:', error);

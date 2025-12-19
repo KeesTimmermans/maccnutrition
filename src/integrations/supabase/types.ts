@@ -463,10 +463,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      wearable_connections_safe: {
+        Row: {
+          created_at: string | null
+          external_user_id: string | null
+          id: string | null
+          is_connected: boolean | null
+          last_sync_at: string | null
+          provider: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          external_user_id?: string | null
+          id?: string | null
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          provider?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          external_user_id?: string | null
+          id?: string | null
+          is_connected?: boolean | null
+          last_sync_at?: string | null
+          provider?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_user_wearable_connections: {
+        Args: never
+        Returns: {
+          created_at: string
+          external_user_id: string
+          id: string
+          is_connected: boolean
+          last_sync_at: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
