@@ -463,39 +463,7 @@ export type Database = {
       }
     }
     Views: {
-      wearable_connections_safe: {
-        Row: {
-          created_at: string | null
-          external_user_id: string | null
-          id: string | null
-          is_connected: boolean | null
-          last_sync_at: string | null
-          provider: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          external_user_id?: string | null
-          id?: string | null
-          is_connected?: boolean | null
-          last_sync_at?: string | null
-          provider?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          external_user_id?: string | null
-          id?: string | null
-          is_connected?: boolean | null
-          last_sync_at?: string | null
-          provider?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_user_wearable_connections: {
