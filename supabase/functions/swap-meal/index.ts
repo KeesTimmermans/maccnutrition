@@ -1,9 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const currentMealSchema = z.object({
+  name: z.string().max(200, "Meal name too long"),
+  type: z.string().max(50, "Meal type too long"),
+  calories: z.number().min(0).max(10000),
+  protein: z.number().min(0).max(1000),
+  carbs: z.number().min(0).max(1000),
+  fats: z.number().min(0).max(1000)
+}).passthrough();
+
+const userContextSchema = z.object({
+  dietType: z.string().max(50).optional(),
+  allergies: z.array(z.string().max(100)).max(20).optional(),
+  foodDislikes: z.string().max(500).optional()
+}).passthrough().optional();
+
+const requestSchema = z.object({
+  currentMeal: currentMealSchema,
+  userPreference: z.string().max(1000, "Preference description too long"),
+  userContext: userContextSchema
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,7 +34,22 @@ serve(async (req) => {
   }
 
   try {
-    const { currentMeal, userPreference, userContext } = await req.json();
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = requestSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.errors);
+      return new Response(JSON.stringify({ 
+        error: "Invalid input", 
+        details: validationResult.error.errors.map(e => e.message).join(", ")
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { currentMeal, userPreference, userContext } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {

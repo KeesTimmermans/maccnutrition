@@ -1,9 +1,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const mealSchema = z.object({
+  name: z.string().max(200),
+  description: z.string().max(500)
+}).passthrough();
+
+const daySchema = z.object({
+  day: z.string().max(20),
+  meals: z.array(mealSchema).max(10)
+}).passthrough();
+
+const mealPlanSchema = z.object({
+  days: z.array(daySchema).max(14, "Meal plan too long (max 14 days)")
+}).passthrough();
+
+const requestSchema = z.object({
+  mealPlan: mealPlanSchema
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,7 +31,22 @@ serve(async (req) => {
   }
 
   try {
-    const { mealPlan } = await req.json();
+    // Parse and validate input
+    const rawBody = await req.json();
+    const validationResult = requestSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.errors);
+      return new Response(JSON.stringify({ 
+        error: "Invalid input", 
+        details: validationResult.error.errors.map(e => e.message).join(", ")
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { mealPlan } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
