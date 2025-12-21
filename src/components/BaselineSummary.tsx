@@ -14,6 +14,7 @@ import {
 import { OnboardingData } from "./OnboardingQuestionnaire";
 import { calculateBaseline, BaselineResults } from "@/lib/baselineCalculations";
 import cjtLogo from "@/assets/cjt-logo.png";
+import { useLanguage } from "@/lib/i18n";
 
 interface BaselineSummaryProps {
   userData: OnboardingData;
@@ -21,13 +22,14 @@ interface BaselineSummaryProps {
 }
 
 export const BaselineSummary = ({ userData, onContinue }: BaselineSummaryProps) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<"overview" | "meals" | "focus">("overview");
   const baseline = calculateBaseline(userData);
 
   const tabs = [
-    { id: "overview" as const, label: "Overview", icon: <Target className="w-4 h-4" /> },
-    { id: "meals" as const, label: "Meal Plan", icon: <Clock className="w-4 h-4" /> },
-    { id: "focus" as const, label: "Focus", icon: <Zap className="w-4 h-4" /> },
+    { id: "overview" as const, label: t('overview'), icon: <Target className="w-4 h-4" /> },
+    { id: "meals" as const, label: t('meal_plan'), icon: <Clock className="w-4 h-4" /> },
+    { id: "focus" as const, label: t('focus'), icon: <Zap className="w-4 h-4" /> },
   ];
 
   return (
@@ -37,13 +39,13 @@ export const BaselineSummary = ({ userData, onContinue }: BaselineSummaryProps) 
         <img src={cjtLogo} alt="CJT Nutrition" className="h-10 mx-auto mb-4" />
         <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-4">
           <Sparkles className="w-4 h-4" />
-          <span className="text-sm font-semibold">Your Personalized Plan</span>
+          <span className="text-sm font-semibold">{t('your_personalized_plan')}</span>
         </div>
         <h1 className="text-2xl font-bold text-foreground mb-2">
-          Your Baseline is Ready!
+          {t('baseline_ready')}
         </h1>
         <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-          Based on your responses, here's your personalized starting point for achieving your goals.
+          {t('baseline_desc')}
         </p>
       </div>
 
@@ -68,24 +70,24 @@ export const BaselineSummary = ({ userData, onContinue }: BaselineSummaryProps) 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeTab === "overview" && (
-          <OverviewTab baseline={baseline} userData={userData} />
+          <OverviewTab baseline={baseline} userData={userData} t={t} />
         )}
         {activeTab === "meals" && (
-          <MealsTab baseline={baseline} />
+          <MealsTab baseline={baseline} t={t} />
         )}
         {activeTab === "focus" && (
-          <FocusTab baseline={baseline} />
+          <FocusTab baseline={baseline} t={t} />
         )}
       </div>
 
       {/* CTA */}
       <div className="p-6 border-t border-border">
         <Button variant="hero" size="lg" className="w-full" onClick={onContinue}>
-          Start Your Journey
+          {t('start_journey')}
           <ChevronRight className="w-5 h-5 ml-1" />
         </Button>
         <p className="text-center text-xs text-muted-foreground mt-3">
-          Your plan adapts as you log meals and check in
+          {t('plan_adapts')}
         </p>
       </div>
     </div>
@@ -93,15 +95,15 @@ export const BaselineSummary = ({ userData, onContinue }: BaselineSummaryProps) 
 };
 
 // Overview Tab
-const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userData: OnboardingData }) => {
+const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; userData: OnboardingData; t: (key: string) => string }) => {
   const goalLabels: Record<string, string> = {
-    fat_loss: "Fat Loss",
-    muscle_gain: "Muscle Gain",
-    performance: "Performance",
-    recovery: "Recovery",
-    energy: "Energy",
-    health_markers: "Health Markers",
-    general_health: "General Health",
+    fat_loss: t('fat_loss'),
+    muscle_gain: t('muscle_gain'),
+    performance: t('performance_goal'),
+    recovery: t('recovery_goal'),
+    energy: t('energy_goal'),
+    health_markers: t('health_markers'),
+    general_health: t('general_health'),
   };
 
   return (
@@ -113,9 +115,9 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
             <Flame className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-bold text-foreground">Daily Calorie Target</h3>
+            <h3 className="font-bold text-foreground">{t('daily_calorie_target')}</h3>
             <p className="text-xs text-muted-foreground">
-              Based on your {goalLabels[userData.primaryGoal] || "goals"}
+              {t('based_on_your').replace('{goal}', goalLabels[userData.primaryGoal] || t('your_goals'))}
             </p>
           </div>
         </div>
@@ -124,7 +126,7 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
           <div className="text-5xl font-bold text-primary mb-1">
             {baseline.calories.target.toLocaleString()}
           </div>
-          <p className="text-sm text-muted-foreground">calories per day</p>
+          <p className="text-sm text-muted-foreground">{t('calories_per_day')}</p>
         </div>
 
         {baseline.calories.deficit !== 0 && (
@@ -132,8 +134,8 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
             <TrendingUp className={`w-4 h-4 ${baseline.calories.deficit > 0 ? "text-orange-500" : "text-green-500"}`} />
             <span className="text-sm text-foreground">
               {baseline.calories.deficit > 0 
-                ? `${baseline.calories.deficit} cal deficit from maintenance` 
-                : `${Math.abs(baseline.calories.deficit)} cal surplus for growth`}
+                ? t('cal_deficit').replace('{amount}', String(baseline.calories.deficit))
+                : t('cal_surplus').replace('{amount}', String(Math.abs(baseline.calories.deficit)))}
             </span>
           </div>
         )}
@@ -141,7 +143,7 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
 
       {/* Macro Breakdown */}
       <div className="bg-card rounded-2xl p-5 shadow-soft">
-        <h3 className="font-bold text-foreground mb-4">Macro Breakdown</h3>
+        <h3 className="font-bold text-foreground mb-4">{t('macro_breakdown')}</h3>
         
         <div className="flex justify-center mb-6">
           <CombinedMacroRing 
@@ -154,19 +156,19 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
 
         <div className="grid grid-cols-3 gap-3">
           <MacroCard 
-            label="Protein" 
+            label={t('protein')} 
             grams={baseline.macros.protein.grams} 
             percentage={baseline.macros.protein.percentage}
             color="bg-chart-protein"
           />
           <MacroCard 
-            label="Carbs" 
+            label={t('carbs')} 
             grams={baseline.macros.carbs.grams} 
             percentage={baseline.macros.carbs.percentage}
             color="bg-chart-carbs"
           />
           <MacroCard 
-            label="Fats" 
+            label={t('fats')} 
             grams={baseline.macros.fats.grams} 
             percentage={baseline.macros.fats.percentage}
             color="bg-chart-fats"
@@ -181,8 +183,8 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
             <Droplets className="w-5 h-5 text-blue-500" />
           </div>
           <div>
-            <h3 className="font-bold text-foreground">Daily Hydration</h3>
-            <p className="text-xs text-muted-foreground">Water & electrolytes</p>
+            <h3 className="font-bold text-foreground">{t('daily_hydration')}</h3>
+            <p className="text-xs text-muted-foreground">{t('water_electrolytes')}</p>
           </div>
         </div>
 
@@ -191,19 +193,19 @@ const OverviewTab = ({ baseline, userData }: { baseline: BaselineResults; userDa
             <div className="text-2xl font-bold text-blue-500">
               {baseline.hydration.waterLiters.toFixed(1)}L
             </div>
-            <p className="text-xs text-muted-foreground">Water</p>
+            <p className="text-xs text-muted-foreground">{t('water')}</p>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Sodium</span>
+              <span className="text-muted-foreground">{t('sodium')}</span>
               <span className="font-semibold text-foreground">{baseline.hydration.sodiumMg}mg</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Magnesium</span>
+              <span className="text-muted-foreground">{t('magnesium')}</span>
               <span className="font-semibold text-foreground">{baseline.hydration.magnesiumMg}mg</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Potassium</span>
+              <span className="text-muted-foreground">{t('potassium')}</span>
               <span className="font-semibold text-foreground">{baseline.hydration.potassiumMg}mg</span>
             </div>
           </div>
@@ -309,11 +311,11 @@ const MacroCard = ({ label, grams, percentage, color }: {
 );
 
 // Meals Tab
-const MealsTab = ({ baseline }: { baseline: BaselineResults }) => (
+const MealsTab = ({ baseline, t }: { baseline: BaselineResults; t: (key: string) => string }) => (
   <div className="space-y-4 animate-slide-up">
     <div className="bg-accent/30 rounded-xl p-4 mb-6">
       <p className="text-sm text-foreground">
-        These meal times are suggestions based on your lifestyle. Feel free to adjust them — your daily targets stay the same.
+        {t('meal_times_suggestion')}
       </p>
     </div>
 
@@ -338,12 +340,12 @@ const MealsTab = ({ baseline }: { baseline: BaselineResults }) => (
 );
 
 // Focus Tab
-const FocusTab = ({ baseline }: { baseline: BaselineResults }) => (
+const FocusTab = ({ baseline, t }: { baseline: BaselineResults; t: (key: string) => string }) => (
   <div className="space-y-4 animate-slide-up">
     <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-5 mb-6">
-      <h3 className="font-bold text-foreground mb-2">This Week's Focus</h3>
+      <h3 className="font-bold text-foreground mb-2">{t('this_weeks_focus')}</h3>
       <p className="text-sm text-muted-foreground">
-        These are your personalized behavioral anchors. Focus on these habits to build a strong foundation.
+        {t('focus_habits_desc')}
       </p>
     </div>
 
@@ -365,24 +367,24 @@ const FocusTab = ({ baseline }: { baseline: BaselineResults }) => (
     <div className="bg-card rounded-2xl p-5 shadow-soft mt-6">
       <div className="flex items-center gap-3 mb-3">
         <Target className="w-5 h-5 text-primary" />
-        <h4 className="font-semibold text-foreground">Quick Start Guide</h4>
+        <h4 className="font-semibold text-foreground">{t('quick_start_guide')}</h4>
       </div>
       <div className="space-y-3 text-sm text-muted-foreground">
         <div className="flex items-start gap-2">
           <span className="font-bold text-primary">1.</span>
-          <span>Log meals by tapping the + button on your dashboard</span>
+          <span>{t('guide_step_1')}</span>
         </div>
         <div className="flex items-start gap-2">
           <span className="font-bold text-primary">2.</span>
-          <span>Track water intake throughout the day</span>
+          <span>{t('guide_step_2')}</span>
         </div>
         <div className="flex items-start gap-2">
           <span className="font-bold text-primary">3.</span>
-          <span>Chat with your AI coach for personalized guidance</span>
+          <span>{t('guide_step_3')}</span>
         </div>
         <div className="flex items-start gap-2">
           <span className="font-bold text-primary">4.</span>
-          <span>Check your progress charts to see trends over time</span>
+          <span>{t('guide_step_4')}</span>
         </div>
       </div>
     </div>
@@ -390,10 +392,10 @@ const FocusTab = ({ baseline }: { baseline: BaselineResults }) => (
     <div className="bg-card rounded-2xl p-5 shadow-soft mt-4">
       <div className="flex items-center gap-3 mb-3">
         <Sparkles className="w-5 h-5 text-primary" />
-        <h4 className="font-semibold text-foreground">Remember</h4>
+        <h4 className="font-semibold text-foreground">{t('remember')}</h4>
       </div>
       <p className="text-sm text-muted-foreground">
-        Consistency over perfection. The app adapts daily — your goal is progress, not perfection. Each check-in helps refine your plan.
+        {t('consistency_message')}
       </p>
     </div>
   </div>
