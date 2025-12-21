@@ -8,8 +8,6 @@ import {
   Battery, 
   Brain, 
   Smile, 
-  Meh, 
-  Frown,
   Loader2,
   CheckCircle2,
   TrendingUp,
@@ -20,6 +18,7 @@ import {
 } from "lucide-react";
 import { getTodaysCheckIn, saveCheckIn, getRecentCheckIns, analyzeCheckIns, type DailyCheckIn as DailyCheckInData, type CheckInAnalysis } from "@/lib/checkinService";
 import { getTodaysWearableData, suggestCheckInFromWearable, type WearableSummary } from "@/lib/wearableService";
+import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 
 interface DailyCheckInComponentProps {
@@ -29,46 +28,10 @@ interface DailyCheckInComponentProps {
 
 type MetricKey = 'mood' | 'energy' | 'sleep' | 'stress';
 
-const METRIC_CONFIG: Record<MetricKey, { 
-  label: string; 
-  icon: React.ReactNode; 
-  lowLabel: string; 
-  highLabel: string;
-  color: string;
-}> = {
-  mood: { 
-    label: "How's your mood?", 
-    icon: <Smile className="w-5 h-5" />, 
-    lowLabel: "Low", 
-    highLabel: "Great",
-    color: "text-amber-500"
-  },
-  energy: { 
-    label: "Energy level?", 
-    icon: <Battery className="w-5 h-5" />, 
-    lowLabel: "Drained", 
-    highLabel: "Energized",
-    color: "text-green-500"
-  },
-  sleep: { 
-    label: "Sleep quality?", 
-    icon: <Moon className="w-5 h-5" />, 
-    lowLabel: "Poor", 
-    highLabel: "Excellent",
-    color: "text-blue-500"
-  },
-  stress: { 
-    label: "Stress level?", 
-    icon: <Brain className="w-5 h-5" />, 
-    lowLabel: "Calm", 
-    highLabel: "Stressed",
-    color: "text-purple-500"
-  },
-};
-
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
 
 export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps) => {
+  const { t } = useLanguage();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -85,6 +48,43 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
     sleepHours: '',
     notes: '',
   });
+
+  const METRIC_CONFIG: Record<MetricKey, { 
+    label: string; 
+    icon: React.ReactNode; 
+    lowLabel: string; 
+    highLabel: string;
+    color: string;
+  }> = {
+    mood: { 
+      label: t('hows_your_mood'), 
+      icon: <Smile className="w-5 h-5" />, 
+      lowLabel: t('low'), 
+      highLabel: t('great'),
+      color: "text-amber-500"
+    },
+    energy: { 
+      label: t('energy_level'), 
+      icon: <Battery className="w-5 h-5" />, 
+      lowLabel: t('drained'), 
+      highLabel: t('energized'),
+      color: "text-green-500"
+    },
+    sleep: { 
+      label: t('sleep_quality'), 
+      icon: <Moon className="w-5 h-5" />, 
+      lowLabel: t('poor'), 
+      highLabel: t('excellent'),
+      color: "text-blue-500"
+    },
+    stress: { 
+      label: t('stress_level'), 
+      icon: <Brain className="w-5 h-5" />, 
+      lowLabel: t('calm'), 
+      highLabel: t('stressed'),
+      color: "text-purple-500"
+    },
+  };
 
   const steps: MetricKey[] = ['mood', 'energy', 'sleep', 'stress'];
   const totalSteps = steps.length + 1; // metrics + notes
@@ -166,10 +166,10 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
         sleep_hours: formData.sleepHours ? parseFloat(formData.sleepHours) : undefined,
         notes: formData.notes || undefined,
       });
-      toast.success('Check-in saved!');
+      toast.success(t('checkin_saved'));
       onComplete();
     } catch (error) {
-      toast.error('Failed to save check-in');
+      toast.error(t('checkin_failed'));
       console.error('Error saving check-in:', error);
     }
     setSaving(false);
@@ -198,7 +198,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
       <div className="p-4 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2">
           <Sun className="w-5 h-5 text-amber-500" />
-          <h2 className="font-semibold text-foreground">Daily Check-In</h2>
+          <h2 className="font-semibold text-foreground">{t('daily_checkin')}</h2>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
           <X className="w-5 h-5 text-muted-foreground" />
@@ -212,8 +212,8 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
           <div className="mb-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-3 flex items-center gap-3">
             <Watch className="w-5 h-5 text-blue-500" />
             <div className="flex-1">
-              <p className="text-xs font-medium text-foreground">Wearable data detected!</p>
-              <p className="text-xs text-muted-foreground">Some values pre-filled from your {wearableData.provider}</p>
+              <p className="text-xs font-medium text-foreground">{t('wearable_detected')}</p>
+              <p className="text-xs text-muted-foreground">{t('prefilled_from')} {wearableData.provider}</p>
             </div>
             <Sparkles className="w-4 h-4 text-purple-500" />
           </div>
@@ -226,7 +226,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
           />
         </div>
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          Step {step + 1} of {totalSteps}
+          {t('step_of').replace('{current}', String(step + 1)).replace('{total}', String(totalSteps))}
         </p>
       </div>
 
@@ -245,7 +245,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
               {/* Trend indicator if available */}
               {analysis && (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <span>7-day avg: {
+                  <span>{t('seven_day_avg')}: {
                     currentMetric === 'mood' ? analysis.averageMood :
                     currentMetric === 'energy' ? analysis.averageEnergy :
                     currentMetric === 'sleep' ? analysis.averageSleep :
@@ -287,7 +287,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
             {currentMetric === 'sleep' && (
               <div className="mt-6">
                 <label className="text-sm font-medium text-foreground mb-2 block">
-                  Hours of sleep (optional)
+                  {t('hours_sleep')}
                 </label>
                 <input
                   type="number"
@@ -311,39 +311,39 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className="text-xl font-bold text-foreground mb-2">
-                Anything else to note?
+                {t('anything_else')}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Optional: Add context about how you're feeling
+                {t('optional_context')}
               </p>
             </div>
 
             <Textarea
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="e.g., Didn't sleep well due to late dinner, feeling good about workout yesterday..."
+              placeholder={t('notes_placeholder')}
               className="min-h-[120px] rounded-xl bg-card shadow-soft resize-none"
             />
 
             {/* Summary */}
             <div className="mt-6 bg-card rounded-2xl p-4 shadow-soft">
-              <h4 className="font-semibold text-foreground mb-3">Your Check-In Summary</h4>
+              <h4 className="font-semibold text-foreground mb-3">{t('your_checkin_summary')}</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2">
                   <span>{EMOJI_SCALE[formData.mood - 1]}</span>
-                  <span className="text-muted-foreground">Mood: {formData.mood}/5</span>
+                  <span className="text-muted-foreground">{t('mood')}: {formData.mood}/5</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Battery className="w-4 h-4 text-green-500" />
-                  <span className="text-muted-foreground">Energy: {formData.energy}/5</span>
+                  <span className="text-muted-foreground">{t('energy')}: {formData.energy}/5</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Moon className="w-4 h-4 text-blue-500" />
-                  <span className="text-muted-foreground">Sleep: {formData.sleep}/5</span>
+                  <span className="text-muted-foreground">{t('sleep')}: {formData.sleep}/5</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Brain className="w-4 h-4 text-purple-500" />
-                  <span className="text-muted-foreground">Stress: {formData.stress}/5</span>
+                  <span className="text-muted-foreground">{t('stress')}: {formData.stress}/5</span>
                 </div>
               </div>
             </div>
@@ -355,7 +355,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
       <div className="p-6 flex gap-3 border-t border-border">
         {step > 0 && (
           <Button variant="soft" size="lg" onClick={handleBack} className="flex-1">
-            Back
+            {t('back')}
           </Button>
         )}
         <Button 
@@ -368,9 +368,9 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
           {saving ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : isNotesStep ? (
-            existingCheckIn ? 'Update Check-In' : 'Complete Check-In'
+            existingCheckIn ? t('update_checkin') : t('complete_checkin')
           ) : (
-            'Continue'
+            t('continue')
           )}
         </Button>
       </div>

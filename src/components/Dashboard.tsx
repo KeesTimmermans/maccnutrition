@@ -18,11 +18,8 @@ import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, UserTargets } from "@/lib/checkinService";
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
+import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
-
-const defaultInsights = [
-  "Complete your daily check-in to get personalized insights based on your mood, energy, and sleep patterns.",
-];
 
 interface DashboardMeal {
   id: string;
@@ -37,6 +34,7 @@ interface DashboardMeal {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
@@ -51,6 +49,13 @@ export const Dashboard = () => {
   const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
   const [hasWearableConnections, setHasWearableConnections] = useState(false);
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return t('good_morning');
+    if (hour < 18) return t('good_afternoon');
+    return t('good_evening');
+  };
 
   useEffect(() => {
     loadData();
@@ -155,11 +160,11 @@ export const Dashboard = () => {
           imageUrl: savedMeal.image_url || undefined,
         };
         setMeals(prev => [...prev, newMeal]);
-        toast.success("Meal logged successfully!");
+        toast.success(t('meal_logged'));
       }
     } catch (error) {
       console.error("Error saving meal:", error);
-      toast.error("Failed to save meal. Please try again.");
+      toast.error(t('error'));
     }
   };
 
@@ -173,10 +178,10 @@ export const Dashboard = () => {
         fats: editedMeal.fats,
       });
       setMeals(prev => prev.map(m => m.id === editedMeal.id ? editedMeal : m));
-      toast.success("Meal updated!");
+      toast.success(t('meal_updated'));
     } catch (error) {
       console.error("Error updating meal:", error);
-      toast.error("Failed to update meal.");
+      toast.error(t('error'));
     }
   };
 
@@ -184,10 +189,10 @@ export const Dashboard = () => {
     try {
       await deleteMeal(mealId);
       setMeals(prev => prev.filter(m => m.id !== mealId));
-      toast.success("Meal deleted");
+      toast.success(t('meal_deleted'));
     } catch (error) {
       console.error("Error deleting meal:", error);
-      toast.error("Failed to delete meal.");
+      toast.error(t('error'));
     }
   };
 
@@ -197,7 +202,7 @@ export const Dashboard = () => {
       <header className="sticky top-0 z-40 glass border-b border-border/50">
         <div className="container flex items-center justify-between py-4">
           <div>
-            <p className="text-sm text-muted-foreground">Good morning,</p>
+            <p className="text-sm text-muted-foreground">{getGreeting()},</p>
             <h1 className="text-xl font-bold text-foreground">Sarah! 👋</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -222,8 +227,8 @@ export const Dashboard = () => {
                 <Sun className="w-6 h-6 text-amber-500" />
               </div>
               <div className="flex-1 text-left">
-                <h3 className="font-semibold text-foreground">Morning Check-In</h3>
-                <p className="text-sm text-muted-foreground">How are you feeling today?</p>
+                <h3 className="font-semibold text-foreground">{t('morning_checkin')}</h3>
+                <p className="text-sm text-muted-foreground">{t('how_feeling_today')}</p>
               </div>
               <div className="text-2xl">👋</div>
             </button>
@@ -240,8 +245,8 @@ export const Dashboard = () => {
           <AICoachCard 
             greeting={checkInAnalysis && checkInAnalysis.recommendations.length > 0 
               ? `Based on your recent check-ins (avg mood: ${checkInAnalysis.averageMood}/5, energy: ${checkInAnalysis.averageEnergy}/5):`
-              : "Good morning! Complete your daily check-in to get personalized insights."}
-            insights={checkInAnalysis?.recommendations.length ? checkInAnalysis.recommendations : defaultInsights}
+              : `${getGreeting()}! ${t('complete_checkin_insight')}`}
+            insights={checkInAnalysis?.recommendations.length ? checkInAnalysis.recommendations : [t('complete_checkin_insight')]}
             tip={checkInAnalysis?.trends.energy === "declining" 
               ? "Your energy has been declining. Consider adding more protein and complex carbs to your meals."
               : checkInAnalysis?.trends.sleep === "declining"
@@ -260,13 +265,13 @@ export const Dashboard = () => {
         <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-bold text-foreground">Today's Progress</h2>
-              <p className="text-sm text-muted-foreground">Keep up the great work!</p>
+              <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
+              <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 rounded-full">
               <Flame className="w-4 h-4 text-secondary" />
               <span className="text-sm font-semibold text-secondary">
-                {loginStreak?.current_streak || 0} day streak
+                {loginStreak?.current_streak || 0} {t('day_streak')}
               </span>
             </div>
           </div>
@@ -276,7 +281,7 @@ export const Dashboard = () => {
             <MacroRing 
               value={totalCalories} 
               max={baseline?.target_calories || 2000} 
-              label="Calories" 
+              label={t('calories')} 
               color="calories"
               size="lg"
               unit=""
@@ -285,21 +290,21 @@ export const Dashboard = () => {
               <MacroRing 
                 value={totalProtein} 
                 max={baseline?.protein_grams || 120} 
-                label="Protein" 
+                label={t('protein')} 
                 color="protein"
                 size="sm"
               />
               <MacroRing 
                 value={totalCarbs} 
                 max={baseline?.carbs_grams || 200} 
-                label="Carbs" 
+                label={t('carbs')} 
                 color="carbs"
                 size="sm"
               />
               <MacroRing 
                 value={totalFats} 
                 max={baseline?.fats_grams || 65} 
-                label="Fats" 
+                label={t('fats')} 
                 color="fats"
                 size="sm"
               />
@@ -310,22 +315,22 @@ export const Dashboard = () => {
         {/* Meals Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">Today's Meals</h2>
+            <h2 className="text-lg font-bold text-foreground">{t('todays_meals')}</h2>
             <button 
               onClick={() => navigate("/history")}
               className="text-sm font-semibold text-primary flex items-center gap-1 hover:underline"
             >
-              View all
+              {t('view_all')}
               <TrendingUp className="w-4 h-4" />
             </button>
           </div>
 
           <div className="space-y-3">
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading meals...</div>
+              <div className="text-center py-8 text-muted-foreground">{t('loading_meals')}</div>
             ) : meals.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground text-sm">
-                No meals logged yet today. Add your first meal!
+                {t('no_meals_yet')}
               </div>
             ) : (
               meals.map((meal, index) => (
@@ -357,21 +362,21 @@ export const Dashboard = () => {
               <Watch className="w-6 h-6 text-blue-500" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-foreground">Wearable Devices</h3>
+              <h3 className="font-semibold text-foreground">{t('wearable_devices')}</h3>
               {wearableData ? (
                 <p className="text-sm text-muted-foreground">
-                  {wearableData.sleepHours && `${wearableData.sleepHours}h sleep`}
+                  {wearableData.sleepHours && `${wearableData.sleepHours}h ${t('sleep')}`}
                   {wearableData.hrv && ` • HRV ${wearableData.hrv}ms`}
                   {wearableData.steps && ` • ${wearableData.steps.toLocaleString()} steps`}
                 </p>
               ) : hasWearableConnections ? (
-                <p className="text-sm text-muted-foreground">Waiting for data sync...</p>
+                <p className="text-sm text-muted-foreground">{t('waiting_sync')}</p>
               ) : (
-                <p className="text-sm text-muted-foreground">Connect Garmin, WHOOP, or Fitbit</p>
+                <p className="text-sm text-muted-foreground">{t('connect_wearables')}</p>
               )}
             </div>
             {wearableData && (
-              <span className="text-xs text-green-500 font-medium">Synced</span>
+              <span className="text-xs text-green-500 font-medium">{t('synced')}</span>
             )}
           </button>
         </section>
@@ -386,10 +391,10 @@ export const Dashboard = () => {
       <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50">
         <div className="container flex justify-around py-3">
           {[
-            { icon: "🏠", label: "Home", path: "/", active: true },
-            { icon: "📊", label: "Progress", path: "/progress", active: false },
-            { icon: "🍽️", label: "Meals", path: "/history", active: false },
-            { icon: "👤", label: "Profile", path: "/", active: false },
+            { icon: "🏠", label: t('home'), path: "/", active: true },
+            { icon: "📊", label: t('progress'), path: "/progress", active: false },
+            { icon: "🍽️", label: t('meals'), path: "/history", active: false },
+            { icon: "👤", label: t('profile'), path: "/", active: false },
           ].map((item) => (
             <button
               key={item.label}

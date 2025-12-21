@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Camera, X, Sparkles, Search, Loader2, Heart, Trash2 } from "lucide-react";
 import { analyzeFoodImage, analyzeFoodSearch } from "@/lib/mealService";
 import { getFavoriteMeals, deleteFavoriteMeal, FavoriteMeal } from "@/lib/favoriteMealService";
+import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 
 interface MealLoggerProps {
@@ -28,6 +29,7 @@ interface AnalysisResult {
 }
 
 export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
+  const { t } = useLanguage();
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,7 +62,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
           setAnalysisResult(result);
         } catch (error) {
           console.error("Error analyzing image:", error);
-          toast.error("Failed to analyze image. Please try again.");
+          toast.error(t('error'));
         } finally {
           setIsAnalyzing(false);
         }
@@ -80,7 +82,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       setAnalysisResult(result);
     } catch (error) {
       console.error("Error searching food:", error);
-      toast.error("Failed to find nutritional info. Please try again.");
+      toast.error(t('error'));
     } finally {
       setIsSearching(false);
     }
@@ -121,9 +123,17 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
     try {
       await deleteFavoriteMeal(id);
       setFavorites(prev => prev.filter(f => f.id !== id));
-      toast.success("Removed from favorites");
+      toast.success(t('removed_favorites'));
     } catch {
-      toast.error("Failed to remove favorite");
+      toast.error(t('error'));
+    }
+  };
+
+  const getConfidenceLabel = (confidence: string) => {
+    switch (confidence) {
+      case 'high': return t('high_confidence');
+      case 'medium': return t('medium_confidence');
+      default: return t('low_confidence');
     }
   };
 
@@ -134,7 +144,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-xl transition-colors">
           <X className="w-6 h-6 text-foreground" />
         </button>
-        <h2 className="font-bold text-lg text-foreground">Log Meal</h2>
+        <h2 className="font-bold text-lg text-foreground">{t('log_meal')}</h2>
         <button 
           onClick={() => setShowFavorites(!showFavorites)}
           className={`p-2 rounded-xl transition-colors ${showFavorites ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`}
@@ -148,10 +158,10 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         {/* Favorites section */}
         {showFavorites ? (
           <div className="space-y-3">
-            <h3 className="font-semibold text-foreground mb-3">Favorite Meals</h3>
+            <h3 className="font-semibold text-foreground mb-3">{t('favorite_meals')}</h3>
             {favorites.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No favorites yet. Save meals from your meal plan!
+                {t('no_favorites')}
               </p>
             ) : (
               favorites.map((fav) => (
@@ -185,7 +195,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search for a food..."
+                placeholder={t('search_food')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -197,7 +207,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
                   disabled={isSearching}
                   className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
+                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : t('send')}
                 </button>
               )}
             </div>
@@ -205,7 +215,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
             {/* Or divider */}
             <div className="flex items-center gap-4 mb-6">
               <div className="flex-1 h-px bg-border" />
-              <span className="text-sm text-muted-foreground">or snap a photo</span>
+              <span className="text-sm text-muted-foreground">{t('or_snap_photo')}</span>
               <div className="flex-1 h-px bg-border" />
             </div>
 
@@ -225,7 +235,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
                 {isAnalyzing && (
                   <div className="absolute inset-0 bg-foreground/50 flex flex-col items-center justify-center gap-3">
                     <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
-                    <p className="text-primary-foreground font-semibold">AI analyzing your meal...</p>
+                    <p className="text-primary-foreground font-semibold">{t('ai_analyzing')}</p>
                   </div>
                 )}
                 <button
@@ -247,8 +257,8 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
                   <Camera className="w-10 h-10 text-primary-foreground" />
                 </div>
                 <div className="text-center">
-                  <p className="font-bold text-foreground">Take a Photo</p>
-                  <p className="text-sm text-muted-foreground">AI will analyze your meal</p>
+                  <p className="font-bold text-foreground">{t('take_photo')}</p>
+                  <p className="text-sm text-muted-foreground">{t('ai_analyze_meal')}</p>
                 </div>
               </button>
             )}
@@ -258,7 +268,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
               <div className="bg-card rounded-2xl p-6 shadow-soft animate-scale-in">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="w-5 h-5 text-primary" />
-                  <h3 className="font-bold text-foreground">AI Analysis</h3>
+                  <h3 className="font-bold text-foreground">{t('ai_analysis')}</h3>
                   {analysisResult.confidence && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       analysisResult.confidence === 'high' 
@@ -267,33 +277,33 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
                         ? 'bg-yellow-500/10 text-yellow-500'
                         : 'bg-red-500/10 text-red-500'
                     }`}>
-                      {analysisResult.confidence} confidence
+                      {getConfidenceLabel(analysisResult.confidence)}
                     </span>
                   )}
                 </div>
                 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Detected:</span>
+                    <span className="text-muted-foreground">{t('detected')}:</span>
                     <span className="font-semibold text-foreground">{analysisResult.name}</span>
                   </div>
                   <div className="h-px bg-border" />
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 bg-accent rounded-xl text-center">
                       <p className="text-2xl font-bold text-calories">{analysisResult.calories}</p>
-                      <p className="text-xs text-muted-foreground">Calories</p>
+                      <p className="text-xs text-muted-foreground">{t('calories')}</p>
                     </div>
                     <div className="p-3 bg-protein/10 rounded-xl text-center">
                       <p className="text-2xl font-bold text-protein">{analysisResult.protein}g</p>
-                      <p className="text-xs text-muted-foreground">Protein</p>
+                      <p className="text-xs text-muted-foreground">{t('protein')}</p>
                     </div>
                     <div className="p-3 bg-carbs/10 rounded-xl text-center">
                       <p className="text-2xl font-bold text-carbs">{analysisResult.carbs}g</p>
-                      <p className="text-xs text-muted-foreground">Carbs</p>
+                      <p className="text-xs text-muted-foreground">{t('carbs')}</p>
                     </div>
                     <div className="p-3 bg-fats/10 rounded-xl text-center">
                       <p className="text-2xl font-bold text-fats">{analysisResult.fats}g</p>
-                      <p className="text-xs text-muted-foreground">Fats</p>
+                      <p className="text-xs text-muted-foreground">{t('fats')}</p>
                     </div>
                   </div>
                   {analysisResult.notes && (
@@ -316,7 +326,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
           onClick={handleSubmitMeal}
         >
           <Sparkles className="w-5 h-5 mr-2" />
-          Log This Meal
+          {t('log_this_meal')}
         </Button>
       </div>
     </div>
