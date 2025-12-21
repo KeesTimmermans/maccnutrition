@@ -7,6 +7,7 @@ import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Target, Flame } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 interface DayData {
   date: string;
@@ -28,6 +29,7 @@ interface WeekSummary {
 
 const Progress = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [weeklyData, setWeeklyData] = useState<DayData[]>([]);
   const [monthlyData, setMonthlyData] = useState<DayData[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
@@ -123,7 +125,7 @@ const Progress = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading progress data...</p>
+        <p className="text-muted-foreground">{t('loading_progress')}</p>
       </div>
     );
   }
@@ -139,7 +141,7 @@ const Progress = () => {
           >
             <ArrowLeft className="w-6 h-6 text-foreground" />
           </button>
-          <h1 className="text-xl font-bold text-foreground">Progress</h1>
+          <h1 className="text-xl font-bold text-foreground">{t('progress')}</h1>
         </div>
       </header>
 
@@ -150,17 +152,17 @@ const Progress = () => {
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary" />
-                This Week's Summary
+                {t('this_weeks_summary')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="bg-muted/50 rounded-xl p-4 text-center">
                   <p className="text-3xl font-bold text-primary">{weekSummary.avgCalories}</p>
-                  <p className="text-xs text-muted-foreground">avg cal/day</p>
+                  <p className="text-xs text-muted-foreground">{t('avg_cal_day')}</p>
                   <div className="flex items-center justify-center gap-1 mt-1">
                     {getTrendIcon(weekSummary.avgCalories, calorieGoal)}
-                    <span className="text-xs text-muted-foreground">vs {calorieGoal} goal</span>
+                    <span className="text-xs text-muted-foreground">{t('vs_goal').replace('{goal}', calorieGoal.toString())}</span>
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded-xl p-4 text-center">
@@ -168,23 +170,23 @@ const Progress = () => {
                     <Flame className="w-5 h-5 text-secondary" />
                     <p className="text-3xl font-bold text-secondary">{weekSummary.daysOnTarget}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">days on target</p>
-                  <p className="text-xs text-muted-foreground mt-1">of {weekSummary.totalDays} logged</p>
+                  <p className="text-xs text-muted-foreground">{t('days_on_target')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('of_logged').replace('{count}', weekSummary.totalDays.toString())}</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-[hsl(var(--protein))]/10 rounded-xl p-3 text-center">
                   <p className="text-xl font-bold text-[hsl(var(--protein))]">{weekSummary.avgProtein}g</p>
-                  <p className="text-xs text-muted-foreground">protein</p>
+                  <p className="text-xs text-muted-foreground">{t('protein')}</p>
                 </div>
                 <div className="bg-[hsl(var(--carbs))]/10 rounded-xl p-3 text-center">
                   <p className="text-xl font-bold text-[hsl(var(--carbs))]">{weekSummary.avgCarbs}g</p>
-                  <p className="text-xs text-muted-foreground">carbs</p>
+                  <p className="text-xs text-muted-foreground">{t('carbs')}</p>
                 </div>
                 <div className="bg-[hsl(var(--fats))]/10 rounded-xl p-3 text-center">
                   <p className="text-xl font-bold text-[hsl(var(--fats))]">{weekSummary.avgFats}g</p>
-                  <p className="text-xs text-muted-foreground">fats</p>
+                  <p className="text-xs text-muted-foreground">{t('fats')}</p>
                 </div>
               </div>
             </CardContent>
@@ -194,13 +196,13 @@ const Progress = () => {
         {/* Combined Chart */}
         <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-bold text-foreground">Nutrition Trends</CardTitle>
+            <CardTitle className="text-lg font-bold text-foreground">{t('nutrition_trends')}</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
             <Tabs defaultValue="weekly" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="weekly">{t('weekly')}</TabsTrigger>
+                <TabsTrigger value="monthly">{t('monthly')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="weekly">
@@ -213,13 +215,13 @@ const Progress = () => {
                         yAxisId="calories" 
                         orientation="left"
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                        label={{ value: 'Calories', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                        label={{ value: t('calories'), angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                       />
                       <YAxis 
                         yAxisId="macros" 
                         orientation="right"
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                        label={{ value: 'Grams', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
+                        label={{ value: 'g', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
                       />
                       <Tooltip 
                         contentStyle={{ 
@@ -228,8 +230,8 @@ const Progress = () => {
                           borderRadius: '8px',
                         }}
                         formatter={(value: number, name: string) => {
-                          if (name === 'calories') return [`${value} cal`, 'Calories'];
-                          return [`${value}g`, name.charAt(0).toUpperCase() + name.slice(1)];
+                          if (name === 'calories') return [`${value} ${t('cal')}`, t('calories')];
+                          return [`${value}g`, t(name)];
                         }}
                       />
                       <Legend />
@@ -243,19 +245,19 @@ const Progress = () => {
                 <div className="flex flex-wrap justify-center gap-4 mt-4">
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded bg-primary" />
-                    <span className="text-xs text-muted-foreground">Calories ({calorieGoal}/day)</span>
+                    <span className="text-xs text-muted-foreground">{t('calories')} ({calorieGoal}/{t('days').slice(0, -1)})</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
-                    <span className="text-xs text-muted-foreground">Protein ({proteinGoal}g)</span>
+                    <span className="text-xs text-muted-foreground">{t('protein')} ({proteinGoal}g)</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
-                    <span className="text-xs text-muted-foreground">Carbs ({carbsGoal}g)</span>
+                    <span className="text-xs text-muted-foreground">{t('carbs')} ({carbsGoal}g)</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
-                    <span className="text-xs text-muted-foreground">Fats ({fatsGoal}g)</span>
+                    <span className="text-xs text-muted-foreground">{t('fats')} ({fatsGoal}g)</span>
                   </div>
                 </div>
               </TabsContent>
@@ -284,8 +286,8 @@ const Progress = () => {
                         }}
                         labelFormatter={(label, payload) => payload?.[0]?.payload?.fullDate || label}
                         formatter={(value: number, name: string) => {
-                          if (name === 'calories') return [`${value} cal`, 'Calories'];
-                          return [`${value}g`, name.charAt(0).toUpperCase() + name.slice(1)];
+                          if (name === 'calories') return [`${value} ${t('cal')}`, t('calories')];
+                          return [`${value}g`, t(name)];
                         }}
                       />
                       <Legend />
@@ -299,19 +301,19 @@ const Progress = () => {
                 <div className="flex flex-wrap justify-center gap-4 mt-4">
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-primary" />
-                    <span className="text-xs text-muted-foreground">Calories</span>
+                    <span className="text-xs text-muted-foreground">{t('calories')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
-                    <span className="text-xs text-muted-foreground">Protein</span>
+                    <span className="text-xs text-muted-foreground">{t('protein')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
-                    <span className="text-xs text-muted-foreground">Carbs</span>
+                    <span className="text-xs text-muted-foreground">{t('carbs')}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
-                    <span className="text-xs text-muted-foreground">Fats</span>
+                    <span className="text-xs text-muted-foreground">{t('fats')}</span>
                   </div>
                 </div>
               </TabsContent>
@@ -324,10 +326,10 @@ const Progress = () => {
       <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50">
         <div className="container flex justify-around py-3">
           {[
-            { icon: "🏠", label: "Home", path: "/" },
-            { icon: "📊", label: "Progress", path: "/progress" },
-            { icon: "🍽️", label: "Meals", path: "/history" },
-            { icon: "👤", label: "Profile", path: "/" },
+            { icon: "🏠", label: t('home'), path: "/" },
+            { icon: "📊", label: t('progress'), path: "/progress" },
+            { icon: "🍽️", label: t('meals'), path: "/history" },
+            { icon: "👤", label: t('profile'), path: "/" },
           ].map((item) => (
             <button
               key={item.label}

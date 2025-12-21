@@ -8,6 +8,7 @@ import { UserBaseline } from "@/lib/userService";
 import { GroceryList } from "@/components/GroceryList";
 import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { toast } from "sonner";
+import { useLanguage } from "@/lib/i18n";
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,7 @@ interface MealPlannerProps {
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export const MealPlanner = ({ baseline }: MealPlannerProps) => {
+  const { t } = useLanguage();
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [groceryList, setGroceryList] = useState<GroceryListData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,9 +106,9 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
 
       if (data.error) {
         if (data.error.includes('Rate limit')) {
-          toast.error('Too many requests. Please wait a moment and try again.');
+          toast.error(t('too_many_requests'));
         } else if (data.error.includes('credits')) {
-          toast.error('AI service temporarily unavailable.');
+          toast.error(t('ai_service_unavailable'));
         } else {
           toast.error(data.error);
         }
@@ -115,13 +117,13 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
 
       if (data.mealPlan) {
         setMealPlan(data.mealPlan);
-        toast.success('Meal plan generated!');
+        toast.success(t('meal_plan_generated'));
       } else {
-        toast.error('Failed to generate meal plan. Please try again.');
+        toast.error(t('failed_generate_plan'));
       }
     } catch (error) {
       console.error('Error generating meal plan:', error);
-      toast.error('Failed to generate meal plan. Please try again.');
+      toast.error(t('failed_generate_plan'));
     } finally {
       setIsLoading(false);
     }
@@ -146,13 +148,13 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       if (data.groceryList) {
         setGroceryList(data.groceryList);
         setShowGroceryList(true);
-        toast.success('Grocery list generated!');
+        toast.success(t('grocery_list_generated'));
       } else {
-        toast.error('Failed to generate grocery list.');
+        toast.error(t('failed_generate_grocery'));
       }
     } catch (error) {
       console.error('Error generating grocery list:', error);
-      toast.error('Failed to generate grocery list.');
+      toast.error(t('failed_generate_grocery'));
     } finally {
       setIsLoadingGrocery(false);
     }
@@ -213,14 +215,14 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
           return { ...prev, days: newDays };
         });
         
-        toast.success(`Swapped to ${data.newMeal.name}!`);
+        toast.success(t('swapped_to').replace('{meal}', data.newMeal.name));
         setSwapDialogOpen(false);
         setSwapPreference("");
         setMealToSwap(null);
       }
     } catch (error) {
       console.error('Error swapping meal:', error);
-      toast.error('Failed to swap meal. Please try again.');
+      toast.error(t('failed_swap_meal'));
     } finally {
       setIsSwapping(false);
     }
@@ -236,7 +238,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     // Title
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
-    doc.text("Weekly Meal Plan", pageWidth / 2, yPos, { align: "center" });
+    doc.text(t('weekly_meal_plan'), pageWidth / 2, yPos, { align: "center" });
     yPos += 15;
     
     mealPlan.days.forEach((day, dayIndex) => {
@@ -252,7 +254,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       doc.text(day.day, 14, yPos);
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`${day.totals.calories} cal | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g`, 14, yPos + 5);
+      doc.text(`${day.totals.calories} ${t('cal')} | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g`, 14, yPos + 5);
       yPos += 12;
       
       // Meals
@@ -273,7 +275,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         doc.text(descLines, 18, yPos + 4);
         yPos += 4 + (descLines.length * 4);
         
-        doc.text(`${meal.calories} cal | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g`, 18, yPos);
+        doc.text(`${meal.calories} ${t('cal')} | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g`, 18, yPos);
         yPos += 8;
       });
       
@@ -289,7 +291,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text("Meal Prep Tips", 14, yPos);
+      doc.text(t('meal_prep_tips'), 14, yPos);
       yPos += 7;
       
       doc.setFontSize(9);
@@ -306,27 +308,27 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     }
     
     doc.save("meal-plan.pdf");
-    toast.success("Meal plan exported to PDF!");
+    toast.success(t('meal_plan_exported'));
   };
 
   const shareAsText = async () => {
     if (!mealPlan) return;
     
-    let text = "🍽️ MY WEEKLY MEAL PLAN\n\n";
+    let text = `🍽️ ${t('weekly_meal_plan').toUpperCase()}\n\n`;
     
     mealPlan.days.forEach((day) => {
       text += `📅 ${day.day.toUpperCase()}\n`;
-      text += `Total: ${day.totals.calories} cal | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g\n\n`;
+      text += `Total: ${day.totals.calories} ${t('cal')} | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g\n\n`;
       
       day.meals.forEach((meal) => {
         text += `${meal.type}: ${meal.name}\n`;
-        text += `  ${meal.calories} cal | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g\n`;
+        text += `  ${meal.calories} ${t('cal')} | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g\n`;
       });
       text += "\n";
     });
     
     if (mealPlan.tips && mealPlan.tips.length > 0) {
-      text += "💡 TIPS\n";
+      text += `💡 ${t('meal_prep_tips').toUpperCase()}\n`;
       mealPlan.tips.forEach((tip) => {
         text += `• ${tip}\n`;
       });
@@ -334,9 +336,9 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Meal plan copied to clipboard!");
+      toast.success(t('meal_plan_copied'));
     } catch {
-      toast.error("Failed to copy to clipboard");
+      toast.error(t('failed_copy_clipboard'));
     }
   };
 
@@ -348,9 +350,9 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <ChefHat className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-bold text-foreground mb-2">Weekly Meal Planner</h3>
+            <h3 className="text-lg font-bold text-foreground mb-2">{t('weekly_meal_planner')}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Generate a personalized 7-day meal plan based on your goals and preferences
+              {t('generate_personalized_plan')}
             </p>
             <Button 
               onClick={generateMealPlan} 
@@ -360,12 +362,12 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  Generating...
+                  {t('generating')}
                 </>
               ) : (
                 <>
                   <Calendar className="w-4 h-4" />
-                  Generate Meal Plan
+                  {t('generate_meal_plan')}
                 </>
               )}
             </Button>
@@ -393,7 +395,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
             <ChefHat className="w-5 h-5 text-primary" />
-            Weekly Meal Plan
+            {t('weekly_meal_plan')}
           </CardTitle>
           <div className="flex gap-1">
             <Button 
@@ -464,23 +466,23 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         {currentDay && (
           <>
             <div className="bg-muted/50 rounded-xl p-3 mb-4">
-              <p className="text-sm font-medium text-foreground mb-2">{currentDay.day}'s Totals</p>
+              <p className="text-sm font-medium text-foreground mb-2">{t('day_totals').replace('{day}', currentDay.day)}</p>
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
                   <p className="text-lg font-bold text-primary">{currentDay.totals.calories}</p>
-                  <p className="text-xs text-muted-foreground">cal</p>
+                  <p className="text-xs text-muted-foreground">{t('cal')}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-[hsl(var(--protein))]">{currentDay.totals.protein}g</p>
-                  <p className="text-xs text-muted-foreground">protein</p>
+                  <p className="text-xs text-muted-foreground">{t('protein')}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-[hsl(var(--carbs))]">{currentDay.totals.carbs}g</p>
-                  <p className="text-xs text-muted-foreground">carbs</p>
+                  <p className="text-xs text-muted-foreground">{t('carbs')}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-[hsl(var(--fats))]">{currentDay.totals.fats}g</p>
-                  <p className="text-xs text-muted-foreground">fats</p>
+                  <p className="text-xs text-muted-foreground">{t('fats')}</p>
                 </div>
               </div>
             </div>
@@ -505,7 +507,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                           setMealToSwap({ meal, dayIndex: selectedDay, mealIndex: index });
                           setSwapDialogOpen(true);
                         }}
-                        title="Swap meal"
+                        title={t('swap_meal')}
                       >
                         <Repeat className="w-4 h-4 text-muted-foreground hover:text-primary" />
                       </Button>
@@ -523,12 +525,12 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                               fats: meal.fats,
                               ingredients: meal.description,
                             });
-                            toast.success(`${meal.name} saved to favorites!`);
+                            toast.success(t('saved_to_favorites'));
                           } catch (error) {
                             toast.error("Failed to save favorite");
                           }
                         }}
-                        title="Save to favorites"
+                        title={t('save_to_favorites')}
                       >
                         <Heart className="w-4 h-4 text-muted-foreground hover:text-primary" />
                       </Button>
@@ -536,7 +538,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">{meal.description}</p>
                   <div className="flex gap-3 text-xs">
-                    <span className="text-primary font-medium">{meal.calories} cal</span>
+                    <span className="text-primary font-medium">{meal.calories} {t('cal')}</span>
                     <span className="text-muted-foreground">P: {meal.protein}g</span>
                     <span className="text-muted-foreground">C: {meal.carbs}g</span>
                     <span className="text-muted-foreground">F: {meal.fats}g</span>
@@ -552,7 +554,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
           <div className="bg-primary/5 rounded-xl p-3 mb-4">
             <div className="flex items-center gap-2 mb-2">
               <Lightbulb className="w-4 h-4 text-primary" />
-              <p className="text-sm font-medium text-foreground">Meal Prep Tips</p>
+              <p className="text-sm font-medium text-foreground">{t('meal_prep_tips')}</p>
             </div>
             <ul className="space-y-1">
               {mealPlan.tips.slice(0, 3).map((tip, index) => (
@@ -575,12 +577,12 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
           {isLoadingGrocery ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              Generating Grocery List...
+              {t('generating_grocery_list')}
             </>
           ) : (
             <>
               <ShoppingCart className="w-4 h-4" />
-              Generate Grocery List
+              {t('generate_grocery_list')}
             </>
           )}
         </Button>
@@ -590,16 +592,14 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       <Dialog open={swapDialogOpen} onOpenChange={setSwapDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Swap Meal</DialogTitle>
+            <DialogTitle>{t('swap_meal_title')}</DialogTitle>
             <DialogDescription>
-              {mealToSwap && (
-                <>Replacing <strong>{mealToSwap.meal.name}</strong>. Tell us what you'd prefer instead.</>
-              )}
+              {mealToSwap && t('swap_meal_desc').replace('{meal}', mealToSwap.meal.name)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <Input
-              placeholder="e.g., I don't like eggs, suggest something with oats instead"
+              placeholder={t('preference_placeholder')}
               value={swapPreference}
               onChange={(e) => setSwapPreference(e.target.value)}
               onKeyDown={(e) => {
@@ -610,7 +610,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
             />
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setSwapDialogOpen(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button 
                 onClick={handleSwapMeal} 
@@ -619,10 +619,10 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                 {isSwapping ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Swapping...
+                    {t('swapping')}
                   </>
                 ) : (
-                  'Swap Meal'
+                  t('swap')
                 )}
               </Button>
             </div>
