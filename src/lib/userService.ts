@@ -5,6 +5,8 @@ import { BaselineResults } from "@/lib/baselineCalculations";
 export interface UserBaseline {
   id: string;
   user_id: string;
+  created_at: string;
+  updated_at: string;
   age: number | null;
   sex: string | null;
   unit_system: string | null;
@@ -165,4 +167,48 @@ export const updateUserSettings = async (settings: { unit_system?: string }) => 
   }
 
   return data as UserBaseline;
+};
+
+/**
+ * Send baseline summary email after onboarding
+ */
+export const sendBaselineEmail = async (
+  email: string,
+  userName: string | undefined,
+  baseline: BaselineResults,
+  primaryGoal: string,
+  mealPattern: { meal: string; time: string; purpose: string }[]
+) => {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-baseline-email", {
+      body: {
+        email,
+        userName,
+        baseline: {
+          targetCalories: baseline.calories.target,
+          proteinGrams: baseline.macros.protein.grams,
+          carbsGrams: baseline.macros.carbs.grams,
+          fatsGrams: baseline.macros.fats.grams,
+          waterLiters: baseline.hydration.waterLiters,
+          sodiumMg: baseline.hydration.sodiumMg,
+          magnesiumMg: baseline.hydration.magnesiumMg,
+          potassiumMg: baseline.hydration.potassiumMg,
+          focusPoints: baseline.focusPoints,
+          primaryGoal,
+        },
+        mealPattern,
+      },
+    });
+
+    if (error) {
+      console.error("Error sending baseline email:", error);
+      return { success: false, error };
+    }
+
+    console.log("Baseline email sent successfully:", data);
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error invoking send-baseline-email:", error);
+    return { success: false, error };
+  }
 };
