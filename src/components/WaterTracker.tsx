@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { getTodaysWaterIntake, addWaterIntake, removeLastWaterIntake, WaterIntake } from "@/lib/waterService";
 import { toast } from "sonner";
+import { useLanguage } from "@/lib/i18n";
 
 interface WaterTrackerProps {
   dailyGoalLiters: number;
@@ -17,6 +18,7 @@ const GLASS_SIZES = [
 ];
 
 export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
+  const { t } = useLanguage();
   const [intakes, setIntakes] = useState<WaterIntake[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -68,9 +70,9 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
       
       const newTotal = totalMl + amountMl;
       if (newTotal >= dailyGoalMl && totalMl < dailyGoalMl) {
-        toast.success("🎉 You've reached your daily water goal!");
+        toast.success(`🎉 ${t('daily_water_goal_reached')}`);
       } else {
-        toast.success(`Added ${amountMl}ml of water`);
+        toast.success(t('added_water').replace('{amount}', amountMl.toString()));
       }
     }
   };
@@ -81,7 +83,7 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
     const success = await removeLastWaterIntake();
     if (success) {
       setIntakes(prev => prev.slice(0, -1));
-      toast.success("Removed last water entry");
+      toast.success(t('removed_last_entry'));
     }
   };
 
@@ -91,18 +93,18 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
         Notification.requestPermission().then(permission => {
           if (permission === "granted") {
             setReminderEnabled(true);
-            toast.success("Water reminders enabled!");
+            toast.success(t('water_reminders_enabled'));
           }
         });
       } else if (Notification.permission === "granted") {
         setReminderEnabled(true);
-        toast.success("Water reminders enabled!");
+        toast.success(t('water_reminders_enabled'));
       } else {
-        toast.error("Please enable notifications in your browser settings");
+        toast.error(t('enable_notifications'));
       }
     } else {
       setReminderEnabled(!reminderEnabled);
-      toast.success(reminderEnabled ? "Reminders disabled" : "Reminders enabled!");
+      toast.success(reminderEnabled ? t('reminders_disabled') : t('reminders_enabled'));
     }
   };
 
@@ -110,7 +112,7 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
     return (
       <Card className="bg-card rounded-3xl shadow-medium">
         <CardContent className="py-8 text-center text-muted-foreground">
-          Loading water tracker...
+          {t('loading_water_tracker')}
         </CardContent>
       </Card>
     );
@@ -122,7 +124,7 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Droplets className="w-5 h-5 text-blue-500" />
-            <h3 className="font-bold text-foreground">Water Intake</h3>
+            <h3 className="font-bold text-foreground">{t('water_intake')}</h3>
           </div>
           <Button
             variant="ghost"
@@ -146,7 +148,7 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
           </div>
           <Progress value={progress} className="h-3 bg-blue-100" />
           <p className="text-xs text-muted-foreground text-center mt-1">
-            {remaining > 0 ? `${(remaining / 1000).toFixed(1)}L remaining` : "Goal reached! 🎉"}
+            {remaining > 0 ? `${(remaining / 1000).toFixed(1)}L ${t('remaining')}` : `${t('goal_reached')} 🎉`}
           </p>
         </div>
 
@@ -188,7 +190,7 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
           className="w-full text-muted-foreground"
         >
           <Minus className="w-4 h-4 mr-1" />
-          Undo last
+          {t('undo_last')}
         </Button>
       </CardContent>
     </Card>
