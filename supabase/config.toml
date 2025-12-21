@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.check-trial-reminders]
 verify_jwt = false
+
+[functions.create-promo-code]
+verify_jwt = false
