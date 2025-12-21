@@ -213,6 +213,30 @@ export const translations: Record<Language, Record<string, string>> = {
     // Toasts
     'settings_updated': 'Settings updated',
     'language_changed': 'Language changed to',
+    
+    // Grocery List
+    'grocery_list': 'Grocery List',
+    'items_checked': '{checked} of {total} items checked',
+    'shopping_tips': 'Shopping Tips',
+    'clear_checked': 'Clear all checked items',
+    'estimated_cost': 'Estimated cost',
+    
+    // Streak Card
+    'consistency_streaks': 'Consistency Streaks',
+    'day_login_streak': 'Day Login Streak',
+    'day_coaching_streak': 'Day Coaching Streak',
+    'best': 'Best',
+    'amazing_consistency': 'Amazing consistency! Keep it up!',
+    
+    // Meal History
+    'meal_history': 'Meal History',
+    'view_past_nutrition': 'View your past nutrition',
+    'loading_history': 'Loading history...',
+    'no_meals_logged_day': 'No meals logged',
+    'today': 'Today',
+    'failed_load_history': 'Failed to load meal history',
+    'failed_update_meal': 'Failed to update meal.',
+    'failed_delete_meal': 'Failed to delete meal.',
   },
   
   fr: {
@@ -419,6 +443,30 @@ export const translations: Record<Language, Record<string, string>> = {
     // Toasts
     'settings_updated': 'Paramètres mis à jour',
     'language_changed': 'Langue changée en',
+    
+    // Grocery List
+    'grocery_list': 'Liste de courses',
+    'items_checked': '{checked} sur {total} articles cochés',
+    'shopping_tips': 'Conseils d\'achat',
+    'clear_checked': 'Effacer les articles cochés',
+    'estimated_cost': 'Coût estimé',
+    
+    // Streak Card
+    'consistency_streaks': 'Séries de régularité',
+    'day_login_streak': 'Jours de connexion',
+    'day_coaching_streak': 'Jours de coaching',
+    'best': 'Record',
+    'amazing_consistency': 'Incroyable régularité ! Continuez !',
+    
+    // Meal History
+    'meal_history': 'Historique des repas',
+    'view_past_nutrition': 'Consultez votre nutrition passée',
+    'loading_history': 'Chargement de l\'historique...',
+    'no_meals_logged_day': 'Aucun repas enregistré',
+    'today': 'Aujourd\'hui',
+    'failed_load_history': 'Échec du chargement de l\'historique',
+    'failed_update_meal': 'Échec de la mise à jour du repas.',
+    'failed_delete_meal': 'Échec de la suppression du repas.',
   },
   
   es: {
@@ -625,6 +673,30 @@ export const translations: Record<Language, Record<string, string>> = {
     // Toasts
     'settings_updated': 'Configuración actualizada',
     'language_changed': 'Idioma cambiado a',
+    
+    // Grocery List
+    'grocery_list': 'Lista de compras',
+    'items_checked': '{checked} de {total} artículos marcados',
+    'shopping_tips': 'Consejos de compra',
+    'clear_checked': 'Borrar artículos marcados',
+    'estimated_cost': 'Costo estimado',
+    
+    // Streak Card
+    'consistency_streaks': 'Rachas de constancia',
+    'day_login_streak': 'Días de inicio',
+    'day_coaching_streak': 'Días de coaching',
+    'best': 'Mejor',
+    'amazing_consistency': '¡Increíble constancia! ¡Sigue así!',
+    
+    // Meal History
+    'meal_history': 'Historial de comidas',
+    'view_past_nutrition': 'Ver tu nutrición pasada',
+    'loading_history': 'Cargando historial...',
+    'no_meals_logged_day': 'Sin comidas registradas',
+    'today': 'Hoy',
+    'failed_load_history': 'Error al cargar el historial',
+    'failed_update_meal': 'Error al actualizar la comida.',
+    'failed_delete_meal': 'Error al eliminar la comida.',
   },
   
   it: {
@@ -831,6 +903,30 @@ export const translations: Record<Language, Record<string, string>> = {
     // Toasts
     'settings_updated': 'Impostazioni aggiornate',
     'language_changed': 'Lingua cambiata in',
+    
+    // Grocery List
+    'grocery_list': 'Lista della spesa',
+    'items_checked': '{checked} di {total} articoli spuntati',
+    'shopping_tips': 'Consigli per gli acquisti',
+    'clear_checked': 'Cancella articoli spuntati',
+    'estimated_cost': 'Costo stimato',
+    
+    // Streak Card
+    'consistency_streaks': 'Serie di costanza',
+    'day_login_streak': 'Giorni di accesso',
+    'day_coaching_streak': 'Giorni di coaching',
+    'best': 'Migliore',
+    'amazing_consistency': 'Incredibile costanza! Continua così!',
+    
+    // Meal History
+    'meal_history': 'Storico pasti',
+    'view_past_nutrition': 'Visualizza la tua nutrizione passata',
+    'loading_history': 'Caricamento storico...',
+    'no_meals_logged_day': 'Nessun pasto registrato',
+    'today': 'Oggi',
+    'failed_load_history': 'Errore nel caricamento dello storico',
+    'failed_update_meal': 'Errore nell\'aggiornamento del pasto.',
+    'failed_delete_meal': 'Errore nell\'eliminazione del pasto.',
   },
   
   pt: {
@@ -1037,5 +1133,29 @@ export const translations: Record<Language, Record<string, string>> = {
     // Toasts
     'settings_updated': 'Configurações atualizadas',
     'language_changed': 'Idioma alterado para',
+    
+    // Grocery List
+    'grocery_list': 'Lista de compras',
+    'items_checked': '{checked} de {total} itens marcados',
+    'shopping_tips': 'Dicas de compras',
+    'clear_checked': 'Limpar itens marcados',
+    'estimated_cost': 'Custo estimado',
+    
+    // Streak Card
+    'consistency_streaks': 'Séries de consistência',
+    'day_login_streak': 'Dias de login',
+    'day_coaching_streak': 'Dias de coaching',
+    'best': 'Melhor',
+    'amazing_consistency': 'Incrível consistência! Continue assim!',
+    
+    // Meal History
+    'meal_history': 'Histórico de refeições',
+    'view_past_nutrition': 'Veja sua nutrição passada',
+    'loading_history': 'Carregando histórico...',
+    'no_meals_logged_day': 'Nenhuma refeição registrada',
+    'today': 'Hoje',
+    'failed_load_history': 'Erro ao carregar histórico',
+    'failed_update_meal': 'Erro ao atualizar refeição.',
+    'failed_delete_meal': 'Erro ao excluir refeição.',
   }
 };

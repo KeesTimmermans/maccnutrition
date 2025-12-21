@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/lib/i18n";
 
 interface GroceryItem {
   name: string;
@@ -30,6 +31,7 @@ interface GroceryListProps {
 }
 
 export const GroceryList = ({ groceryList, onClose }: GroceryListProps) => {
+  const { t } = useLanguage();
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
   const toggleItem = (categoryName: string, itemName: string) => {
@@ -54,7 +56,7 @@ export const GroceryList = ({ groceryList, onClose }: GroceryListProps) => {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-primary" />
-            Grocery List
+            {t('grocery_list')}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" />
@@ -62,7 +64,7 @@ export const GroceryList = ({ groceryList, onClose }: GroceryListProps) => {
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
-            {checkedCount} of {totalItems} items checked
+            {t('items_checked').replace('{checked}', String(checkedCount)).replace('{total}', String(totalItems))}
           </span>
           <Badge variant="secondary" className="gap-1">
             <DollarSign className="w-3 h-3" />
@@ -123,7 +125,7 @@ export const GroceryList = ({ groceryList, onClose }: GroceryListProps) => {
           <div className="mt-4 bg-primary/5 rounded-xl p-3">
             <div className="flex items-center gap-2 mb-2">
               <Lightbulb className="w-4 h-4 text-primary" />
-              <p className="text-sm font-medium text-foreground">Shopping Tips</p>
+              <p className="text-sm font-medium text-foreground">{t('shopping_tips')}</p>
             </div>
             <ul className="space-y-1">
               {groceryList.shoppingTips.map((tip, index) => (
@@ -144,7 +146,7 @@ export const GroceryList = ({ groceryList, onClose }: GroceryListProps) => {
             onClick={() => setCheckedItems(new Set())}
             className="w-full mt-4"
           >
-            Clear all checked items
+            {t('clear_checked')}
           </Button>
         )}
       </CardContent>
