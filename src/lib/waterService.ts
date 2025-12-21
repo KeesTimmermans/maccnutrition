@@ -80,3 +80,23 @@ export const removeLastWaterIntake = async (): Promise<boolean> => {
 
   return true;
 };
+
+export const getWaterIntakeByDateRange = async (startDate: Date, endDate: Date): Promise<WaterIntake[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('water_intake')
+    .select('*')
+    .eq('user_id', user.id)
+    .gte('logged_at', startDate.toISOString())
+    .lte('logged_at', endDate.toISOString())
+    .order('logged_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching water intake:', error);
+    return [];
+  }
+
+  return (data || []) as WaterIntake[];
+};

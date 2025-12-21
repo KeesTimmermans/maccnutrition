@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Target, Flame } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { WeeklyAchievements } from "@/components/WeeklyAchievements";
 
 interface DayData {
   date: string;
@@ -146,6 +147,8 @@ const Progress = () => {
       </header>
 
       <main className="container py-6 space-y-6">
+        {/* Weekly Achievements */}
+        <WeeklyAchievements />
         {/* Weekly Summary */}
         {weekSummary && (
           <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
