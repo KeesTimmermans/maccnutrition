@@ -54,6 +54,7 @@ serve(async (req) => {
       subscription_data: {
         trial_period_days: 14,
       },
+      allow_promotion_codes: true,
       success_url: `${req.headers.get("origin")}/`,
       cancel_url: `${req.headers.get("origin")}/`,
     });
