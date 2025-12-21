@@ -5,6 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 interface SubscriptionStatus {
   subscribed: boolean;
   subscriptionEnd: string | null;
+  isTrialing: boolean;
+  trialEnd: string | null;
+  trialDaysRemaining: number | null;
 }
 
 export const useAuth = () => {
@@ -14,12 +17,15 @@ export const useAuth = () => {
   const [subscription, setSubscription] = useState<SubscriptionStatus>({
     subscribed: false,
     subscriptionEnd: null,
+    isTrialing: false,
+    trialEnd: null,
+    trialDaysRemaining: null,
   });
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   const checkSubscription = useCallback(async () => {
     if (!session) {
-      setSubscription({ subscribed: false, subscriptionEnd: null });
+      setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
       return;
     }
 
@@ -31,10 +37,13 @@ export const useAuth = () => {
       setSubscription({
         subscribed: data?.subscribed ?? false,
         subscriptionEnd: data?.subscription_end ?? null,
+        isTrialing: data?.is_trialing ?? false,
+        trialEnd: data?.trial_end ?? null,
+        trialDaysRemaining: data?.trial_days_remaining ?? null,
       });
     } catch (error) {
       console.error('Error checking subscription:', error);
-      setSubscription({ subscribed: false, subscriptionEnd: null });
+      setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
     } finally {
       setSubscriptionLoading(false);
     }
@@ -80,7 +89,7 @@ export const useAuth = () => {
     await supabase.auth.signOut();
     localStorage.removeItem("cjt_onboarded");
     localStorage.removeItem("cjt_user_data");
-    setSubscription({ subscribed: false, subscriptionEnd: null });
+    setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
   };
 
   return { 
@@ -90,6 +99,9 @@ export const useAuth = () => {
     signOut, 
     subscription: subscription.subscribed,
     subscriptionEnd: subscription.subscriptionEnd,
+    isTrialing: subscription.isTrialing,
+    trialEnd: subscription.trialEnd,
+    trialDaysRemaining: subscription.trialDaysRemaining,
     subscriptionLoading,
     checkSubscription,
   };
