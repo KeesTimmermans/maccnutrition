@@ -16,7 +16,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-trial-reminder]
-verify_jwt = true
+verify_jwt = false
 
 [functions.check-trial-reminders]
-verify_jwt = true
+verify_jwt = false
