@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.swap-meal]
 verify_jwt = false
+
+[functions.send-trial-reminder]
+verify_jwt = true
+
+[functions.check-trial-reminders]
+verify_jwt = true
