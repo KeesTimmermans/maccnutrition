@@ -3,20 +3,32 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, LogOut, Globe } from "lucide-react";
+import { Settings, LogOut, Globe, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
+import { SubscriptionCard } from "@/components/SubscriptionCard";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
   onSettingsChange?: () => void;
+  subscribed?: boolean;
+  subscriptionEnd?: string | null;
+  subscriptionLoading?: boolean;
+  onRefreshSubscription?: () => void;
 }
 
-export const SettingsSheet = ({ baseline, onSettingsChange }: SettingsSheetProps) => {
+export const SettingsSheet = ({ 
+  baseline, 
+  onSettingsChange,
+  subscribed = false,
+  subscriptionEnd = null,
+  subscriptionLoading = false,
+  onRefreshSubscription = () => {},
+}: SettingsSheetProps) => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
   const [isMetric, setIsMetric] = useState(baseline?.unit_system === "metric");
@@ -139,6 +151,20 @@ export const SettingsSheet = ({ baseline, onSettingsChange }: SettingsSheetProps
               </div>
             </div>
           )}
+
+          {/* Subscription */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Crown className="w-4 h-4" />
+              Subscription
+            </h3>
+            <SubscriptionCard
+              subscribed={subscribed}
+              subscriptionEnd={subscriptionEnd}
+              loading={subscriptionLoading}
+              onRefresh={onRefreshSubscription}
+            />
+          </div>
 
           {/* Logout */}
           <div className="pt-4 border-t border-border">
