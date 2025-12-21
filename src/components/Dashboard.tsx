@@ -19,6 +19,7 @@ import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, UserTargets } from "@/lib/checkinService";
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
 import { useLanguage } from "@/lib/i18n";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 interface DashboardMeal {
@@ -35,6 +36,7 @@ interface DashboardMeal {
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription } = useAuth();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
@@ -210,7 +212,14 @@ export const Dashboard = () => {
               <Bell className="w-6 h-6 text-foreground" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-secondary rounded-full" />
             </button>
-            <SettingsSheet baseline={baseline} onSettingsChange={loadData} />
+            <SettingsSheet 
+              baseline={baseline} 
+              onSettingsChange={loadData}
+              subscribed={subscription}
+              subscriptionEnd={subscriptionEnd}
+              subscriptionLoading={subscriptionLoading}
+              onRefreshSubscription={checkSubscription}
+            />
           </div>
         </div>
       </header>
