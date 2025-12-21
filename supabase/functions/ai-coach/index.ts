@@ -47,7 +47,8 @@ const userContextSchema = z.object({
   cycleRegularity: z.string().max(50).optional(),
   cycleSymptoms: z.array(z.string().max(100)).max(20).optional(),
   checkInContext: z.string().max(2000).optional(),
-  wearableContext: z.string().max(2000).optional()
+  wearableContext: z.string().max(2000).optional(),
+  preferredLanguage: z.enum(['en', 'fr', 'es', 'it', 'pt']).optional()
 }).passthrough().optional();
 
 const requestSchema = z.object({
@@ -293,9 +294,24 @@ ${userContext?.checkInContext || ''}
 ${userContext?.wearableContext || ''}
 ${mealsContext}${mealsAnalysis}`;
 
+    // Determine response language
+    const languageInstructions: Record<string, string> = {
+      en: 'Respond in English.',
+      fr: 'Réponds en français. (Respond in French.)',
+      es: 'Responde en español. (Respond in Spanish.)',
+      it: 'Rispondi in italiano. (Respond in Italian.)',
+      pt: 'Responda em português. (Respond in Portuguese.)'
+    };
+    
+    const preferredLanguage = userContext?.preferredLanguage || 'en';
+    const languageInstruction = languageInstructions[preferredLanguage] || languageInstructions['en'];
+
     const systemPrompt = `${CJT_CORE_SYSTEM}
 
 ${userProfile}
+
+LANGUAGE INSTRUCTION:
+${languageInstruction}
 
 RESPONSE GUIDELINES:
 - Keep responses concise but valuable (2-4 sentences typically, unless explaining something complex)

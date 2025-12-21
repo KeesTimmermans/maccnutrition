@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Settings, LogOut } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Settings, LogOut, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useLanguage, Language, languageNames } from "@/lib/i18n";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
@@ -16,6 +18,7 @@ interface SettingsSheetProps {
 
 export const SettingsSheet = ({ baseline, onSettingsChange }: SettingsSheetProps) => {
   const navigate = useNavigate();
+  const { language, setLanguage, t } = useLanguage();
   const [isMetric, setIsMetric] = useState(baseline?.unit_system === "metric");
   const [isUpdating, setIsUpdating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -26,21 +29,32 @@ export const SettingsSheet = ({ baseline, onSettingsChange }: SettingsSheetProps
     
     try {
       await updateUserSettings({ unit_system: checked ? "metric" : "imperial" });
-      toast.success(`Units switched to ${checked ? "metric" : "imperial"}`);
+      toast.success(`${t('settings_updated')}: ${checked ? t('metric_units_desc') : t('imperial_units_desc')}`);
       onSettingsChange?.();
     } catch (error) {
       console.error("Error updating unit system:", error);
-      toast.error("Failed to update settings");
-      setIsMetric(!checked); // Revert on error
+      toast.error(t('error'));
+      setIsMetric(!checked);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleLanguageChange = async (newLang: Language) => {
+    try {
+      await setLanguage(newLang);
+      toast.success(`${t('language_changed')} ${languageNames[newLang]}`);
+      onSettingsChange?.();
+    } catch (error) {
+      console.error("Error updating language:", error);
+      toast.error(t('error'));
     }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
-    toast.success("Logged out successfully");
+    toast.success(t('logout'));
   };
 
   return (
@@ -52,22 +66,42 @@ export const SettingsSheet = ({ baseline, onSettingsChange }: SettingsSheetProps
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Settings</SheetTitle>
+          <SheetTitle>{t('settings')}</SheetTitle>
         </SheetHeader>
         
         <div className="space-y-6 mt-6">
+          {/* Language Selection */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              {t('language')}
+            </h3>
+            <div className="p-4 bg-muted rounded-xl">
+              <Select value={language} onValueChange={handleLanguageChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('select_language')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(languageNames) as Language[]).map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {languageNames[lang]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Unit System */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Display Units</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t('display_units')}</h3>
             <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
               <div className="space-y-1">
                 <Label htmlFor="unit-toggle" className="text-sm font-medium">
-                  Use Metric Units
+                  {t('use_metric_units')}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {isMetric 
-                    ? "kg, cm, liters, grams" 
-                    : "lbs, ft/in, oz, cups"}
+                  {isMetric ? t('metric_units_desc') : t('imperial_units_desc')}
                 </p>
               </div>
               <Switch
@@ -82,24 +116,24 @@ export const SettingsSheet = ({ baseline, onSettingsChange }: SettingsSheetProps
           {/* User Info */}
           {baseline && (
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Your Profile</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t('your_profile')}</h3>
               <div className="p-4 bg-muted rounded-xl space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Goal</span>
+                  <span className="text-muted-foreground">{t('goal')}</span>
                   <span className="text-foreground capitalize">
-                    {baseline.primary_goal?.replace(/_/g, " ") || "Not set"}
+                    {baseline.primary_goal?.replace(/_/g, " ") || t('not_set')}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Daily Calories</span>
+                  <span className="text-muted-foreground">{t('daily_calories')}</span>
                   <span className="text-foreground">
-                    {baseline.target_calories?.toLocaleString() || "Not set"} kcal
+                    {baseline.target_calories?.toLocaleString() || t('not_set')} kcal
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Activity Level</span>
+                  <span className="text-muted-foreground">{t('activity_level')}</span>
                   <span className="text-foreground capitalize">
-                    {baseline.activity_level?.replace(/_/g, " ") || "Not set"}
+                    {baseline.activity_level?.replace(/_/g, " ") || t('not_set')}
                   </span>
                 </div>
               </div>
@@ -114,7 +148,7 @@ export const SettingsSheet = ({ baseline, onSettingsChange }: SettingsSheetProps
               onClick={handleLogout}
             >
               <LogOut className="w-4 h-4 mr-2" />
-              Log Out
+              {t('logout')}
             </Button>
           </div>
         </div>
