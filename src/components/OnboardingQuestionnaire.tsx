@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import cjtLogo from "@/assets/cjt-logo.png";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type StepType = "demographics" | "medical" | "lifestyle" | "goals" | "preferences" | "female";
 
@@ -86,12 +87,12 @@ const initialData: OnboardingData = {
   cycleSymptoms: [],
 };
 
-const steps: { id: StepType; title: string; icon: React.ReactNode }[] = [
-  { id: "demographics", title: "About You", icon: <User className="w-6 h-6" /> },
-  { id: "medical", title: "Health Info", icon: <Heart className="w-6 h-6" /> },
-  { id: "lifestyle", title: "Lifestyle", icon: <Activity className="w-6 h-6" /> },
-  { id: "goals", title: "Your Goals", icon: <Target className="w-6 h-6" /> },
-  { id: "preferences", title: "Preferences", icon: <Utensils className="w-6 h-6" /> },
+const getSteps = (t: (key: string) => string): { id: StepType; title: string; icon: React.ReactNode }[] => [
+  { id: "demographics", title: t('about_you'), icon: <User className="w-6 h-6" /> },
+  { id: "medical", title: t('health_info'), icon: <Heart className="w-6 h-6" /> },
+  { id: "lifestyle", title: t('lifestyle'), icon: <Activity className="w-6 h-6" /> },
+  { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
+  { id: "preferences", title: t('preferences'), icon: <Utensils className="w-6 h-6" /> },
 ];
 
 interface OnboardingQuestionnaireProps {
@@ -99,11 +100,14 @@ interface OnboardingQuestionnaireProps {
 }
 
 export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireProps) => {
+  const { t } = useLanguage();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [data, setData] = useState<OnboardingData>(initialData);
   
+  const steps = getSteps(t);
+  
   const allSteps = data.sex === "female" 
-    ? [...steps, { id: "female" as StepType, title: "Cycle Info", icon: <Moon className="w-6 h-6" /> }]
+    ? [...steps, { id: "female" as StepType, title: t('cycle_info'), icon: <Moon className="w-6 h-6" /> }]
     : steps;
   
   const currentStep = allSteps[currentStepIndex];
@@ -160,17 +164,17 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   const renderStepContent = () => {
     switch (currentStep.id) {
       case "demographics":
-        return <DemographicsStep data={data} updateData={updateData} />;
+        return <DemographicsStep data={data} updateData={updateData} t={t} />;
       case "medical":
-        return <MedicalStep data={data} toggleArrayItem={toggleArrayItem} />;
+        return <MedicalStep data={data} toggleArrayItem={toggleArrayItem} t={t} />;
       case "lifestyle":
-        return <LifestyleStep data={data} updateData={updateData} />;
+        return <LifestyleStep data={data} updateData={updateData} t={t} />;
       case "goals":
-        return <GoalsStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} />;
+        return <GoalsStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "preferences":
-        return <PreferencesStep data={data} updateData={updateData} />;
+        return <PreferencesStep data={data} updateData={updateData} t={t} />;
       case "female":
-        return <FemaleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} />;
+        return <FemaleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       default:
         return null;
     }
@@ -223,7 +227,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
             <div>
               <h2 className="text-xl font-bold text-foreground">{currentStep.title}</h2>
               <p className="text-sm text-muted-foreground">
-                Step {currentStepIndex + 1} of {allSteps.length}
+                {t('step_x_of_y').replace('{current}', String(currentStepIndex + 1)).replace('{total}', String(allSteps.length))}
               </p>
             </div>
           </div>
@@ -237,7 +241,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         {currentStepIndex > 0 && (
           <Button variant="soft" size="lg" onClick={handleBack} className="flex-1">
             <ChevronLeft className="w-5 h-5 mr-1" />
-            Back
+            {t('back')}
           </Button>
         )}
         <Button
@@ -249,12 +253,12 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         >
           {currentStepIndex === allSteps.length - 1 ? (
             <>
-              Complete Setup
+              {t('complete_setup')}
               <Sparkles className="w-5 h-5 ml-1" />
             </>
           ) : (
             <>
-              Continue
+              {t('continue')}
               <ChevronRight className="w-5 h-5 ml-1" />
             </>
           )}
@@ -265,16 +269,17 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
 };
 
 // Step Components
-const DemographicsStep = ({ data, updateData }: { 
+const DemographicsStep = ({ data, updateData, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  t: (key: string) => string;
 }) => (
   <div className="space-y-6 animate-slide-up">
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">Age</Label>
+      <Label className="text-sm font-semibold">{t('age')}</Label>
       <Input
         type="number"
-        placeholder="Enter your age"
+        placeholder={t('enter_age')}
         value={data.age}
         onChange={(e) => updateData("age", e.target.value)}
         className="h-12 rounded-xl"
@@ -282,11 +287,11 @@ const DemographicsStep = ({ data, updateData }: {
     </div>
 
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">Biological Sex</Label>
+      <Label className="text-sm font-semibold">{t('biological_sex')}</Label>
       <div className="grid grid-cols-2 gap-3">
         {[
-          { label: "Male", value: "male" },
-          { label: "Female", value: "female" },
+          { label: t('male'), value: "male" },
+          { label: t('female'), value: "female" },
         ].map((option) => (
           <button
             key={option.value}
@@ -305,11 +310,11 @@ const DemographicsStep = ({ data, updateData }: {
 
     {/* Unit System Toggle */}
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">Measurement System</Label>
+      <Label className="text-sm font-semibold">{t('measurement_system')}</Label>
       <div className="grid grid-cols-2 gap-3">
         {[
-          { label: "Imperial", desc: "ft, in, lbs", value: "imperial" as const },
-          { label: "Metric", desc: "cm, kg", value: "metric" as const },
+          { label: t('imperial'), desc: t('ft_in_lbs'), value: "imperial" as const },
+          { label: t('metric'), desc: t('cm_kg'), value: "metric" as const },
         ].map((option) => (
           <button
             key={option.value}
@@ -330,13 +335,13 @@ const DemographicsStep = ({ data, updateData }: {
     </div>
 
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">Height</Label>
+      <Label className="text-sm font-semibold">{t('height')}</Label>
       {data.unitSystem === "imperial" ? (
         <div className="flex gap-3">
           <div className="flex-1">
             <Input
               type="number"
-              placeholder="Feet"
+              placeholder={t('feet')}
               value={data.heightFeet}
               onChange={(e) => updateData("heightFeet", e.target.value)}
               className="h-12 rounded-xl"
@@ -345,7 +350,7 @@ const DemographicsStep = ({ data, updateData }: {
           <div className="flex-1">
             <Input
               type="number"
-              placeholder="Inches"
+              placeholder={t('inches')}
               value={data.heightInches}
               onChange={(e) => updateData("heightInches", e.target.value)}
               className="h-12 rounded-xl"
@@ -355,7 +360,7 @@ const DemographicsStep = ({ data, updateData }: {
       ) : (
         <Input
           type="number"
-          placeholder="Height in cm"
+          placeholder={t('height_in_cm')}
           value={data.heightCm}
           onChange={(e) => updateData("heightCm", e.target.value)}
           className="h-12 rounded-xl"
@@ -365,11 +370,11 @@ const DemographicsStep = ({ data, updateData }: {
 
     <div className="space-y-2">
       <Label className="text-sm font-semibold">
-        Current Weight ({data.unitSystem === "imperial" ? "lbs" : "kg"})
+        {t('current_weight').replace('{unit}', data.unitSystem === "imperial" ? "lbs" : "kg")}
       </Label>
       <Input
         type="number"
-        placeholder={`Enter your weight in ${data.unitSystem === "imperial" ? "lbs" : "kg"}`}
+        placeholder={t('enter_weight').replace('{unit}', data.unitSystem === "imperial" ? "lbs" : "kg")}
         value={data.weight}
         onChange={(e) => updateData("weight", e.target.value)}
         className="h-12 rounded-xl"
@@ -378,17 +383,30 @@ const DemographicsStep = ({ data, updateData }: {
   </div>
 );
 
-const MedicalStep = ({ data, toggleArrayItem }: { 
+const MedicalStep = ({ data, toggleArrayItem, t }: { 
   data: OnboardingData; 
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
+  t: (key: string) => string;
 }) => {
   const conditions = [
-    "Diabetes", "PCOS", "IBS", "Thyroid issues", "High blood pressure", 
-    "Heart condition", "Kidney issues", "None"
+    { key: "diabetes", label: t('diabetes') },
+    { key: "pcos", label: t('pcos') },
+    { key: "ibs", label: t('ibs') },
+    { key: "thyroid_issues", label: t('thyroid_issues') },
+    { key: "high_blood_pressure", label: t('high_blood_pressure') },
+    { key: "heart_condition", label: t('heart_condition') },
+    { key: "kidney_issues", label: t('kidney_issues') },
+    { key: "none", label: t('none') },
   ];
   
   const allergies = [
-    "Dairy", "Gluten", "Nuts", "Shellfish", "Eggs", "Soy", "None"
+    { key: "dairy", label: t('dairy') },
+    { key: "gluten", label: t('gluten') },
+    { key: "nuts", label: t('nuts') },
+    { key: "shellfish", label: t('shellfish') },
+    { key: "eggs", label: t('eggs') },
+    { key: "soy", label: t('soy') },
+    { key: "none", label: t('none') },
   ];
 
   return (
@@ -396,43 +414,43 @@ const MedicalStep = ({ data, toggleArrayItem }: {
       <div className="bg-accent/50 rounded-xl p-4 flex gap-3">
         <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
         <p className="text-sm text-foreground">
-          This information helps us provide better recommendations. All data is kept confidential.
+          {t('health_info_notice')}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Any health conditions? (Select all that apply)</Label>
+        <Label className="text-sm font-semibold">{t('health_conditions')}</Label>
         <div className="grid grid-cols-2 gap-2">
           {conditions.map((condition) => (
             <button
-              key={condition}
-              onClick={() => toggleArrayItem("conditions", condition)}
+              key={condition.key}
+              onClick={() => toggleArrayItem("conditions", condition.key)}
               className={`p-3 rounded-xl text-sm text-left transition-all ${
-                data.conditions.includes(condition)
+                data.conditions.includes(condition.key)
                   ? "bg-primary text-primary-foreground"
                   : "bg-card shadow-soft hover:shadow-medium"
               }`}
             >
-              {condition}
+              {condition.label}
             </button>
           ))}
         </div>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Food allergies or intolerances?</Label>
+        <Label className="text-sm font-semibold">{t('food_allergies')}</Label>
         <div className="grid grid-cols-2 gap-2">
           {allergies.map((allergy) => (
             <button
-              key={allergy}
-              onClick={() => toggleArrayItem("allergies", allergy)}
+              key={allergy.key}
+              onClick={() => toggleArrayItem("allergies", allergy.key)}
               className={`p-3 rounded-xl text-sm text-left transition-all ${
-                data.allergies.includes(allergy)
+                data.allergies.includes(allergy.key)
                   ? "bg-primary text-primary-foreground"
                   : "bg-card shadow-soft hover:shadow-medium"
               }`}
             >
-              {allergy}
+              {allergy.label}
             </button>
           ))}
         </div>
