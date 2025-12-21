@@ -162,7 +162,49 @@ export const Dashboard = () => {
           fats: savedMeal.fats,
           imageUrl: savedMeal.image_url || undefined,
         };
-        setMeals(prev => [...prev, newMeal]);
+        
+        const updatedMeals = [...meals, newMeal];
+        setMeals(updatedMeals);
+        
+        // Calculate new totals after adding meal
+        const newTotalCalories = updatedMeals.reduce((sum, m) => sum + m.calories, 0);
+        const newTotalProtein = updatedMeals.reduce((sum, m) => sum + m.protein, 0);
+        const newTotalCarbs = updatedMeals.reduce((sum, m) => sum + m.carbs, 0);
+        const newTotalFats = updatedMeals.reduce((sum, m) => sum + m.fats, 0);
+        
+        // Check if goals were just reached
+        const calorieGoal = baseline?.target_calories || 2000;
+        const proteinGoal = baseline?.protein_grams || 120;
+        const carbsGoal = baseline?.carbs_grams || 200;
+        const fatsGoal = baseline?.fats_grams || 65;
+        
+        // Celebrate goal achievements
+        if (newTotalCalories >= calorieGoal && totalCalories < calorieGoal) {
+          toast.success("🎉 Amazing! You've hit your calorie goal for today!", { duration: 5000 });
+        }
+        if (newTotalProtein >= proteinGoal && totalProtein < proteinGoal) {
+          toast.success("💪 Protein goal crushed! Great job fueling your muscles!", { duration: 5000 });
+        }
+        if (newTotalCarbs >= carbsGoal && totalCarbs < carbsGoal) {
+          toast.success("⚡ Carb goal reached! Your energy stores are topped up!", { duration: 5000 });
+        }
+        if (newTotalFats >= fatsGoal && totalFats < fatsGoal) {
+          toast.success("🥑 Healthy fats goal achieved! Your body thanks you!", { duration: 5000 });
+        }
+        
+        // All macros complete celebration
+        if (newTotalCalories >= calorieGoal && newTotalProtein >= proteinGoal && 
+            newTotalCarbs >= carbsGoal && newTotalFats >= fatsGoal &&
+            !(totalCalories >= calorieGoal && totalProtein >= proteinGoal && 
+              totalCarbs >= carbsGoal && totalFats >= fatsGoal)) {
+          setTimeout(() => {
+            toast.success("🏆 PERFECT DAY! All nutrition goals completed!", { 
+              duration: 6000,
+              style: { background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white' }
+            });
+          }, 1000);
+        }
+        
         toast.success(t('meal_logged'));
       }
     } catch (error) {
