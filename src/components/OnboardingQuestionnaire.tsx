@@ -459,41 +459,42 @@ const MedicalStep = ({ data, toggleArrayItem, t }: {
   );
 };
 
-const LifestyleStep = ({ data, updateData }: { 
+const LifestyleStep = ({ data, updateData, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  t: (key: string) => string;
 }) => {
   const activityLevels = [
-    { label: "Not active", desc: "Desk job, minimal movement", value: "not_active" },
-    { label: "Semi-active", desc: "Some walking, light activity", value: "semi_active" },
-    { label: "Active", desc: "Regular exercise, on feet often", value: "active" },
-    { label: "Very active", desc: "Intense training, physical job", value: "very_active" },
+    { label: t('not_active'), desc: t('not_active_desc'), value: "not_active" },
+    { label: t('semi_active'), desc: t('semi_active_desc'), value: "semi_active" },
+    { label: t('active'), desc: t('active_desc'), value: "active" },
+    { label: t('very_active'), desc: t('very_active_desc'), value: "very_active" },
   ];
 
   const trainingOptions = [
-    { label: "0-1 days", value: "0-1" },
-    { label: "2-3 days", value: "2-3" },
-    { label: "4-5 days", value: "4-5" },
-    { label: "6+ days", value: "6+" },
+    { label: "0-1", value: "0-1" },
+    { label: "2-3", value: "2-3" },
+    { label: "4-5", value: "4-5" },
+    { label: "6+", value: "6+" },
   ];
 
   const sleepOptions = [
-    { label: "Less than 5 hrs", value: "<5" },
-    { label: "5-6 hours", value: "5-6" },
-    { label: "7-8 hours", value: "7-8" },
-    { label: "8+ hours", value: "8+" },
+    { label: t('less_than_5'), value: "<5" },
+    { label: t('5_6_hours'), value: "5-6" },
+    { label: t('7_8_hours'), value: "7-8" },
+    { label: t('8_plus_hours'), value: "8+" },
   ];
 
   const stressLevels = [
-    { label: "Low", value: "low" },
-    { label: "Moderate", value: "moderate" },
-    { label: "High", value: "high" },
+    { label: t('low'), value: "low" },
+    { label: t('moderate'), value: "moderate" },
+    { label: t('high'), value: "high" },
   ];
 
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Daily activity level</Label>
+        <Label className="text-sm font-semibold">{t('daily_activity_level')}</Label>
         <div className="space-y-2">
           {activityLevels.map((level) => (
             <button
@@ -515,7 +516,7 @@ const LifestyleStep = ({ data, updateData }: {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Training days per week</Label>
+        <Label className="text-sm font-semibold">{t('training_days_week')}</Label>
         <div className="grid grid-cols-4 gap-2">
           {trainingOptions.map((option) => (
             <button
@@ -534,7 +535,7 @@ const LifestyleStep = ({ data, updateData }: {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Average sleep per night</Label>
+        <Label className="text-sm font-semibold">{t('avg_sleep_night')}</Label>
         <div className="grid grid-cols-2 gap-2">
           {sleepOptions.map((option) => (
             <button
@@ -553,7 +554,7 @@ const LifestyleStep = ({ data, updateData }: {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Current stress level</Label>
+        <Label className="text-sm font-semibold">{t('current_stress_level')}</Label>
         <div className="grid grid-cols-3 gap-2">
           {stressLevels.map((option) => (
             <button
@@ -574,30 +575,35 @@ const LifestyleStep = ({ data, updateData }: {
   );
 };
 
-const GoalsStep = ({ data, updateData, toggleArrayItem }: { 
+const GoalsStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
+  t: (key: string) => string;
 }) => {
   const primaryGoals = [
-    { label: "Fat Loss", desc: "Reduce body fat while preserving muscle", value: "fat_loss", icon: "🔥" },
-    { label: "Muscle Gain", desc: "Build lean muscle mass", value: "muscle_gain", icon: "💪" },
-    { label: "Performance", desc: "Optimize athletic performance", value: "performance", icon: "⚡" },
-    { label: "Recovery", desc: "Support faster recovery from training", value: "recovery", icon: "🔄" },
-    { label: "Energy", desc: "Improve daily energy levels", value: "energy", icon: "✨" },
-    { label: "Health Markers", desc: "Improve blood work and health metrics", value: "health_markers", icon: "📊" },
-    { label: "General Health", desc: "Maintain health and wellbeing", value: "general_health", icon: "🌿" },
+    { label: t('fat_loss'), desc: t('fat_loss_desc'), value: "fat_loss", icon: "🔥" },
+    { label: t('muscle_gain'), desc: t('muscle_gain_desc'), value: "muscle_gain", icon: "💪" },
+    { label: t('performance_goal'), desc: t('performance_desc'), value: "performance", icon: "⚡" },
+    { label: t('recovery_goal'), desc: t('recovery_desc'), value: "recovery", icon: "🔄" },
+    { label: t('energy_goal'), desc: t('energy_desc'), value: "energy", icon: "✨" },
+    { label: t('health_markers'), desc: t('health_markers_desc'), value: "health_markers", icon: "📊" },
+    { label: t('general_health'), desc: t('general_health_desc'), value: "general_health", icon: "🌿" },
   ];
 
   const secondaryGoals = [
-    "Better energy", "Improved recovery", "Better sleep", 
-    "Reduce inflammation", "Hormone balance", "Mental clarity"
+    { key: "better_energy", label: t('better_energy') },
+    { key: "improved_recovery", label: t('improved_recovery') },
+    { key: "better_sleep", label: t('better_sleep') },
+    { key: "reduce_inflammation", label: t('reduce_inflammation') },
+    { key: "hormone_balance", label: t('hormone_balance') },
+    { key: "mental_clarity", label: t('mental_clarity') },
   ];
 
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Primary goal</Label>
+        <Label className="text-sm font-semibold">{t('primary_goal')}</Label>
         <div className="space-y-2">
           {primaryGoals.map((goal) => (
             <button
@@ -622,19 +628,19 @@ const GoalsStep = ({ data, updateData, toggleArrayItem }: {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Secondary goals (optional)</Label>
+        <Label className="text-sm font-semibold">{t('secondary_goals')}</Label>
         <div className="grid grid-cols-2 gap-2">
           {secondaryGoals.map((goal) => (
             <button
-              key={goal}
-              onClick={() => toggleArrayItem("secondaryGoals", goal)}
+              key={goal.key}
+              onClick={() => toggleArrayItem("secondaryGoals", goal.key)}
               className={`p-3 rounded-xl text-sm text-center transition-all ${
-                data.secondaryGoals.includes(goal)
+                data.secondaryGoals.includes(goal.key)
                   ? "bg-primary text-primary-foreground"
                   : "bg-card shadow-soft hover:shadow-medium"
               }`}
             >
-              {goal}
+              {goal.label}
             </button>
           ))}
         </div>
@@ -643,34 +649,35 @@ const GoalsStep = ({ data, updateData, toggleArrayItem }: {
   );
 };
 
-const PreferencesStep = ({ data, updateData }: { 
+const PreferencesStep = ({ data, updateData, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  t: (key: string) => string;
 }) => {
   const dietTypes = [
-    { label: "Omnivore", desc: "Eats everything", value: "omnivore" },
-    { label: "Pescatarian", desc: "Fish but no meat", value: "pescatarian" },
-    { label: "Vegetarian", desc: "No meat or fish", value: "vegetarian" },
-    { label: "Vegan", desc: "No animal products", value: "vegan" },
+    { label: t('omnivore'), desc: t('omnivore_desc'), value: "omnivore" },
+    { label: t('pescatarian'), desc: t('pescatarian_desc'), value: "pescatarian" },
+    { label: t('vegetarian'), desc: t('vegetarian_desc'), value: "vegetarian" },
+    { label: t('vegan'), desc: t('vegan_desc'), value: "vegan" },
   ];
 
   const coachingTones = [
-    { label: "Supportive", desc: "Encouraging and gentle", value: "supportive" },
-    { label: "Direct", desc: "Straight to the point", value: "direct" },
-    { label: "Motivating", desc: "Energetic and pushing", value: "motivating" },
+    { label: t('supportive'), desc: t('supportive_desc'), value: "supportive" },
+    { label: t('direct'), desc: t('direct_desc'), value: "direct" },
+    { label: t('motivating'), desc: t('motivating_desc'), value: "motivating" },
   ];
 
   const mealOptions = [
-    { label: "2 meals", value: "2" },
-    { label: "3 meals", value: "3" },
-    { label: "4+ meals", value: "4+" },
-    { label: "Flexible", value: "flexible" },
+    { label: t('2_meals'), value: "2" },
+    { label: t('3_meals'), value: "3" },
+    { label: t('4_plus_meals'), value: "4+" },
+    { label: t('flexible'), value: "flexible" },
   ];
 
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Diet type</Label>
+        <Label className="text-sm font-semibold">{t('diet_type')}</Label>
         <div className="grid grid-cols-2 gap-2">
           {dietTypes.map((diet) => (
             <button
@@ -692,7 +699,7 @@ const PreferencesStep = ({ data, updateData }: {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Preferred meals per day</Label>
+        <Label className="text-sm font-semibold">{t('meals_per_day')}</Label>
         <div className="grid grid-cols-4 gap-2">
           {mealOptions.map((option) => (
             <button
@@ -711,7 +718,7 @@ const PreferencesStep = ({ data, updateData }: {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Coaching tone preference</Label>
+        <Label className="text-sm font-semibold">{t('coaching_tone')}</Label>
         <div className="space-y-2">
           {coachingTones.map((tone) => (
             <button
@@ -733,9 +740,9 @@ const PreferencesStep = ({ data, updateData }: {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm font-semibold">Foods you dislike (optional)</Label>
+        <Label className="text-sm font-semibold">{t('foods_dislike')}</Label>
         <Input
-          placeholder="e.g., mushrooms, olives, tofu"
+          placeholder={t('foods_dislike_placeholder')}
           value={data.foodDislikes}
           onChange={(e) => updateData("foodDislikes", e.target.value)}
           className="h-12 rounded-xl"
@@ -745,28 +752,34 @@ const PreferencesStep = ({ data, updateData }: {
   );
 };
 
-const FemaleStep = ({ data, updateData, toggleArrayItem }: { 
+const FemaleStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
+  t: (key: string) => string;
 }) => {
   const regularityOptions = [
-    { label: "Regular", desc: "Consistent cycle length", value: "regular" },
-    { label: "Irregular", desc: "Varies significantly", value: "irregular" },
-    { label: "Not tracking", desc: "Prefer not to say", value: "not_tracking" },
+    { label: t('regular'), desc: t('regular_desc'), value: "regular" },
+    { label: t('irregular'), desc: t('irregular_desc'), value: "irregular" },
+    { label: t('not_tracking'), desc: t('not_tracking_desc'), value: "not_tracking" },
   ];
 
   const phaseOptions = [
-    { label: "Menstrual", desc: "Days 1-5", value: "menstrual" },
-    { label: "Follicular", desc: "Days 6-14", value: "follicular" },
-    { label: "Ovulation", desc: "Around day 14", value: "ovulation" },
-    { label: "Luteal", desc: "Days 15-28", value: "luteal" },
-    { label: "Unsure", desc: "Not tracking", value: "unsure" },
+    { label: t('menstrual'), desc: t('menstrual_desc'), value: "menstrual" },
+    { label: t('follicular'), desc: t('follicular_desc'), value: "follicular" },
+    { label: t('ovulation'), desc: t('ovulation_desc'), value: "ovulation" },
+    { label: t('luteal'), desc: t('luteal_desc'), value: "luteal" },
+    { label: t('unsure'), desc: t('unsure_desc'), value: "unsure" },
   ];
 
   const symptoms = [
-    "Cravings", "Fatigue", "Bloating", "Mood changes", 
-    "Low energy", "Sleep issues", "None/minimal"
+    { key: "cravings", label: t('cravings') },
+    { key: "fatigue", label: t('fatigue') },
+    { key: "bloating", label: t('bloating') },
+    { key: "mood_changes", label: t('mood_changes') },
+    { key: "low_energy", label: t('low_energy') },
+    { key: "sleep_issues", label: t('sleep_issues') },
+    { key: "none_minimal", label: t('none_minimal') },
   ];
 
   return (
@@ -774,12 +787,12 @@ const FemaleStep = ({ data, updateData, toggleArrayItem }: {
       <div className="bg-accent/50 rounded-xl p-4 flex gap-3">
         <Heart className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
         <p className="text-sm text-foreground">
-          Cycle information helps us adjust your nutrition recommendations for better energy and recovery throughout the month.
+          {t('cycle_info_notice')}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Cycle regularity</Label>
+        <Label className="text-sm font-semibold">{t('cycle_regularity')}</Label>
         <div className="space-y-2">
           {regularityOptions.map((option) => (
             <button
@@ -803,7 +816,7 @@ const FemaleStep = ({ data, updateData, toggleArrayItem }: {
       {data.cycleRegularity === "regular" && (
         <>
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Current phase (approximate)</Label>
+            <Label className="text-sm font-semibold">{t('current_phase')}</Label>
             <div className="grid grid-cols-2 gap-2">
               {phaseOptions.map((option) => (
                 <button
@@ -825,19 +838,19 @@ const FemaleStep = ({ data, updateData, toggleArrayItem }: {
           </div>
 
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Common symptoms</Label>
+            <Label className="text-sm font-semibold">{t('common_symptoms')}</Label>
             <div className="grid grid-cols-2 gap-2">
               {symptoms.map((symptom) => (
                 <button
-                  key={symptom}
-                  onClick={() => toggleArrayItem("cycleSymptoms", symptom)}
+                  key={symptom.key}
+                  onClick={() => toggleArrayItem("cycleSymptoms", symptom.key)}
                   className={`p-3 rounded-xl text-sm text-center transition-all ${
-                    data.cycleSymptoms.includes(symptom)
+                    data.cycleSymptoms.includes(symptom.key)
                       ? "bg-primary text-primary-foreground"
                       : "bg-card shadow-soft hover:shadow-medium"
                   }`}
                 >
-                  {symptom}
+                  {symptom.label}
                 </button>
               ))}
             </div>
