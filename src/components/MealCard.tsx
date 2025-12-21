@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/lib/i18n";
 
 interface MealData {
   id: string;
@@ -36,6 +37,7 @@ interface MealCardProps {
 }
 
 export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
+  const { t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editedMeal, setEditedMeal] = useState(meal);
@@ -63,7 +65,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
     return (
       <div className="bg-card rounded-2xl shadow-soft p-4 animate-scale-in">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="font-bold text-foreground">Edit Meal</h4>
+          <h4 className="font-bold text-foreground">{t('edit_meal')}</h4>
           <div className="flex gap-2">
             <button
               onClick={handleCancelEdit}
@@ -84,12 +86,12 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
           <Input
             value={editedMeal.name}
             onChange={(e) => setEditedMeal({ ...editedMeal, name: e.target.value })}
-            placeholder="Meal name"
+            placeholder={t('meal_name')}
             className="bg-muted"
           />
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-muted-foreground">Calories</label>
+              <label className="text-xs text-muted-foreground">{t('calories')}</label>
               <Input
                 type="number"
                 value={editedMeal.calories}
@@ -98,7 +100,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Protein (g)</label>
+              <label className="text-xs text-muted-foreground">{t('protein')} (g)</label>
               <Input
                 type="number"
                 value={editedMeal.protein}
@@ -107,7 +109,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Carbs (g)</label>
+              <label className="text-xs text-muted-foreground">{t('carbs')} (g)</label>
               <Input
                 type="number"
                 value={editedMeal.carbs}
@@ -116,7 +118,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Fats (g)</label>
+              <label className="text-xs text-muted-foreground">{t('fats')} (g)</label>
               <Input
                 type="number"
                 value={editedMeal.fats}
@@ -173,7 +175,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
                     {onEdit && (
                       <DropdownMenuItem onClick={() => setIsEditing(true)}>
                         <Pencil className="w-4 h-4 mr-2" />
-                        Edit
+                        {t('edit')}
                       </DropdownMenuItem>
                     )}
                     {onDelete && (
@@ -182,7 +184,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
+                        {t('delete')}
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -209,15 +211,15 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete meal?</AlertDialogTitle>
+            <AlertDialogTitle>{t('delete_meal_title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{meal.name}" from your log. This action cannot be undone.
+              {t('delete_meal_desc').replace('{meal}', meal.name)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -227,6 +229,8 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
 };
 
 export const AddMealCard = ({ onClick }: { onClick: () => void }) => {
+  const { t } = useLanguage();
+  
   return (
     <button
       onClick={onClick}
@@ -236,8 +240,8 @@ export const AddMealCard = ({ onClick }: { onClick: () => void }) => {
         <Plus className="w-6 h-6 text-primary" />
       </div>
       <div className="text-center">
-        <p className="font-semibold text-foreground">Log a Meal</p>
-        <p className="text-sm text-muted-foreground">Snap a photo or search</p>
+        <p className="font-semibold text-foreground">{t('log_a_meal')}</p>
+        <p className="text-sm text-muted-foreground">{t('snap_or_search')}</p>
       </div>
     </button>
   );
