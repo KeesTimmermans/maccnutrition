@@ -55,24 +55,45 @@ serve(async (req) => {
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
+      status: "all",
       limit: 1,
     });
 
-    const hasActiveSub = subscriptions.data.length > 0;
+    // Filter for active or trialing subscriptions
+    const activeOrTrialing = subscriptions.data.filter(
+      (s: { status: string }) => s.status === "active" || s.status === "trialing"
+    );
+
+    const hasActiveSub = activeOrTrialing.length > 0;
     let subscriptionEnd = null;
+    let isTrialing = false;
+    let trialEnd = null;
+    let trialDaysRemaining = null;
 
     if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
+      const subscription = activeOrTrialing[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      isTrialing = subscription.status === "trialing";
+      
+      if (isTrialing && subscription.trial_end) {
+        trialEnd = new Date(subscription.trial_end * 1000).toISOString();
+        const now = new Date();
+        const trialEndDate = new Date(subscription.trial_end * 1000);
+        trialDaysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        logStep("Trial subscription found", { trialEnd, trialDaysRemaining });
+      } else {
+        logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      }
     } else {
       logStep("No active subscription found");
     }
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      is_trialing: isTrialing,
+      trial_end: trialEnd,
+      trial_days_remaining: trialDaysRemaining,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

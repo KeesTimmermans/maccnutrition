@@ -12,6 +12,7 @@ import { WaterTracker } from "@/components/WaterTracker";
 import { MealPlanner } from "@/components/MealPlanner";
 import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
+import { TrialBanner } from "@/components/TrialBanner";
 import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
@@ -36,7 +37,7 @@ interface DashboardMeal {
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription } = useAuth();
+  const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
@@ -225,6 +226,10 @@ export const Dashboard = () => {
       </header>
 
       <main className="container py-6 space-y-6">
+        {/* Trial Banner */}
+        {isTrialing && trialDaysRemaining !== null && trialEnd && (
+          <TrialBanner daysRemaining={trialDaysRemaining} trialEnd={trialEnd} />
+        )}
         {/* Check-In Prompt */}
         {!hasCheckedInToday && (
           <section>
