@@ -7,7 +7,7 @@ import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
 import { Sparkles, Heart, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getUserBaseline, saveUserBaseline } from "@/lib/userService";
+import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateBaseline } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import cjtLogo from "@/assets/cjt-logo.png";
@@ -81,9 +81,27 @@ const Index = () => {
       try {
         const baseline = calculateBaseline(data);
         await saveUserBaseline(user.id, data, baseline);
+        
+        // Send baseline summary email
+        if (user.email) {
+          sendBaselineEmail(
+            user.email,
+            user.user_metadata?.full_name || user.email.split('@')[0],
+            baseline,
+            data.primaryGoal,
+            baseline.mealPattern
+          ).then(result => {
+            if (result.success) {
+              console.log("Baseline email sent successfully");
+            }
+          }).catch(err => {
+            console.error("Failed to send baseline email:", err);
+          });
+        }
+        
         toast({
           title: "Profile saved!",
-          description: "Your personalized baseline has been created.",
+          description: "Your personalized baseline has been created. Check your email for a summary!",
         });
       } catch (error) {
         console.error("Error saving baseline:", error);

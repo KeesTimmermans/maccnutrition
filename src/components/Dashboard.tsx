@@ -13,12 +13,14 @@ import { MealPlanner } from "@/components/MealPlanner";
 import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
+import { RecalibrationNotification } from "@/components/RecalibrationNotification";
 import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, UserTargets } from "@/lib/checkinService";
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
+import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -52,6 +54,8 @@ export const Dashboard = () => {
   const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
   const [hasWearableConnections, setHasWearableConnections] = useState(false);
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
+  const [recalibrationResult, setRecalibrationResult] = useState<RecalibrationResult | null>(null);
+  const [showRecalibration, setShowRecalibration] = useState(false);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -132,6 +136,21 @@ export const Dashboard = () => {
       
       setMeals(formattedMeals);
       setBaseline(userBaseline);
+      
+      // Check for baseline recalibration (every 2 weeks)
+      if (userBaseline) {
+        const lastCheck = localStorage.getItem('cjt_recalibration_check');
+        const today = new Date().toDateString();
+        if (lastCheck !== today) {
+          localStorage.setItem('cjt_recalibration_check', today);
+          checkRecalibrationNeeded(userBaseline).then(result => {
+            if (result.shouldRecalibrate) {
+              setRecalibrationResult(result);
+              setShowRecalibration(true);
+            }
+          });
+        }
+      }
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -288,6 +307,21 @@ export const Dashboard = () => {
               </div>
               <div className="text-2xl">👋</div>
             </button>
+          </section>
+        )}
+
+        {/* Recalibration Notification */}
+        {showRecalibration && recalibrationResult && baseline && (
+          <section>
+            <RecalibrationNotification
+              result={recalibrationResult}
+              currentCalories={baseline.target_calories || 2000}
+              onApply={() => {
+                setShowRecalibration(false);
+                loadData(); // Reload with new baseline
+              }}
+              onDismiss={() => setShowRecalibration(false)}
+            />
           </section>
         )}
 
