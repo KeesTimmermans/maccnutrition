@@ -1,6 +1,7 @@
 import { Flame, MessageSquare, Trophy } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserStreak } from "@/lib/streakService";
+import { useLanguage } from "@/lib/i18n";
 
 interface StreakCardProps {
   loginStreak: UserStreak | null;
@@ -8,6 +9,7 @@ interface StreakCardProps {
 }
 
 export const StreakCard = ({ loginStreak, coachingStreak }: StreakCardProps) => {
+  const { t } = useLanguage();
   const loginCurrent = loginStreak?.current_streak || 0;
   const loginBest = loginStreak?.longest_streak || 0;
   const coachingCurrent = coachingStreak?.current_streak || 0;
@@ -18,7 +20,7 @@ export const StreakCard = ({ loginStreak, coachingStreak }: StreakCardProps) => 
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-4">
           <Trophy className="w-5 h-5 text-primary" />
-          <h3 className="font-bold text-foreground">Consistency Streaks</h3>
+          <h3 className="font-bold text-foreground">{t('consistency_streaks')}</h3>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -30,10 +32,10 @@ export const StreakCard = ({ loginStreak, coachingStreak }: StreakCardProps) => 
               </div>
             </div>
             <p className="text-3xl font-bold text-foreground">{loginCurrent}</p>
-            <p className="text-xs text-muted-foreground font-medium">Day Login Streak</p>
+            <p className="text-xs text-muted-foreground font-medium">{t('day_login_streak')}</p>
             <div className="mt-2 flex items-center justify-center gap-1">
               <Trophy className="w-3 h-3 text-primary" />
-              <span className="text-xs text-primary font-semibold">Best: {loginBest}</span>
+              <span className="text-xs text-primary font-semibold">{t('best')}: {loginBest}</span>
             </div>
           </div>
 
@@ -45,10 +47,10 @@ export const StreakCard = ({ loginStreak, coachingStreak }: StreakCardProps) => 
               </div>
             </div>
             <p className="text-3xl font-bold text-foreground">{coachingCurrent}</p>
-            <p className="text-xs text-muted-foreground font-medium">Day Coaching Streak</p>
+            <p className="text-xs text-muted-foreground font-medium">{t('day_coaching_streak')}</p>
             <div className="mt-2 flex items-center justify-center gap-1">
               <Trophy className="w-3 h-3 text-primary" />
-              <span className="text-xs text-primary font-semibold">Best: {coachingBest}</span>
+              <span className="text-xs text-primary font-semibold">{t('best')}: {coachingBest}</span>
             </div>
           </div>
         </div>
@@ -56,7 +58,7 @@ export const StreakCard = ({ loginStreak, coachingStreak }: StreakCardProps) => 
         {(loginCurrent >= 7 || coachingCurrent >= 7) && (
           <div className="mt-4 p-3 bg-primary/10 rounded-xl text-center">
             <p className="text-sm font-semibold text-primary">
-              🎉 Amazing consistency! Keep it up!
+              🎉 {t('amazing_consistency')}
             </p>
           </div>
         )}

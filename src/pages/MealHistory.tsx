@@ -6,6 +6,7 @@ import { MealCard } from "@/components/MealCard";
 import { getMealsByDateRange, updateMeal, deleteMeal, Meal } from "@/lib/mealService";
 import { format, startOfDay, endOfDay, subDays, addDays, isSameDay, isToday } from "date-fns";
 import { toast } from "sonner";
+import { useLanguage } from "@/lib/i18n";
 
 interface DayData {
   date: Date;
@@ -20,6 +21,7 @@ interface DayData {
 
 const MealHistory = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [days, setDays] = useState<DayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState(() => subDays(new Date(), 6));
@@ -72,7 +74,7 @@ const MealHistory = () => {
       setDays(daysArray);
     } catch (error) {
       console.error("Error loading meal history:", error);
-      toast.error("Failed to load meal history");
+      toast.error(t('failed_load_history'));
     } finally {
       setIsLoading(false);
     }
@@ -99,9 +101,9 @@ const MealHistory = () => {
         fats: editedMeal.fats,
       });
       loadMeals();
-      toast.success("Meal updated!");
+      toast.success(t('meal_updated'));
     } catch (error) {
-      toast.error("Failed to update meal.");
+      toast.error(t('failed_update_meal'));
     }
   };
 
@@ -109,9 +111,9 @@ const MealHistory = () => {
     try {
       await deleteMeal(mealId);
       loadMeals();
-      toast.success("Meal deleted");
+      toast.success(t('meal_deleted'));
     } catch (error) {
-      toast.error("Failed to delete meal.");
+      toast.error(t('failed_delete_meal'));
     }
   };
 
@@ -130,8 +132,8 @@ const MealHistory = () => {
             <ArrowLeft className="w-6 h-6 text-foreground" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Meal History</h1>
-            <p className="text-sm text-muted-foreground">View your past nutrition</p>
+            <h1 className="text-xl font-bold text-foreground">{t('meal_history')}</h1>
+            <p className="text-sm text-muted-foreground">{t('view_past_nutrition')}</p>
           </div>
         </div>
       </header>
@@ -164,7 +166,7 @@ const MealHistory = () => {
 
         {/* Days List */}
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading history...</div>
+          <div className="text-center py-12 text-muted-foreground">{t('loading_history')}</div>
         ) : (
           <div className="space-y-6">
             {days.map((day) => (
@@ -173,7 +175,7 @@ const MealHistory = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-bold text-foreground">
-                      {isToday(day.date) ? "Today" : format(day.date, "EEEE")}
+                      {isToday(day.date) ? t('today') : format(day.date, "EEEE")}
                     </h2>
                     <p className="text-sm text-muted-foreground">
                       {format(day.date, "MMMM d, yyyy")}
@@ -192,7 +194,7 @@ const MealHistory = () => {
                 {/* Meals */}
                 {day.meals.length === 0 ? (
                   <div className="bg-muted/50 rounded-2xl p-6 text-center">
-                    <p className="text-muted-foreground text-sm">No meals logged</p>
+                    <p className="text-muted-foreground text-sm">{t('no_meals_logged_day')}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
