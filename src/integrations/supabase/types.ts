@@ -182,6 +182,7 @@ export type Database = {
           meals_per_day: string | null
           occupation: string | null
           potassium_mg: number | null
+          preferred_language: string | null
           primary_goal: string | null
           protein_grams: number | null
           secondary_goals: string[] | null
@@ -223,6 +224,7 @@ export type Database = {
           meals_per_day?: string | null
           occupation?: string | null
           potassium_mg?: number | null
+          preferred_language?: string | null
           primary_goal?: string | null
           protein_grams?: number | null
           secondary_goals?: string[] | null
@@ -264,6 +266,7 @@ export type Database = {
           meals_per_day?: string | null
           occupation?: string | null
           potassium_mg?: number | null
+          preferred_language?: string | null
           primary_goal?: string | null
           protein_grams?: number | null
           secondary_goals?: string[] | null

@@ -6,6 +6,7 @@ import { getTodaysMeals, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
 import { getTodaysWearableData, getRecentWearableData, formatWearableDataForAI, type WearableSummary } from "@/lib/wearableService";
+import { useLanguage, Language } from "@/lib/i18n";
 
 interface Message {
   role: "user" | "assistant";
@@ -19,6 +20,7 @@ interface AICoachChatProps {
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
 
 export const AICoachChat = ({ onClose }: AICoachChatProps) => {
+  const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -177,6 +179,8 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
             checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
             // Wearable data
             wearableContext: wearableContext,
+            // Language preference
+            preferredLanguage: language as Language,
           } : {},
           todaysMeals: todaysMeals.map(m => ({
             name: m.name,

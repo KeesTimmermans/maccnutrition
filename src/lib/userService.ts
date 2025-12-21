@@ -40,6 +40,7 @@ export interface UserBaseline {
   magnesium_mg: number | null;
   potassium_mg: number | null;
   focus_points: string[] | null;
+  preferred_language: string | null;
 }
 
 export const saveUserBaseline = async (
