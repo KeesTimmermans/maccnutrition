@@ -42,6 +42,16 @@ export const Dashboard = () => {
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [freshCheckInData, setFreshCheckInData] = useState<{
+    mood: number;
+    energy_level: number;
+    sleep_quality: number;
+    stress_level: number;
+    sleep_hours?: number;
+    hunger_level?: number;
+    notes?: string;
+    check_in_date: string;
+  } | null>(null);
   const [meals, setMeals] = useState<DashboardMeal[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [loginStreak, setLoginStreak] = useState<UserStreak | null>(null);
@@ -510,7 +520,13 @@ export const Dashboard = () => {
 
       {/* AI Coach Chat Modal */}
       {showAIChat && (
-        <AICoachChat onClose={() => setShowAIChat(false)} />
+        <AICoachChat 
+          onClose={() => {
+            setShowAIChat(false);
+            setFreshCheckInData(null);
+          }} 
+          freshCheckIn={freshCheckInData}
+        />
       )}
 
       {/* Streak Celebration */}
@@ -525,9 +541,16 @@ export const Dashboard = () => {
       {showCheckIn && (
         <DailyCheckIn 
           onClose={() => setShowCheckIn(false)}
-          onComplete={() => {
+          onComplete={(checkInData) => {
             setShowCheckIn(false);
             setHasCheckedInToday(true);
+            // Immediately open AI chat with fresh check-in data
+            setFreshCheckInData(checkInData);
+            setShowAIChat(true);
+            // Update coaching streak
+            updateStreak('coaching').then(streak => {
+              if (streak) setCoachingStreak(streak);
+            });
           }}
         />
       )}
