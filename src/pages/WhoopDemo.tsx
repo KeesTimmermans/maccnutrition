@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Watch, Moon, Heart, Activity, Zap, Brain, TrendingUp, Utensils } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -249,12 +250,12 @@ const WhoopDemo = () => {
           <p className="text-muted-foreground mb-6">
             Connect your WHOOP and let AI-powered nutrition coaching adapt to your body.
           </p>
-          <a 
-            href="/" 
+          <Link
+            to="/"
             className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
             Get Started Free
-          </a>
+          </Link>
         </section>
       </main>
 
