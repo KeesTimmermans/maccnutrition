@@ -15,11 +15,12 @@ interface Message {
 
 interface AICoachChatProps {
   onClose: () => void;
+  freshCheckIn?: DailyCheckIn | null;
 }
 
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
 
-export const AICoachChat = ({ onClose }: AICoachChatProps) => {
+export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
   const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -60,58 +61,95 @@ export const AICoachChat = ({ onClose }: AICoachChatProps) => {
       setWearableContext(wearableCtx);
 
       const today = new Date().toISOString().split('T')[0];
-      const todayCheck = recentCheckIns.find(c => c.check_in_date === today);
+      // Prefer freshCheckIn if provided (just completed), otherwise find from recent
+      const todayCheck = freshCheckIn || recentCheckIns.find(c => c.check_in_date === today);
       setTodaysCheckIn(todayCheck || null);
 
       const analysis = analyzeCheckIns(recentCheckIns);
       setCheckInAnalysis(analysis);
 
       // Generate personalized greeting based on data
-      let greeting = "Hi! I'm your AI nutrition coach. ";
+      let greeting = "";
       
-      // Include wearable data in greeting
-      if (wearableSummary) {
-        greeting += `I see your ${wearableSummary.provider} data: `;
-        if (wearableSummary.sleepHours) {
-          greeting += `${wearableSummary.sleepHours}h sleep`;
-          if (wearableSummary.sleepHours < 6) greeting += " (low) ";
+      // If fresh check-in was just submitted, acknowledge it immediately
+      if (freshCheckIn) {
+        const moodEmoji = EMOJI_SCALE[freshCheckIn.mood - 1] || '😐';
+        greeting = `Thanks for checking in! ${moodEmoji} I've received your update:\n\n`;
+        greeting += `• Mood: ${freshCheckIn.mood}/5\n`;
+        greeting += `• Energy: ${freshCheckIn.energy_level}/5\n`;
+        greeting += `• Sleep quality: ${freshCheckIn.sleep_quality}/5`;
+        if (freshCheckIn.sleep_hours) {
+          greeting += ` (${freshCheckIn.sleep_hours}h)`;
         }
-        if (wearableSummary.recoveryScore) {
-          greeting += `, recovery ${wearableSummary.recoveryScore}/5`;
-        }
-        if (wearableSummary.hrv) {
-          greeting += `, HRV ${wearableSummary.hrv}ms`;
-        }
-        greeting += ". ";
-      }
-      
-      if (todayCheck) {
-        const moodEmoji = EMOJI_SCALE[todayCheck.mood - 1] || '😐';
-        greeting += `Check-in today ${moodEmoji}. `;
+        greeting += `\n• Stress: ${freshCheckIn.stress_level}/5\n\n`;
         
-        if (todayCheck.energy_level <= 2) {
-          greeting += "Looks like energy is low — let's focus on foods that can help boost it. ";
-        } else if (todayCheck.energy_level >= 4) {
-          greeting += "Great energy today! ";
+        // Personalized recommendations based on check-in
+        if (freshCheckIn.energy_level <= 2) {
+          greeting += "Your energy is low today. I'll suggest meals rich in complex carbs and B vitamins to help boost it. ";
+        } else if (freshCheckIn.energy_level >= 4) {
+          greeting += "Great energy today! Let's keep that momentum going. ";
         }
         
-        if (todayCheck.sleep_quality <= 2) {
-          greeting += "Sleep was rough — I'll factor that into my suggestions. ";
+        if (freshCheckIn.sleep_quality <= 2) {
+          greeting += "Since sleep was rough, I recommend magnesium-rich foods and avoiding caffeine after 2pm. ";
         }
         
-        if (todayCheck.stress_level >= 4) {
-          greeting += "I notice stress is high — I'll recommend foods that support calm and steady energy. ";
+        if (freshCheckIn.stress_level >= 4) {
+          greeting += "I notice stress is high — foods with omega-3s and antioxidants can help. Avoid excess sugar. ";
         }
-      }
+        
+        if (freshCheckIn.hunger_level && freshCheckIn.hunger_level >= 4) {
+          greeting += "You're feeling quite hungry — make sure to include enough protein and fiber to stay satisfied. ";
+        }
+        
+        greeting += "\n\nHow can I help you today?";
+      } else {
+        greeting = "Hi! I'm your AI nutrition coach. ";
+        
+        // Include wearable data in greeting
+        if (wearableSummary) {
+          greeting += `I see your ${wearableSummary.provider} data: `;
+          if (wearableSummary.sleepHours) {
+            greeting += `${wearableSummary.sleepHours}h sleep`;
+            if (wearableSummary.sleepHours < 6) greeting += " (low) ";
+          }
+          if (wearableSummary.recoveryScore) {
+            greeting += `, recovery ${wearableSummary.recoveryScore}/5`;
+          }
+          if (wearableSummary.hrv) {
+            greeting += `, HRV ${wearableSummary.hrv}ms`;
+          }
+          greeting += ". ";
+        }
+        
+        if (todayCheck) {
+          const moodEmoji = EMOJI_SCALE[todayCheck.mood - 1] || '😐';
+          greeting += `Check-in today ${moodEmoji}. `;
+          
+          if (todayCheck.energy_level <= 2) {
+            greeting += "Looks like energy is low — let's focus on foods that can help boost it. ";
+          } else if (todayCheck.energy_level >= 4) {
+            greeting += "Great energy today! ";
+          }
+          
+          if (todayCheck.sleep_quality <= 2) {
+            greeting += "Sleep was rough — I'll factor that into my suggestions. ";
+          }
+          
+          if (todayCheck.stress_level >= 4) {
+            greeting += "I notice stress is high — I'll recommend foods that support calm and steady energy. ";
+          }
+        }
 
-      if (meals.length > 0) {
-        const totalCals = meals.reduce((s, m) => s + m.calories, 0);
-        const targetCals = userBaseline?.target_calories || 2000;
-        const percent = Math.round((totalCals / targetCals) * 100);
-        greeting += `You're at ${percent}% of your calorie target so far. `;
-      }
+        if (meals.length > 0) {
+          const totalCals = meals.reduce((s, m) => s + m.calories, 0);
+          const targetCals = userBaseline?.target_calories || 2000;
+          const percent = Math.round((totalCals / targetCals) * 100);
+          greeting += `You're at ${percent}% of your calorie target so far. `;
+        }
 
-      greeting += "Ask me anything about nutrition, meal suggestions, or how you're tracking!";
+        greeting += "Ask me anything about nutrition, meal suggestions, or how you're tracking!";
+      }
 
       setMessages([{ role: "assistant", content: greeting }]);
     } catch (error) {

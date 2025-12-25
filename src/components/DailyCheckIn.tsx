@@ -21,9 +21,20 @@ import { getTodaysWearableData, suggestCheckInFromWearable, type WearableSummary
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 
+interface CheckInData {
+  mood: number;
+  energy_level: number;
+  sleep_quality: number;
+  stress_level: number;
+  sleep_hours?: number;
+  hunger_level?: number;
+  notes?: string;
+  check_in_date: string;
+}
+
 interface DailyCheckInComponentProps {
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: (data: CheckInData) => void;
 }
 
 type MetricKey = 'mood' | 'energy' | 'sleep' | 'stress';
@@ -157,7 +168,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      await saveCheckIn({
+      const checkInData: CheckInData = {
         check_in_date: new Date().toISOString().split('T')[0],
         mood: formData.mood,
         energy_level: formData.energy,
@@ -165,9 +176,19 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
         stress_level: formData.stress,
         sleep_hours: formData.sleepHours ? parseFloat(formData.sleepHours) : undefined,
         notes: formData.notes || undefined,
+      };
+      
+      await saveCheckIn({
+        check_in_date: checkInData.check_in_date,
+        mood: checkInData.mood,
+        energy_level: checkInData.energy_level,
+        sleep_quality: checkInData.sleep_quality,
+        stress_level: checkInData.stress_level,
+        sleep_hours: checkInData.sleep_hours,
+        notes: checkInData.notes,
       });
       toast.success(t('checkin_saved'));
-      onComplete();
+      onComplete(checkInData);
     } catch (error) {
       toast.error(t('checkin_failed'));
       console.error('Error saving check-in:', error);
