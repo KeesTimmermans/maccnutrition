@@ -5,20 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react";
 import cjtLogo from "@/assets/cjt-logo.png";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+const nameSchema = z.string().min(2, "Name must be at least 2 characters");
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -39,7 +41,7 @@ const Auth = () => {
   }, [navigate]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+    const newErrors: { email?: string; password?: string; name?: string } = {};
     
     try {
       emailSchema.parse(email);
@@ -54,6 +56,17 @@ const Auth = () => {
     } catch (e) {
       if (e instanceof z.ZodError) {
         newErrors.password = e.errors[0].message;
+      }
+    }
+
+    // Only validate name for signup
+    if (!isLogin) {
+      try {
+        nameSchema.parse(name);
+      } catch (e) {
+        if (e instanceof z.ZodError) {
+          newErrors.name = e.errors[0].message;
+        }
       }
     }
 
@@ -91,11 +104,15 @@ const Auth = () => {
           }
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        // Sign up - store name in user metadata
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: name,
+            },
           },
         });
 
@@ -114,11 +131,28 @@ const Auth = () => {
               variant: "destructive",
             });
           }
-        } else {
-          toast({
-            title: "Account created!",
-            description: "You can now log in with your credentials.",
-          });
+        } else if (signUpData.user) {
+          // Redirect to checkout for payment
+          try {
+            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout');
+            
+            if (checkoutError) throw checkoutError;
+            
+            if (checkoutData?.url) {
+              window.location.href = checkoutData.url;
+            } else {
+              toast({
+                title: "Account created!",
+                description: "Please complete your subscription to continue.",
+              });
+            }
+          } catch (checkoutErr) {
+            console.error("Checkout error:", checkoutErr);
+            toast({
+              title: "Account created!",
+              description: "You can now continue with setup.",
+            });
+          }
         }
       }
     } catch (error) {
@@ -150,6 +184,27 @@ const Auth = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name field - only show for signup */}
+          {!isLogin && (
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pl-10 h-12 rounded-xl"
+                />
+              </div>
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name}</p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
@@ -206,7 +261,7 @@ const Auth = () => {
                 {isLogin ? "Logging in..." : "Creating account..."}
               </>
             ) : (
-              isLogin ? "Log In" : "Sign Up"
+              isLogin ? "Log In" : "Sign Up & Subscribe"
             )}
           </Button>
         </form>

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,8 +21,9 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type StepType = "demographics" | "medical" | "lifestyle" | "goals" | "preferences" | "female";
 
-interface OnboardingData {
+export interface OnboardingData {
   // Demographics
+  name: string;
   age: string;
   sex: "male" | "female" | "";
   unitSystem: "imperial" | "metric";
@@ -60,9 +62,10 @@ interface OnboardingData {
 }
 
 const initialData: OnboardingData = {
+  name: "",
   age: "",
   sex: "",
-  unitSystem: "imperial",
+  unitSystem: "metric", // Default to metric
   heightFeet: "",
   heightInches: "",
   heightCm: "",
@@ -103,6 +106,17 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   const { t } = useLanguage();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [data, setData] = useState<OnboardingData>(initialData);
+  
+  // Pre-fill name from user metadata
+  useEffect(() => {
+    const prefillUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata?.full_name) {
+        setData(prev => ({ ...prev, name: user.user_metadata.full_name }));
+      }
+    };
+    prefillUserData();
+  }, []);
   
   const steps = getSteps(t);
   
@@ -275,6 +289,33 @@ const DemographicsStep = ({ data, updateData, t }: {
   t: (key: string) => string;
 }) => (
   <div className="space-y-6 animate-slide-up">
+    {/* Unit System Toggle - First and prominent */}
+    <div className="space-y-2">
+      <Label className="text-sm font-semibold">{t('measurement_system')}</Label>
+      <p className="text-xs text-muted-foreground mb-2">This will be used throughout the app</p>
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: t('metric'), desc: t('cm_kg'), value: "metric" as const },
+          { label: t('imperial'), desc: t('ft_in_lbs'), value: "imperial" as const },
+        ].map((option) => (
+          <button
+            key={option.value}
+            onClick={() => updateData("unitSystem", option.value)}
+            className={`p-4 rounded-xl text-center transition-all ${
+              data.unitSystem === option.value
+                ? "bg-primary text-primary-foreground shadow-medium"
+                : "bg-card shadow-soft hover:shadow-medium"
+            }`}
+          >
+            <span className="font-semibold block">{option.label}</span>
+            <span className={`text-xs ${data.unitSystem === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+              {option.desc}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+
     <div className="space-y-2">
       <Label className="text-sm font-semibold">{t('age')}</Label>
       <Input
@@ -308,31 +349,6 @@ const DemographicsStep = ({ data, updateData, t }: {
       </div>
     </div>
 
-    {/* Unit System Toggle */}
-    <div className="space-y-2">
-      <Label className="text-sm font-semibold">{t('measurement_system')}</Label>
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: t('imperial'), desc: t('ft_in_lbs'), value: "imperial" as const },
-          { label: t('metric'), desc: t('cm_kg'), value: "metric" as const },
-        ].map((option) => (
-          <button
-            key={option.value}
-            onClick={() => updateData("unitSystem", option.value)}
-            className={`p-3 rounded-xl text-center transition-all ${
-              data.unitSystem === option.value
-                ? "bg-primary text-primary-foreground shadow-medium"
-                : "bg-card shadow-soft hover:shadow-medium"
-            }`}
-          >
-            <span className="font-semibold block">{option.label}</span>
-            <span className={`text-xs ${data.unitSystem === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-              {option.desc}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
 
     <div className="space-y-2">
       <Label className="text-sm font-semibold">{t('height')}</Label>
@@ -861,4 +877,4 @@ const FemaleStep = ({ data, updateData, toggleArrayItem, t }: {
   );
 };
 
-export type { OnboardingData };
+
