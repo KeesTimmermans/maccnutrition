@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,17 +23,29 @@ export const useAuth = () => {
   });
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
+  const inFlightRef = useRef(false);
+  const lastCheckRef = useRef<{ token: string | null; at: number }>({ token: null, at: 0 });
+
   const checkSubscription = useCallback(async () => {
     if (!session) {
       setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
+      setSubscriptionLoading(false);
       return;
     }
 
+    const token = session.access_token;
+    const now = Date.now();
+
+    // De-dupe to avoid multiple simultaneous or back-to-back checks (common on refresh)
+    if (inFlightRef.current) return;
+    if (lastCheckRef.current.token === token && now - lastCheckRef.current.at < 15000) return;
+
+    inFlightRef.current = true;
     setSubscriptionLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription');
       if (error) throw error;
-      
+
       setSubscription({
         subscribed: data?.subscribed ?? false,
         subscriptionEnd: data?.subscription_end ?? null,
@@ -45,7 +57,9 @@ export const useAuth = () => {
       console.error('Error checking subscription:', error);
       setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
     } finally {
+      lastCheckRef.current = { token, at: Date.now() };
       setSubscriptionLoading(false);
+      inFlightRef.current = false;
     }
   }, [session]);
 

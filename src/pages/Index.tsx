@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { WearableConnection } from "@/components/WearableConnection";
@@ -23,11 +23,14 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Prevent re-fetching baseline repeatedly (e.g. when subscription refresh runs)
+  const baselineCheckedRef = useRef<string | null>(null);
+
   // Check for existing baseline data and subscription
   useEffect(() => {
     const checkUserBaseline = async () => {
       if (authLoading || subscriptionLoading) return;
-      
+
       if (user) {
         // Check subscription status - must be subscribed or trialing
         if (!subscription && !isTrialing) {
@@ -45,7 +48,13 @@ const Index = () => {
           setLoading(false);
           return;
         }
-        
+
+        // Baseline already resolved for this user in this session; don't block UI again
+        if (baselineCheckedRef.current === user.id) {
+          setLoading(false);
+          return;
+        }
+
         try {
           const baseline = await getUserBaseline(user.id);
           if (baseline) {
@@ -55,6 +64,7 @@ const Index = () => {
             // User is authenticated but hasn't completed onboarding
             setAppState("connection");
           }
+          baselineCheckedRef.current = user.id;
         } catch (error) {
           console.error("Error checking baseline:", error);
         }
