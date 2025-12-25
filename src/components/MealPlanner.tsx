@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart, Heart, Repeat, Download, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,15 @@ interface MealPlannerProps {
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+// Helper to get the start of the current week (Monday)
+const getWeekStart = () => {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when Sunday
+  const monday = new Date(now.setDate(diff));
+  return monday.toISOString().split('T')[0];
+};
+
 export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const { t } = useLanguage();
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
@@ -81,6 +90,74 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const [mealToSwap, setMealToSwap] = useState<{ meal: Meal; dayIndex: number; mealIndex: number } | null>(null);
   const [swapPreference, setSwapPreference] = useState("");
   const [isSwapping, setIsSwapping] = useState(false);
+  const [mealPlanId, setMealPlanId] = useState<string | null>(null);
+
+  // Load existing meal plan on mount
+  useEffect(() => {
+    loadExistingMealPlan();
+  }, []);
+
+  const loadExistingMealPlan = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const weekStart = getWeekStart();
+      
+      const { data, error } = await supabase
+        .from('meal_plans')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('week_start', weekStart)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading meal plan:', error);
+        return;
+      }
+
+      if (data && data.plan_data) {
+        setMealPlan(data.plan_data as unknown as MealPlan);
+        setMealPlanId(data.id);
+      }
+    } catch (error) {
+      console.error('Error loading meal plan:', error);
+    }
+  };
+
+  const saveMealPlan = async (plan: MealPlan) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const weekStart = getWeekStart();
+
+      if (mealPlanId) {
+        // Update existing
+        await supabase
+          .from('meal_plans')
+          .update({ plan_data: JSON.parse(JSON.stringify(plan)) })
+          .eq('id', mealPlanId);
+      } else {
+        // Insert new
+        const { data, error } = await supabase
+          .from('meal_plans')
+          .insert([{
+            user_id: user.id,
+            plan_data: JSON.parse(JSON.stringify(plan)),
+            week_start: weekStart
+          }])
+          .select('id')
+          .single();
+
+        if (!error && data) {
+          setMealPlanId(data.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving meal plan:', error);
+    }
+  };
 
   const generateMealPlan = async () => {
     setIsLoading(true);
@@ -117,6 +194,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
 
       if (data.mealPlan) {
         setMealPlan(data.mealPlan);
+        setMealPlanId(null); // Reset so it creates a new record
+        await saveMealPlan(data.mealPlan);
         toast.success(t('meal_plan_generated'));
       } else {
         toast.error(t('failed_generate_plan'));
@@ -198,9 +277,9 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
 
       if (data.newMeal) {
         // Update the meal plan with the new meal
-        setMealPlan(prev => {
-          if (!prev) return prev;
-          const newDays = [...prev.days];
+        const updatedPlan = (() => {
+          if (!mealPlan) return null;
+          const newDays = [...mealPlan.days];
           newDays[mealToSwap.dayIndex].meals[mealToSwap.mealIndex] = data.newMeal;
           
           // Recalculate day totals
@@ -212,8 +291,13 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
             fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
           };
           
-          return { ...prev, days: newDays };
-        });
+          return { ...mealPlan, days: newDays };
+        })();
+
+        if (updatedPlan) {
+          setMealPlan(updatedPlan);
+          await saveMealPlan(updatedPlan);
+        }
         
         toast.success(t('swapped_to').replace('{meal}', data.newMeal.name));
         setSwapDialogOpen(false);
