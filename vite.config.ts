@@ -8,12 +8,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    // Fix preview environments where the app is served on default https (no explicit port)
-    // which can otherwise lead to malformed Vite ping URLs like "https://domain:/".
-    hmr: {
-      protocol: "wss",
-      clientPort: 443,
-    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
