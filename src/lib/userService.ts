@@ -7,6 +7,7 @@ export interface UserBaseline {
   user_id: string;
   created_at: string;
   updated_at: string;
+  name: string | null;
   age: number | null;
   sex: string | null;
   unit_system: string | null;
@@ -50,10 +51,15 @@ export const saveUserBaseline = async (
   onboardingData: OnboardingData,
   baseline: BaselineResults
 ) => {
+  // Get user name from auth metadata
+  const { data: { user } } = await supabase.auth.getUser();
+  const userName = user?.user_metadata?.full_name || onboardingData.name || null;
+  
   const { data, error } = await supabase
     .from("user_baselines")
     .upsert({
       user_id: userId,
+      name: userName,
       age: onboardingData.age ? parseInt(onboardingData.age) : null,
       sex: onboardingData.sex || null,
       unit_system: onboardingData.unitSystem || "imperial",

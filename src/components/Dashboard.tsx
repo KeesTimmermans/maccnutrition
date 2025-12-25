@@ -277,7 +277,9 @@ export const Dashboard = () => {
         <div className="container flex items-center justify-between py-4">
           <div>
             <p className="text-sm text-muted-foreground">{getGreeting()},</p>
-            <h1 className="text-xl font-bold text-foreground">Sarah! 👋</h1>
+            <h1 className="text-xl font-bold text-foreground">
+              {baseline?.name || 'there'}! 👋
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             <button className="p-2 hover:bg-muted rounded-xl transition-colors relative">

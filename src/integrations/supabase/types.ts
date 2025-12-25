@@ -180,6 +180,7 @@ export type Database = {
           id: string
           magnesium_mg: number | null
           meals_per_day: string | null
+          name: string | null
           occupation: string | null
           potassium_mg: number | null
           preferred_language: string | null
@@ -222,6 +223,7 @@ export type Database = {
           id?: string
           magnesium_mg?: number | null
           meals_per_day?: string | null
+          name?: string | null
           occupation?: string | null
           potassium_mg?: number | null
           preferred_language?: string | null
@@ -264,6 +266,7 @@ export type Database = {
           id?: string
           magnesium_mg?: number | null
           meals_per_day?: string | null
+          name?: string | null
           occupation?: string | null
           potassium_mg?: number | null
           preferred_language?: string | null

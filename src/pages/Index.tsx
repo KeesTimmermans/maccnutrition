@@ -7,6 +7,7 @@ import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
 import { Sparkles, Heart, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateBaseline } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
@@ -18,16 +19,33 @@ const Index = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
   const [userData, setUserData] = useState<OnboardingData | null>(null);
   const [loading, setLoading] = useState(true);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check for existing baseline data
+  // Check for existing baseline data and subscription
   useEffect(() => {
     const checkUserBaseline = async () => {
-      if (authLoading) return;
+      if (authLoading || subscriptionLoading) return;
       
       if (user) {
+        // Check subscription status - must be subscribed or trialing
+        if (!subscription && !isTrialing) {
+          // User is logged in but doesn't have subscription, redirect to checkout
+          try {
+            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout');
+            if (!checkoutError && checkoutData?.url) {
+              window.location.href = checkoutData.url;
+              return;
+            }
+          } catch (err) {
+            console.error("Checkout error:", err);
+          }
+          // If checkout fails, show welcome screen
+          setLoading(false);
+          return;
+        }
+        
         try {
           const baseline = await getUserBaseline(user.id);
           if (baseline) {
@@ -55,7 +73,7 @@ const Index = () => {
     };
 
     checkUserBaseline();
-  }, [user, authLoading]);
+  }, [user, authLoading, subscription, subscriptionLoading, isTrialing]);
 
   const handleGetStarted = () => {
     if (user) {
@@ -123,7 +141,7 @@ const Index = () => {
     setAppState("dashboard");
   };
 
-  if (loading || authLoading) {
+  if (loading || authLoading || subscriptionLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
