@@ -98,6 +98,33 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_plans: {
+        Row: {
+          created_at: string
+          id: string
+          plan_data: Json
+          updated_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan_data: Json
+          updated_at?: string
+          user_id: string
+          week_start?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan_data?: Json
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       meals: {
         Row: {
           calories: number
