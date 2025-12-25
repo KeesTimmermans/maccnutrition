@@ -18,7 +18,8 @@ const requestSchema = z.object({
     .optional(),
   searchQuery: z.string()
     .max(500, "Search query too long")
-    .optional()
+    .optional(),
+  mode: z.enum(['suggestions', 'calculate', 'analyze']).optional()
 }).refine(
   (data) => data.imageBase64 || data.searchQuery,
   "Either imageBase64 or searchQuery is required"
@@ -72,7 +73,7 @@ serve(async (req) => {
       );
     }
 
-    const { imageBase64, searchQuery } = validationResult.data;
+    const { imageBase64, searchQuery, mode } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -118,8 +119,65 @@ Do not include any other text, only the JSON object.`
           ]
         }
       ];
+    } else if (searchQuery && mode === 'suggestions') {
+      // Return food suggestions with per-100g nutrition
+      messages = [
+        {
+          role: "system",
+          content: `You are a nutrition database AI. When given a partial food name, suggest up to 5 matching foods with their nutritional content per 100 grams.
+
+You MUST respond with ONLY a JSON object in this exact format:
+{
+  "suggestions": [
+    {
+      "name": "Food name",
+      "caloriesPer100g": number,
+      "proteinPer100g": number,
+      "carbsPer100g": number,
+      "fatsPer100g": number,
+      "defaultServingSize": number (typical serving in grams)
+    }
+  ]
+}
+
+Include common foods, branded items when recognizable, and variations (e.g., "Chicken breast, raw", "Chicken breast, grilled").
+Sort by relevance to the search query.
+Do not include any other text, only the JSON object.`
+        },
+        {
+          role: "user",
+          content: `Suggest foods matching: "${searchQuery}"`
+        }
+      ];
+    } else if (searchQuery && mode === 'calculate') {
+      // Calculate nutrition for specific weight
+      messages = [
+        {
+          role: "system",
+          content: `You are a nutrition expert AI that calculates precise nutritional content based on food weight.
+
+When given a food with weight in grams, calculate the exact nutritional values.
+You MUST respond with ONLY a JSON object in this exact format:
+{
+  "name": "Food name with weight",
+  "calories": number (total calories for this amount),
+  "protein": number (grams of protein),
+  "carbs": number (grams of carbohydrates),
+  "fats": number (grams of fat),
+  "confidence": "high" | "medium" | "low",
+  "notes": "Brief notes about the calculation"
+}
+
+Use accurate nutritional data. Round to whole numbers.
+Do not include any other text, only the JSON object.`
+        },
+        {
+          role: "user",
+          content: `Calculate nutrition for: ${searchQuery}`
+        }
+      ];
     } else if (searchQuery) {
-      // Estimate nutrition from text search
+      // Default: estimate nutrition from text search
       messages = [
         {
           role: "system",
@@ -151,7 +209,7 @@ Do not include any other text, only the JSON object.`
       );
     }
 
-    console.log("Calling Lovable AI for food analysis...");
+    console.log("Calling Lovable AI for food analysis, mode:", mode || 'analyze');
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -207,15 +265,19 @@ Do not include any other text, only the JSON object.`
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
       // Return a fallback response
-      nutritionData = {
-        name: searchQuery || "Unknown Food",
-        calories: 200,
-        protein: 10,
-        carbs: 20,
-        fats: 8,
-        confidence: "low",
-        notes: "Could not analyze accurately. These are estimated values."
-      };
+      if (mode === 'suggestions') {
+        nutritionData = { suggestions: [] };
+      } else {
+        nutritionData = {
+          name: searchQuery || "Unknown Food",
+          calories: 200,
+          protein: 10,
+          carbs: 20,
+          fats: 8,
+          confidence: "low",
+          notes: "Could not analyze accurately. These are estimated values."
+        };
+      }
     }
 
     return new Response(

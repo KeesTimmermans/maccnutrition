@@ -100,6 +100,15 @@ export const getMealsByDateRange = async (startDate: Date, endDate: Date): Promi
   return data || [];
 };
 
+export interface FoodSuggestion {
+  name: string;
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatsPer100g: number;
+  defaultServingSize?: number;
+}
+
 export const analyzeFoodImage = async (imageBase64: string): Promise<{
   name: string;
   calories: number;
@@ -115,6 +124,43 @@ export const analyzeFoodImage = async (imageBase64: string): Promise<{
 
   if (error) {
     console.error("Error analyzing food:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const searchFoodSuggestions = async (query: string): Promise<FoodSuggestion[]> => {
+  const { data, error } = await supabase.functions.invoke("analyze-food", {
+    body: { searchQuery: query, mode: 'suggestions' },
+  });
+
+  if (error) {
+    console.error("Error searching foods:", error);
+    throw error;
+  }
+
+  return data.suggestions || [];
+};
+
+export const getFoodNutritionByWeight = async (
+  foodName: string, 
+  grams: number
+): Promise<{
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  confidence: string;
+  notes: string;
+}> => {
+  const { data, error } = await supabase.functions.invoke("analyze-food", {
+    body: { searchQuery: `${grams}g of ${foodName}`, mode: 'calculate' },
+  });
+
+  if (error) {
+    console.error("Error calculating nutrition:", error);
     throw error;
   }
 
