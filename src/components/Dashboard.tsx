@@ -74,6 +74,115 @@ export const Dashboard = () => {
     return t('good_evening');
   };
 
+  // Dynamic Coach Mac greeting based on current data
+  const generateCoachGreeting = () => {
+    const calorieGoal = baseline?.target_calories || 2000;
+    const proteinGoal = baseline?.protein_grams || 120;
+    const calPercent = Math.round((totalCalories / calorieGoal) * 100);
+    const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
+    
+    if (meals.length === 0) {
+      if (hasCheckedInToday) {
+        return `${getGreeting()}! I see you checked in. Ready to log your first meal?`;
+      }
+      return `${getGreeting()}! Start your day by logging a meal or doing your check-in.`;
+    }
+    
+    if (calPercent >= 90 && proteinPercent >= 90) {
+      return "Amazing progress! You're crushing your goals today! 🎉";
+    }
+    
+    if (checkInAnalysis && checkInAnalysis.recommendations.length > 0) {
+      return `Based on your recent patterns (energy: ${checkInAnalysis.averageEnergy}/5):`;
+    }
+    
+    return `${getGreeting()}! You're at ${calPercent}% of your calorie goal.`;
+  };
+
+  // Dynamic insights based on logged data
+  const generateCoachInsights = (): string[] => {
+    const insights: string[] = [];
+    const calorieGoal = baseline?.target_calories || 2000;
+    const proteinGoal = baseline?.protein_grams || 120;
+    const carbsGoal = baseline?.carbs_grams || 200;
+    const fatsGoal = baseline?.fats_grams || 65;
+    
+    const calRemaining = calorieGoal - totalCalories;
+    const proteinRemaining = proteinGoal - totalProtein;
+    const carbsRemaining = carbsGoal - totalCarbs;
+    const fatsRemaining = fatsGoal - totalFats;
+    
+    const hour = new Date().getHours();
+    
+    // Protein-focused insights
+    if (totalProtein < proteinGoal * 0.5 && hour >= 12) {
+      insights.push(`You need ${proteinRemaining}g more protein today. Try adding chicken, fish, eggs, or legumes to your next meal.`);
+    } else if (totalProtein >= proteinGoal) {
+      insights.push("Great job hitting your protein goal! This supports muscle recovery and keeps you feeling full.");
+    }
+    
+    // Calorie insights
+    if (totalCalories < calorieGoal * 0.3 && hour >= 14) {
+      insights.push("You're under-eating today. Make sure to fuel properly to maintain energy and metabolism.");
+    } else if (totalCalories > calorieGoal) {
+      insights.push("You've exceeded your calorie target. Focus on nutrient-dense, whole foods for remaining meals.");
+    }
+    
+    // Check-in based insights
+    if (checkInAnalysis?.recommendations.length) {
+      insights.push(...checkInAnalysis.recommendations.slice(0, 2));
+    }
+    
+    // Default insights if none generated
+    if (insights.length === 0) {
+      if (meals.length === 0) {
+        insights.push("Log your meals to get personalized nutrition insights from Coach Mac.");
+      } else {
+        insights.push(`You've logged ${meals.length} meal${meals.length > 1 ? 's' : ''} today. Keep it up!`);
+      }
+    }
+    
+    return insights.slice(0, 3);
+  };
+
+  // Dynamic tip based on current progress and check-in data
+  const generateCoachTip = (): string => {
+    const calorieGoal = baseline?.target_calories || 2000;
+    const proteinGoal = baseline?.protein_grams || 120;
+    const calPercent = Math.round((totalCalories / calorieGoal) * 100);
+    const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
+    const hour = new Date().getHours();
+    
+    // Check-in trend based tips
+    if (checkInAnalysis?.trends.energy === "declining") {
+      return "💡 Your energy has been declining. Focus on complex carbs and iron-rich foods like spinach and legumes.";
+    }
+    if (checkInAnalysis?.trends.sleep === "declining") {
+      return "💡 Sleep quality is trending down. Try magnesium-rich foods (nuts, dark chocolate) and limit caffeine after 2pm.";
+    }
+    if (checkInAnalysis?.trends.stress === "stable" && checkInAnalysis.averageStress >= 4) {
+      return "💡 Stress is elevated. Include omega-3 rich foods (salmon, walnuts) and limit added sugars.";
+    }
+    
+    // Time-based tips
+    if (hour < 10 && meals.length === 0) {
+      return "💡 Morning tip: Start with protein-rich breakfast to stabilize blood sugar and reduce cravings.";
+    }
+    if (hour >= 14 && hour < 16 && calPercent < 50) {
+      return "💡 Afternoon check: You're below 50% of your target. Don't skip meals — consistent eating supports metabolism.";
+    }
+    if (hour >= 19 && proteinPercent < 70) {
+      return "💡 Evening tip: Focus on lean protein at dinner to hit your goal and support overnight recovery.";
+    }
+    
+    // Progress based tips
+    if (calPercent >= 90 && proteinPercent >= 90) {
+      return "💡 Excellent work today! You're on track. Remember: consistency beats perfection.";
+    }
+    
+    return "💡 Stay consistent with your meals and hydration. Small daily wins build lasting results!";
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -342,18 +451,12 @@ export const Dashboard = () => {
           <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
         </section>
 
-        {/* AI Coach */}
+        {/* Coach Mac */}
         <section>
           <AICoachCard 
-            greeting={checkInAnalysis && checkInAnalysis.recommendations.length > 0 
-              ? `Based on your recent check-ins (avg mood: ${checkInAnalysis.averageMood}/5, energy: ${checkInAnalysis.averageEnergy}/5):`
-              : `${getGreeting()}! ${t('complete_checkin_insight')}`}
-            insights={checkInAnalysis?.recommendations.length ? checkInAnalysis.recommendations : [t('complete_checkin_insight')]}
-            tip={checkInAnalysis?.trends.energy === "declining" 
-              ? "Your energy has been declining. Consider adding more protein and complex carbs to your meals."
-              : checkInAnalysis?.trends.sleep === "declining"
-              ? "Sleep quality is trending down. Try magnesium-rich foods in your evening meals."
-              : "Stay consistent with your meals and hydration for best results!"}
+            greeting={generateCoachGreeting()}
+            insights={generateCoachInsights()}
+            tip={generateCoachTip()}
             onChatOpen={() => {
               setShowAIChat(true);
               updateStreak('coaching').then(streak => {

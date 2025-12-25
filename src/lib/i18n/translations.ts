@@ -53,7 +53,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'log_meal': 'Log Meal',
     'view_history': 'View History',
     'meal_planner': 'Meal Planner',
-    'ai_coach': 'AI Coach',
+    'ai_coach': 'Coach Mac',
     'daily_checkin': 'Daily Check-in',
     'morning_checkin': 'Morning Check-In',
     'how_feeling_today': 'How are you feeling today?',
@@ -65,9 +65,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'waiting_sync': 'Waiting for data sync...',
     'synced': 'Synced',
     
-    // AI Coach
-    'ai_coach_title': 'Your AI Coach',
-    'powered_by_data': 'Powered by your data',
+    // Coach Mac
+    'ai_coach_title': 'Coach Mac',
+    'powered_by_data': 'Your nutrition coach',
     'ask_anything': 'Ask me anything about nutrition...',
     'send': 'Send',
     'insights': 'Insights',

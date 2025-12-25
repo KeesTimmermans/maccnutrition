@@ -104,7 +104,7 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
         
         greeting += "\n\nHow can I help you today?";
       } else {
-        greeting = "Hi! I'm your AI nutrition coach. ";
+        greeting = "Hi! I'm Coach Mac, your personal nutrition guide. ";
         
         // Include wearable data in greeting
         if (wearableSummary) {
@@ -156,7 +156,7 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
       console.error("Error initializing chat:", error);
       setMessages([{
         role: "assistant",
-        content: "Hi! I'm your AI nutrition coach. Ask me anything about nutrition, meal suggestions, or how you're tracking today!"
+        content: "Hi! I'm Coach Mac, your personal nutrition guide. Ask me anything about nutrition, meal suggestions, or how you're tracking today!"
       }]);
     } finally {
       setIsInitializing(false);
@@ -277,8 +277,8 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
             <Bot className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="font-bold text-foreground">AI Coach</h2>
-            <p className="text-xs text-muted-foreground">Powered by your data</p>
+            <h2 className="font-bold text-foreground">Coach Mac</h2>
+            <p className="text-xs text-muted-foreground">Your nutrition coach</p>
           </div>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-muted rounded-xl transition-colors">

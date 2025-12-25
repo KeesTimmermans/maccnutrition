@@ -33,8 +33,8 @@ export const AICoachCard = ({
               <Bot className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="font-bold text-foreground">{t('ai_coach_title')}</h3>
-              <p className="text-sm text-muted-foreground">Powered by your data</p>
+              <h3 className="font-bold text-foreground">Coach Mac</h3>
+              <p className="text-sm text-muted-foreground">Your nutrition coach</p>
             </div>
           </div>
           {onChatOpen && (
