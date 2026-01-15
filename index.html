@@ -25,7 +25,56 @@
     <meta name="apple-mobile-web-app-title" content="CJTNutrition" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Fallback UI if the JS bundle fails or hangs before React mounts -->
+      <div
+        id="boot-fallback"
+        style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;"
+      >
+        <div style="max-width:560px;width:100%;text-align:center;">
+          <div style="margin:0 auto 16px;display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:16px;background:rgba(61,156,61,0.12);color:#3d9c3d;font-weight:700;">
+            CJT
+          </div>
+          <h1 style="margin:0 0 8px;font-size:18px;line-height:1.2;color:#111;">Loading CJTNutrition…</h1>
+          <p style="margin:0 0 16px;color:#4b5563;font-size:14px;line-height:1.4;">
+            If this stays blank, something is preventing the app from starting.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="window.location.reload()" style="cursor:pointer;border:0;border-radius:12px;padding:10px 14px;background:#3d9c3d;color:#fff;font-weight:600;">
+              Reload
+            </button>
+            <button onclick="localStorage.clear();window.location.reload()" style="cursor:pointer;border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 14px;background:#fff;color:#111;font-weight:600;">
+              Clear site data
+            </button>
+          </div>
+          <pre id="boot-error" style="display:none;margin:16px auto 0;max-height:220px;overflow:auto;text-align:left;background:#f3f4f6;border-radius:12px;padding:12px;font-size:12px;white-space:pre-wrap;"></pre>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var pre = document.getElementById('boot-error');
+        function show(msg) {
+          try {
+            if (!pre) return;
+            pre.style.display = 'block';
+            pre.textContent = String(msg || 'Unknown startup error');
+          } catch (_) {}
+        }
+
+        window.addEventListener('error', function (e) {
+          show(e && e.message ? e.message : e);
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var reason = e && e.reason ? e.reason : 'Unhandled promise rejection';
+          show(reason && reason.message ? reason.message : reason);
+        });
+
+        // If React mounts, it will replace #root contents; if not, we keep this fallback visible.
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
