@@ -39,18 +39,25 @@ const Diagnostics = () => {
       if (data.session) {
         // Check subscription
         setSubscriptionLoading(true);
-        supabase.functions.invoke("check-subscription").then(({ data: subData, error: subError }) => {
-          console.log("[Diagnostics] check-subscription result:", { subData, subError });
-          if (!subError && subData) {
-            setSubscription(subData.subscribed ?? false);
-            setIsTrialing(subData.is_trialing ?? false);
-            setTrialDaysRemaining(subData.trial_days_remaining ?? null);
-          }
-          setSubscriptionLoading(false);
-        }).catch(err => {
-          console.error("[Diagnostics] check-subscription error:", err);
-          setSubscriptionLoading(false);
-        });
+        const headers = data.session?.access_token
+          ? { Authorization: `Bearer ${data.session.access_token}` }
+          : undefined;
+
+        supabase.functions
+          .invoke("check-subscription", { headers })
+          .then(({ data: subData, error: subError }) => {
+            console.log("[Diagnostics] check-subscription result:", { subData, subError });
+            if (!subError && subData) {
+              setSubscription(subData.subscribed ?? false);
+              setIsTrialing(subData.is_trialing ?? false);
+              setTrialDaysRemaining(subData.trial_days_remaining ?? null);
+            }
+            setSubscriptionLoading(false);
+          })
+          .catch((err) => {
+            console.error("[Diagnostics] check-subscription error:", err);
+            setSubscriptionLoading(false);
+          });
       }
     }).catch(err => {
       console.error("[Diagnostics] getSession error:", err);
@@ -81,6 +88,11 @@ const Diagnostics = () => {
     return `${window.location.origin}${basePath}#/`;
   };
 
+  const getInvokeHeaders = (s: any) => {
+    const token = s?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
+  };
+
   const runChecks = async () => {
     setRunning(true);
     const results: HealthCheck[] = [];
@@ -91,13 +103,17 @@ const Diagnostics = () => {
 
     try {
       const { data, error } = await supabase.auth.getSession();
-      currentSession = data.session;
+
+      // In some browsers, getSession can briefly return null while refresh is happening.
+      // Fall back to the session we already loaded for this page to avoid false negatives.
+      currentSession = data.session ?? session ?? null;
+      const email = currentSession?.user?.email ?? user?.email ?? null;
 
       results.push({
         name: "Auth Session",
-        status: data.session ? "ok" : "warning",
-        message: data.session
-          ? `Logged in as ${data.session.user.email}`
+        status: currentSession ? "ok" : error ? "error" : "warning",
+        message: currentSession
+          ? `Logged in as ${email ?? "(email unavailable)"}`
           : error
             ? `Error: ${error.message}`
             : "No active session",
@@ -133,22 +149,31 @@ const Diagnostics = () => {
 
     const formatFnError = async (error: any, response?: Response) => {
       if (!error) return null;
-      const status = response?.status;
-      let bodyText: string | null = null;
 
+      const ctx = (error as any)?.context;
+      const ctxResponse: Response | undefined =
+        response ??
+        (ctx instanceof Response ? ctx : undefined) ??
+        (ctx?.response instanceof Response ? ctx.response : undefined);
+
+      const status: number | undefined =
+        ctxResponse?.status ??
+        (typeof ctx?.status === "number" ? ctx.status : undefined) ??
+        (typeof (error as any)?.status === "number" ? (error as any).status : undefined);
+
+      let bodyText: string | null = null;
       try {
-        if (response) bodyText = await response.clone().text();
+        if (ctxResponse) bodyText = await ctxResponse.clone().text();
+        else if (typeof ctx?.body === "string") bodyText = ctx.body;
       } catch {
         // ignore
       }
 
       if (status) {
-        return bodyText
-          ? `HTTP ${status} — ${bodyText}`
-          : `HTTP ${status} — ${error.message}`;
+        return bodyText ? `HTTP ${status} — ${bodyText}` : `HTTP ${status} — ${error.message}`;
       }
 
-      return error.message;
+      return bodyText ? `${error.message} — ${bodyText}` : error.message;
     };
 
     // 3. check-subscription function
@@ -162,8 +187,10 @@ const Diagnostics = () => {
       });
     } else {
       try {
+        const headers = getInvokeHeaders(currentSession);
+
         const { data, error, response } = await Promise.race([
-          supabase.functions.invoke("check-subscription"),
+          supabase.functions.invoke("check-subscription", { headers }),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout after 10s")), 10000)),
         ] as const);
 
@@ -196,8 +223,13 @@ const Diagnostics = () => {
       });
     } else {
       try {
+        const headers = getInvokeHeaders(currentSession);
+
         const { data, error, response } = await Promise.race([
-          supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+          supabase.functions.invoke("create-checkout", {
+            body: { return_url: getCheckoutReturnUrl() },
+            headers,
+          }),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout after 10s")), 10000)),
         ] as const);
 
@@ -265,8 +297,8 @@ const Diagnostics = () => {
 
   const StatusIcon = ({ status }: { status: HealthCheck["status"] }) => {
     if (status === "pending") return <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />;
-    if (status === "ok") return <CheckCircle className="w-5 h-5 text-green-500" />;
-    if (status === "warning") return <XCircle className="w-5 h-5 text-amber-500" />;
+    if (status === "ok") return <CheckCircle className="w-5 h-5 text-primary" />;
+    if (status === "warning") return <XCircle className="w-5 h-5 text-secondary" />;
     return <XCircle className="w-5 h-5 text-destructive" />;
   };
 
