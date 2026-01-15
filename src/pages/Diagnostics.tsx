@@ -223,9 +223,12 @@ const Diagnostics = () => {
     setRunning(false);
   };
 
+  // Wait for auth to finish loading before running checks
   useEffect(() => {
-    runChecks();
-  }, []);
+    if (!authLoading) {
+      runChecks();
+    }
+  }, [authLoading]);
 
   const diagnosticsSummary = {
     generatedAt: new Date().toISOString(),
