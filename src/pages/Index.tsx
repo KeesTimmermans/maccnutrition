@@ -283,6 +283,9 @@ const Index = () => {
               >
                 Clear local data
               </Button>
+              <Button variant="outline" onClick={() => navigate("/diagnostics")}>
+                Open Diagnostics
+              </Button>
               <Button
                 variant="outline"
                 onClick={async () => {
