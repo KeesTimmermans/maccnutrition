@@ -85,7 +85,7 @@ export const AICoachCard = ({
   const waterGoal = (baseline?.water_liters || 2.5) * 1000;
   const targetSleepHours = baseline?.sleep_hours ? parseFloat(baseline.sleep_hours) : 8;
 
-  // Generate actionable recommendations based on check-in data
+  // Generate actionable recommendations based on check-in data AND onboarding profile
   const generateActionableRecommendations = (): InsightCard[] => {
     const recommendations: InsightCard[] = [];
     const hour = new Date().getHours();
@@ -98,14 +98,28 @@ export const AICoachCard = ({
     const stressLevel = todaysCheckIn.stress_level || 3;
     const mood = todaysCheckIn.mood || 3;
 
-    // === SLEEP-BASED ACTIONS ===
+    // Get behavioral profile from baseline
+    const eatingSpeed = baseline?.eating_speed;
+    const hungerPatterns = baseline?.hunger_patterns;
+    const emotionalEating = baseline?.emotional_eating;
+    const biggestChallenge = baseline?.biggest_challenge;
+    const cravingsTriggers = baseline?.cravings_triggers || [];
+    const weekendHabits = baseline?.weekend_habits;
+    const energyPatterns = baseline?.energy_patterns;
+    const hydrationHabits = baseline?.hydration_habits;
+    const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+
+    // === PERSONALIZED SLEEP-BASED ACTIONS ===
     if (sleepHours > 0 && sleepHours < targetSleepHours - 1) {
       const deficit = targetSleepHours - sleepHours;
+      const cravingsWarning = emotionalEating === "often" 
+        ? " Watch for emotional cravings today - have protein snacks ready."
+        : "";
       recommendations.push({
         type: "warning",
         icon: <Moon className="w-5 h-5 text-blue-500" />,
         title: `Sleep Deficit: ${deficit.toFixed(1)}h`,
-        description: `Only ${sleepHours}h sleep increases hunger hormones by 45%.`,
+        description: `Only ${sleepHours}h sleep increases hunger hormones by 45%.${cravingsWarning}`,
         action: `Go to bed 1h earlier tonight. Add magnesium-rich foods (dark chocolate, almonds) to dinner.`,
         priority: 1,
       });
@@ -128,99 +142,112 @@ export const AICoachCard = ({
       });
     }
 
-    // === ENERGY-BASED ACTIONS ===
+    // === PERSONALIZED ENERGY-BASED ACTIONS (using energy patterns) ===
     if (energyLevel <= 2) {
       const proteinNeeded = Math.max(0, Math.round(proteinGoal * 0.35) - totalProtein);
       const waterNeeded = Math.round((waterGoal - waterIntakeMl) / 1000 * 10) / 10;
+      const energyTip = energyPatterns === "morning" && hour > 10
+        ? "You're a morning person - energy dips after 10am are normal. Fuel up now."
+        : energyPatterns === "afternoon" 
+        ? "Your peak is coming. Fuel now to maximize your afternoon."
+        : "";
       recommendations.push({
         type: "action",
         icon: <Battery className="w-5 h-5 text-green-500" />,
         title: "Low Energy Protocol",
-        description: sleepQuality <= 2 
+        description: energyTip || (sleepQuality <= 2 
           ? "Low energy + poor sleep = your body needs strategic fuel."
-          : "Low energy signals need for immediate nutrition action.",
+          : "Low energy signals need for immediate nutrition action."),
         action: proteinNeeded > 0 
-          ? `NOW: ${proteinNeeded}g protein + ${waterNeeded}L water before 2pm. Try eggs, Greek yogurt, or chicken.`
+          ? `NOW: ${proteinNeeded}g protein + ${waterNeeded}L water. Try eggs, Greek yogurt, or chicken.`
           : `Priority: Complex carbs (oats, sweet potato) + ${waterNeeded}L water in next hour.`,
         priority: 1,
       });
-    } else if (energyLevel >= 4) {
-      recommendations.push({
-        type: "positive",
-        icon: <Battery className="w-5 h-5 text-green-500" />,
-        title: "High Energy = Opportunity",
-        description: "Your energy is primed. Perfect day to dial in nutrition precision.",
-        priority: 6,
-      });
     }
 
-    // === STRESS-BASED ACTIONS ===
+    // === PERSONALIZED STRESS-BASED ACTIONS (using cravings triggers) ===
     if (stressLevel >= 4) {
+      const stressTriggersCravings = cravingsTriggers.includes("stress");
       recommendations.push({
         type: "action",
         icon: <Brain className="w-5 h-5 text-purple-500" />,
         title: "High Stress Alert",
-        description: "Elevated cortisol = increased appetite + impaired digestion.",
-        action: "Today: Walk 10min after lunch. Add omega-3 (salmon/walnuts). Max 200mg caffeine. Skip sugar.",
+        description: stressTriggersCravings
+          ? "You mentioned stress triggers cravings for you. Have healthy options ready."
+          : "Elevated cortisol = increased appetite + impaired digestion.",
+        action: stressTriggersCravings
+          ? "Prep protein snacks NOW (nuts, cheese, boiled eggs). Walk 10min after lunch. Skip sugar today."
+          : "Today: Walk 10min after lunch. Add omega-3 (salmon/walnuts). Max 200mg caffeine.",
         priority: 2,
       });
-    } else if (stressLevel <= 2) {
+    }
+
+    // === EATING SPEED REMINDER ===
+    if (eatingSpeed === "fast" && hour >= 11 && hour <= 14) {
       recommendations.push({
-        type: "positive",
-        icon: <Brain className="w-5 h-5 text-purple-500" />,
-        title: "Low Stress = Better Absorption",
-        description: "Relaxed state optimizes nutrient absorption and blood sugar.",
-        priority: 6,
+        type: "info",
+        icon: <Utensils className="w-5 h-5 text-orange-500" />,
+        title: "Slow Down Today",
+        description: "Fast eaters often eat 10-15% more before feeling full.",
+        action: "Put fork down between bites. Chew 20x. Set a 20-min meal timer.",
+        priority: 4,
       });
     }
 
-    // === MOOD + ENERGY COMBO ===
-    if (mood <= 2 && energyLevel <= 2) {
-      recommendations.push({
-        type: "action",
-        icon: <Smile className="w-5 h-5 text-amber-500" />,
-        title: "Mood-Energy Recovery",
-        description: "Both low = blood sugar likely unstable.",
-        action: `Immediate: ${Math.round(proteinGoal * 0.1)}g protein + complex carbs (Greek yogurt + berries, or eggs + toast).`,
-        priority: 1,
-      });
-    }
-
-    // === NUTRITION TIMING ACTIONS ===
-    const calPercent = (totalCalories / calorieGoal) * 100;
-    const proteinPercent = (totalProtein / proteinGoal) * 100;
-    const waterPercent = (waterIntakeMl / waterGoal) * 100;
-
-    if (hour >= 14 && calPercent < 40 && energyLevel <= 3) {
+    // === HUNGER PATTERN PERSONALIZATION ===
+    if (hungerPatterns === "evening" && hour >= 14 && totalCalories < calorieGoal * 0.5) {
       recommendations.push({
         type: "action",
         icon: <Utensils className="w-5 h-5 text-orange-500" />,
-        title: `Under-Fueled: ${Math.round(calPercent)}%`,
-        description: `Only ${Math.round(calPercent)}% calories by afternoon + energy ${energyLevel}/5.`,
-        action: `Next meal NOW: ${Math.round(calorieGoal * 0.3)} kcal with ${Math.round(proteinGoal * 0.25)}g protein minimum.`,
+        title: "Evening Eater Alert",
+        description: "You get hungrier at night. Front-load calories now to prevent overeating later.",
+        action: `Eat ${Math.round(calorieGoal * 0.35)} kcal with ${Math.round(proteinGoal * 0.3)}g protein in the next 2 hours.`,
         priority: 2,
       });
     }
 
-    if (hour >= 12 && proteinPercent < 30) {
+    // === WEEKEND HABITS WARNING ===
+    if (isWeekend && weekendHabits === "different") {
       recommendations.push({
-        type: "action",
-        icon: <Activity className="w-5 h-5 text-red-500" />,
-        title: `Protein: Only ${Math.round(proteinPercent)}%`,
-        description: "Behind schedule — protein is key for satiety and muscle.",
-        action: `Add ${Math.round(proteinGoal * 0.3)}g NOW: chicken breast (30g), 3 eggs (18g), Greek yogurt (15g), or tofu (20g).`,
-        priority: 2,
+        type: "warning",
+        icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
+        title: "Weekend Mindfulness",
+        description: "You mentioned weekends go off-track. Stay aware today.",
+        action: "Log every meal. Plan one indulgence consciously. Keep protein high.",
+        priority: 3,
       });
     }
 
-    if (hour >= 12 && waterPercent < 40) {
+    // === CHALLENGE-SPECIFIC COACHING ===
+    if (biggestChallenge === "consistency" && hour >= 18) {
+      recommendations.push({
+        type: "info",
+        icon: <Flame className="w-5 h-5 text-secondary" />,
+        title: "Consistency Win",
+        description: "Evening is when habits break. You've got this far today!",
+        action: "Finish strong. One more protein-rich meal, then you're done.",
+        priority: 5,
+      });
+    } else if (biggestChallenge === "portion_control" && meals.length > 0) {
+      recommendations.push({
+        type: "info",
+        icon: <Utensils className="w-5 h-5 text-orange-500" />,
+        title: "Portion Tip",
+        description: "You mentioned portions are challenging. Use smaller plates today.",
+        action: "Serve 80% of what you'd normally take. Wait 20min before seconds.",
+        priority: 4,
+      });
+    }
+
+    // === HYDRATION HABITS ===
+    if (hydrationHabits === "poor" && waterIntakeMl < waterGoal * 0.3 && hour >= 12) {
       recommendations.push({
         type: "action",
         icon: <Droplets className="w-5 h-5 text-blue-400" />,
-        title: `Dehydrated: ${Math.round(waterPercent)}%`,
-        description: "Dehydration feels like hunger and drops energy 20-30%.",
-        action: `Drink ${Math.round((waterGoal - waterIntakeMl) / 2 / 1000 * 10) / 10}L in next 2 hours. Set phone reminder.`,
-        priority: 3,
+        title: "Hydration Priority",
+        description: "You mentioned forgetting to drink. Dehydration = false hunger + low energy.",
+        action: `Set hourly phone reminders. Drink ${Math.round((waterGoal - waterIntakeMl) / 3 / 1000 * 10) / 10}L before 3pm.`,
+        priority: 2,
       });
     }
 
@@ -232,18 +259,7 @@ export const AICoachCard = ({
           icon: <TrendingDown className="w-5 h-5 text-red-500" />,
           title: "7-Day Energy Declining",
           description: `Avg ${analysis.averageEnergy}/5 and falling. Pattern suggests under-fueling.`,
-          action: `This week: Hit ${proteinGoal}g protein daily, ${targetSleepHours}h sleep, ${baseline?.water_liters || 2.5}L water. Track all 3.`,
-          priority: 1,
-        });
-      }
-
-      if (analysis.trends.sleep === "declining") {
-        recommendations.push({
-          type: "warning",
-          icon: <TrendingDown className="w-5 h-5 text-red-500" />,
-          title: "Sleep Quality Dropping",
-          description: `Avg ${analysis.averageSleep}/5. Poor sleep = 300-500 extra calories from cravings.`,
-          action: "This week: No caffeine after 2pm, screens off 1h before bed, try chamomile tea.",
+          action: `This week: Hit ${proteinGoal}g protein daily, ${targetSleepHours}h sleep, ${baseline?.water_liters || 2.5}L water.`,
           priority: 1,
         });
       }

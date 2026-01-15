@@ -44,6 +44,22 @@ export interface UserBaseline {
   potassium_mg: number | null;
   focus_points: string[] | null;
   preferred_language: string | null;
+  // New behavioral fields
+  eating_speed: string | null;
+  hunger_patterns: string | null;
+  cravings_triggers: string[] | null;
+  emotional_eating: string | null;
+  biggest_challenge: string | null;
+  past_diets: string[] | null;
+  motivation_style: string | null;
+  accountability_preference: string | null;
+  meal_prep_time: string | null;
+  cooking_skill: string | null;
+  eating_out_frequency: string | null;
+  snacking_habits: string | null;
+  hydration_habits: string | null;
+  energy_patterns: string | null;
+  weekend_habits: string | null;
 }
 
 export const saveUserBaseline = async (
@@ -85,6 +101,7 @@ export const saveUserBaseline = async (
       cycle_regularity: onboardingData.cycleRegularity || null,
       current_phase: onboardingData.currentPhase || null,
       cycle_symptoms: onboardingData.cycleSymptoms,
+      // Baseline calculations
       tdee: baseline.calories.tdee,
       target_calories: baseline.calories.target,
       protein_grams: baseline.macros.protein.grams,
@@ -95,6 +112,22 @@ export const saveUserBaseline = async (
       magnesium_mg: baseline.hydration.magnesiumMg,
       potassium_mg: baseline.hydration.potassiumMg,
       focus_points: baseline.focusPoints,
+      // New behavioral fields
+      eating_speed: onboardingData.eatingSpeed || null,
+      hunger_patterns: onboardingData.hungerPatterns || null,
+      cravings_triggers: onboardingData.cravingsTriggers,
+      emotional_eating: onboardingData.emotionalEating || null,
+      biggest_challenge: onboardingData.biggestChallenge || null,
+      past_diets: onboardingData.pastDiets,
+      motivation_style: onboardingData.motivationStyle || null,
+      accountability_preference: onboardingData.accountabilityPreference || null,
+      meal_prep_time: onboardingData.mealPrepTime || null,
+      cooking_skill: onboardingData.cookingSkill || null,
+      eating_out_frequency: onboardingData.eatingOutFrequency || null,
+      snacking_habits: onboardingData.snackingHabits || null,
+      hydration_habits: onboardingData.hydrationHabits || null,
+      energy_patterns: onboardingData.energyPatterns || null,
+      weekend_habits: onboardingData.weekendHabits || null,
     })
     .select()
     .single();
@@ -141,6 +174,15 @@ export const getAICoachingResponse = async (
     sleepHours?: string;
     stressLevel?: string;
     focusPoints?: string[];
+    // New behavioral context
+    eatingSpeed?: string;
+    hungerPatterns?: string;
+    cravingsTriggers?: string[];
+    emotionalEating?: string;
+    biggestChallenge?: string;
+    motivationStyle?: string;
+    weekendHabits?: string;
+    energyPatterns?: string;
   },
   type: "chat" | "meal_feedback" | "daily_checkin" | "focus_tip" = "chat"
 ) => {
