@@ -43,7 +43,12 @@ export const useAuth = () => {
     inFlightRef.current = true;
     setSubscriptionLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription');
+      const { data, error } = await Promise.race([
+        supabase.functions.invoke("check-subscription"),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Subscription check timed out")), 12000)
+        ),
+      ]);
       if (error) throw error;
 
       setSubscription({
