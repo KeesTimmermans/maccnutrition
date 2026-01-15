@@ -21,6 +21,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
+  const [stuckLoading, setStuckLoading] = useState(false);
   const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -180,7 +181,88 @@ const Index = () => {
     setAppState("dashboard");
   };
 
+  // If anything in the auth/subscription bootstrap hangs, never leave the user on a blank screen.
+  useEffect(() => {
+    const isBusy = loading || authLoading || subscriptionLoading;
+    if (!isBusy) {
+      setStuckLoading(false);
+      return;
+    }
+
+    const t = window.setTimeout(() => setStuckLoading(true), 15000);
+    return () => window.clearTimeout(t);
+  }, [loading, authLoading, subscriptionLoading]);
+
   if (loading || authLoading || subscriptionLoading) {
+    if (stuckLoading) {
+      const diagnostics = {
+        at: new Date().toISOString(),
+        hasUser: !!user,
+        authLoading,
+        subscriptionLoading,
+        subscribed: subscription,
+        isTrialing,
+        hasCheckoutUrl: !!checkoutUrl,
+      };
+
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-medium space-y-4">
+            <div className="flex items-center gap-3">
+              <img src={cjtLogo} alt="CJT Nutrition" className="w-12 h-auto" />
+              <div>
+                <h1 className="text-lg font-bold text-foreground">Still loading…</h1>
+                <p className="text-sm text-muted-foreground">
+                  This is taking longer than expected. Use the buttons below to continue.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button variant="hero" onClick={() => window.location.reload()}>
+                Reload
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/auth")}>
+                Go to Login
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  try {
+                    localStorage.removeItem("cjt_onboarded");
+                    localStorage.removeItem("cjt_user_data");
+                    toast({ title: "Cleared local data", description: "Reloading…" });
+                    window.location.reload();
+                  } catch {
+                    window.location.reload();
+                  }
+                }}
+              >
+                Clear local data
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2));
+                    toast({ title: "Diagnostics copied" });
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                Copy diagnostics
+              </Button>
+            </div>
+
+            <pre className="max-h-48 overflow-auto rounded-xl bg-muted p-3 text-xs text-foreground whitespace-pre-wrap">
+              {JSON.stringify(diagnostics, null, 2)}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
