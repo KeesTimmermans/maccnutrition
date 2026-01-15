@@ -134,10 +134,15 @@ const Auth = () => {
         } else if (signUpData.user) {
           // Redirect to checkout for payment
           try {
-            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout');
-            
+            const { data: checkoutData, error: checkoutError } = await Promise.race([
+              supabase.functions.invoke("create-checkout"),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("Checkout timed out")), 12000)
+              ),
+            ]);
+
             if (checkoutError) throw checkoutError;
-            
+
             if (checkoutData?.url) {
               window.location.href = checkoutData.url;
             } else {
