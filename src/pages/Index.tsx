@@ -38,28 +38,22 @@ const Index = () => {
   const baselineCheckedRef = useRef<string | null>(null);
   const checkoutAttemptedRef = useRef(false);
 
-  // If we just returned from checkout, force a fresh subscription check immediately.
-  // Without this, the user can be stuck on "Subscription required" until the 60s auto-refresh.
+  // Check for checkout return status (stored by main.tsx during the hash-fixing redirect)
   useEffect(() => {
     if (authLoading) return;
 
-    const hash = window.location.hash || "";
-    const qIndex = hash.indexOf("?");
-    if (qIndex === -1) return;
-
-    const params = new URLSearchParams(hash.slice(qIndex + 1));
-    const checkout = params.get("checkout");
+    const checkout = sessionStorage.getItem("checkout_return");
     if (!checkout) return;
+
+    // Clear it immediately so we don't process it again
+    sessionStorage.removeItem("checkout_return");
 
     if (checkout === "success") {
       checkSubscription({ force: true });
-      toast({ title: "Trial activated", description: "Loading your account…" });
+      toast({ title: "Trial activated!", description: "Loading your account…" });
     } else if (checkout === "cancel") {
       toast({ title: "Checkout canceled", description: "You can resume checkout anytime." });
     }
-
-    const cleanHash = hash.slice(0, qIndex);
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${cleanHash}`);
   }, [authLoading, checkSubscription, toast]);
 
   // Check for existing baseline data and subscription
