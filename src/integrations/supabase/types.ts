@@ -376,41 +376,32 @@ export type Database = {
       }
       wearable_connections: {
         Row: {
-          access_token: string | null
           created_at: string
           external_user_id: string | null
           id: string
           is_connected: boolean
           last_sync_at: string | null
           provider: string
-          refresh_token: string | null
-          token_expires_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          access_token?: string | null
           created_at?: string
           external_user_id?: string | null
           id?: string
           is_connected?: boolean
           last_sync_at?: string | null
           provider: string
-          refresh_token?: string | null
-          token_expires_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          access_token?: string | null
           created_at?: string
           external_user_id?: string | null
           id?: string
           is_connected?: boolean
           last_sync_at?: string | null
           provider?: string
-          refresh_token?: string | null
-          token_expires_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -494,23 +485,57 @@ export type Database = {
         }
         Relationships: []
       }
+      wearable_tokens: {
+        Row: {
+          access_token: string | null
+          connection_id: string
+          created_at: string
+          id: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          connection_id: string
+          created_at?: string
+          id?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          connection_id?: string
+          created_at?: string
+          id?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      get_user_wearable_connections: {
-        Args: never
+      get_wearable_token: {
+        Args: { p_connection_id: string }
         Returns: {
-          created_at: string
-          external_user_id: string
-          id: string
-          is_connected: boolean
-          last_sync_at: string
-          provider: string
-          updated_at: string
-          user_id: string
+          access_token: string
+          refresh_token: string
+          token_expires_at: string
         }[]
+      }
+      update_wearable_token: {
+        Args: {
+          p_access_token: string
+          p_connection_id: string
+          p_refresh_token: string
+          p_token_expires_at: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
