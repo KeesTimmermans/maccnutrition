@@ -38,23 +38,42 @@ const Index = () => {
   const baselineCheckedRef = useRef<string | null>(null);
   const checkoutAttemptedRef = useRef(false);
 
-  // Check for checkout return status (stored by main.tsx during the hash-fixing redirect)
+  // Checkout return handling:
+  // Stripe returns to a URL WITHOUT hash fragments (e.g. /?checkout=success).
+  // Since the app uses HashRouter, we must move the user back onto /#/ and then refresh subscription.
   useEffect(() => {
     if (authLoading) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const checkoutFromSearch = params.get("checkout");
+
+    if (checkoutFromSearch) {
+      sessionStorage.setItem("checkout_return", checkoutFromSearch);
+      window.location.replace(`${window.location.origin}${window.location.pathname}#/`);
+      return;
+    }
 
     const checkout = sessionStorage.getItem("checkout_return");
     if (!checkout) return;
 
-    // Clear it immediately so we don't process it again
     sessionStorage.removeItem("checkout_return");
 
     if (checkout === "success") {
+      if (!user) {
+        toast({
+          title: "Checkout complete",
+          description: "Please log in to finish activating your trial.",
+        });
+        navigate("/auth");
+        return;
+      }
+
       checkSubscription({ force: true });
       toast({ title: "Trial activated!", description: "Loading your account…" });
     } else if (checkout === "cancel") {
       toast({ title: "Checkout canceled", description: "You can resume checkout anytime." });
     }
-  }, [authLoading, checkSubscription, toast]);
+  }, [authLoading, user, navigate, checkSubscription, toast]);
 
   // Check for existing baseline data and subscription
   useEffect(() => {
