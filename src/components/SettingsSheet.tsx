@@ -6,11 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Settings, LogOut, Globe, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
@@ -63,10 +63,13 @@ export const SettingsSheet = ({
     }
   };
 
+  const { signOut } = useAuth();
+
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-    toast.success(t('logout'));
+    await signOut();
+    setOpen(false);
+    navigate("/auth", { replace: true });
+    toast.success(t("logout"));
   };
 
   return (
