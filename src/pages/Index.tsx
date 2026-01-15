@@ -15,6 +15,14 @@ import cjtLogo from "@/assets/cjt-logo.png";
 
 type AppState = "welcome" | "connection" | "questionnaire" | "baseline" | "dashboard";
 
+const getCheckoutReturnUrl = () => {
+  const basePath = window.location.pathname.endsWith("/")
+    ? window.location.pathname
+    : `${window.location.pathname}/`;
+  // HashRouter expects /#/… routes
+  return `${window.location.origin}${basePath}#/`;
+};
+
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
   const [userData, setUserData] = useState<OnboardingData | null>(null);
@@ -22,13 +30,37 @@ const Index = () => {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
-  const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing } = useAuth();
+  const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing, checkSubscription } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Prevent re-fetching baseline repeatedly (e.g. when subscription refresh runs)
   const baselineCheckedRef = useRef<string | null>(null);
   const checkoutAttemptedRef = useRef(false);
+
+  // If we just returned from checkout, force a fresh subscription check immediately.
+  // Without this, the user can be stuck on "Subscription required" until the 60s auto-refresh.
+  useEffect(() => {
+    if (authLoading) return;
+
+    const hash = window.location.hash || "";
+    const qIndex = hash.indexOf("?");
+    if (qIndex === -1) return;
+
+    const params = new URLSearchParams(hash.slice(qIndex + 1));
+    const checkout = params.get("checkout");
+    if (!checkout) return;
+
+    if (checkout === "success") {
+      checkSubscription({ force: true });
+      toast({ title: "Trial activated", description: "Loading your account…" });
+    } else if (checkout === "cancel") {
+      toast({ title: "Checkout canceled", description: "You can resume checkout anytime." });
+    }
+
+    const cleanHash = hash.slice(0, qIndex);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${cleanHash}`);
+  }, [authLoading, checkSubscription, toast]);
 
   // Check for existing baseline data and subscription
   useEffect(() => {
@@ -48,10 +80,8 @@ const Index = () => {
           setCheckoutInitLoading(true);
           try {
             const { data: checkoutData, error: checkoutError } = await Promise.race([
-              supabase.functions.invoke("create-checkout"),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("Checkout timed out")), 12000)
-              ),
+              supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
             ]);
             if (!checkoutError && checkoutData?.url) {
               setCheckoutUrl(checkoutData.url);
@@ -293,10 +323,8 @@ const Index = () => {
                 let url = checkoutUrl;
                 if (!url) {
                   const { data, error } = await Promise.race([
-                    supabase.functions.invoke("create-checkout"),
-                    new Promise<never>((_, reject) =>
-                      setTimeout(() => reject(new Error("Checkout timed out")), 12000)
-                    ),
+                    supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+                    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
                   ]);
                   if (error) throw error;
                   url = data?.url ?? null;

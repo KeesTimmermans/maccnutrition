@@ -26,47 +26,62 @@ export const useAuth = () => {
   const inFlightRef = useRef(false);
   const lastCheckRef = useRef<{ token: string | null; at: number }>({ token: null, at: 0 });
 
-  const checkSubscription = useCallback(async () => {
-    if (!session) {
-      setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
-      setSubscriptionLoading(false);
-      return;
-    }
+  const checkSubscription = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (!session) {
+        setSubscription({
+          subscribed: false,
+          subscriptionEnd: null,
+          isTrialing: false,
+          trialEnd: null,
+          trialDaysRemaining: null,
+        });
+        setSubscriptionLoading(false);
+        return;
+      }
 
-    const token = session.access_token;
-    const now = Date.now();
+      const force = opts?.force ?? false;
+      const token = session.access_token;
+      const now = Date.now();
 
-    // De-dupe to avoid multiple simultaneous or back-to-back checks (common on refresh)
-    if (inFlightRef.current) return;
-    if (lastCheckRef.current.token === token && now - lastCheckRef.current.at < 15000) return;
+      // De-dupe to avoid multiple simultaneous or back-to-back checks (common on refresh)
+      // NOTE: When returning from checkout, we call this with force=true so we can refresh instantly.
+      if (inFlightRef.current) return;
+      if (!force && lastCheckRef.current.token === token && now - lastCheckRef.current.at < 15000) return;
 
-    inFlightRef.current = true;
-    setSubscriptionLoading(true);
-    try {
-      const { data, error } = await Promise.race([
-        supabase.functions.invoke("check-subscription"),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Subscription check timed out")), 12000)
-        ),
-      ]);
-      if (error) throw error;
+      inFlightRef.current = true;
+      setSubscriptionLoading(true);
+      try {
+        const { data, error } = await Promise.race([
+          supabase.functions.invoke("check-subscription"),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Subscription check timed out")), 12000)),
+        ]);
+        if (error) throw error;
 
-      setSubscription({
-        subscribed: data?.subscribed ?? false,
-        subscriptionEnd: data?.subscription_end ?? null,
-        isTrialing: data?.is_trialing ?? false,
-        trialEnd: data?.trial_end ?? null,
-        trialDaysRemaining: data?.trial_days_remaining ?? null,
-      });
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
-    } finally {
-      lastCheckRef.current = { token, at: Date.now() };
-      setSubscriptionLoading(false);
-      inFlightRef.current = false;
-    }
-  }, [session]);
+        setSubscription({
+          subscribed: data?.subscribed ?? false,
+          subscriptionEnd: data?.subscription_end ?? null,
+          isTrialing: data?.is_trialing ?? false,
+          trialEnd: data?.trial_end ?? null,
+          trialDaysRemaining: data?.trial_days_remaining ?? null,
+        });
+      } catch (error) {
+        console.error("Error checking subscription:", error);
+        setSubscription({
+          subscribed: false,
+          subscriptionEnd: null,
+          isTrialing: false,
+          trialEnd: null,
+          trialDaysRemaining: null,
+        });
+      } finally {
+        lastCheckRef.current = { token, at: Date.now() };
+        setSubscriptionLoading(false);
+        inFlightRef.current = false;
+      }
+    },
+    [session]
+  );
 
   useEffect(() => {
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(

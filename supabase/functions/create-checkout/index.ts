@@ -12,6 +12,22 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+const normalizeReturnUrl = (raw: string | null) => {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
+const withQueryParam = (url: string, key: string, value: string) => {
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -45,7 +61,24 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+
+    const requestedReturnUrl = body?.return_url ?? body?.returnUrl ?? null;
     const origin = req.headers.get("origin") ?? "";
+
+    // Prefer an explicit return_url from the client (more reliable than Origin in embedded browsers)
+    const baseReturnUrl =
+      normalizeReturnUrl(requestedReturnUrl) ?? (origin ? `${origin}/#/` : "");
+
+    if (!baseReturnUrl) {
+      throw new Error("Missing return URL (return_url)");
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -60,8 +93,8 @@ serve(async (req) => {
         trial_period_days: 14,
       },
       allow_promotion_codes: true,
-      success_url: `${origin}/`,
-      cancel_url: `${origin}/`,
+      success_url: withQueryParam(baseReturnUrl, "checkout", "success"),
+      cancel_url: withQueryParam(baseReturnUrl, "checkout", "cancel"),
     });
 
     logStep("Checkout session created", { sessionId: session.id });
