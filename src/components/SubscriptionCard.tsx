@@ -31,17 +31,27 @@ export const SubscriptionCard = ({
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
+  const getCheckoutReturnUrl = () => {
+    const basePath = window.location.pathname.endsWith("/")
+      ? window.location.pathname
+      : `${window.location.pathname}/`;
+    return `${window.location.origin}${basePath}#/`;
+  };
+
   const handleSubscribe = async () => {
     setCheckoutLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout');
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { return_url: getCheckoutReturnUrl() },
+      });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, '_blank');
+        const opened = window.open(data.url, "_blank", "noopener,noreferrer");
+        if (!opened) window.location.assign(data.url);
       }
     } catch (error) {
-      console.error('Error creating checkout:', error);
-      toast.error('Failed to start checkout. Please try again.');
+      console.error("Error creating checkout:", error);
+      toast.error("Failed to start checkout. Please try again.");
     } finally {
       setCheckoutLoading(false);
     }

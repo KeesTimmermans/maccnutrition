@@ -26,6 +26,13 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const getCheckoutReturnUrl = () => {
+    const basePath = window.location.pathname.endsWith("/")
+      ? window.location.pathname
+      : `${window.location.pathname}/`;
+    return `${window.location.origin}${basePath}#/`;
+  };
+
   useEffect(() => {
     const {
       data: { subscription },
@@ -142,10 +149,8 @@ const Auth = () => {
           // Redirect to checkout for payment
           try {
             const { data: checkoutData, error: checkoutError } = await Promise.race([
-              supabase.functions.invoke("create-checkout"),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("Checkout timed out")), 12000)
-              ),
+              supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
             ]);
 
             if (checkoutError) throw checkoutError;

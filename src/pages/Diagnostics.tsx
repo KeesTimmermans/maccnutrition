@@ -26,6 +26,13 @@ const Diagnostics = () => {
   const [checks, setChecks] = useState<HealthCheck[]>([]);
   const [running, setRunning] = useState(false);
 
+  const getCheckoutReturnUrl = () => {
+    const basePath = window.location.pathname.endsWith("/")
+      ? window.location.pathname
+      : `${window.location.pathname}/`;
+    return `${window.location.origin}${basePath}#/`;
+  };
+
   const runChecks = async () => {
     setRunning(true);
     const results: HealthCheck[] = [];
@@ -98,7 +105,7 @@ const Diagnostics = () => {
     const checkoutStart = Date.now();
     try {
       const { data, error } = await Promise.race([
-        supabase.functions.invoke("create-checkout"),
+        supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout after 10s")), 10000)),
       ]);
       results.push({
