@@ -14,6 +14,7 @@ import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
 import { RecalibrationNotification } from "@/components/RecalibrationNotification";
+import { PersonalityProfileCard } from "@/components/PersonalityProfileCard";
 
 import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
@@ -456,6 +457,11 @@ export const Dashboard = () => {
         {/* Streak Card */}
         <section>
           <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
+        </section>
+
+        {/* Personality Profile */}
+        <section>
+          <PersonalityProfileCard baseline={baseline} />
         </section>
 
         {/* Coach Mac */}
