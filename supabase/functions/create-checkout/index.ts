@@ -70,6 +70,27 @@ serve(async (req) => {
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Existing customer found", { customerId });
+
+      // Prevent creating multiple overlapping subscriptions/trials for the same customer.
+      const existingSubs = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "all",
+        limit: 10,
+      });
+      const hasAccess = existingSubs.data.some(
+        (s: any) => s?.status === "active" || s?.status === "trialing"
+      );
+
+      if (hasAccess) {
+        logStep("Customer already subscribed/trialing", {
+          customerId,
+          statuses: existingSubs.data.map((s: any) => s.status),
+        });
+        return new Response(JSON.stringify({ url: null, already_subscribed: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
     }
 
     let body: any = {};

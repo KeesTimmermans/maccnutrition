@@ -117,79 +117,92 @@ const Auth = () => {
             });
           }
         }
-      } else {
-        // Sign up - store name in user metadata
-        const { data: signUpData, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              full_name: name,
-            },
+        return;
+      }
+
+      // Sign up - store name in user metadata
+      const { data: signUpData, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: name,
           },
-        });
+        },
+      });
 
-        if (error) {
-          if (error.message.includes("already registered")) {
-            toast({
-              title: "Account exists",
-              description: "This email is already registered. Please log in instead.",
-              variant: "destructive",
-            });
-            setIsLogin(true);
-          } else {
-            toast({
-              title: "Sign up failed",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
-        } else if (signUpData.user) {
-          // Redirect to checkout for payment
-          try {
-            const { data: checkoutData, error: checkoutError } = await Promise.race([
-              supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
-            ]);
-
-            if (checkoutError) throw checkoutError;
-
-            const url = checkoutData?.url as string | undefined;
-            if (url) {
-              const inIframe = (() => {
-                try {
-                  return window.self !== window.top;
-                } catch {
-                  return true;
-                }
-              })();
-
-              if (inIframe) {
-                // In embedded previews, top-level navigation to Stripe can be blocked.
-                // Show a clear "Open checkout" CTA instead.
-                setCheckoutUrl(url);
-                toast({
-                  title: "Almost there",
-                  description: "Open checkout in a new tab to start your 14-day trial.",
-                });
-              } else {
-                window.location.assign(url);
-              }
-            } else {
-              toast({
-                title: "Account created!",
-                description: "Please complete your subscription to continue.",
-              });
-            }
-          } catch (checkoutErr) {
-            console.error("Checkout error:", checkoutErr);
-            toast({
-              title: "Account created!",
-              description: "You can now continue with setup.",
-            });
-          }
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast({
+            title: "Account exists",
+            description: "This email is already registered. Please log in instead.",
+            variant: "destructive",
+          });
+          setIsLogin(true);
+        } else {
+          toast({
+            title: "Sign up failed",
+            description: error.message,
+            variant: "destructive",
+          });
         }
+        return;
+      }
+
+      if (!signUpData.session) {
+        // If email confirmations are enabled (or we otherwise didn't get a session),
+        // we can't start checkout yet because we have no auth token.
+        toast({
+          title: "Check your email",
+          description: "Please confirm your email, then log in to start your 14-day trial.",
+        });
+        setIsLogin(true);
+        return;
+      }
+
+      // Redirect to checkout for payment
+      try {
+        const { data: checkoutData, error: checkoutError } = await Promise.race([
+          supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
+        ]);
+
+        if (checkoutError) throw checkoutError;
+
+        const url = checkoutData?.url as string | undefined;
+        if (url) {
+          const inIframe = (() => {
+            try {
+              return window.self !== window.top;
+            } catch {
+              return true;
+            }
+          })();
+
+          if (inIframe) {
+            // In embedded previews, top-level navigation to Stripe can be blocked.
+            // Show a clear "Open checkout" CTA instead.
+            setCheckoutUrl(url);
+            toast({
+              title: "Almost there",
+              description: "Open checkout in a new tab to start your 14-day trial.",
+            });
+          } else {
+            window.location.assign(url);
+          }
+        } else {
+          toast({
+            title: "Account created!",
+            description: "Please complete your subscription to continue.",
+          });
+        }
+      } catch (checkoutErr) {
+        console.error("Checkout error:", checkoutErr);
+        toast({
+          title: "Account created!",
+          description: "You can now continue with setup.",
+        });
       }
     } catch (_error) {
       toast({

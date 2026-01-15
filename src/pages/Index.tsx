@@ -30,13 +30,12 @@ const Index = () => {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
-  const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing, checkSubscription } = useAuth();
+  const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing, checkSubscription, subscriptionChecked, subscriptionError } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Prevent re-fetching baseline repeatedly (e.g. when subscription refresh runs)
   const baselineCheckedRef = useRef<string | null>(null);
-  const checkoutAttemptedRef = useRef(false);
 
   // Checkout return handling:
   // Stripe returns to a URL WITHOUT hash fragments (e.g. /?checkout=success).
@@ -81,44 +80,38 @@ const Index = () => {
       if (authLoading || subscriptionLoading) return;
 
       if (user) {
-        // Check subscription status - must be subscribed or trialing
+        // If the backend can't verify subscription right now, don't force checkout.
+        // This prevents users from getting stuck in a "start trial" loop.
         if (!subscription && !isTrialing) {
-          // User is logged in but doesn't have access. In preview (iframe), auto-redirects can be blocked,
-          // which previously left the UI stuck on "Loading..." forever.
-          if (checkoutUrl || checkoutAttemptedRef.current) {
+          // If we haven't successfully verified at least once (or we hit an error),
+          // show the subscription screen and let the user manually start checkout/refresh.
+          if (!subscriptionChecked || subscriptionError) {
             setLoading(false);
             return;
           }
 
-          setCheckoutInitLoading(true);
-          try {
-            const { data: checkoutData, error: checkoutError } = await Promise.race([
-              supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
-            ]);
-            if (!checkoutError && checkoutData?.url) {
-              setCheckoutUrl(checkoutData.url);
-
-              const inIframe = (() => {
-                try {
-                  return window.self !== window.top;
-                } catch {
-                  return true;
-                }
-              })();
-
-              // Auto-redirect only outside iframes; inside preview we show a button instead.
-              if (!inIframe) {
-                checkoutAttemptedRef.current = true;
-                window.location.assign(checkoutData.url);
+          // Pre-fetch a checkout URL so the "Open Checkout" button is instant,
+          // but don't auto-redirect (avoids loops on refresh / popup blockers).
+          if (!checkoutUrl) {
+            setCheckoutInitLoading(true);
+            try {
+              const { data: checkoutData, error: checkoutError } = await Promise.race([
+                supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
+              ]);
+              if (!checkoutError && checkoutData?.url) {
+                setCheckoutUrl(checkoutData.url);
               }
+            } catch (err) {
+              console.error("Checkout error:", err);
+            } finally {
+              setCheckoutInitLoading(false);
+              setLoading(false);
             }
-          } catch (err) {
-            console.error("Checkout error:", err);
-          } finally {
-            setCheckoutInitLoading(false);
-            setLoading(false);
+            return;
           }
+
+          setLoading(false);
           return;
         }
 
@@ -156,7 +149,7 @@ const Index = () => {
     };
 
     checkUserBaseline();
-  }, [user, authLoading, subscription, subscriptionLoading, isTrialing, checkoutUrl]);
+  }, [user, authLoading, subscription, subscriptionLoading, isTrialing, checkoutUrl, subscriptionChecked, subscriptionError]);
 
   const handleGetStarted = () => {
     if (user) {
@@ -328,43 +321,60 @@ const Index = () => {
             Open checkout in a new tab to continue. If nothing opens, allow popups for this site.
           </p>
 
-          <Button
-            variant="hero"
-            size="xl"
-            className="w-full"
-            disabled={checkoutInitLoading}
-            onClick={async () => {
-              setCheckoutInitLoading(true);
-              try {
-                let url = checkoutUrl;
-                if (!url) {
-                  const { data, error } = await Promise.race([
-                    supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-                    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
-                  ]);
-                  if (error) throw error;
-                  url = data?.url ?? null;
-                  if (url) setCheckoutUrl(url);
+          {subscriptionError ? (
+            <p className="text-xs text-muted-foreground">
+              We’re having trouble verifying your trial right now. Try refreshing access before starting checkout again.
+            </p>
+          ) : null}
+
+          <div className="space-y-2">
+            <Button
+              variant="hero"
+              size="xl"
+              className="w-full"
+              disabled={checkoutInitLoading}
+              onClick={async () => {
+                setCheckoutInitLoading(true);
+                try {
+                  let url = checkoutUrl;
+                  if (!url) {
+                    const { data, error } = await Promise.race([
+                      supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+                      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
+                    ]);
+                    if (error) throw error;
+                    url = data?.url ?? null;
+                    if (url) setCheckoutUrl(url);
+                  }
+
+                  if (!url) throw new Error("No checkout URL returned");
+
+                  const opened = window.open(url, "_blank", "noopener,noreferrer");
+                  if (!opened) window.location.assign(url);
+                } catch (err) {
+                  console.error("Checkout error:", err);
+                  toast({
+                    title: "Couldn't start checkout",
+                    description: "Please try again.",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setCheckoutInitLoading(false);
                 }
+              }}
+            >
+              {checkoutInitLoading ? "Preparing..." : "Open Checkout"}
+            </Button>
 
-                if (!url) throw new Error("No checkout URL returned");
-
-                const opened = window.open(url, "_blank", "noopener,noreferrer");
-                if (!opened) window.location.assign(url);
-              } catch (err) {
-                console.error("Checkout error:", err);
-                toast({
-                  title: "Couldn't start checkout",
-                  description: "Please try again.",
-                  variant: "destructive",
-                });
-              } finally {
-                setCheckoutInitLoading(false);
-              }
-            }}
-          >
-            {checkoutInitLoading ? "Preparing..." : "Open Checkout"}
-          </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={subscriptionLoading}
+              onClick={() => checkSubscription({ force: true })}
+            >
+              {subscriptionLoading ? "Refreshing…" : "Refresh access"}
+            </Button>
+          </div>
 
           {checkoutUrl ? (
             <button

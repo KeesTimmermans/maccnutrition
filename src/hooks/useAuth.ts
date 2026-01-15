@@ -22,6 +22,8 @@ export const useAuth = () => {
     trialDaysRemaining: null,
   });
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
 
   const inFlightRef = useRef(false);
   const lastCheckRef = useRef<{ token: string | null; at: number }>({ token: null, at: 0 });
@@ -36,6 +38,8 @@ export const useAuth = () => {
           trialEnd: null,
           trialDaysRemaining: null,
         });
+        setSubscriptionError(null);
+        setSubscriptionChecked(false);
         setSubscriptionLoading(false);
         return;
       }
@@ -54,7 +58,9 @@ export const useAuth = () => {
       try {
         const { data, error } = await Promise.race([
           supabase.functions.invoke("check-subscription"),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Subscription check timed out")), 12000)),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Subscription check timed out")), 12000)
+          ),
         ]);
         if (error) throw error;
 
@@ -65,15 +71,14 @@ export const useAuth = () => {
           trialEnd: data?.trial_end ?? null,
           trialDaysRemaining: data?.trial_days_remaining ?? null,
         });
+        setSubscriptionError(null);
+        setSubscriptionChecked(true);
       } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
         console.error("Error checking subscription:", error);
-        setSubscription({
-          subscribed: false,
-          subscriptionEnd: null,
-          isTrialing: false,
-          trialEnd: null,
-          trialDaysRemaining: null,
-        });
+        setSubscriptionError(msg);
+        // IMPORTANT: keep last known subscription state on errors.
+        // Otherwise transient backend/auth issues can force users back into checkout loops.
       } finally {
         lastCheckRef.current = { token, at: Date.now() };
         setSubscriptionLoading(false);
@@ -151,17 +156,19 @@ export const useAuth = () => {
     setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
   };
 
-  return { 
-    user, 
-    session, 
-    loading, 
-    signOut, 
+  return {
+    user,
+    session,
+    loading,
+    signOut,
     subscription: subscription.subscribed,
     subscriptionEnd: subscription.subscriptionEnd,
     isTrialing: subscription.isTrialing,
     trialEnd: subscription.trialEnd,
     trialDaysRemaining: subscription.trialDaysRemaining,
     subscriptionLoading,
+    subscriptionChecked,
+    subscriptionError,
     checkSubscription,
   };
 };
