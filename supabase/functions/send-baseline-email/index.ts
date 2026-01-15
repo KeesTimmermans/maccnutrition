@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 interface BaselineEmailRequest {
-  userId: string;
   email: string;
   userName?: string;
   baseline: {
@@ -36,16 +35,57 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[SEND-BASELINE-EMAIL] Missing or invalid authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error('[SEND-BASELINE-EMAIL] Invalid token:', claimsError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    const userEmail = claimsData.claims.email;
+    console.log('[SEND-BASELINE-EMAIL] Authenticated user:', userId);
+
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
     if (!RESEND_API_KEY) {
-      console.error('RESEND_API_KEY not configured');
+      console.error('[SEND-BASELINE-EMAIL] RESEND_API_KEY not configured');
       throw new Error('Email service not configured');
     }
 
     const requestData: BaselineEmailRequest = await req.json();
     const { email, userName, baseline, mealPattern } = requestData;
 
-    console.log('Sending baseline email to:', email);
+    // Verify the email belongs to the authenticated user
+    if (email !== userEmail) {
+      console.error('[SEND-BASELINE-EMAIL] Email mismatch - requested:', email, 'user:', userEmail);
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Cannot send email to a different address' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[SEND-BASELINE-EMAIL] Sending baseline email to:', email);
 
     // Format goal label
     const goalLabels: Record<string, string> = {
@@ -250,12 +290,12 @@ CJT Nutrition • Nutrition with intention
 
     if (!res.ok) {
       const errorBody = await res.text();
-      console.error('Resend API error:', res.status, errorBody);
+      console.error('[SEND-BASELINE-EMAIL] Resend API error:', res.status, errorBody);
       throw new Error(`Failed to send email: ${res.status}`);
     }
 
     const result = await res.json();
-    console.log('Email sent successfully:', result);
+    console.log('[SEND-BASELINE-EMAIL] Email sent successfully:', result);
 
     return new Response(
       JSON.stringify({ success: true, messageId: result.id }),
@@ -263,7 +303,7 @@ CJT Nutrition • Nutrition with intention
     );
 
   } catch (error) {
-    console.error('Error in send-baseline-email:', error);
+    console.error('[SEND-BASELINE-EMAIL] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),
