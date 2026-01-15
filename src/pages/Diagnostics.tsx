@@ -87,14 +87,20 @@ const Diagnostics = () => {
 
     // 1. Auth session check
     const authStart = Date.now();
+    let currentSession: any = null;
+
     try {
       const { data, error } = await supabase.auth.getSession();
+      currentSession = data.session;
+
       results.push({
         name: "Auth Session",
         status: data.session ? "ok" : "warning",
-        message: data.session 
-          ? `Logged in as ${data.session.user.email}` 
-          : error ? `Error: ${error.message}` : "No active session",
+        message: data.session
+          ? `Logged in as ${data.session.user.email}`
+          : error
+            ? `Error: ${error.message}`
+            : "No active session",
         duration: Date.now() - authStart,
       });
     } catch (e: any) {
@@ -125,52 +131,92 @@ const Diagnostics = () => {
       });
     }
 
-    // 3. Check-subscription function
+    const formatFnError = async (error: any, response?: Response) => {
+      if (!error) return null;
+      const status = response?.status;
+      let bodyText: string | null = null;
+
+      try {
+        if (response) bodyText = await response.clone().text();
+      } catch {
+        // ignore
+      }
+
+      if (status) {
+        return bodyText
+          ? `HTTP ${status} — ${bodyText}`
+          : `HTTP ${status} — ${error.message}`;
+      }
+
+      return error.message;
+    };
+
+    // 3. check-subscription function
     const subStart = Date.now();
-    try {
-      const { data, error } = await Promise.race([
-        supabase.functions.invoke("check-subscription"),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout after 10s")), 10000)),
-      ]);
+    if (!currentSession) {
       results.push({
         name: "check-subscription",
-        status: error ? "error" : "ok",
-        message: error 
-          ? `Error: ${error.message}` 
-          : `subscribed=${data?.subscribed}, trialing=${data?.is_trialing}`,
+        status: "warning",
+        message: "Skipped (not logged in)",
         duration: Date.now() - subStart,
       });
-    } catch (e: any) {
-      results.push({
-        name: "check-subscription",
-        status: "error",
-        message: e?.message || "Function call failed",
-        duration: Date.now() - subStart,
-      });
+    } else {
+      try {
+        const { data, error, response } = await Promise.race([
+          supabase.functions.invoke("check-subscription"),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout after 10s")), 10000)),
+        ] as const);
+
+        const errText = await formatFnError(error, response);
+
+        results.push({
+          name: "check-subscription",
+          status: error ? "error" : "ok",
+          message: errText ?? `subscribed=${data?.subscribed}, trialing=${data?.is_trialing}`,
+          duration: Date.now() - subStart,
+        });
+      } catch (e: any) {
+        results.push({
+          name: "check-subscription",
+          status: "error",
+          message: e?.message || "Function call failed",
+          duration: Date.now() - subStart,
+        });
+      }
     }
 
     // 4. create-checkout function (dry-run style, just check it responds)
     const checkoutStart = Date.now();
-    try {
-      const { data, error } = await Promise.race([
-        supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout after 10s")), 10000)),
-      ]);
+    if (!currentSession) {
       results.push({
         name: "create-checkout",
-        status: error ? "error" : "ok",
-        message: error 
-          ? `Error: ${error.message}` 
-          : data?.url ? "Checkout URL generated" : "No URL returned (may be subscribed)",
+        status: "warning",
+        message: "Skipped (not logged in)",
         duration: Date.now() - checkoutStart,
       });
-    } catch (e: any) {
-      results.push({
-        name: "create-checkout",
-        status: "error",
-        message: e?.message || "Function call failed",
-        duration: Date.now() - checkoutStart,
-      });
+    } else {
+      try {
+        const { data, error, response } = await Promise.race([
+          supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout after 10s")), 10000)),
+        ] as const);
+
+        const errText = await formatFnError(error, response);
+
+        results.push({
+          name: "create-checkout",
+          status: error ? "error" : "ok",
+          message: errText ?? (data?.url ? "Checkout URL generated" : "No URL returned (may be subscribed)"),
+          duration: Date.now() - checkoutStart,
+        });
+      } catch (e: any) {
+        results.push({
+          name: "create-checkout",
+          status: "error",
+          message: e?.message || "Function call failed",
+          duration: Date.now() - checkoutStart,
+        });
+      }
     }
 
     setChecks(results);
@@ -236,13 +282,27 @@ const Diagnostics = () => {
         </div>
 
         {/* Auth summary */}
-        <div className="bg-card rounded-2xl p-4 shadow-soft space-y-2">
-          <h2 className="font-semibold text-foreground">Auth Status</h2>
-          <div className="text-sm text-muted-foreground space-y-1">
-            <p><span className="font-medium text-foreground">User:</span> {user ? user.email : "Not logged in"}</p>
-            <p><span className="font-medium text-foreground">Session:</span> {session ? "Active" : "None"}</p>
-            <p><span className="font-medium text-foreground">Auth Loading:</span> {authLoading ? "Yes" : "No"}</p>
+        <div className="bg-card rounded-2xl p-4 shadow-soft space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-foreground">Auth Status</h2>
+              <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                <p><span className="font-medium text-foreground">User:</span> {user ? user.email : "Not logged in"}</p>
+                <p><span className="font-medium text-foreground">Session:</span> {session ? "Active" : "None"}</p>
+                <p><span className="font-medium text-foreground">Auth Loading:</span> {authLoading ? "Yes" : "No"}</p>
+              </div>
+            </div>
+
+            {!user && (
+              <Button variant="outline" onClick={() => navigate("/auth")}>Log in</Button>
+            )}
           </div>
+
+          {!user && (
+            <p className="text-xs text-muted-foreground">
+              Your trial is tied to your account email. Please log in with the same email you used at checkout, then re-run checks.
+            </p>
+          )}
         </div>
 
         {/* Subscription summary */}
