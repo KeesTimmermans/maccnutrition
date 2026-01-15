@@ -84,21 +84,46 @@ export const useAuth = () => {
   );
 
   useEffect(() => {
+    let resolved = false;
+
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        resolved = true;
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
+    // Also try getSession() directly
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      if (!resolved) {
+        resolved = true;
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    }).catch((err) => {
+      console.error("getSession error:", err);
+      if (!resolved) {
+        resolved = true;
+        setLoading(false);
+      }
     });
 
-    return () => authSubscription.unsubscribe();
+    // Failsafe: if auth doesn't resolve in 8 seconds, stop loading anyway
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        console.warn("Auth check timed out, continuing without session");
+        resolved = true;
+        setLoading(false);
+      }
+    }, 8000);
+
+    return () => {
+      authSubscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   // Check subscription on session change
