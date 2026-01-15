@@ -14,12 +14,14 @@ import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
 import { RecalibrationNotification } from "@/components/RecalibrationNotification";
+import { CheckInInsights } from "@/components/CheckInInsights";
 import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
-import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, UserTargets } from "@/lib/checkinService";
+import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, UserTargets, DailyCheckIn as DailyCheckInType } from "@/lib/checkinService";
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
+import { getTodaysWaterIntake } from "@/lib/waterService";
 import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,12 +62,14 @@ export const Dashboard = () => {
   const [showStreakCelebration, setShowStreakCelebration] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
+  const [todaysCheckIn, setTodaysCheckIn] = useState<DailyCheckInType | null>(null);
   const [showWearableSettings, setShowWearableSettings] = useState(false);
   const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
   const [hasWearableConnections, setHasWearableConnections] = useState(false);
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
   const [recalibrationResult, setRecalibrationResult] = useState<RecalibrationResult | null>(null);
   const [showRecalibration, setShowRecalibration] = useState(false);
+  const [totalWaterMl, setTotalWaterMl] = useState(0);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -189,7 +193,7 @@ export const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks, todaysCheckIn, wearable, wearableConns, recentCheckIns] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, checkInData, wearable, wearableConns, recentCheckIns, waterData] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
@@ -197,11 +201,14 @@ export const Dashboard = () => {
         getTodaysWearableData(),
         getWearableConnections(),
         getRecentCheckIns(7),
+        getTodaysWaterIntake(),
       ]);
       
-      setHasCheckedInToday(!!todaysCheckIn);
+      setHasCheckedInToday(!!checkInData);
+      setTodaysCheckIn(checkInData);
       setWearableData(wearable);
       setHasWearableConnections(wearableConns.length > 0);
+      setTotalWaterMl(waterData.reduce((sum, w) => sum + w.amount_ml, 0));
       
       // Analyze check-in data for AI coach insights with user-specific targets
       if (recentCheckIns.length > 0) {
@@ -466,6 +473,19 @@ export const Dashboard = () => {
           />
         </section>
 
+        {/* Check-In Insights - Deep personalized feedback */}
+        {hasCheckedInToday && (
+          <section>
+            <CheckInInsights
+              todaysCheckIn={todaysCheckIn}
+              analysis={checkInAnalysis}
+              baseline={baseline}
+              meals={meals}
+              waterIntakeMl={totalWaterMl}
+            />
+          </section>
+        )}
+
         {/* Daily Summary Card */}
         <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
           <div className="flex items-center justify-between mb-6">
@@ -649,12 +669,37 @@ export const Dashboard = () => {
           onComplete={(checkInData) => {
             setShowCheckIn(false);
             setHasCheckedInToday(true);
+            // Store check-in for insights component
+            setTodaysCheckIn({
+              check_in_date: checkInData.check_in_date,
+              mood: checkInData.mood,
+              energy_level: checkInData.energy_level,
+              sleep_quality: checkInData.sleep_quality,
+              stress_level: checkInData.stress_level,
+              sleep_hours: checkInData.sleep_hours,
+              hunger_level: checkInData.hunger_level,
+              notes: checkInData.notes,
+            });
             // Immediately open AI chat with fresh check-in data
             setFreshCheckInData(checkInData);
             setShowAIChat(true);
             // Update coaching streak
             updateStreak('coaching').then(streak => {
               if (streak) setCoachingStreak(streak);
+            });
+            // Refresh analysis with new check-in
+            getRecentCheckIns(7).then(recentCheckIns => {
+              if (recentCheckIns.length > 0 && baseline) {
+                const userTargets: UserTargets = {
+                  targetCalories: baseline?.target_calories || undefined,
+                  proteinGrams: baseline?.protein_grams || undefined,
+                  carbsGrams: baseline?.carbs_grams || undefined,
+                  fatsGrams: baseline?.fats_grams || undefined,
+                  waterLiters: baseline?.water_liters || undefined,
+                  sleepHours: baseline?.sleep_hours || undefined,
+                };
+                setCheckInAnalysis(analyzeCheckIns(recentCheckIns, userTargets));
+              }
             });
           }}
         />
