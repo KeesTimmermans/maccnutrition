@@ -21,28 +21,35 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string }>({});
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // For logins we can go straight to the app.
+      // For signups we must not auto-navigate, because in embedded/preview contexts
+      // checkout redirects can be blocked and the user would end up stuck on the home screen.
+      if (session && isLogin) {
         navigate("/");
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && isLogin) {
         navigate("/");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isLogin]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string; name?: string } = {};
-    
+
     try {
       emailSchema.parse(email);
     } catch (e) {
@@ -76,7 +83,7 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
@@ -143,8 +150,27 @@ const Auth = () => {
 
             if (checkoutError) throw checkoutError;
 
-            if (checkoutData?.url) {
-              window.location.href = checkoutData.url;
+            const url = checkoutData?.url as string | undefined;
+            if (url) {
+              const inIframe = (() => {
+                try {
+                  return window.self !== window.top;
+                } catch {
+                  return true;
+                }
+              })();
+
+              if (inIframe) {
+                // In embedded previews, top-level navigation to Stripe can be blocked.
+                // Show a clear "Open checkout" CTA instead.
+                setCheckoutUrl(url);
+                toast({
+                  title: "Almost there",
+                  description: "Open checkout in a new tab to start your 14-day trial.",
+                });
+              } else {
+                window.location.assign(url);
+              }
             } else {
               toast({
                 title: "Account created!",
@@ -160,7 +186,7 @@ const Auth = () => {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -181,11 +207,45 @@ const Auth = () => {
             {isLogin ? "Welcome Back" : "Create Account"}
           </h1>
           <p className="text-muted-foreground mt-2">
-            {isLogin 
-              ? "Log in to continue your nutrition journey" 
+            {isLogin
+              ? "Log in to continue your nutrition journey"
               : "Start your personalized nutrition journey"}
           </p>
         </div>
+
+        {/* Checkout helper (mainly for embedded previews) */}
+        {checkoutUrl && !isLogin && (
+          <div className="mb-6 bg-card rounded-2xl p-4 shadow-soft space-y-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">Complete your trial signup</p>
+              <p className="text-sm text-muted-foreground">
+                If checkout didn’t open automatically, use the button below to open it in a new tab.
+              </p>
+            </div>
+
+            <Button
+              variant="hero"
+              className="w-full"
+              onClick={() => {
+                const opened = window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+                if (!opened) window.location.assign(checkoutUrl);
+              }}
+            >
+              Open Checkout
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setCheckoutUrl(null);
+                setIsLogin(true);
+              }}
+            >
+              I already subscribed — Log in
+            </Button>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -204,9 +264,7 @@ const Auth = () => {
                   className="pl-10 h-12 rounded-xl"
                 />
               </div>
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name}</p>
-              )}
+              {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
             </div>
           )}
 
@@ -223,9 +281,7 @@ const Auth = () => {
                 className="pl-10 h-12 rounded-xl"
               />
             </div>
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email}</p>
-            )}
+            {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
@@ -245,12 +301,14 @@ const Auth = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
               </button>
             </div>
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password}</p>
-            )}
+            {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
           </div>
 
           <Button
@@ -258,15 +316,19 @@ const Auth = () => {
             variant="hero"
             size="lg"
             className="w-full"
-            disabled={loading}
+            disabled={loading || (!!checkoutUrl && !isLogin)}
           >
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 {isLogin ? "Logging in..." : "Creating account..."}
               </>
+            ) : isLogin ? (
+              "Log In"
+            ) : checkoutUrl ? (
+              "Checkout Ready"
             ) : (
-              isLogin ? "Log In" : "Sign Up & Subscribe"
+              "Sign Up & Subscribe"
             )}
           </Button>
         </form>
@@ -278,6 +340,7 @@ const Auth = () => {
             <button
               onClick={() => {
                 setIsLogin(!isLogin);
+                setCheckoutUrl(null);
                 setErrors({});
               }}
               className="ml-2 text-primary font-semibold hover:underline"
