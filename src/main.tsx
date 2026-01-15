@@ -15,8 +15,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 
   if (checkout) {
     sessionStorage.setItem("checkout_return", checkout);
-    // Remove query params and add hash
-    window.location.replace(`${window.location.origin}${pathname}#/`);
+    // Remove query params and ensure hash route without reloading the page
+    window.history.replaceState(null, "", `${pathname}#/`);
     return;
   }
 
