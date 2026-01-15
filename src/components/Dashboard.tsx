@@ -14,7 +14,7 @@ import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
 import { RecalibrationNotification } from "@/components/RecalibrationNotification";
-import { CheckInInsights } from "@/components/CheckInInsights";
+
 import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
@@ -470,21 +470,13 @@ export const Dashboard = () => {
                 if (streak) setCoachingStreak(streak);
               });
             }}
+            todaysCheckIn={todaysCheckIn}
+            analysis={checkInAnalysis}
+            baseline={baseline}
+            meals={meals}
+            waterIntakeMl={totalWaterMl}
           />
         </section>
-
-        {/* Check-In Insights - Deep personalized feedback */}
-        {hasCheckedInToday && (
-          <section>
-            <CheckInInsights
-              todaysCheckIn={todaysCheckIn}
-              analysis={checkInAnalysis}
-              baseline={baseline}
-              meals={meals}
-              waterIntakeMl={totalWaterMl}
-            />
-          </section>
-        )}
 
         {/* Daily Summary Card */}
         <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
