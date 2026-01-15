@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -79,12 +80,13 @@ export const SettingsSheet = ({
           <Settings className="w-6 h-6 text-foreground" />
         </button>
       </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
+      <SheetContent className="flex flex-col h-full p-0">
+        <SheetHeader className="px-6 pt-6 pb-2">
           <SheetTitle>{t('settings')}</SheetTitle>
         </SheetHeader>
         
-        <div className="space-y-6 mt-6">
+        <ScrollArea className="flex-1 px-6">
+          <div className="space-y-6 pb-6">
           {/* Language Selection */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -180,7 +182,8 @@ export const SettingsSheet = ({
               {t('logout')}
             </Button>
           </div>
-        </div>
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
