@@ -23,9 +23,20 @@ const normalizeReturnUrl = (raw: string | null) => {
   }
 };
 
-const withQueryParam = (url: string, key: string, value: string) => {
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+// Stripe redirect URLs cannot preserve hash fragments reliably.
+// Instead, append query params to the root URL (before any hash), then let the frontend detect them.
+const withCheckoutParam = (baseUrl: string, status: "success" | "cancel") => {
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set("checkout", status);
+    // Remove hash for the redirect - the frontend will handle routing
+    url.hash = "";
+    return url.toString();
+  } catch {
+    // Fallback: simple string append
+    const sep = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl.split("#")[0]}${sep}checkout=${status}`;
+  }
 };
 
 serve(async (req) => {
@@ -93,8 +104,8 @@ serve(async (req) => {
         trial_period_days: 14,
       },
       allow_promotion_codes: true,
-      success_url: withQueryParam(baseReturnUrl, "checkout", "success"),
-      cancel_url: withQueryParam(baseReturnUrl, "checkout", "cancel"),
+      success_url: withCheckoutParam(baseReturnUrl, "success"),
+      cancel_url: withCheckoutParam(baseReturnUrl, "cancel"),
     });
 
     logStep("Checkout session created", { sessionId: session.id });
