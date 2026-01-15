@@ -14,12 +14,16 @@ import {
   Heart,
   Moon,
   Briefcase,
-  AlertCircle
+  AlertCircle,
+  Brain,
+  Clock,
+  Flame,
+  Coffee
 } from "lucide-react";
 import cjtLogo from "@/assets/cjt-logo.png";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-type StepType = "demographics" | "medical" | "lifestyle" | "goals" | "preferences" | "female";
+type StepType = "demographics" | "medical" | "lifestyle" | "eating_behavior" | "challenges" | "goals" | "preferences" | "female";
 
 export interface OnboardingData {
   // Demographics
@@ -45,6 +49,29 @@ export interface OnboardingData {
   activityLevel: string;
   stressLevel: string;
   
+  // Eating Behavior (NEW)
+  eatingSpeed: string;
+  hungerPatterns: string;
+  cravingsTriggers: string[];
+  emotionalEating: string;
+  snackingHabits: string;
+  hydrationHabits: string;
+  
+  // Challenges & History (NEW)
+  biggestChallenge: string;
+  pastDiets: string[];
+  weekendHabits: string;
+  eatingOutFrequency: string;
+  
+  // Practical (NEW)
+  mealPrepTime: string;
+  cookingSkill: string;
+  energyPatterns: string;
+  
+  // Motivation (NEW)
+  motivationStyle: string;
+  accountabilityPreference: string;
+  
   // Goals
   primaryGoal: string;
   secondaryGoals: string[];
@@ -65,7 +92,7 @@ const initialData: OnboardingData = {
   name: "",
   age: "",
   sex: "",
-  unitSystem: "metric", // Default to metric
+  unitSystem: "metric",
   heightFeet: "",
   heightInches: "",
   heightCm: "",
@@ -79,6 +106,23 @@ const initialData: OnboardingData = {
   sleepHours: "",
   activityLevel: "",
   stressLevel: "",
+  // New fields
+  eatingSpeed: "",
+  hungerPatterns: "",
+  cravingsTriggers: [],
+  emotionalEating: "",
+  snackingHabits: "",
+  hydrationHabits: "",
+  biggestChallenge: "",
+  pastDiets: [],
+  weekendHabits: "",
+  eatingOutFrequency: "",
+  mealPrepTime: "",
+  cookingSkill: "",
+  energyPatterns: "",
+  motivationStyle: "",
+  accountabilityPreference: "",
+  // Existing
   primaryGoal: "",
   secondaryGoals: [],
   dietType: "",
@@ -94,6 +138,8 @@ const getSteps = (t: (key: string) => string): { id: StepType; title: string; ic
   { id: "demographics", title: t('about_you'), icon: <User className="w-6 h-6" /> },
   { id: "medical", title: t('health_info'), icon: <Heart className="w-6 h-6" /> },
   { id: "lifestyle", title: t('lifestyle'), icon: <Activity className="w-6 h-6" /> },
+  { id: "eating_behavior", title: "Eating Habits", icon: <Coffee className="w-6 h-6" /> },
+  { id: "challenges", title: "Your Journey", icon: <Brain className="w-6 h-6" /> },
   { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
   { id: "preferences", title: t('preferences'), icon: <Utensils className="w-6 h-6" /> },
 ];
@@ -161,9 +207,13 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         const hasHeight = data.unitSystem === "imperial" ? data.heightFeet : data.heightCm;
         return data.age && data.sex && hasHeight && data.weight;
       case "medical":
-        return true; // Optional
+        return true;
       case "lifestyle":
         return data.activityLevel && data.sleepHours && data.trainingDays;
+      case "eating_behavior":
+        return data.eatingSpeed && data.hungerPatterns;
+      case "challenges":
+        return data.biggestChallenge && data.mealPrepTime;
       case "goals":
         return data.primaryGoal;
       case "preferences":
@@ -183,6 +233,10 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         return <MedicalStep data={data} toggleArrayItem={toggleArrayItem} t={t} />;
       case "lifestyle":
         return <LifestyleStep data={data} updateData={updateData} t={t} />;
+      case "eating_behavior":
+        return <EatingBehaviorStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
+      case "challenges":
+        return <ChallengesStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "goals":
         return <GoalsStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "preferences":
@@ -216,7 +270,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
                   index <= currentStepIndex ? "text-primary" : "text-muted-foreground"
                 }`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
+                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
                   index < currentStepIndex 
                     ? "bg-primary text-primary-foreground" 
                     : index === currentStepIndex 
@@ -282,14 +336,15 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   );
 };
 
-// Step Components
+// ==================== STEP COMPONENTS ====================
+
 const DemographicsStep = ({ data, updateData, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   t: (key: string) => string;
 }) => (
   <div className="space-y-6 animate-slide-up">
-    {/* Unit System Toggle - First and prominent */}
+    {/* Unit System Toggle */}
     <div className="space-y-2">
       <Label className="text-sm font-semibold">{t('measurement_system')}</Label>
       <p className="text-xs text-muted-foreground mb-2">This will be used throughout the app</p>
@@ -348,7 +403,6 @@ const DemographicsStep = ({ data, updateData, t }: {
         ))}
       </div>
     </div>
-
 
     <div className="space-y-2">
       <Label className="text-sm font-semibold">{t('height')}</Label>
@@ -591,6 +645,330 @@ const LifestyleStep = ({ data, updateData, t }: {
   );
 };
 
+// NEW: Eating Behavior Step
+const EatingBehaviorStep = ({ data, updateData, toggleArrayItem, t }: { 
+  data: OnboardingData; 
+  updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
+  t: (key: string) => string;
+}) => {
+  const eatingSpeedOptions = [
+    { label: "Fast", desc: "I finish meals quickly, often first at the table", value: "fast", icon: "⚡" },
+    { label: "Moderate", desc: "I eat at a normal pace", value: "moderate", icon: "⏱️" },
+    { label: "Slow", desc: "I take my time, often last to finish", value: "slow", icon: "🐢" },
+  ];
+
+  const hungerPatterns = [
+    { label: "Morning person", desc: "Hungry right when I wake up", value: "morning", icon: "🌅" },
+    { label: "Late starter", desc: "Not hungry until late morning/noon", value: "late_starter", icon: "☕" },
+    { label: "Evening eater", desc: "Appetite peaks in the evening", value: "evening", icon: "🌙" },
+    { label: "Grazer", desc: "Small hunger throughout the day", value: "grazer", icon: "🥗" },
+  ];
+
+  const cravingsTriggers = [
+    { key: "stress", label: "Stress/Anxiety" },
+    { key: "boredom", label: "Boredom" },
+    { key: "tiredness", label: "Tiredness" },
+    { key: "social", label: "Social situations" },
+    { key: "emotions", label: "Strong emotions" },
+    { key: "visual_cues", label: "Seeing food/ads" },
+    { key: "none", label: "Rarely have cravings" },
+  ];
+
+  const emotionalEatingOptions = [
+    { label: "Rarely", desc: "I mostly eat when physically hungry", value: "rarely" },
+    { label: "Sometimes", desc: "Occasionally eat for comfort", value: "sometimes" },
+    { label: "Often", desc: "Frequently eat based on emotions", value: "often" },
+  ];
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <div className="bg-accent/50 rounded-xl p-4 flex gap-3">
+        <Brain className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-foreground">
+          Understanding your eating patterns helps us personalize recommendations that work with your natural habits.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How fast do you typically eat?</Label>
+        <div className="space-y-2">
+          {eatingSpeedOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("eatingSpeed", option.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
+                data.eatingSpeed === option.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-2xl">{option.icon}</span>
+              <div>
+                <span className="font-semibold block">{option.label}</span>
+                <span className={`text-sm ${data.eatingSpeed === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  {option.desc}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">When are you most hungry?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {hungerPatterns.map((pattern) => (
+            <button
+              key={pattern.value}
+              onClick={() => updateData("hungerPatterns", pattern.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.hungerPatterns === pattern.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-lg block mb-1">{pattern.icon}</span>
+              <span className="font-semibold block text-sm">{pattern.label}</span>
+              <span className={`text-xs ${data.hungerPatterns === pattern.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {pattern.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What triggers your cravings? (Select all)</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {cravingsTriggers.map((trigger) => (
+            <button
+              key={trigger.key}
+              onClick={() => toggleArrayItem("cravingsTriggers", trigger.key)}
+              className={`p-3 rounded-xl text-sm text-left transition-all ${
+                data.cravingsTriggers.includes(trigger.key)
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              {trigger.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How often do you eat for emotional reasons?</Label>
+        <div className="space-y-2">
+          {emotionalEatingOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("emotionalEating", option.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all ${
+                data.emotionalEating === option.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="font-semibold block">{option.label}</span>
+              <span className={`text-sm ${data.emotionalEating === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// NEW: Challenges & History Step
+const ChallengesStep = ({ data, updateData, toggleArrayItem, t }: { 
+  data: OnboardingData; 
+  updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
+  t: (key: string) => string;
+}) => {
+  const challenges = [
+    { label: "Consistency", desc: "Sticking to plans long-term", value: "consistency", icon: "📅" },
+    { label: "Portion control", desc: "Knowing when to stop eating", value: "portion_control", icon: "🍽️" },
+    { label: "Cravings", desc: "Managing hunger and cravings", value: "cravings", icon: "🍫" },
+    { label: "Time", desc: "Finding time to prep healthy meals", value: "time", icon: "⏰" },
+    { label: "Social eating", desc: "Making good choices around others", value: "social", icon: "👥" },
+    { label: "Knowledge", desc: "Not sure what/how much to eat", value: "knowledge", icon: "📚" },
+  ];
+
+  const pastDiets = [
+    { key: "calorie_counting", label: "Calorie counting" },
+    { key: "keto", label: "Keto/Low carb" },
+    { key: "intermittent_fasting", label: "Intermittent fasting" },
+    { key: "weight_watchers", label: "Weight Watchers" },
+    { key: "paleo", label: "Paleo" },
+    { key: "macro_tracking", label: "Macro tracking" },
+    { key: "none", label: "None/First time" },
+  ];
+
+  const weekendHabits = [
+    { label: "Same as weekdays", desc: "I keep similar habits", value: "same" },
+    { label: "More relaxed", desc: "I allow more flexibility", value: "relaxed" },
+    { label: "Completely different", desc: "Weekends are off the rails", value: "different" },
+  ];
+
+  const prepTimeOptions = [
+    { label: "< 15 min", desc: "Quick and simple meals", value: "quick", icon: "⚡" },
+    { label: "15-30 min", desc: "Moderate prep time", value: "moderate", icon: "👍" },
+    { label: "30-60 min", desc: "Enjoy cooking", value: "enjoy", icon: "👨‍🍳" },
+    { label: "Meal prep", desc: "Batch cook on weekends", value: "batch", icon: "📦" },
+  ];
+
+  const cookingSkillOptions = [
+    { label: "Beginner", value: "beginner" },
+    { label: "Intermediate", value: "intermediate" },
+    { label: "Advanced", value: "advanced" },
+  ];
+
+  const eatingOutOptions = [
+    { label: "Rarely", desc: "1-2x/month", value: "rarely" },
+    { label: "Weekly", desc: "1-2x/week", value: "weekly" },
+    { label: "Often", desc: "3-5x/week", value: "often" },
+    { label: "Daily", desc: "Most meals out", value: "daily" },
+  ];
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What's your biggest nutrition challenge?</Label>
+        <div className="space-y-2">
+          {challenges.map((challenge) => (
+            <button
+              key={challenge.value}
+              onClick={() => updateData("biggestChallenge", challenge.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
+                data.biggestChallenge === challenge.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-2xl">{challenge.icon}</span>
+              <div>
+                <span className="font-semibold block">{challenge.label}</span>
+                <span className={`text-sm ${data.biggestChallenge === challenge.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  {challenge.desc}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What diets have you tried before? (Select all)</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {pastDiets.map((diet) => (
+            <button
+              key={diet.key}
+              onClick={() => toggleArrayItem("pastDiets", diet.key)}
+              className={`p-3 rounded-xl text-sm text-left transition-all ${
+                data.pastDiets.includes(diet.key)
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              {diet.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How much time can you spend on meal prep?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {prepTimeOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("mealPrepTime", option.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.mealPrepTime === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-lg block mb-1">{option.icon}</span>
+              <span className="font-semibold block text-sm">{option.label}</span>
+              <span className={`text-xs ${data.mealPrepTime === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Cooking skill level</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {cookingSkillOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("cookingSkill", option.value)}
+              className={`p-3 rounded-xl text-sm text-center transition-all ${
+                data.cookingSkill === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How often do you eat out or order in?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {eatingOutOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("eatingOutFrequency", option.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.eatingOutFrequency === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="font-semibold block text-sm">{option.label}</span>
+              <span className={`text-xs ${data.eatingOutFrequency === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How are your weekends compared to weekdays?</Label>
+        <div className="space-y-2">
+          {weekendHabits.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("weekendHabits", option.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all ${
+                data.weekendHabits === option.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="font-semibold block">{option.label}</span>
+              <span className={`text-sm ${data.weekendHabits === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const GoalsStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
@@ -614,6 +992,19 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
     { key: "reduce_inflammation", label: t('reduce_inflammation') },
     { key: "hormone_balance", label: t('hormone_balance') },
     { key: "mental_clarity", label: t('mental_clarity') },
+  ];
+
+  const motivationStyles = [
+    { label: "Data-driven", desc: "I love tracking numbers and progress", value: "data_driven", icon: "📊" },
+    { label: "Habit-focused", desc: "I prefer building consistent routines", value: "habit_focused", icon: "🔄" },
+    { label: "Results-oriented", desc: "Show me the outcome, not the details", value: "results_oriented", icon: "🎯" },
+    { label: "Education-first", desc: "I want to understand why", value: "education_first", icon: "📚" },
+  ];
+
+  const accountabilityOptions = [
+    { label: "Self-motivated", desc: "I work best independently", value: "self" },
+    { label: "Daily check-ins", desc: "Regular reminders help me stay on track", value: "daily_checkins" },
+    { label: "Gentle nudges", desc: "Occasional reminders without pressure", value: "gentle" },
   ];
 
   return (
@@ -661,6 +1052,51 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
           ))}
         </div>
       </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What motivates you most?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {motivationStyles.map((style) => (
+            <button
+              key={style.value}
+              onClick={() => updateData("motivationStyle", style.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.motivationStyle === style.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-lg block mb-1">{style.icon}</span>
+              <span className="font-semibold block text-sm">{style.label}</span>
+              <span className={`text-xs ${data.motivationStyle === style.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {style.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What type of accountability works for you?</Label>
+        <div className="space-y-2">
+          {accountabilityOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("accountabilityPreference", option.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all ${
+                data.accountabilityPreference === option.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="font-semibold block">{option.label}</span>
+              <span className={`text-sm ${data.accountabilityPreference === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
@@ -688,6 +1124,25 @@ const PreferencesStep = ({ data, updateData, t }: {
     { label: t('3_meals'), value: "3" },
     { label: t('4_plus_meals'), value: "4+" },
     { label: t('flexible'), value: "flexible" },
+  ];
+
+  const snackingOptions = [
+    { label: "Never", desc: "I don't snack between meals", value: "never" },
+    { label: "Sometimes", desc: "1-2 snacks when hungry", value: "sometimes" },
+    { label: "Often", desc: "Regular snacker throughout day", value: "often" },
+  ];
+
+  const hydrationOptions = [
+    { label: "Forget often", desc: "I rarely drink enough water", value: "poor" },
+    { label: "Moderate", desc: "I drink when I remember", value: "moderate" },
+    { label: "Good", desc: "I stay well hydrated", value: "good" },
+  ];
+
+  const energyPatternOptions = [
+    { label: "Morning bird", desc: "Most productive in AM", value: "morning", icon: "🌅" },
+    { label: "Steady", desc: "Consistent throughout day", value: "steady", icon: "➡️" },
+    { label: "Afternoon peak", desc: "Hit my stride after lunch", value: "afternoon", icon: "☀️" },
+    { label: "Night owl", desc: "Most energized at night", value: "night", icon: "🦉" },
   ];
 
   return (
@@ -728,6 +1183,73 @@ const PreferencesStep = ({ data, updateData, t }: {
               }`}
             >
               {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How do you typically snack?</Label>
+        <div className="space-y-2">
+          {snackingOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("snackingHabits", option.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all ${
+                data.snackingHabits === option.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="font-semibold block">{option.label}</span>
+              <span className={`text-sm ${data.snackingHabits === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How's your water intake?</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {hydrationOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("hydrationHabits", option.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.hydrationHabits === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="font-semibold block text-sm">{option.label}</span>
+              <span className={`text-xs ${data.hydrationHabits === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">When's your peak energy time?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {energyPatternOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("energyPatterns", option.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.energyPatterns === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-lg block mb-1">{option.icon}</span>
+              <span className="font-semibold block text-sm">{option.label}</span>
+              <span className={`text-xs ${data.energyPatterns === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
             </button>
           ))}
         </div>
@@ -876,5 +1398,3 @@ const FemaleStep = ({ data, updateData, toggleArrayItem, t }: {
     </div>
   );
 };
-
-

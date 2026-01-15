@@ -187,28 +187,41 @@ export type Database = {
       }
       user_baselines: {
         Row: {
+          accountability_preference: string | null
           activity_level: string | null
           age: number | null
           allergies: string[] | null
+          biggest_challenge: string | null
           carbs_grams: number | null
           coaching_tone: string | null
           conditions: string[] | null
+          cooking_skill: string | null
+          cravings_triggers: string[] | null
           created_at: string
           current_phase: string | null
           cycle_regularity: string | null
           cycle_symptoms: string[] | null
           diet_type: string | null
+          eating_out_frequency: string | null
+          eating_speed: string | null
+          emotional_eating: string | null
+          energy_patterns: string | null
           fats_grams: number | null
           focus_points: string[] | null
           food_dislikes: string | null
           height_cm: number | null
           height_feet: number | null
           height_inches: number | null
+          hunger_patterns: string | null
+          hydration_habits: string | null
           id: string
           magnesium_mg: number | null
+          meal_prep_time: string | null
           meals_per_day: string | null
+          motivation_style: string | null
           name: string | null
           occupation: string | null
+          past_diets: string[] | null
           potassium_mg: number | null
           preferred_language: string | null
           primary_goal: string | null
@@ -216,6 +229,7 @@ export type Database = {
           secondary_goals: string[] | null
           sex: string | null
           sleep_hours: string | null
+          snacking_habits: string | null
           sodium_mg: number | null
           stress_level: string | null
           target_calories: number | null
@@ -226,32 +240,46 @@ export type Database = {
           updated_at: string
           user_id: string
           water_liters: number | null
+          weekend_habits: string | null
           weight: number | null
           work_hours: string | null
         }
         Insert: {
+          accountability_preference?: string | null
           activity_level?: string | null
           age?: number | null
           allergies?: string[] | null
+          biggest_challenge?: string | null
           carbs_grams?: number | null
           coaching_tone?: string | null
           conditions?: string[] | null
+          cooking_skill?: string | null
+          cravings_triggers?: string[] | null
           created_at?: string
           current_phase?: string | null
           cycle_regularity?: string | null
           cycle_symptoms?: string[] | null
           diet_type?: string | null
+          eating_out_frequency?: string | null
+          eating_speed?: string | null
+          emotional_eating?: string | null
+          energy_patterns?: string | null
           fats_grams?: number | null
           focus_points?: string[] | null
           food_dislikes?: string | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
+          hunger_patterns?: string | null
+          hydration_habits?: string | null
           id?: string
           magnesium_mg?: number | null
+          meal_prep_time?: string | null
           meals_per_day?: string | null
+          motivation_style?: string | null
           name?: string | null
           occupation?: string | null
+          past_diets?: string[] | null
           potassium_mg?: number | null
           preferred_language?: string | null
           primary_goal?: string | null
@@ -259,6 +287,7 @@ export type Database = {
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null
+          snacking_habits?: string | null
           sodium_mg?: number | null
           stress_level?: string | null
           target_calories?: number | null
@@ -269,32 +298,46 @@ export type Database = {
           updated_at?: string
           user_id: string
           water_liters?: number | null
+          weekend_habits?: string | null
           weight?: number | null
           work_hours?: string | null
         }
         Update: {
+          accountability_preference?: string | null
           activity_level?: string | null
           age?: number | null
           allergies?: string[] | null
+          biggest_challenge?: string | null
           carbs_grams?: number | null
           coaching_tone?: string | null
           conditions?: string[] | null
+          cooking_skill?: string | null
+          cravings_triggers?: string[] | null
           created_at?: string
           current_phase?: string | null
           cycle_regularity?: string | null
           cycle_symptoms?: string[] | null
           diet_type?: string | null
+          eating_out_frequency?: string | null
+          eating_speed?: string | null
+          emotional_eating?: string | null
+          energy_patterns?: string | null
           fats_grams?: number | null
           focus_points?: string[] | null
           food_dislikes?: string | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
+          hunger_patterns?: string | null
+          hydration_habits?: string | null
           id?: string
           magnesium_mg?: number | null
+          meal_prep_time?: string | null
           meals_per_day?: string | null
+          motivation_style?: string | null
           name?: string | null
           occupation?: string | null
+          past_diets?: string[] | null
           potassium_mg?: number | null
           preferred_language?: string | null
           primary_goal?: string | null
@@ -302,6 +345,7 @@ export type Database = {
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null
+          snacking_habits?: string | null
           sodium_mg?: number | null
           stress_level?: string | null
           target_calories?: number | null
@@ -312,6 +356,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           water_liters?: number | null
+          weekend_habits?: string | null
           weight?: number | null
           work_hours?: string | null
         }
