@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { CheckCircle, XCircle, Loader2, Copy, ArrowLeft, RefreshCw, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,10 +12,59 @@ interface HealthCheck {
   duration?: number;
 }
 
+// Inline auth state to avoid any hook-level issues
 const Diagnostics = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, session, loading: authLoading, subscription, subscriptionLoading, isTrialing, trialDaysRemaining, signOut } = useAuth();
+  
+  // Local auth state - don't use the shared hook to isolate this page
+  const [user, setUser] = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [subscription, setSubscription] = useState(false);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [isTrialing, setIsTrialing] = useState(false);
+  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
+  
+  // Fetch auth state directly
+  useEffect(() => {
+    console.log("[Diagnostics] Component mounted");
+    
+    supabase.auth.getSession().then(({ data, error }) => {
+      console.log("[Diagnostics] getSession result:", { hasSession: !!data.session, error });
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+      setAuthLoading(false);
+      
+      if (data.session) {
+        // Check subscription
+        setSubscriptionLoading(true);
+        supabase.functions.invoke("check-subscription").then(({ data: subData, error: subError }) => {
+          console.log("[Diagnostics] check-subscription result:", { subData, subError });
+          if (!subError && subData) {
+            setSubscription(subData.subscribed ?? false);
+            setIsTrialing(subData.is_trialing ?? false);
+            setTrialDaysRemaining(subData.trial_days_remaining ?? null);
+          }
+          setSubscriptionLoading(false);
+        }).catch(err => {
+          console.error("[Diagnostics] check-subscription error:", err);
+          setSubscriptionLoading(false);
+        });
+      }
+    }).catch(err => {
+      console.error("[Diagnostics] getSession error:", err);
+      setAuthLoading(false);
+    });
+  }, []);
+  
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("cjt_onboarded");
+    localStorage.removeItem("cjt_user_data");
+    setUser(null);
+    setSession(null);
+  };
 
   const handleLogout = async () => {
     await signOut();
