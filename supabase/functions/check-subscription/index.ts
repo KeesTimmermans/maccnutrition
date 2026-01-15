@@ -72,10 +72,15 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const subscription = activeOrTrialing[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      
+      // Safely handle period end - it might be undefined for some subscription states
+      if (subscription.current_period_end && typeof subscription.current_period_end === 'number') {
+        subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      }
+      
       isTrialing = subscription.status === "trialing";
       
-      if (isTrialing && subscription.trial_end) {
+      if (isTrialing && subscription.trial_end && typeof subscription.trial_end === 'number') {
         trialEnd = new Date(subscription.trial_end * 1000).toISOString();
         const now = new Date();
         const trialEndDate = new Date(subscription.trial_end * 1000);
