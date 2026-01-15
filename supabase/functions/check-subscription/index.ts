@@ -8,8 +8,18 @@ const corsHeaders = {
 };
 
 const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
+};
+
+const isoFromUnixSeconds = (value: unknown): string | null => {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  try {
+    return new Date(n * 1000).toISOString();
+  } catch {
+    return null;
+  }
 };
 
 serve(async (req) => {
@@ -56,53 +66,66 @@ serve(async (req) => {
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "all",
-      limit: 1,
+      limit: 10,
     });
 
-    // Filter for active or trialing subscriptions
+    // Prefer an active or trialing subscription
     const activeOrTrialing = subscriptions.data.filter(
       (s: { status: string }) => s.status === "active" || s.status === "trialing"
     );
 
     const hasActiveSub = activeOrTrialing.length > 0;
-    let subscriptionEnd = null;
+    let subscriptionEnd: string | null = null;
     let isTrialing = false;
-    let trialEnd = null;
-    let trialDaysRemaining = null;
+    let trialEnd: string | null = null;
+    let trialDaysRemaining: number | null = null;
 
     if (hasActiveSub) {
       const subscription = activeOrTrialing[0];
-      
-      // Safely handle period end - it might be undefined for some subscription states
-      if (subscription.current_period_end && typeof subscription.current_period_end === 'number') {
-        subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      }
-      
+
+      // Guard against Stripe returning null/undefined/string timestamps (prevents "Invalid time value")
+      subscriptionEnd = isoFromUnixSeconds((subscription as any).current_period_end);
       isTrialing = subscription.status === "trialing";
-      
-      if (isTrialing && subscription.trial_end && typeof subscription.trial_end === 'number') {
-        trialEnd = new Date(subscription.trial_end * 1000).toISOString();
-        const now = new Date();
-        const trialEndDate = new Date(subscription.trial_end * 1000);
-        trialDaysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        logStep("Trial subscription found", { trialEnd, trialDaysRemaining });
+
+      if (isTrialing) {
+        trialEnd = isoFromUnixSeconds((subscription as any).trial_end);
+        if (trialEnd) {
+          const trialEndMs = Date.parse(trialEnd);
+          if (Number.isFinite(trialEndMs)) {
+            const nowMs = Date.now();
+            trialDaysRemaining = Math.ceil((trialEndMs - nowMs) / (1000 * 60 * 60 * 24));
+          }
+        }
+
+        logStep("Trial subscription found", {
+          subscriptionId: subscription.id,
+          trialEnd,
+          trialDaysRemaining,
+          subscriptionEnd,
+        });
       } else {
-        logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+        logStep("Active subscription found", {
+          subscriptionId: subscription.id,
+          subscriptionEnd,
+        });
       }
     } else {
       logStep("No active subscription found");
     }
 
-    return new Response(JSON.stringify({
-      subscribed: hasActiveSub,
-      subscription_end: subscriptionEnd,
-      is_trialing: isTrialing,
-      trial_end: trialEnd,
-      trial_days_remaining: trialDaysRemaining,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        subscribed: hasActiveSub,
+        subscription_end: subscriptionEnd,
+        is_trialing: isTrialing,
+        trial_end: trialEnd,
+        trial_days_remaining: trialDaysRemaining,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
