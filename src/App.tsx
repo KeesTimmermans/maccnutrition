@@ -10,6 +10,7 @@ import MealHistory from "./pages/MealHistory";
 import Progress from "./pages/Progress";
 import WhoopDemo from "./pages/WhoopDemo";
 import Privacy from "./pages/Privacy";
+import Diagnostics from "./pages/Diagnostics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/progress" element={<Progress />} />
             <Route path="/whoop-demo" element={<WhoopDemo />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/diagnostics" element={<Diagnostics />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
