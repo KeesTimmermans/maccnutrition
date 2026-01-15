@@ -19,12 +19,15 @@ const Index = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
   const [userData, setUserData] = useState<OnboardingData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
   const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Prevent re-fetching baseline repeatedly (e.g. when subscription refresh runs)
   const baselineCheckedRef = useRef<string | null>(null);
+  const checkoutAttemptedRef = useRef(false);
 
   // Check for existing baseline data and subscription
   useEffect(() => {
@@ -34,18 +37,39 @@ const Index = () => {
       if (user) {
         // Check subscription status - must be subscribed or trialing
         if (!subscription && !isTrialing) {
-          // User is logged in but doesn't have subscription, redirect to checkout
+          // User is logged in but doesn't have access. In preview (iframe), auto-redirects can be blocked,
+          // which previously left the UI stuck on "Loading..." forever.
+          if (checkoutUrl || checkoutAttemptedRef.current) {
+            setLoading(false);
+            return;
+          }
+
+          setCheckoutInitLoading(true);
           try {
-            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout');
+            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke("create-checkout");
             if (!checkoutError && checkoutData?.url) {
-              window.location.href = checkoutData.url;
-              return;
+              setCheckoutUrl(checkoutData.url);
+
+              const inIframe = (() => {
+                try {
+                  return window.self !== window.top;
+                } catch {
+                  return true;
+                }
+              })();
+
+              // Auto-redirect only outside iframes; inside preview we show a button instead.
+              if (!inIframe) {
+                checkoutAttemptedRef.current = true;
+                window.location.assign(checkoutData.url);
+              }
             }
           } catch (err) {
             console.error("Checkout error:", err);
+          } finally {
+            setCheckoutInitLoading(false);
+            setLoading(false);
           }
-          // If checkout fails, show welcome screen
-          setLoading(false);
           return;
         }
 
@@ -83,7 +107,7 @@ const Index = () => {
     };
 
     checkUserBaseline();
-  }, [user, authLoading, subscription, subscriptionLoading, isTrialing]);
+  }, [user, authLoading, subscription, subscriptionLoading, isTrialing, checkoutUrl]);
 
   const handleGetStarted = () => {
     if (user) {
@@ -157,6 +181,71 @@ const Index = () => {
         <div className="animate-pulse flex flex-col items-center gap-4">
           <img src={cjtLogo} alt="CJT Nutrition" className="w-32 h-auto opacity-50" />
           <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && !subscription && !isTrialing) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-medium text-center space-y-4">
+          <h1 className="text-xl font-bold text-foreground">Subscription required</h1>
+          <p className="text-sm text-muted-foreground">
+            Open checkout in a new tab to continue. If nothing opens, allow popups for this site.
+          </p>
+
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full"
+            disabled={checkoutInitLoading}
+            onClick={async () => {
+              setCheckoutInitLoading(true);
+              try {
+                let url = checkoutUrl;
+                if (!url) {
+                  const { data, error } = await supabase.functions.invoke("create-checkout");
+                  if (error) throw error;
+                  url = data?.url ?? null;
+                  if (url) setCheckoutUrl(url);
+                }
+
+                if (!url) throw new Error("No checkout URL returned");
+
+                const opened = window.open(url, "_blank", "noopener,noreferrer");
+                if (!opened) window.location.assign(url);
+              } catch (err) {
+                console.error("Checkout error:", err);
+                toast({
+                  title: "Couldn't start checkout",
+                  description: "Please try again.",
+                  variant: "destructive",
+                });
+              } finally {
+                setCheckoutInitLoading(false);
+              }
+            }}
+          >
+            {checkoutInitLoading ? "Preparing..." : "Open Checkout"}
+          </Button>
+
+          {checkoutUrl ? (
+            <button
+              type="button"
+              className="text-xs text-primary hover:underline break-all"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(checkoutUrl);
+                  toast({ title: "Checkout link copied" });
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              Copy checkout link
+            </button>
+          ) : null}
         </div>
       </div>
     );
