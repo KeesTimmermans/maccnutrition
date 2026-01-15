@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CheckCircle, XCircle, Loader2, Copy, ArrowLeft, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Copy, ArrowLeft, RefreshCw, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface HealthCheck {
@@ -16,7 +16,12 @@ interface HealthCheck {
 const Diagnostics = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, session, loading: authLoading, subscription, subscriptionLoading, isTrialing, trialDaysRemaining } = useAuth();
+  const { user, session, loading: authLoading, subscription, subscriptionLoading, isTrialing, trialDaysRemaining, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/auth");
+  };
   
   const [checks, setChecks] = useState<HealthCheck[]>([]);
   const [running, setRunning] = useState(false);
@@ -232,6 +237,14 @@ const Diagnostics = () => {
           <Copy className="w-5 h-5 mr-2" />
           Copy Diagnostics to Clipboard
         </Button>
+
+        {/* Logout button */}
+        {user && (
+          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+            <LogOut className="w-5 h-5 mr-2" />
+            Log Out
+          </Button>
+        )}
 
         {/* Raw JSON preview */}
         <details className="bg-muted rounded-xl">
