@@ -48,18 +48,23 @@ export const useAuth = () => {
       const token = session.access_token;
       const now = Date.now();
 
-      // De-dupe to avoid multiple simultaneous or back-to-back checks (common on refresh)
-      // NOTE: When returning from checkout, we call this with force=true so we can refresh instantly.
+      // De-dupe to avoid multiple simultaneous or back-to-back checks
       if (inFlightRef.current) return;
-      if (!force && lastCheckRef.current.token === token && now - lastCheckRef.current.at < 15000) return;
+      // Extend de-dupe window to 30s for background refreshes (was 15s)
+      if (!force && lastCheckRef.current.token === token && now - lastCheckRef.current.at < 30000) return;
 
       inFlightRef.current = true;
-      setSubscriptionLoading(true);
+      // Only show loading spinner on initial check or forced refresh, not background polling
+      const isInitialCheck = !subscriptionChecked;
+      if (force || isInitialCheck) {
+        setSubscriptionLoading(true);
+      }
+      
       try {
         const { data, error } = await Promise.race([
           supabase.functions.invoke("check-subscription"),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Subscription check timed out")), 12000)
+            setTimeout(() => reject(new Error("Subscription check timed out")), 8000)
           ),
         ]);
         if (error) throw error;
@@ -77,15 +82,17 @@ export const useAuth = () => {
         const msg = error instanceof Error ? error.message : String(error);
         console.error("Error checking subscription:", error);
         setSubscriptionError(msg);
-        // IMPORTANT: keep last known subscription state on errors.
-        // Otherwise transient backend/auth issues can force users back into checkout loops.
+        // Mark as checked even on error to prevent UI from getting stuck
+        if (!subscriptionChecked) {
+          setSubscriptionChecked(true);
+        }
       } finally {
         lastCheckRef.current = { token, at: Date.now() };
         setSubscriptionLoading(false);
         inFlightRef.current = false;
       }
     },
-    [session]
+    [session, subscriptionChecked]
   );
 
   useEffect(() => {
@@ -138,13 +145,13 @@ export const useAuth = () => {
     }
   }, [session, checkSubscription]);
 
-  // Auto-refresh subscription every minute
+  // Auto-refresh subscription every 2 minutes (reduced frequency)
   useEffect(() => {
     if (!session) return;
 
     const interval = setInterval(() => {
       checkSubscription();
-    }, 60000);
+    }, 120000);
 
     return () => clearInterval(interval);
   }, [session, checkSubscription]);

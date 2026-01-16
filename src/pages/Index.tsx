@@ -105,7 +105,7 @@ const Index = () => {
             try {
               const { data: checkoutData, error: checkoutError } = await Promise.race([
                 supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 8000)),
               ]);
               if (!checkoutError && checkoutData?.url) {
                 setCheckoutUrl(checkoutData.url);
@@ -347,7 +347,7 @@ const Index = () => {
                   if (!url) {
                     const { data, error } = await Promise.race([
                       supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-                      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
+                      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 8000)),
                     ]);
                     if (error) throw error;
                     url = data?.url ?? null;

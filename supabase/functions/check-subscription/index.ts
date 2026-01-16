@@ -63,16 +63,27 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
+    // Only fetch active/trialing subscriptions to reduce API overhead
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "all",
-      limit: 10,
+      status: "active",
+      limit: 1,
     });
+    
+    // If no active, check for trialing separately only if needed
+    let trialingSubs = { data: [] as any[] };
+    if (subscriptions.data.length === 0) {
+      trialingSubs = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "trialing",
+        limit: 1,
+      });
+    }
 
-    // Prefer an active or trialing subscription
-    const activeOrTrialing = subscriptions.data.filter(
-      (s: { status: string }) => s.status === "active" || s.status === "trialing"
-    );
+    // Combine results - active subs take priority
+    const activeOrTrialing = subscriptions.data.length > 0 
+      ? subscriptions.data 
+      : trialingSubs.data;
 
     const hasActiveSub = activeOrTrialing.length > 0;
     let subscriptionEnd: string | null = null;
