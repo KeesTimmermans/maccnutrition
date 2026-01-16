@@ -2,9 +2,20 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Loader2, ExternalLink, Check } from "lucide-react";
+import { Crown, Loader2, ExternalLink, Check, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SubscriptionCardProps {
   subscribed: boolean;
@@ -114,6 +125,40 @@ export const SubscriptionCard = ({
                 )}
                 Manage Subscription
               </Button>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Cancel Subscription
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You'll continue to have access until {subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : 'the end of your billing period'}. 
+                      After that, you'll lose access to premium features including AI coaching, meal plans, and detailed analytics.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleManageSubscription}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {portalLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Continue to Cancel
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               <Button 
                 onClick={onRefresh} 
                 variant="ghost" 
