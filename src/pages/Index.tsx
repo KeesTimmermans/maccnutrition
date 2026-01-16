@@ -34,6 +34,11 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // IMPORTANT: don't block the whole app UI during background subscription refreshes.
+  // Only block during the initial auth+subscription bootstrap.
+  const isBootstrapping =
+    loading || authLoading || (user ? (!subscriptionChecked && !subscriptionError) : false);
+
   // Prevent re-fetching baseline repeatedly (e.g. when subscription refresh runs)
   const baselineCheckedRef = useRef<string | null>(null);
 
@@ -77,7 +82,10 @@ const Index = () => {
   // Check for existing baseline data and subscription
   useEffect(() => {
     const checkUserBaseline = async () => {
-      if (authLoading || subscriptionLoading) return;
+      if (authLoading) return;
+      // Wait for the *initial* subscription verification (or an error) before deciding what to show.
+      // This avoids "Loading…" screens that unmount the questionnaire and reset progress.
+      if (user && !subscriptionChecked && !subscriptionError) return;
 
       if (user) {
         // If the backend can't verify subscription right now, don't force checkout.
@@ -219,17 +227,16 @@ const Index = () => {
 
   // If anything in the auth/subscription bootstrap hangs, never leave the user on a blank screen.
   useEffect(() => {
-    const isBusy = loading || authLoading || subscriptionLoading;
-    if (!isBusy) {
+    if (!isBootstrapping) {
       setStuckLoading(false);
       return;
     }
 
     const t = window.setTimeout(() => setStuckLoading(true), 15000);
     return () => window.clearTimeout(t);
-  }, [loading, authLoading, subscriptionLoading]);
+  }, [isBootstrapping]);
 
-  if (loading || authLoading || subscriptionLoading) {
+  if (isBootstrapping) {
     if (stuckLoading) {
       const diagnostics = {
         at: new Date().toISOString(),
