@@ -11,7 +11,7 @@ import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
-const nameSchema = z.string().min(2, "Name must be at least 2 characters");
+const nameSchema = z.string().min(2, "First name must be at least 2 characters");
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -127,7 +127,7 @@ const Auth = () => {
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            full_name: name,
+            first_name: name,
           },
         },
       });
@@ -270,13 +270,13 @@ const Auth = () => {
           {/* Name field - only show for signup */}
           {!isLogin && (
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="name">First Name</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Enter your full name"
+                  placeholder="Enter your first name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="pl-10 h-12 rounded-xl"
