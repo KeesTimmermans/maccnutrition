@@ -79,71 +79,156 @@ export const Dashboard = () => {
     return t('good_evening');
   };
 
+  // Get user's first name for personalization
+  const firstName = baseline?.name?.split(' ')[0] || '';
+
   // Dynamic Coach Mac greeting based on current data
   const generateCoachGreeting = () => {
     const calorieGoal = baseline?.target_calories || 2000;
     const proteinGoal = baseline?.protein_grams || 120;
+    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
+    const waterPercent = Math.round((totalWaterMl / waterGoal) * 100);
+    const hour = new Date().getHours();
     
-    if (meals.length === 0) {
-      if (hasCheckedInToday) {
-        return `${getGreeting()}! I see you checked in. Ready to log your first meal?`;
+    // Celebrate complete goals
+    if (calPercent >= 95 && proteinPercent >= 95 && waterPercent >= 90) {
+      return `🏆 ${firstName ? `${firstName}, you're` : "You're"} crushing it! All goals nearly complete!`;
+    }
+    
+    // Morning states
+    if (hour < 10) {
+      if (meals.length === 0 && !hasCheckedInToday) {
+        return `${getGreeting()}${firstName ? `, ${firstName}` : ''}! Start strong — check in and log breakfast.`;
       }
-      return `${getGreeting()}! Start your day by logging a meal or doing your check-in.`;
+      if (meals.length === 0 && hasCheckedInToday) {
+        return `Great check-in${firstName ? `, ${firstName}` : ''}! Now fuel up with a protein-rich breakfast.`;
+      }
+      if (meals.length > 0) {
+        return `Nice start${firstName ? `, ${firstName}` : ''}! You're at ${calPercent}% of calories. Keep going!`;
+      }
     }
     
-    if (calPercent >= 90 && proteinPercent >= 90) {
-      return "Amazing progress! You're crushing your goals today! 🎉";
+    // Midday states  
+    if (hour >= 10 && hour < 14) {
+      if (calPercent < 25) {
+        return `${firstName ? `${firstName}, you` : 'You'} need fuel! Only ${calPercent}% of calories logged.`;
+      }
+      if (proteinPercent < 30 && calPercent >= 25) {
+        return `Protein check: ${totalProtein}g/${proteinGoal}g. Add protein to your next meal!`;
+      }
     }
     
-    if (checkInAnalysis && checkInAnalysis.recommendations.length > 0) {
-      return `Based on your recent patterns (energy: ${checkInAnalysis.averageEnergy}/5):`;
+    // Afternoon states
+    if (hour >= 14 && hour < 18) {
+      if (calPercent < 50) {
+        return `⚠️ Afternoon alert: Only ${calPercent}% of calories. Don't under-fuel!`;
+      }
+      if (waterPercent < 50) {
+        return `💧 Hydration check: ${Math.round(totalWaterMl/1000 * 10)/10}L/${baseline?.water_liters || 2.5}L. Drink up!`;
+      }
+      if (proteinPercent >= 80) {
+        return `💪 Protein on point${firstName ? `, ${firstName}` : ''}! ${proteinPercent}% complete.`;
+      }
     }
     
-    return `${getGreeting()}! You're at ${calPercent}% of your calorie goal.`;
+    // Evening states
+    if (hour >= 18) {
+      const proteinRemaining = proteinGoal - totalProtein;
+      if (proteinPercent < 70) {
+        return `Evening push: ${proteinRemaining}g protein to go. High-protein dinner time!`;
+      }
+      if (calPercent >= 90 && proteinPercent >= 90) {
+        return `Almost there${firstName ? `, ${firstName}` : ''}! Finish strong tonight.`;
+      }
+    }
+    
+    // Check-in pattern based
+    if (checkInAnalysis?.trends.energy === "declining") {
+      return `Energy dropping this week. Focus on complex carbs and iron today.`;
+    }
+    
+    // Default with personalization
+    if (meals.length === 0) {
+      return `${getGreeting()}${firstName ? `, ${firstName}` : ''}! Ready to start logging?`;
+    }
+    
+    return `${getGreeting()}${firstName ? `, ${firstName}` : ''}! ${calPercent}% of calories, ${proteinPercent}% protein.`;
   };
 
-  // Dynamic insights based on logged data
+  // Dynamic insights based on logged data - more specific and actionable
   const generateCoachInsights = (): string[] => {
     const insights: string[] = [];
     const calorieGoal = baseline?.target_calories || 2000;
     const proteinGoal = baseline?.protein_grams || 120;
     const carbsGoal = baseline?.carbs_grams || 200;
     const fatsGoal = baseline?.fats_grams || 65;
+    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
     
-    const calRemaining = calorieGoal - totalCalories;
+    const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinRemaining = proteinGoal - totalProtein;
     const carbsRemaining = carbsGoal - totalCarbs;
     const fatsRemaining = fatsGoal - totalFats;
+    const waterRemaining = Math.round((waterGoal - totalWaterMl) / 1000 * 10) / 10;
     
     const hour = new Date().getHours();
+    const mealsRemaining = hour < 12 ? 3 : hour < 17 ? 2 : 1;
     
-    // Protein-focused insights
-    if (totalProtein < proteinGoal * 0.5 && hour >= 12) {
-      insights.push(`You need ${proteinRemaining}g more protein today. Try adding chicken, fish, eggs, or legumes to your next meal.`);
-    } else if (totalProtein >= proteinGoal) {
-      insights.push("Great job hitting your protein goal! This supports muscle recovery and keeps you feeling full.");
+    // Protein-focused insights with specific numbers
+    if (proteinRemaining > 0 && hour >= 10) {
+      const proteinPerMeal = Math.round(proteinRemaining / mealsRemaining);
+      if (proteinPerMeal > 40) {
+        insights.push(`🎯 Need ${proteinRemaining}g protein across ${mealsRemaining} meals (~${proteinPerMeal}g each). Ideas: chicken breast (31g), Greek yogurt (17g), eggs (6g each).`);
+      } else if (proteinRemaining > 20) {
+        insights.push(`Need ${proteinRemaining}g more protein. Add lean meat, fish, or legumes to your next meal.`);
+      }
     }
     
-    // Calorie insights
-    if (totalCalories < calorieGoal * 0.3 && hour >= 14) {
-      insights.push("You're under-eating today. Make sure to fuel properly to maintain energy and metabolism.");
+    if (totalProtein >= proteinGoal && totalProtein > 0) {
+      insights.push(`✅ Protein goal hit${firstName ? `, ${firstName}` : ''}! ${totalProtein}g supports your ${baseline?.primary_goal?.replace(/_/g, ' ') || 'goals'}.`);
+    }
+    
+    // Calorie insights with context
+    if (calPercent < 30 && hour >= 14) {
+      insights.push(`⚠️ Only ${totalCalories} kcal logged (${calPercent}%). Under-eating affects energy and metabolism.`);
     } else if (totalCalories > calorieGoal) {
-      insights.push("You've exceeded your calorie target. Focus on nutrient-dense, whole foods for remaining meals.");
+      const excess = totalCalories - calorieGoal;
+      insights.push(`You're ${excess} kcal over target. Focus on protein-rich, lower-cal foods for any remaining meals.`);
+    }
+    
+    // Water insight
+    if (waterRemaining > 1 && hour >= 12) {
+      insights.push(`💧 ${waterRemaining}L water to go. Set hourly reminders to stay hydrated.`);
+    } else if (totalWaterMl >= waterGoal * 0.9) {
+      insights.push(`💧 Hydration on point! ${Math.round(totalWaterMl/1000 * 10)/10}L logged.`);
+    }
+    
+    // Macro balance check
+    if (meals.length >= 2) {
+      const fatPercent = Math.round((totalFats / fatsGoal) * 100);
+      const carbPercent = Math.round((totalCarbs / carbsGoal) * 100);
+      if (fatPercent > carbPercent + 30) {
+        insights.push(`Carbs are low relative to fats. Add complex carbs (oats, rice, potatoes) for sustained energy.`);
+      }
     }
     
     // Check-in based insights
-    if (checkInAnalysis?.recommendations.length) {
-      insights.push(...checkInAnalysis.recommendations.slice(0, 2));
+    if (todaysCheckIn) {
+      if (todaysCheckIn.energy_level && todaysCheckIn.energy_level <= 2) {
+        insights.push(`Low energy today → prioritize complex carbs and iron-rich foods (spinach, legumes, red meat).`);
+      }
+      if (todaysCheckIn.stress_level && todaysCheckIn.stress_level >= 4) {
+        insights.push(`High stress detected → omega-3s (salmon, walnuts) and magnesium (dark chocolate, almonds) can help.`);
+      }
     }
     
     // Default insights if none generated
     if (insights.length === 0) {
       if (meals.length === 0) {
-        insights.push("Log your meals to get personalized nutrition insights from Coach Mac.");
+        insights.push(`Log your first meal to get personalized guidance${firstName ? `, ${firstName}` : ''}.`);
       } else {
-        insights.push(`You've logged ${meals.length} meal${meals.length > 1 ? 's' : ''} today. Keep it up!`);
+        insights.push(`${meals.length} meal${meals.length > 1 ? 's' : ''} logged (${totalCalories} kcal). You're on track!`);
       }
     }
     
@@ -154,38 +239,63 @@ export const Dashboard = () => {
   const generateCoachTip = (): string => {
     const calorieGoal = baseline?.target_calories || 2000;
     const proteinGoal = baseline?.protein_grams || 120;
+    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
+    const waterPercent = Math.round((totalWaterMl / waterGoal) * 100);
     const hour = new Date().getHours();
     
-    // Check-in trend based tips
+    // Check-in trend based tips (highest priority)
     if (checkInAnalysis?.trends.energy === "declining") {
-      return "💡 Your energy has been declining. Focus on complex carbs and iron-rich foods like spinach and legumes.";
+      return `💡 Energy declining this week. Today: prioritize ${Math.round((baseline?.carbs_grams || 200) * 0.4)}g carbs before 3pm.`;
     }
     if (checkInAnalysis?.trends.sleep === "declining") {
-      return "💡 Sleep quality is trending down. Try magnesium-rich foods (nuts, dark chocolate) and limit caffeine after 2pm.";
+      return `💡 Sleep trending down. Tonight: magnesium-rich dinner, no caffeine after 2pm, ${baseline?.water_liters || 2.5}L water.`;
     }
-    if (checkInAnalysis?.trends.stress === "stable" && checkInAnalysis.averageStress >= 4) {
-      return "💡 Stress is elevated. Include omega-3 rich foods (salmon, walnuts) and limit added sugars.";
+    if (todaysCheckIn?.stress_level && todaysCheckIn.stress_level >= 4) {
+      return `💡 Stress is high today. Skip sugar, add omega-3s at dinner, and take a 10-min walk after eating.`;
     }
     
-    // Time-based tips
+    // Real-time progress tips
     if (hour < 10 && meals.length === 0) {
-      return "💡 Morning tip: Start with protein-rich breakfast to stabilize blood sugar and reduce cravings.";
+      return `💡 Morning tip: ${Math.round((baseline?.protein_grams || 120) * 0.25)}g protein at breakfast = fewer cravings later.`;
     }
+    
+    if (hour >= 10 && hour < 14 && proteinPercent < 25) {
+      return `💡 Protein check: Only ${totalProtein}g logged. Add eggs, Greek yogurt, or chicken to lunch.`;
+    }
+    
     if (hour >= 14 && hour < 16 && calPercent < 50) {
-      return "💡 Afternoon check: You're below 50% of your target. Don't skip meals — consistent eating supports metabolism.";
-    }
-    if (hour >= 19 && proteinPercent < 70) {
-      return "💡 Evening tip: Focus on lean protein at dinner to hit your goal and support overnight recovery.";
+      return `💡 Under 50% calories by afternoon = energy crash. Eat a balanced meal NOW.`;
     }
     
-    // Progress based tips
-    if (calPercent >= 90 && proteinPercent >= 90) {
-      return "💡 Excellent work today! You're on track. Remember: consistency beats perfection.";
+    if (hour >= 14 && waterPercent < 40) {
+      return `💡 Drink ${Math.round((waterGoal - totalWaterMl) / 2 / 1000 * 10)/10}L water in the next 2 hours. Dehydration mimics hunger.`;
     }
     
-    return "💡 Stay consistent with your meals and hydration. Small daily wins build lasting results!";
+    if (hour >= 18 && proteinPercent < 70) {
+      return `💡 Need ${proteinGoal - totalProtein}g protein before bed. High-protein dinner = better recovery.`;
+    }
+    
+    // Celebration tips
+    if (calPercent >= 90 && proteinPercent >= 90 && waterPercent >= 80) {
+      return `💡 Nearly perfect day${firstName ? `, ${firstName}` : ''}! Finish with a light, protein-rich meal.`;
+    }
+    
+    if (proteinPercent >= 100 && calPercent < 90) {
+      return `💡 Protein goal smashed! Fill remaining ${calorieGoal - totalCalories} kcal with veggies and healthy fats.`;
+    }
+    
+    // Behavioral pattern tips
+    if (baseline?.biggest_challenge === "evening_snacking" && hour >= 18) {
+      return `💡 Evening snacking is your challenge. Pre-plan: protein snack ready, no grazing after 9pm.`;
+    }
+    
+    if (baseline?.eating_speed === "fast") {
+      return `💡 You eat fast — slow down! 20+ chews per bite, put fork down between bites.`;
+    }
+    
+    return `💡 You're at ${calPercent}% calories, ${proteinPercent}% protein. ${meals.length < 3 ? 'Keep logging!' : 'Nice consistency!'}`;
   };
 
   useEffect(() => {

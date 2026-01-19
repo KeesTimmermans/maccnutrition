@@ -79,26 +79,27 @@ export const AICoachCard = ({
   // Calculate totals
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
+  const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
+  const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
   
   const calorieGoal = baseline?.target_calories || 2000;
   const proteinGoal = baseline?.protein_grams || 120;
+  const carbsGoal = baseline?.carbs_grams || 200;
+  const fatsGoal = baseline?.fats_grams || 65;
   const waterGoal = (baseline?.water_liters || 2.5) * 1000;
   const targetSleepHours = baseline?.sleep_hours ? parseFloat(baseline.sleep_hours) : 8;
+  
+  const calPercent = Math.round((totalCalories / calorieGoal) * 100);
+  const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
+  const waterPercent = Math.round((waterIntakeMl / waterGoal) * 100);
+  const firstName = baseline?.name?.split(' ')[0] || '';
 
-  // Generate actionable recommendations based on check-in data AND onboarding profile
+  // Generate actionable recommendations based on check-in data, meal data, AND onboarding profile
   const generateActionableRecommendations = (): InsightCard[] => {
     const recommendations: InsightCard[] = [];
     const hour = new Date().getHours();
 
-    if (!todaysCheckIn) return recommendations;
-
-    const sleepQuality = todaysCheckIn.sleep_quality || 3;
-    const sleepHours = todaysCheckIn.sleep_hours || 0;
-    const energyLevel = todaysCheckIn.energy_level || 3;
-    const stressLevel = todaysCheckIn.stress_level || 3;
-    const mood = todaysCheckIn.mood || 3;
-
-    // Get behavioral profile from baseline
+    // Get behavioral profile from baseline (always available)
     const eatingSpeed = baseline?.eating_speed;
     const hungerPatterns = baseline?.hunger_patterns;
     const emotionalEating = baseline?.emotional_eating;
@@ -108,6 +109,92 @@ export const AICoachCard = ({
     const energyPatterns = baseline?.energy_patterns;
     const hydrationHabits = baseline?.hydration_habits;
     const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+
+    // === REAL-TIME MEAL DATA RECOMMENDATIONS (always active) ===
+    
+    // Protein urgency check
+    const proteinRemaining = proteinGoal - totalProtein;
+    const mealsRemaining = hour < 12 ? 3 : hour < 17 ? 2 : 1;
+    
+    if (hour >= 14 && proteinPercent < 40) {
+      recommendations.push({
+        type: "action",
+        icon: <Flame className="w-5 h-5 text-orange-500" />,
+        title: `Protein Alert: ${proteinPercent}%`,
+        description: `Only ${totalProtein}g of ${proteinGoal}g logged. Need ${proteinRemaining}g in ${mealsRemaining} meal${mealsRemaining > 1 ? 's' : ''}.`,
+        action: `Add ~${Math.round(proteinRemaining / mealsRemaining)}g protein per meal: chicken (31g), fish (25g), eggs (6g each).`,
+        priority: 1,
+      });
+    } else if (proteinPercent >= 100) {
+      recommendations.push({
+        type: "positive",
+        icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
+        title: `Protein Goal Crushed!`,
+        description: `${totalProtein}g logged${firstName ? `, ${firstName}` : ''}! Supports your ${baseline?.primary_goal?.replace(/_/g, ' ') || 'goals'}.`,
+        priority: 6,
+      });
+    }
+
+    // Calorie check
+    if (hour >= 14 && calPercent < 30) {
+      recommendations.push({
+        type: "warning",
+        icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
+        title: `Under-Fueling: ${calPercent}%`,
+        description: `Only ${totalCalories} kcal by afternoon. Risk: energy crash, metabolism slowdown.`,
+        action: `Eat a balanced meal NOW: ~${Math.round((calorieGoal - totalCalories) / mealsRemaining)} kcal with protein + carbs.`,
+        priority: 1,
+      });
+    } else if (calPercent > 100) {
+      const excess = totalCalories - calorieGoal;
+      recommendations.push({
+        type: "info",
+        icon: <Activity className="w-5 h-5 text-blue-500" />,
+        title: `Over Target: +${excess} kcal`,
+        description: "You've exceeded your calorie target. One day won't derail progress.",
+        action: "For remaining meals: focus on protein + vegetables, skip added fats/sugars.",
+        priority: 3,
+      });
+    }
+
+    // Hydration real-time check
+    if (hour >= 12 && waterPercent < 30) {
+      const waterNeeded = Math.round((waterGoal - waterIntakeMl) / 1000 * 10) / 10;
+      recommendations.push({
+        type: "action",
+        icon: <Droplets className="w-5 h-5 text-blue-400" />,
+        title: `Hydration: Only ${waterPercent}%`,
+        description: `${Math.round(waterIntakeMl / 1000 * 10) / 10}L of ${baseline?.water_liters || 2.5}L. Dehydration = hunger + fatigue.`,
+        action: `Drink ${Math.min(waterNeeded, 1)}L in the next hour. Set a timer!`,
+        priority: 2,
+      });
+    } else if (waterPercent >= 90) {
+      recommendations.push({
+        type: "positive",
+        icon: <Droplets className="w-5 h-5 text-blue-400" />,
+        title: "Hydration: On Point!",
+        description: `${Math.round(waterIntakeMl / 1000 * 10) / 10}L logged. Great for energy and metabolism.`,
+        priority: 6,
+      });
+    }
+
+    // All goals near complete
+    if (calPercent >= 85 && proteinPercent >= 85 && waterPercent >= 80) {
+      recommendations.push({
+        type: "positive",
+        icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
+        title: `Almost Perfect Day${firstName ? `, ${firstName}` : ''}!`,
+        description: `Calories ${calPercent}%, Protein ${proteinPercent}%, Water ${waterPercent}%. Finish strong!`,
+        priority: 5,
+      });
+    }
+
+    // === CHECK-IN BASED RECOMMENDATIONS ===
+    if (todaysCheckIn) {
+      const sleepQuality = todaysCheckIn.sleep_quality || 3;
+      const sleepHours = todaysCheckIn.sleep_hours || 0;
+      const energyLevel = todaysCheckIn.energy_level || 3;
+      const stressLevel = todaysCheckIn.stress_level || 3;
 
     // === PERSONALIZED SLEEP-BASED ACTIONS ===
     if (sleepHours > 0 && sleepHours < targetSleepHours - 1) {
@@ -250,8 +337,9 @@ export const AICoachCard = ({
         priority: 2,
       });
     }
+    } // End of if (todaysCheckIn)
 
-    // === TREND-BASED ACTIONS ===
+    // === TREND-BASED ACTIONS (works with or without check-in) ===
     if (analysis) {
       if (analysis.trends.energy === "declining" && analysis.averageEnergy < 3) {
         recommendations.push({
@@ -278,7 +366,8 @@ export const AICoachCard = ({
     return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 4);
   };
 
-  const actionableRecommendations = todaysCheckIn ? generateActionableRecommendations() : [];
+  // Now generates recommendations from meal/water data even without check-in
+  const actionableRecommendations = generateActionableRecommendations();
   const hasRecommendations = actionableRecommendations.length > 0;
 
   const getInsightStyle = (type: InsightCard["type"]) => {
