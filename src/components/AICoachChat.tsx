@@ -289,8 +289,8 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
         </button>
       </div>
 
-      {/* Check-In Summary Card */}
-      {(todaysCheckIn || checkInAnalysis) && (
+      {/* Check-In Summary Card - only show when there's actual data */}
+      {(todaysCheckIn || (checkInAnalysis && checkInAnalysis.averageMood > 0)) && (
         <div className="px-4 pt-4">
           <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-2xl p-4">
             <h3 className="text-xs font-semibold text-primary mb-3 uppercase tracking-wide">Today's Status</h3>
@@ -323,28 +323,24 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
                   <p className="text-xs text-muted-foreground">Stress</p>
                 </div>
               </div>
-            ) : checkInAnalysis && checkInAnalysis.averageMood > 0 ? (
+            ) : (
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">No check-in today. 7-day averages:</p>
                 <div className="flex justify-center gap-4 text-xs">
                   <span className="flex items-center gap-1">
-                    <Smile className="w-3 h-3" /> {checkInAnalysis.averageMood}/5
-                    {getTrendIcon(checkInAnalysis.trends.mood)}
+                    <Smile className="w-3 h-3" /> {checkInAnalysis!.averageMood}/5
+                    {getTrendIcon(checkInAnalysis!.trends.mood)}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Battery className="w-3 h-3" /> {checkInAnalysis.averageEnergy}/5
-                    {getTrendIcon(checkInAnalysis.trends.energy)}
+                    <Battery className="w-3 h-3" /> {checkInAnalysis!.averageEnergy}/5
+                    {getTrendIcon(checkInAnalysis!.trends.energy)}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Moon className="w-3 h-3" /> {checkInAnalysis.averageSleep}/5
-                    {getTrendIcon(checkInAnalysis.trends.sleep)}
+                    <Moon className="w-3 h-3" /> {checkInAnalysis!.averageSleep}/5
+                    {getTrendIcon(checkInAnalysis!.trends.sleep)}
                   </span>
                 </div>
               </div>
-            ) : (
-              <p className="text-sm text-center text-muted-foreground">
-                Complete a daily check-in to see your status here
-              </p>
             )}
 
             {/* Pattern-based insight */}
