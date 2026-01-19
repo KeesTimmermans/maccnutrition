@@ -464,7 +464,7 @@ const Index = () => {
         {/* Testimonial */}
         <div className="bg-card rounded-2xl p-4 shadow-soft max-w-sm mb-8 animate-slide-up delay-300">
           <p className="text-sm text-foreground italic mb-2">
-            "Finally, a nutrition app that actually understands my lifestyle and helps me stay on track!"
+            "The nutrition app that fulfills all your needs — your one-stop shop to take care of your nutrition!"
           </p>
           <p className="text-xs text-muted-foreground">
             — CJT Nutrition user
