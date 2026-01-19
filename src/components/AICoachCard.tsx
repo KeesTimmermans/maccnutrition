@@ -540,40 +540,28 @@ export const AICoachCard = ({
               </span>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {actionableRecommendations.map((rec, index) => (
                 <div 
                   key={index}
-                  className={`p-4 rounded-xl border ${getInsightStyle(rec.type)} animate-slide-up`}
+                  className={`p-3 rounded-xl border ${getInsightStyle(rec.type)} animate-slide-up`}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-1">
+                    <div className="flex-shrink-0 mt-0.5">
                       {rec.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
+                      {/* Title/Warning */}
+                      <div className="flex items-center gap-2 mb-1">
                         {getTypeIcon(rec.type)}
-                        <h4 className="font-bold text-foreground">{rec.title}</h4>
+                        <h4 className="font-semibold text-sm text-foreground">{rec.title}</h4>
                       </div>
-                      <p className="text-sm text-foreground mb-2 leading-relaxed">
-                        {rec.description}
-                      </p>
-                      {rec.details && (
-                        <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                          {rec.details}
-                        </p>
-                      )}
+                      {/* Action Step Only */}
                       {rec.action && (
-                        <div className="flex items-start gap-2 p-3 bg-background/70 rounded-lg border border-secondary/20">
-                          <Flame className="w-4 h-4 text-secondary flex-shrink-0 mt-0.5" />
-                          <div>
-                            <span className="text-xs font-bold text-secondary uppercase tracking-wide">Action Step</span>
-                            <p className="text-sm font-medium text-foreground mt-1 leading-relaxed">
-                              {rec.action}
-                            </p>
-                          </div>
-                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {rec.action}
+                        </p>
                       )}
                     </div>
                   </div>
