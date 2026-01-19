@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { 
+import {
   Bot, 
   Lightbulb, 
   TrendingUp, 
@@ -7,8 +6,6 @@ import {
   Minus,
   Zap, 
   MessageCircle,
-  ChevronDown,
-  ChevronUp,
   Battery,
   Moon,
   Brain,
@@ -30,6 +27,7 @@ interface InsightCard {
   icon: React.ReactNode;
   title: string;
   description: string;
+  details?: string;
   action?: string;
   priority: number;
 }
@@ -72,7 +70,6 @@ export const AICoachCard = ({
   waterIntakeMl = 0
 }: AICoachCardProps) => {
   const { t } = useLanguage();
-  const [showRecommendations, setShowRecommendations] = useState(true);
   
   const displayGreeting = greeting || t('good_morning');
 
@@ -120,60 +117,110 @@ export const AICoachCard = ({
       recommendations.push({
         type: "action",
         icon: <Flame className="w-5 h-5 text-orange-500" />,
-        title: `Protein Alert: ${proteinPercent}%`,
-        description: `Only ${totalProtein}g of ${proteinGoal}g logged. Need ${proteinRemaining}g in ${mealsRemaining} meal${mealsRemaining > 1 ? 's' : ''}.`,
-        action: `Add ~${Math.round(proteinRemaining / mealsRemaining)}g protein per meal: chicken (31g), fish (25g), eggs (6g each).`,
+        title: `Protein Alert: ${proteinPercent}% of Daily Goal`,
+        description: `You've only logged ${totalProtein}g of your ${proteinGoal}g protein target so far. With ${mealsRemaining} meal${mealsRemaining > 1 ? 's' : ''} remaining, you need approximately ${proteinRemaining}g more protein to hit your goal.`,
+        details: `Protein is essential for muscle recovery, metabolism, and satiety. Being this far behind in the afternoon means you'll need to prioritize protein-rich foods for the rest of the day. Low protein intake can lead to increased hunger later and difficulty maintaining lean muscle mass.`,
+        action: `Target ${Math.round(proteinRemaining / mealsRemaining)}g protein per remaining meal. Quick options: grilled chicken breast (31g per 100g), salmon fillet (25g per 100g), Greek yogurt (10g per 100g), or 3 eggs (18g total). Consider adding a protein shake if meals fall short.`,
         priority: 1,
+      });
+    } else if (proteinPercent >= 80 && proteinPercent < 100) {
+      recommendations.push({
+        type: "info",
+        icon: <Flame className="w-5 h-5 text-green-500" />,
+        title: `Protein on Track: ${proteinPercent}%`,
+        description: `Great progress${firstName ? `, ${firstName}` : ''}! You've logged ${totalProtein}g of ${proteinGoal}g. Just ${proteinRemaining}g to go to hit your target.`,
+        details: `You're in a strong position. Focus on including a quality protein source in your next meal to lock in this win. Consistent protein intake throughout the day optimizes muscle protein synthesis.`,
+        action: `Finish strong with one more protein-rich meal or snack: cottage cheese (11g per 100g), tuna (26g per 100g), or a handful of almonds with cheese.`,
+        priority: 5,
       });
     } else if (proteinPercent >= 100) {
       recommendations.push({
         type: "positive",
         icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
-        title: `Protein Goal Crushed!`,
-        description: `${totalProtein}g logged${firstName ? `, ${firstName}` : ''}! Supports your ${baseline?.primary_goal?.replace(/_/g, ' ') || 'goals'}.`,
+        title: `Protein Goal Achieved!`,
+        description: `Excellent work${firstName ? `, ${firstName}` : ''}! You've logged ${totalProtein}g protein today, exceeding your ${proteinGoal}g goal.`,
+        details: `This supports your ${baseline?.primary_goal?.replace(/_/g, ' ') || 'nutrition goals'} by ensuring optimal muscle protein synthesis, improved satiety, and stable blood sugar levels. Consistent protein intake like this compounds into real results over weeks and months.`,
         priority: 6,
       });
     }
 
     // Calorie check
     if (hour >= 14 && calPercent < 30) {
+      const caloriesNeeded = calorieGoal - totalCalories;
       recommendations.push({
         type: "warning",
         icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
-        title: `Under-Fueling: ${calPercent}%`,
-        description: `Only ${totalCalories} kcal by afternoon. Risk: energy crash, metabolism slowdown.`,
-        action: `Eat a balanced meal NOW: ~${Math.round((calorieGoal - totalCalories) / mealsRemaining)} kcal with protein + carbs.`,
+        title: `Under-Fueling Warning: Only ${calPercent}% of Calories`,
+        description: `You've only consumed ${totalCalories} kcal out of your ${calorieGoal} kcal target, and it's already afternoon. This under-eating pattern puts you at risk for energy crashes, increased cravings, and metabolic slowdown.`,
+        details: `When you don't eat enough during the day, your body goes into energy-conservation mode. This can lead to intense hunger later, making it harder to make good food choices. It also affects your workout performance, recovery, and mental clarity.`,
+        action: `Priority action: Eat a balanced meal NOW with approximately ${Math.round(caloriesNeeded / mealsRemaining)} kcal. Include a palm-sized protein (25-30g), a fist-sized portion of complex carbs (rice, potato, bread), and some healthy fats. Don't try to "save" calories for later—this backfires.`,
         priority: 1,
       });
-    } else if (calPercent > 100) {
+    } else if (calPercent >= 70 && calPercent <= 100) {
+      recommendations.push({
+        type: "positive",
+        icon: <Activity className="w-5 h-5 text-green-500" />,
+        title: `Calories on Track: ${calPercent}%`,
+        description: `You've consumed ${totalCalories} kcal of your ${calorieGoal} kcal target. You're pacing well through the day.`,
+        details: `Consistent calorie distribution throughout the day optimizes energy levels, prevents overeating, and supports your ${baseline?.primary_goal?.replace(/_/g, ' ') || 'goals'}. Keep up this steady approach.`,
+        priority: 6,
+      });
+    } else if (calPercent > 100 && calPercent <= 115) {
       const excess = totalCalories - calorieGoal;
       recommendations.push({
         type: "info",
         icon: <Activity className="w-5 h-5 text-blue-500" />,
+        title: `Slightly Over Target: +${excess} kcal`,
+        description: `You've exceeded your ${calorieGoal} kcal target by ${excess} calories. This is completely fine and won't derail your progress.`,
+        details: `Single-day variations are normal and expected. Your body doesn't operate on a strict 24-hour cycle. What matters is your weekly average and overall consistency. Tomorrow, you might naturally eat a bit less.`,
+        action: `For any remaining meals today: focus on protein-rich, high-volume foods like chicken with vegetables, fish with salad, or Greek yogurt with berries. Skip added fats and sugary drinks.`,
+        priority: 4,
+      });
+    } else if (calPercent > 115) {
+      const excess = totalCalories - calorieGoal;
+      recommendations.push({
+        type: "warning",
+        icon: <Activity className="w-5 h-5 text-amber-500" />,
         title: `Over Target: +${excess} kcal`,
-        description: "You've exceeded your calorie target. One day won't derail progress.",
-        action: "For remaining meals: focus on protein + vegetables, skip added fats/sugars.",
+        description: `You've exceeded your daily target by ${excess} calories. Let's use this as a learning moment rather than a setback.`,
+        details: `This doesn't ruin your progress. One day of overeating requires about 3,500 extra calories to gain even half a kilogram of fat. Focus on getting back to your normal routine tomorrow—no need to "make up for it" by under-eating.`,
+        action: `Don't skip meals tomorrow. Resume your normal eating pattern. If there are triggers that led to today's intake (stress, social event, hunger from under-eating earlier), note them for future awareness.`,
         priority: 3,
       });
     }
 
     // Hydration real-time check
+    const currentWaterL = Math.round(waterIntakeMl / 1000 * 10) / 10;
+    const targetWaterL = baseline?.water_liters || 2.5;
+    const waterNeeded = Math.round((waterGoal - waterIntakeMl) / 1000 * 10) / 10;
+    
     if (hour >= 12 && waterPercent < 30) {
-      const waterNeeded = Math.round((waterGoal - waterIntakeMl) / 1000 * 10) / 10;
       recommendations.push({
         type: "action",
         icon: <Droplets className="w-5 h-5 text-blue-400" />,
-        title: `Hydration: Only ${waterPercent}%`,
-        description: `${Math.round(waterIntakeMl / 1000 * 10) / 10}L of ${baseline?.water_liters || 2.5}L. Dehydration = hunger + fatigue.`,
-        action: `Drink ${Math.min(waterNeeded, 1)}L in the next hour. Set a timer!`,
+        title: `Hydration Alert: Only ${waterPercent}% of Goal`,
+        description: `You've only logged ${currentWaterL}L of your ${targetWaterL}L daily target. By midday, you should be at least at 50%. Dehydration often masquerades as hunger and causes fatigue, headaches, and reduced focus.`,
+        details: `Even mild dehydration (1-2% body weight loss) impairs cognitive function, mood, and physical performance. It also slows metabolism and can trigger false hunger signals, leading to unnecessary snacking. Your body can't distinguish thirst from hunger.`,
+        action: `Immediate action: Drink ${Math.min(waterNeeded, 1)}L of water in the next hour. Keep a water bottle visible at your desk. Set hourly phone reminders if you tend to forget. Aim to finish ${Math.round(waterNeeded * 0.6 * 10) / 10}L by 3pm.`,
         priority: 2,
+      });
+    } else if (waterPercent >= 50 && waterPercent < 80 && hour >= 14) {
+      recommendations.push({
+        type: "info",
+        icon: <Droplets className="w-5 h-5 text-blue-400" />,
+        title: `Hydration Progress: ${waterPercent}%`,
+        description: `You've logged ${currentWaterL}L of ${targetWaterL}L. You're making progress but need to pick up the pace to hit your goal by end of day.`,
+        details: `Consistent hydration throughout the day is more effective than trying to catch up later. Drinking too much water at once can actually impair absorption. Aim for steady sips.`,
+        action: `Drink ${Math.round(waterNeeded / 3 * 10) / 10}L now, and set reminders to drink the same amount mid-afternoon and early evening.`,
+        priority: 4,
       });
     } else if (waterPercent >= 90) {
       recommendations.push({
         type: "positive",
         icon: <Droplets className="w-5 h-5 text-blue-400" />,
-        title: "Hydration: On Point!",
-        description: `${Math.round(waterIntakeMl / 1000 * 10) / 10}L logged. Great for energy and metabolism.`,
+        title: "Hydration Goal Achieved!",
+        description: `Excellent${firstName ? `, ${firstName}` : ''}! You've logged ${currentWaterL}L of your ${targetWaterL}L target. Proper hydration optimizes metabolism, energy, and cognitive function.`,
+        details: `Staying well-hydrated supports nutrient transport, temperature regulation, and waste elimination. It also helps you distinguish true hunger from thirst, making it easier to stick to your nutrition plan.`,
         priority: 6,
       });
     }
@@ -363,7 +410,7 @@ export const AICoachCard = ({
       }
     }
 
-    return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 4);
+    return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 6);
   };
 
   // Now generates recommendations from meal/water data even without check-in
@@ -483,103 +530,96 @@ export const AICoachCard = ({
           </div>
         )}
 
-        {/* Actionable Recommendations Section */}
+        {/* Actionable Recommendations Section - Always Visible */}
         {hasRecommendations && (
           <div className="mb-4">
-            <button
-              onClick={() => setShowRecommendations(!showRecommendations)}
-              className="w-full flex items-center justify-between py-2 text-left"
-            >
-              <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-secondary" />
-                <span className="text-sm font-semibold text-foreground">
-                  Today's Action Plan
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  ({actionableRecommendations.length} items)
-                </span>
-              </div>
-              {showRecommendations ? (
-                <ChevronUp className="w-4 h-4 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              )}
-            </button>
+            <div className="flex items-center gap-2 mb-3">
+              <Flame className="w-5 h-5 text-secondary" />
+              <span className="text-base font-bold text-foreground">
+                Today's Coaching Plan
+              </span>
+            </div>
 
-            {showRecommendations && (
-              <div className="space-y-3 mt-2">
-                {actionableRecommendations.map((rec, index) => (
-                  <div 
-                    key={index}
-                    className={`p-3 rounded-xl border ${getInsightStyle(rec.type)} animate-slide-up`}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        {rec.icon}
+            <div className="space-y-4">
+              {actionableRecommendations.map((rec, index) => (
+                <div 
+                  key={index}
+                  className={`p-4 rounded-xl border ${getInsightStyle(rec.type)} animate-slide-up`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      {rec.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        {getTypeIcon(rec.type)}
+                        <h4 className="font-bold text-foreground">{rec.title}</h4>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          {getTypeIcon(rec.type)}
-                          <h4 className="font-semibold text-foreground text-sm">{rec.title}</h4>
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-2">
-                          {rec.description}
+                      <p className="text-sm text-foreground mb-2 leading-relaxed">
+                        {rec.description}
+                      </p>
+                      {rec.details && (
+                        <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+                          {rec.details}
                         </p>
-                        {rec.action && (
-                          <div className="flex items-start gap-2 p-2 bg-background/60 rounded-lg">
-                            <Flame className="w-3.5 h-3.5 text-secondary flex-shrink-0 mt-0.5" />
-                            <p className="text-xs font-medium text-foreground">
+                      )}
+                      {rec.action && (
+                        <div className="flex items-start gap-2 p-3 bg-background/70 rounded-lg border border-secondary/20">
+                          <Flame className="w-4 h-4 text-secondary flex-shrink-0 mt-0.5" />
+                          <div>
+                            <span className="text-xs font-bold text-secondary uppercase tracking-wide">Action Step</span>
+                            <p className="text-sm font-medium text-foreground mt-1 leading-relaxed">
                               {rec.action}
                             </p>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
 
-                {/* 7-Day Trends Mini Summary */}
-                {analysis && (
-                  <div className="p-3 bg-muted/30 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Activity className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-semibold text-foreground">7-Day Trends</span>
+              {/* 7-Day Trends Mini Summary */}
+              {analysis && (
+                <div className="p-4 bg-muted/30 rounded-xl">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-bold text-foreground">7-Day Trends</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="text-center p-2 bg-background/50 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <span className="text-sm font-bold">{analysis.averageMood}</span>
+                        {getTrendIcon(analysis.trends.mood)}
+                      </div>
+                      <span className="text-xs text-muted-foreground">Mood</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Mood</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-medium">{analysis.averageMood}</span>
-                          {getTrendIcon(analysis.trends.mood)}
-                        </div>
+                    <div className="text-center p-2 bg-background/50 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <span className="text-sm font-bold">{analysis.averageEnergy}</span>
+                        {getTrendIcon(analysis.trends.energy)}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Energy</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-medium">{analysis.averageEnergy}</span>
-                          {getTrendIcon(analysis.trends.energy)}
-                        </div>
+                      <span className="text-xs text-muted-foreground">Energy</span>
+                    </div>
+                    <div className="text-center p-2 bg-background/50 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <span className="text-sm font-bold">{analysis.averageSleep}</span>
+                        {getTrendIcon(analysis.trends.sleep)}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Sleep</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-medium">{analysis.averageSleep}</span>
-                          {getTrendIcon(analysis.trends.sleep)}
-                        </div>
+                      <span className="text-xs text-muted-foreground">Sleep</span>
+                    </div>
+                    <div className="text-center p-2 bg-background/50 rounded-lg">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <span className="text-sm font-bold">{analysis.averageStress}</span>
+                        {getTrendIcon(analysis.trends.stress)}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Stress</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-medium">{analysis.averageStress}</span>
-                          {getTrendIcon(analysis.trends.stress)}
-                        </div>
-                      </div>
+                      <span className="text-xs text-muted-foreground">Stress</span>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
