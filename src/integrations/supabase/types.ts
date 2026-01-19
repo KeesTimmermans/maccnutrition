@@ -62,6 +62,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_confirmations: {
+        Row: {
+          confirmed_at: string
+          created_at: string
+          email: string
+          email_id: string
+          event_type: string
+          id: string
+          raw_event: Json | null
+        }
+        Insert: {
+          confirmed_at?: string
+          created_at?: string
+          email: string
+          email_id: string
+          event_type: string
+          id?: string
+          raw_event?: Json | null
+        }
+        Update: {
+          confirmed_at?: string
+          created_at?: string
+          email?: string
+          email_id?: string
+          event_type?: string
+          id?: string
+          raw_event?: Json | null
+        }
+        Relationships: []
+      }
       favorite_meals: {
         Row: {
           calories: number
