@@ -218,13 +218,13 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <img src={cjtLogo} alt="CJT Nutrition" className="h-16 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-foreground">
+        {/* Logo & Header */}
+        <div className="text-center mb-6">
+          <img src={cjtLogo} alt="CJT Nutrition" className="h-14 mx-auto" />
+          <h1 className="text-2xl font-bold text-foreground mt-3">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground text-sm mt-1">
             {isLogin
               ? "Log in to continue your nutrition journey"
               : "Start your personalized nutrition journey"}
