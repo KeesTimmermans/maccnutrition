@@ -680,22 +680,20 @@ export const Dashboard = () => {
           </div>
         </section>
 
-        {/* Water Tracker */}
+        {/* Meal Planner */}
         <section>
-          <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
+          <MealPlanner baseline={baseline} />
         </section>
 
-        {/* Wearable Data Card */}
-        <section>
-          <button 
+        {/* Wearable Data Banner */}
+        <section className="mb-2">
+          <button
             onClick={() => setShowWearableSettings(true)}
-            className="w-full bg-card rounded-2xl shadow-soft p-4 flex items-center gap-4 hover:shadow-medium transition-all text-left"
+            className="w-full p-4 glass rounded-2xl border border-border/50 flex items-center gap-4 hover:bg-accent/10 transition-colors"
           >
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <Watch className="w-6 h-6 text-blue-500" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground">{t('wearable_devices')}</h3>
+            <div className="text-2xl">⌚</div>
+            <div className="text-left flex-1">
+              <h4 className="font-semibold text-foreground">{t('wearables')}</h4>
               {wearableData ? (
                 <p className="text-sm text-muted-foreground">
                   {wearableData.sleepHours && `${wearableData.sleepHours}h ${t('sleep')}`}
@@ -714,9 +712,9 @@ export const Dashboard = () => {
           </button>
         </section>
 
-        {/* Meal Planner */}
+        {/* Water Tracker */}
         <section>
-          <MealPlanner baseline={baseline} />
+          <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
         </section>
       </main>
 
