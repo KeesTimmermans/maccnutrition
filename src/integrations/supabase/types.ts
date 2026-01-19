@@ -226,6 +226,7 @@ export type Database = {
           preferred_language: string | null
           primary_goal: string | null
           protein_grams: number | null
+          protein_shakes_preference: string | null
           secondary_goals: string[] | null
           sex: string | null
           sleep_hours: string | null
@@ -284,6 +285,7 @@ export type Database = {
           preferred_language?: string | null
           primary_goal?: string | null
           protein_grams?: number | null
+          protein_shakes_preference?: string | null
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null
@@ -342,6 +344,7 @@ export type Database = {
           preferred_language?: string | null
           primary_goal?: string | null
           protein_grams?: number | null
+          protein_shakes_preference?: string | null
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null

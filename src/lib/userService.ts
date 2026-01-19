@@ -60,6 +60,7 @@ export interface UserBaseline {
   hydration_habits: string | null;
   energy_patterns: string | null;
   weekend_habits: string | null;
+  protein_shakes_preference: string | null;
 }
 
 export const saveUserBaseline = async (
@@ -128,6 +129,7 @@ export const saveUserBaseline = async (
       hydration_habits: onboardingData.hydrationHabits || null,
       energy_patterns: onboardingData.energyPatterns || null,
       weekend_habits: onboardingData.weekendHabits || null,
+      protein_shakes_preference: onboardingData.proteinShakesPreference || null,
     })
     .select()
     .single();

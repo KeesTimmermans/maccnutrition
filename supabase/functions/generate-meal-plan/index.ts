@@ -18,7 +18,10 @@ const userContextSchema = z.object({
   allergies: z.array(z.string().max(100)).max(20).optional(),
   foodDislikes: z.string().max(500).optional(),
   mealsPerDay: z.string().max(10).optional(),
-  activityLevel: z.string().max(50).optional()
+  activityLevel: z.string().max(50).optional(),
+  proteinShakesPreference: z.string().max(50).optional(),
+  cookingSkill: z.string().max(50).optional(),
+  mealPrepTime: z.string().max(50).optional()
 }).passthrough().optional();
 
 const requestSchema = z.object({
@@ -110,6 +113,29 @@ serve(async (req) => {
 
     console.log(`Generating meal plan with ${mealsPerDayNum} meals per day:`, mealStructure);
 
+    // Parse protein shakes preference
+    const proteinShakesPref = userContext?.proteinShakesPreference || 'sometimes';
+    let proteinShakesGuideline = '';
+    if (proteinShakesPref === 'love') {
+      proteinShakesGuideline = 'The user LOVES protein shakes - feel free to include protein shakes/smoothies as meals or snacks (1-2 per day is great).';
+    } else if (proteinShakesPref === 'sometimes') {
+      proteinShakesGuideline = 'The user is open to occasional protein shakes - include 2-3 protein shakes throughout the week when convenient.';
+    } else if (proteinShakesPref === 'prefer_whole_foods') {
+      proteinShakesGuideline = 'The user PREFERS whole foods over shakes - minimize protein shakes, only suggest rarely (1 per week max) and focus on whole food protein sources.';
+    } else if (proteinShakesPref === 'never') {
+      proteinShakesGuideline = 'IMPORTANT: The user does NOT want protein shakes - DO NOT include any protein shakes, smoothies, or protein powder in the meal plan. Use only whole food protein sources.';
+    }
+
+    // Parse cooking skill and prep time
+    const cookingSkill = userContext?.cookingSkill || 'intermediate';
+    const mealPrepTime = userContext?.mealPrepTime || 'moderate';
+    let complexityGuideline = '';
+    if (cookingSkill === 'beginner' || mealPrepTime === 'minimal') {
+      complexityGuideline = 'Keep recipes SIMPLE with 5 ingredients or fewer. Focus on quick meals that take under 20 minutes.';
+    } else if (cookingSkill === 'advanced' && mealPrepTime === 'plenty') {
+      complexityGuideline = 'Can include more complex recipes and meal prep strategies.';
+    }
+
     const systemPrompt = `You are an expert meal planner for CJTNutrition. Create a personalized 7-day meal plan based on the user's goals, preferences, and dietary restrictions.
 
 User Profile:
@@ -123,6 +149,8 @@ User Profile:
 - Food Dislikes: ${userContext?.foodDislikes || 'none'}
 - Meals Per Day: ${mealsPerDayNum}
 - Activity Level: ${userContext?.activityLevel || 'moderate'}
+- Cooking Skill: ${cookingSkill}
+- Meal Prep Time Available: ${mealPrepTime}
 
 CRITICAL MEAL STRUCTURE REQUIREMENT:
 ${mealStructure}
@@ -130,6 +158,10 @@ ${mealStructure}
 You MUST provide EXACTLY ${mealsPerDayNum} meals for EACH of the 7 days. No more, no less.
 The allowed meal types are: ${allowedMealTypes.join(', ')}.
 
+PROTEIN SHAKES PREFERENCE:
+${proteinShakesGuideline}
+
+${complexityGuideline ? `COMPLEXITY GUIDELINE:\n${complexityGuideline}\n` : ''}
 Guidelines:
 - Create balanced, whole-food focused meals
 - Distribute the ${userContext?.targetCalories || 2000} daily calories evenly across ${mealsPerDayNum} meals (approximately ${Math.round((userContext?.targetCalories || 2000) / mealsPerDayNum)} kcal per meal)
@@ -143,9 +175,11 @@ Guidelines:
 
 IMPORTANT: Each day MUST have exactly these meals: ${allowedMealTypes.join(', ')}.
 
+${proteinShakesPref === 'never' ? 'REMINDER: NO protein shakes or smoothies - whole foods only!' : ''}
+
 Each meal should include name, estimated calories, protein, carbs, and fats. Make it varied and delicious while meeting the nutritional targets.
 
-Remember: ${mealsPerDayNum} meals per day, no exceptions. If the user requested ${mealsPerDayNum} meals, do NOT add extra snacks or meals.`;
+Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
 
     console.log("Generating meal plan for user");
 

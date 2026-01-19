@@ -173,6 +173,9 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         foodDislikes: baseline?.food_dislikes,
         mealsPerDay: baseline?.meals_per_day,
         activityLevel: baseline?.activity_level,
+        proteinShakesPreference: baseline?.protein_shakes_preference,
+        cookingSkill: baseline?.cooking_skill,
+        mealPrepTime: baseline?.meal_prep_time,
       };
 
       const { data, error } = await supabase.functions.invoke('generate-meal-plan', {
