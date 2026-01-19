@@ -67,9 +67,9 @@ export const saveUserBaseline = async (
   onboardingData: OnboardingData,
   baseline: BaselineResults
 ) => {
-  // Get user name from auth metadata
+  // Get user name from auth metadata (support both first_name and legacy full_name)
   const { data: { user } } = await supabase.auth.getUser();
-  const userName = user?.user_metadata?.full_name || onboardingData.name || null;
+  const userName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || onboardingData.name || null;
   
   const { data, error } = await supabase
     .from("user_baselines")

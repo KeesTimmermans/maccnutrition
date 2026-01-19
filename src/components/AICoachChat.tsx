@@ -104,7 +104,8 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
         
         greeting += "\n\nHow can I help you today?";
       } else {
-        greeting = "Hi! I'm Coach Mac, your personal nutrition guide. ";
+        const firstName = userBaseline?.name?.split(' ')[0] || '';
+        greeting = `Hi${firstName ? ` ${firstName}` : ''}! I'm Coach Mac, your personal nutrition guide. `;
         
         // Include wearable data in greeting
         if (wearableSummary) {
@@ -183,6 +184,8 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
         body: {
           messages: newMessages,
           userContext: baseline ? {
+            // User's name
+            userName: baseline.name,
             // Core profile
             primaryGoal: baseline.primary_goal,
             secondaryGoals: baseline.secondary_goals,

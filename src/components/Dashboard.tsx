@@ -395,7 +395,7 @@ export const Dashboard = () => {
           <div>
             <p className="text-sm text-muted-foreground">{getGreeting()},</p>
             <h1 className="text-xl font-bold text-foreground">
-              {baseline?.name || 'there'}! 👋
+              {baseline?.name?.split(' ')[0] || 'there'}! 👋
             </h1>
           </div>
           <div className="flex items-center gap-2">

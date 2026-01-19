@@ -22,6 +22,7 @@ const mealSchema = z.object({
 }).passthrough();
 
 const userContextSchema = z.object({
+  userName: z.string().max(100).nullish(),
   primaryGoal: z.string().max(100).nullish(),
   secondaryGoals: z.array(z.string().max(100)).max(10).nullish(),
   sex: z.string().max(20).nullish(),
@@ -289,8 +290,10 @@ TODAY'S PROGRESS:
     }
 
     // Build comprehensive user profile
+    const userName = userContext?.userName?.split(' ')[0] || '';
     const userProfile = `
 USER PROFILE:
+- Name: ${userName || 'not provided'}
 - Primary Goal: ${userContext?.primaryGoal?.replace(/_/g, ' ') || 'general health'}
 - Secondary Goals: ${userContext?.secondaryGoals?.join(', ') || 'not specified'}
 - Sex: ${userContext?.sex || 'not specified'}
@@ -348,9 +351,10 @@ ${languageInstruction}
 
 RESPONSE GUIDELINES:
 - Keep responses concise but valuable (2-4 sentences typically, unless explaining something complex)
+- USE THE USER'S NAME: ${userName ? `Address them as "${userName}" occasionally to personalize responses` : 'No name provided'}
 - Always tie recommendations back to THEIR specific goals and data
 - Reference their actual logged meals when making suggestions
-- If they're close to a target, celebrate it!
+- If they're close to a target, celebrate it${userName ? ` and use their name (e.g., "Great job, ${userName}!")` : ''}!
 - If they're struggling, be supportive and offer ONE clear next step
 - Adapt tone based on their preference: ${userContext?.coachingTone || 'supportive'}
 - USE CHECK-IN DATA: If check-in data is available, reference their mood, energy, sleep, and stress levels to personalize advice

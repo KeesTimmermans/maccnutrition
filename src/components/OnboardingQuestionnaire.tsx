@@ -153,12 +153,13 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [data, setData] = useState<OnboardingData>(initialData);
   
-  // Pre-fill name from user metadata
+  // Pre-fill name from user metadata (support both first_name and legacy full_name)
   useEffect(() => {
     const prefillUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata?.full_name) {
-        setData(prev => ({ ...prev, name: user.user_metadata.full_name }));
+      const firstName = user?.user_metadata?.first_name || user?.user_metadata?.full_name;
+      if (firstName) {
+        setData(prev => ({ ...prev, name: firstName }));
       }
     };
     prefillUserData();
