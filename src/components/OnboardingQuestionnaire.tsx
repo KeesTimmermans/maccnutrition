@@ -81,6 +81,7 @@ export interface OnboardingData {
   foodDislikes: string;
   coachingTone: string;
   mealsPerDay: string;
+  proteinShakesPreference: string;
   
   // Female-Specific
   cycleRegularity: string;
@@ -129,6 +130,7 @@ const initialData: OnboardingData = {
   foodDislikes: "",
   coachingTone: "",
   mealsPerDay: "",
+  proteinShakesPreference: "",
   cycleRegularity: "",
   currentPhase: "",
   cycleSymptoms: [],
@@ -1127,6 +1129,13 @@ const PreferencesStep = ({ data, updateData, t }: {
     { label: t('flexible'), value: "flexible" },
   ];
 
+  const proteinShakeOptions = [
+    { label: "Love them", desc: "Happy to have shakes daily", value: "love", icon: "🥤" },
+    { label: "Sometimes", desc: "Occasionally for convenience", value: "sometimes", icon: "👍" },
+    { label: "Prefer whole foods", desc: "Only real food for me", value: "prefer_whole_foods", icon: "🍗" },
+    { label: "Never", desc: "I don't use protein shakes", value: "never", icon: "🚫" },
+  ];
+
   const snackingOptions = [
     { label: "Never", desc: "I don't snack between meals", value: "never" },
     { label: "Sometimes", desc: "1-2 snacks when hungry", value: "sometimes" },
@@ -1184,6 +1193,29 @@ const PreferencesStep = ({ data, updateData, t }: {
               }`}
             >
               {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How do you feel about protein shakes?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {proteinShakeOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("proteinShakesPreference", option.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.proteinShakesPreference === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-lg block mb-1">{option.icon}</span>
+              <span className="font-semibold block text-sm">{option.label}</span>
+              <span className={`text-xs ${data.proteinShakesPreference === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                {option.desc}
+              </span>
             </button>
           ))}
         </div>
