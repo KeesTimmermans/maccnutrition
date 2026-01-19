@@ -79,6 +79,37 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Parse meals per day to determine meal structure
+    const mealsPerDayRaw = userContext?.mealsPerDay || '3';
+    const mealsPerDayNum = parseInt(mealsPerDayRaw, 10) || 3;
+    
+    // Define meal structure based on number of meals
+    let mealStructure = '';
+    let allowedMealTypes: string[] = [];
+    
+    if (mealsPerDayNum === 2) {
+      mealStructure = 'EXACTLY 2 meals per day: Brunch (mid-morning) and Dinner (evening). NO breakfast, lunch, or snacks.';
+      allowedMealTypes = ['Brunch', 'Dinner'];
+    } else if (mealsPerDayNum === 3) {
+      mealStructure = 'EXACTLY 3 meals per day: Breakfast (morning), Lunch (midday), and Dinner (evening). NO snacks.';
+      allowedMealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+    } else if (mealsPerDayNum === 4) {
+      mealStructure = 'EXACTLY 4 meals per day: Breakfast (morning), Lunch (midday), Afternoon Snack, and Dinner (evening).';
+      allowedMealTypes = ['Breakfast', 'Lunch', 'Snack', 'Dinner'];
+    } else if (mealsPerDayNum === 5) {
+      mealStructure = 'EXACTLY 5 meals per day: Breakfast (morning), Morning Snack, Lunch (midday), Afternoon Snack, and Dinner (evening).';
+      allowedMealTypes = ['Breakfast', 'Snack', 'Lunch', 'Snack', 'Dinner'];
+    } else if (mealsPerDayNum >= 6) {
+      mealStructure = 'EXACTLY 6 meals per day: Breakfast, Morning Snack, Lunch, Afternoon Snack, Dinner, and Evening Snack.';
+      allowedMealTypes = ['Breakfast', 'Snack', 'Lunch', 'Snack', 'Dinner', 'Snack'];
+    } else {
+      // Default to 3 meals
+      mealStructure = 'EXACTLY 3 meals per day: Breakfast (morning), Lunch (midday), and Dinner (evening). NO snacks.';
+      allowedMealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+    }
+
+    console.log(`Generating meal plan with ${mealsPerDayNum} meals per day:`, mealStructure);
+
     const systemPrompt = `You are an expert meal planner for CJTNutrition. Create a personalized 7-day meal plan based on the user's goals, preferences, and dietary restrictions.
 
 User Profile:
@@ -90,19 +121,31 @@ User Profile:
 - Diet Type: ${userContext?.dietType || 'balanced'}
 - Allergies: ${userContext?.allergies?.join(', ') || 'none'}
 - Food Dislikes: ${userContext?.foodDislikes || 'none'}
-- Meals Per Day: ${userContext?.mealsPerDay || '3'}
+- Meals Per Day: ${mealsPerDayNum}
 - Activity Level: ${userContext?.activityLevel || 'moderate'}
+
+CRITICAL MEAL STRUCTURE REQUIREMENT:
+${mealStructure}
+
+You MUST provide EXACTLY ${mealsPerDayNum} meals for EACH of the 7 days. No more, no less.
+The allowed meal types are: ${allowedMealTypes.join(', ')}.
 
 Guidelines:
 - Create balanced, whole-food focused meals
+- Distribute the ${userContext?.targetCalories || 2000} daily calories evenly across ${mealsPerDayNum} meals (approximately ${Math.round((userContext?.targetCalories || 2000) / mealsPerDayNum)} kcal per meal)
 - Ensure daily totals approximately match calorie and macro targets
 - Vary protein sources throughout the week
 - Include vegetables with most meals
 - Keep meals practical and easy to prepare
-- Respect dietary restrictions and allergies
-- Distribute macros evenly across meals`;
+- Respect dietary restrictions and allergies`;
 
-    const userPrompt = `Generate a complete 7-day meal plan with ${userContext?.mealsPerDay || '3'} meals per day. Each meal should include name, estimated calories, protein, carbs, and fats. Make it varied and delicious while meeting the nutritional targets.`;
+    const userPrompt = `Generate a complete 7-day meal plan with EXACTLY ${mealsPerDayNum} meals per day. 
+
+IMPORTANT: Each day MUST have exactly these meals: ${allowedMealTypes.join(', ')}.
+
+Each meal should include name, estimated calories, protein, carbs, and fats. Make it varied and delicious while meeting the nutritional targets.
+
+Remember: ${mealsPerDayNum} meals per day, no exceptions. If the user requested ${mealsPerDayNum} meals, do NOT add extra snacks or meals.`;
 
     console.log("Generating meal plan for user");
 
