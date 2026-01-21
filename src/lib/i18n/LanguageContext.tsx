@@ -1,112 +1,77 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { Language, translations, languageNames } from "./translations";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { translations, SupportedLanguage, TranslationKey } from "./translations";
 
 interface LanguageContextType {
-  language: Language;
-  setLanguage: (lang: Language) => Promise<void>;
-  t: (key: string) => string;
-  languageNames: Record<Language, string>;
+  language: SupportedLanguage;
+  setLanguage: (lang: SupportedLanguage) => void;
+  t: (key: TranslationKey) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>("en");
-  const [isLoaded, setIsLoaded] = useState(false);
+export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+  // Start with browser language or 'en' - don't block on auth
+  const [language, setLanguage] = useState<SupportedLanguage>(() => {
+    const browserLang = navigator.language.split("-")[0];
+    return (browserLang in translations ? browserLang : "en") as SupportedLanguage;
+  });
 
-  // Load language from database on mount
   useEffect(() => {
-    const loadLanguage = async () => {
+    // Load user's preferred language asynchronously - don't block render
+    const loadUserLanguage = async () => {
       try {
+        // Use getSession instead of getUser - it's faster and doesn't make a network request
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          const { data } = await supabase
-            .from("user_baselines")
-            .select("preferred_language")
-            .eq("user_id", user.id)
-            .maybeSingle();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-          if (data?.preferred_language) {
-            setLanguageState(data.preferred_language as Language);
+        if (session?.user?.user_metadata?.preferred_language) {
+          const userLang = session.user.user_metadata.preferred_language as SupportedLanguage;
+          if (userLang in translations) {
+            setLanguage(userLang);
           }
         }
       } catch (error) {
-        console.error("Error loading language preference:", error);
-      } finally {
-        setIsLoaded(true);
+        console.error("Failed to load user language preference:", error);
+        // Already have a default language, so this is fine
       }
     };
 
-    loadLanguage();
+    loadUserLanguage();
 
-    // Listen for auth changes to reload language
+    // Also listen for auth changes to update language
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        const { data } = await supabase
-          .from("user_baselines")
-          .select("preferred_language")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-
-        if (data?.preferred_language) {
-          setLanguageState(data.preferred_language as Language);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user?.user_metadata?.preferred_language) {
+        const userLang = session.user.user_metadata.preferred_language as SupportedLanguage;
+        if (userLang in translations) {
+          setLanguage(userLang);
         }
-      } else if (event === "SIGNED_OUT") {
-        setLanguageState("en");
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const setLanguage = useCallback(async (lang: Language) => {
-    setLanguageState(lang);
+  const t = (key: TranslationKey): string => {
+    return translations[language]?.[key] || translations.en[key] || key;
+  };
 
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("user_baselines").update({ preferred_language: lang }).eq("user_id", user.id);
-      }
-    } catch (error) {
-      console.error("Error saving language preference:", error);
-    }
-  }, []);
+  const contextValue: LanguageContextType = {
+    language,
+    setLanguage,
+    t,
+  };
 
-  const t = useCallback(
-    (key: string): string => {
-      return translations[language]?.[key] || translations["en"]?.[key] || key;
-    },
-    [language],
-  );
-
-  // if (!isLoaded) {
-  //   return null; // Or a loading spinner
-
-  // }
-
-  if (!isLoaded) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, languageNames }}>{children}</LanguageContext.Provider>
-  );
+  // NEVER return null - always render children
+  return <LanguageContext.Provider value={contextValue}>{children}</LanguageContext.Provider>;
 };
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
