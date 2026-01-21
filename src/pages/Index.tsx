@@ -41,17 +41,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  console.log("[Index] Render:", {
-    appState,
-    loading,
-    authLoading,
-    user: !!user,
-    subscription,
-    isTrialing,
-    subscriptionChecked,
-    subscriptionError,
-    isBootstrapping,
-  });
+  console.log("[Index] Render:");
 
   // IMPORTANT: don't block the whole app UI during background subscription refreshes.
   // Only block during the initial auth+subscription bootstrap.
