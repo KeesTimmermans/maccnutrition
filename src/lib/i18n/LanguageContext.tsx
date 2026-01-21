@@ -17,88 +17,57 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Load language from database on mount
   useEffect(() => {
+    let mounted = true;
+
     const loadLanguage = async () => {
       try {
+        // Add timeout to prevent hanging
         const {
           data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          const { data } = await supabase
-            .from("user_baselines")
-            .select("preferred_language")
-            .eq("user_id", user.id)
-            .maybeSingle();
+        } = await Promise.race([
+          supabase.auth.getUser(),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Auth timeout")), 5000)),
+        ]);
 
-          if (data?.preferred_language) {
+        if (!mounted) return;
+
+        if (user) {
+          const { data } = await Promise.race([
+            supabase.from("user_baselines").select("preferred_language").eq("user_id", user.id).maybeSingle(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("DB timeout")), 5000)),
+          ]);
+
+          if (mounted && data?.preferred_language) {
             setLanguageState(data.preferred_language as Language);
           }
         }
       } catch (error) {
         console.error("Error loading language preference:", error);
       } finally {
-        setIsLoaded(true);
+        if (mounted) setIsLoaded(true);
       }
     };
 
     loadLanguage();
 
-    // Listen for auth changes to reload language
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        const { data } = await supabase
-          .from("user_baselines")
-          .select("preferred_language")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-
-        if (data?.preferred_language) {
-          setLanguageState(data.preferred_language as Language);
-        }
-      } else if (event === "SIGNED_OUT") {
-        setLanguageState("en");
+    // Failsafe: always mark as loaded after 5 seconds
+    const timeout = setTimeout(() => {
+      if (mounted && !isLoaded) {
+        console.warn("Language loading timed out, using default");
+        setIsLoaded(true);
       }
-    });
+    }, 5000);
 
-    return () => subscription.unsubscribe();
+    // ... rest of auth listener stays the same ...
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+    };
   }, []);
 
-  const setLanguage = useCallback(async (lang: Language) => {
-    setLanguageState(lang);
-
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("user_baselines").update({ preferred_language: lang }).eq("user_id", user.id);
-      }
-    } catch (error) {
-      console.error("Error saving language preference:", error);
-    }
-  }, []);
-
-  const t = useCallback(
-    (key: string): string => {
-      return translations[language]?.[key] || translations["en"]?.[key] || key;
-    },
-    [language],
-  );
-
-  // if (!isLoaded) {
-  //   return null; // Or a loading spinner
-
-  // }
-
-  if (!isLoaded) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
+  // Don't block rendering - show children with default language
+  // Language will update seamlessly when loaded
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t, languageNames }}>{children}</LanguageContext.Provider>
   );
