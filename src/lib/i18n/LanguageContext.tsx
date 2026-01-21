@@ -91,13 +91,13 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // }
 
-  if (!isLoaded) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p>Loading...</p>
-      </div>
-    );
-  }
+  // if (!isLoaded) {
+  //   return (
+  //     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+  //       <p>Loading...</p>
+  //     </div>
+  //   );
+  // }
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t, languageNames }}>{children}</LanguageContext.Provider>
