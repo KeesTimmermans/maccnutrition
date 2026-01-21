@@ -122,89 +122,140 @@ export const AICoachCard = ({
     const dietType = baseline?.diet_type;
     const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
 
-    // === PROFILE-BASED PROACTIVE COACHING (always available, even with no meals logged) ===
-    
-    // Morning proactive guidance (before logging starts)
-    if (!hasMeals && hour >= 6 && hour < 12) {
-      // Goal-specific morning guidance
-      if (primaryGoal === "fat_loss") {
+    // === DAILY TARGETS CARD (always show measurable goals first) ===
+    const remainingCalories = calorieGoal - totalCalories;
+    const remainingProtein = proteinGoal - totalProtein;
+    const remainingWater = Math.round((waterGoal - waterIntakeMl) / 100) / 10;
+    const mealsRemaining = hour < 10 ? 3 : hour < 14 ? 2 : hour < 19 ? 1 : 0;
+
+    // Always lead with specific measurable targets
+    if (!hasMeals && hour >= 6) {
+      // Morning targets - specific numbers upfront
+      if (hour < 12) {
+        const breakfastProtein = Math.round(proteinGoal * 0.3);
+        const breakfastCals = Math.round(calorieGoal * 0.3);
         recommendations.push({
           type: "action",
-          icon: <Flame className="w-5 h-5 text-orange-500" />,
-          title: `Morning Fat Loss Focus${firstName ? `, ${firstName}` : ''}`,
-          description: `Your goal is fat loss. Start with ${Math.round(proteinGoal * 0.3)}g protein at breakfast to stabilize blood sugar and reduce cravings throughout the day.`,
-          details: `High-protein breakfasts increase satiety hormones and reduce ghrelin (hunger hormone) by up to 25%. This makes it easier to stick to your ${calorieGoal} kcal target.`,
-          action: `Breakfast ideas: 3-egg omelet with veggies (24g protein), Greek yogurt with berries (20g), or protein shake with oats (30g). Aim to eat within 1-2 hours of waking.`,
+          icon: <Target className="w-5 h-5 text-primary" />,
+          title: `Today: ${calorieGoal} kcal | ${proteinGoal}g protein | ${baseline?.water_liters || 2.5}L water`,
+          description: `Breakfast target: ${breakfastProtein}g protein, ${breakfastCals} kcal. This front-loads your nutrition for stable energy and fewer cravings.`,
+          action: `NOW: 3 eggs (18g) + toast = 350 kcal, 20g protein. Or: Greek yogurt 200g (20g protein) + granola = 400 kcal.`,
           priority: 1,
         });
-      } else if (primaryGoal === "muscle_gain") {
+      } else if (hour < 17) {
+        // Afternoon targets
         recommendations.push({
-          type: "action",
-          icon: <Activity className="w-5 h-5 text-green-500" />,
-          title: `Morning Muscle Building${firstName ? `, ${firstName}` : ''}`,
-          description: `For muscle gain, front-load protein and carbs. Target ${Math.round(proteinGoal * 0.25)}g protein and ${Math.round(carbsGoal * 0.3)}g carbs at breakfast.`,
-          details: `Your body is primed for nutrient uptake in the morning after overnight fasting. Complex carbs + protein maximize muscle protein synthesis.`,
-          action: `Power breakfast: Oatmeal with whey protein, eggs with whole grain toast, or a protein smoothie with banana and oats.`,
+          type: "warning",
+          icon: <Target className="w-5 h-5 text-destructive" />,
+          title: `Behind Schedule: 0/${calorieGoal} kcal | 0/${proteinGoal}g protein`,
+          description: `It's ${hour > 12 ? 'afternoon' : 'midday'} with no meals logged. You need ${Math.round(remainingCalories / Math.max(mealsRemaining, 1))} kcal and ${Math.round(remainingProtein / Math.max(mealsRemaining, 1))}g protein per remaining meal.`,
+          action: `Priority meal NOW: Chicken breast 150g (47g protein, 250 kcal) + rice 150g (200 kcal) + veggies = 500 kcal, 50g protein.`,
           priority: 1,
         });
       } else {
+        // Evening targets
         recommendations.push({
-          type: "info",
-          icon: <Utensils className="w-5 h-5 text-primary" />,
-          title: `Start Your Day Right${firstName ? `, ${firstName}` : ''}`,
-          description: `Today's targets: ${calorieGoal} kcal, ${proteinGoal}g protein, ${Math.round((baseline?.water_liters || 2.5))}L water. Begin with a balanced breakfast including protein.`,
-          action: `Good options: Eggs with toast, Greek yogurt with fruit, or a protein smoothie. Aim for ${Math.round(proteinGoal * 0.25)}g protein to start.`,
-          priority: 2,
+          type: "warning",
+          icon: <AlertCircle className="w-5 h-5 text-destructive" />,
+          title: `Evening Alert: ${remainingCalories} kcal | ${remainingProtein}g protein remaining`,
+          description: `Log your meals to track today's intake. Even estimates help identify patterns over time.`,
+          action: `Protein-rich dinner: Salmon 200g (40g protein), beef steak 200g (50g protein), or tofu stir-fry 300g (24g protein).`,
+          priority: 1,
         });
       }
 
-      // Hydration morning reminder
+      // Hydration with specific target
       recommendations.push({
         type: "action",
-        icon: <Droplets className="w-5 h-5 text-blue-400" />,
-        title: "Morning Hydration",
-        description: `Start with 500ml water to rehydrate after sleep. You're targeting ${baseline?.water_liters || 2.5}L total today.`,
-        action: `Drink 1-2 glasses of water before or with breakfast. Keep a water bottle visible to maintain hydration awareness.`,
-        priority: 3,
+        icon: <Droplets className="w-5 h-5 text-blue-500" />,
+        title: `Water: 0/${baseline?.water_liters || 2.5}L — Drink 500ml now`,
+        description: `Target ${Math.round((baseline?.water_liters || 2.5) * 1000 / (18 - hour))}ml/hour to hit your goal by end of day.`,
+        action: `Set hourly reminder: 250ml every hour. Dehydration causes false hunger and 15% drop in energy.`,
+        priority: 2,
       });
     }
 
-    // Afternoon without meals logged - nudge to track
-    if (!hasMeals && hour >= 12 && hour < 17) {
-      recommendations.push({
-        type: "warning",
-        icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
-        title: "No Meals Logged Yet Today",
-        description: `It's afternoon and your tracker is empty. Even if you've eaten, logging helps Coach Mac give you personalized guidance throughout the day.`,
-        details: `Tracking isn't about perfection—it's about awareness. Log what you've eaten so far, even estimates help. This lets me adjust recommendations based on your actual intake.`,
-        action: `Quick log tip: Start with your largest meal. Estimate portions using palm (protein), fist (carbs), thumb (fats). Every bit of data helps.`,
-        priority: 1,
-      });
+    // === WITH MEALS LOGGED - Show specific remaining targets ===
+    if (hasMeals) {
+      // Always show exact remaining targets
+      if (proteinPercent < 100 && hour < 20) {
+        const proteinPerMeal = Math.round(remainingProtein / Math.max(mealsRemaining, 1));
+        recommendations.push({
+          type: proteinPercent < 50 && hour >= 14 ? "warning" : "action",
+          icon: <Flame className="w-5 h-5 text-secondary" />,
+          title: `Protein: ${totalProtein}/${proteinGoal}g — Need ${remainingProtein}g more`,
+          description: mealsRemaining > 0 
+            ? `That's ${proteinPerMeal}g protein per remaining meal (${mealsRemaining} left).`
+            : `Add a high-protein snack: cottage cheese 200g (22g), protein shake (25g), or Greek yogurt (17g).`,
+          action: `Quick wins: Chicken 100g = 31g | Salmon 100g = 25g | Eggs 3 = 18g | Greek yogurt 200g = 20g | Tuna can = 25g`,
+          priority: proteinPercent < 40 && hour >= 14 ? 1 : 2,
+        });
+      }
 
-      // Add behavioral coaching based on profile
-      if (biggestChallenge === "time" || mealPrepTime === "minimal") {
+      // Calorie target with specific numbers
+      if (calPercent < 85 && hour >= 14) {
+        const calPerMeal = Math.round(remainingCalories / Math.max(mealsRemaining, 1));
+        recommendations.push({
+          type: calPercent < 50 ? "warning" : "info",
+          icon: <Activity className="w-5 h-5 text-primary" />,
+          title: `Calories: ${totalCalories}/${calorieGoal} kcal — ${remainingCalories} kcal to go`,
+          description: calPercent < 40 
+            ? `Under-eating slows metabolism and increases late-night cravings. Eat ${calPerMeal} kcal now.`
+            : `You're on track. Aim for ~${calPerMeal} kcal in your next meal.`,
+          action: `Balanced meal: Palm-size protein (200 kcal) + fist of carbs (150 kcal) + thumb of fat (100 kcal) = 450 kcal`,
+          priority: calPercent < 40 ? 1 : 3,
+        });
+      } else if (calPercent > 110) {
+        const excess = totalCalories - calorieGoal;
         recommendations.push({
           type: "info",
-          icon: <Zap className="w-5 h-5 text-secondary" />,
-          title: "Quick Meal Ideas for Busy Days",
-          description: `I know time is limited for you. Here are fast options that still hit your ${proteinGoal}g protein goal.`,
-          action: `5-min options: Rotisserie chicken + microwave veggies, Greek yogurt + nuts, deli meat roll-ups with cheese, or a protein shake with banana.`,
-          priority: 2,
+          icon: <Activity className="w-5 h-5 text-muted-foreground" />,
+          title: `Calories: ${totalCalories}/${calorieGoal} kcal — +${excess} over target`,
+          description: `One day won't derail progress. Focus on hitting ${proteinGoal}g protein and resume normal intake tomorrow.`,
+          action: `If eating more: Choose protein-rich, low-calorie options. Skip added fats and sugary drinks.`,
+          priority: 4,
+        });
+      }
+
+      // Water with exact remaining target
+      if (waterPercent < 80) {
+        recommendations.push({
+          type: waterPercent < 50 && hour >= 14 ? "warning" : "info",
+          icon: <Droplets className="w-5 h-5 text-blue-500" />,
+          title: `Water: ${Math.round(waterIntakeMl/100)/10}/${baseline?.water_liters || 2.5}L — ${remainingWater}L to go`,
+          description: `Drink ${Math.round(remainingWater / Math.max(20 - hour, 1) * 10) / 10}L per hour to hit your target.`,
+          action: `NOW: Drink 500ml. Set phone timer for 250ml every hour until ${baseline?.water_liters || 2.5}L reached.`,
+          priority: waterPercent < 40 && hour >= 12 ? 2 : 4,
         });
       }
     }
 
-    // Evening without meals - stronger engagement
-    if (!hasMeals && hour >= 17) {
-      recommendations.push({
-        type: "action",
-        icon: <Utensils className="w-5 h-5 text-orange-500" />,
-        title: "Evening Check-In",
-        description: `The day is winding down${firstName ? `, ${firstName}` : ''}. Let's capture what you've eaten to understand your nutrition patterns better.`,
-        details: `Even rough estimates of your meals help identify patterns over time. Did you eat well today? Were there challenges? Logging helps me help you.`,
-        action: `Take 2 minutes to log your meals. Focus on protein sources first—they're most important for your ${primaryGoal?.replace(/_/g, ' ') || 'goals'}.`,
-        priority: 1,
-      });
+    // === GOAL-SPECIFIC MEASURABLE COACHING ===
+    if (primaryGoal === "fat_loss" && hasMeals) {
+      const deficitTarget = Math.round(calorieGoal * 0.9); // 10% buffer
+      if (totalCalories > deficitTarget && calPercent < 110) {
+        recommendations.push({
+          type: "positive",
+          icon: <CheckCircle2 className="w-5 h-5 text-primary" />,
+          title: `Fat Loss Zone: ${totalCalories} kcal logged`,
+          description: `You're in your target range (${Math.round(calorieGoal * 0.85)}-${calorieGoal} kcal). Protein at ${proteinPercent}%.`,
+          priority: 5,
+        });
+      }
+    }
+
+    if (primaryGoal === "muscle_gain" && hasMeals && hour >= 14) {
+      const carbsPercent = Math.round((totalCarbs / carbsGoal) * 100);
+      if (carbsPercent < 50) {
+        recommendations.push({
+          type: "action",
+          icon: <Flame className="w-5 h-5 text-secondary" />,
+          title: `Carbs: ${totalCarbs}/${carbsGoal}g — Need ${carbsGoal - totalCarbs}g more`,
+          description: `Carbs fuel muscle growth and training. You're behind on carbs for muscle gain.`,
+          action: `Add: Rice 200g = 56g carbs | Oats 100g = 66g | Sweet potato 200g = 40g | Banana = 27g`,
+          priority: 2,
+        });
+      }
     }
 
     // === FOCUS POINT COACHING (from onboarding) ===
@@ -273,9 +324,8 @@ export const AICoachCard = ({
 
     // === REAL-TIME MEAL DATA RECOMMENDATIONS (always active) ===
     
-    // Protein urgency check
+    // Protein urgency check (use existing mealsRemaining from above)
     const proteinRemaining = proteinGoal - totalProtein;
-    const mealsRemaining = hour < 12 ? 3 : hour < 17 ? 2 : 1;
     
     if (hour >= 14 && proteinPercent < 40) {
       recommendations.push({
