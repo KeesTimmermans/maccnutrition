@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { Language, translations, languageNames } from "./translations";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,7 +13,6 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>("en");
-  const isLoadedRef = useRef(false);
 
   // Load language from database on mount
   useEffect(() => {
@@ -21,7 +20,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const loadLanguage = async () => {
       try {
-        // Add timeout to prevent hanging on session restoration
         const {
           data: { user },
         } = await Promise.race([
@@ -42,20 +40,14 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         }
       } catch (error) {
-        // Don't log timeout errors as they're expected fallback behavior
         if (error instanceof Error && !error.message.includes("timeout")) {
           console.error("Error loading language preference:", error);
-        }
-      } finally {
-        if (mounted) {
-          isLoadedRef.current = true;
         }
       }
     };
 
     loadLanguage();
 
-    // Listen for auth changes to reload language
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -107,11 +99,14 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     [language],
   );
 
-  // Don't block rendering - render children immediately with default language
-  // Language will update seamlessly once loaded from the database
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, languageNames }}>{children}</LanguageContext.Provider>
-  );
+  const contextValue: LanguageContextType = {
+    language,
+    setLanguage,
+    t,
+    languageNames,
+  };
+
+  return <LanguageContext.Provider value={contextValue}>{children}</LanguageContext.Provider>;
 };
 
 export const useLanguage = () => {
