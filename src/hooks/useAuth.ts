@@ -59,13 +59,11 @@ export const useAuth = () => {
       if (force || isInitialCheck) {
         setSubscriptionLoading(true);
       }
-      
+
       try {
         const { data, error } = await Promise.race([
           supabase.functions.invoke("check-subscription"),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Subscription check timed out")), 8000)
-          ),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Subscription check timed out")), 8000)),
         ]);
         if (error) throw error;
 
@@ -92,36 +90,39 @@ export const useAuth = () => {
         inFlightRef.current = false;
       }
     },
-    [session, subscriptionChecked]
+    [session],
   );
 
   useEffect(() => {
     let resolved = false;
 
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        resolved = true;
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription: authSubscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      resolved = true;
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     // Also try getSession() directly
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!resolved) {
-        resolved = true;
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    }).catch((err) => {
-      console.error("getSession error:", err);
-      if (!resolved) {
-        resolved = true;
-        setLoading(false);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!resolved) {
+          resolved = true;
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("getSession error:", err);
+        if (!resolved) {
+          resolved = true;
+          setLoading(false);
+        }
+      });
 
     // Failsafe: if auth doesn't resolve in 8 seconds, stop loading anyway
     const timeout = setTimeout(() => {
@@ -160,7 +161,13 @@ export const useAuth = () => {
     await supabase.auth.signOut();
     localStorage.removeItem("cjt_onboarded");
     localStorage.removeItem("cjt_user_data");
-    setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
+    setSubscription({
+      subscribed: false,
+      subscriptionEnd: null,
+      isTrialing: false,
+      trialEnd: null,
+      trialDaysRemaining: null,
+    });
   };
 
   return {
