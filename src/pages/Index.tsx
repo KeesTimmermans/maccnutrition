@@ -16,9 +16,7 @@ import cjtLogo from "@/assets/cjt-logo.png";
 type AppState = "welcome" | "connection" | "questionnaire" | "baseline" | "dashboard";
 
 const getCheckoutReturnUrl = () => {
-  const basePath = window.location.pathname.endsWith("/")
-    ? window.location.pathname
-    : `${window.location.pathname}/`;
+  const basePath = window.location.pathname.endsWith("/") ? window.location.pathname : `${window.location.pathname}/`;
   // HashRouter expects /#/… routes
   return `${window.location.origin}${basePath}#/`;
 };
@@ -30,14 +28,34 @@ const Index = () => {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
-  const { user, loading: authLoading, subscription, subscriptionLoading, isTrialing, checkSubscription, subscriptionChecked, subscriptionError } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+    subscription,
+    subscriptionLoading,
+    isTrialing,
+    checkSubscription,
+    subscriptionChecked,
+    subscriptionError,
+  } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  console.log("[Index] Render:", {
+    appState,
+    loading,
+    authLoading,
+    user: !!user,
+    subscription,
+    isTrialing,
+    subscriptionChecked,
+    subscriptionError,
+    isBootstrapping,
+  });
+
   // IMPORTANT: don't block the whole app UI during background subscription refreshes.
   // Only block during the initial auth+subscription bootstrap.
-  const isBootstrapping =
-    loading || authLoading || (user ? (!subscriptionChecked && !subscriptionError) : false);
+  const isBootstrapping = loading || authLoading || (user ? !subscriptionChecked && !subscriptionError : false);
 
   // Prevent re-fetching baseline repeatedly (e.g. when subscription refresh runs)
   const baselineCheckedRef = useRef<string | null>(null);
@@ -157,7 +175,16 @@ const Index = () => {
     };
 
     checkUserBaseline();
-  }, [user, authLoading, subscription, subscriptionLoading, isTrialing, checkoutUrl, subscriptionChecked, subscriptionError]);
+  }, [
+    user,
+    authLoading,
+    subscription,
+    subscriptionLoading,
+    isTrialing,
+    checkoutUrl,
+    subscriptionChecked,
+    subscriptionError,
+  ]);
 
   const handleGetStarted = () => {
     if (user) {
@@ -178,29 +205,31 @@ const Index = () => {
   const handleQuestionnaireComplete = async (data: OnboardingData) => {
     console.log("Onboarding data:", data);
     setUserData(data);
-    
+
     if (user) {
       try {
         const baseline = calculateBaseline(data);
         await saveUserBaseline(user.id, data, baseline);
-        
+
         // Send baseline summary email
         if (user.email) {
           sendBaselineEmail(
             user.email,
-            user.user_metadata?.full_name || user.email.split('@')[0],
+            user.user_metadata?.full_name || user.email.split("@")[0],
             baseline,
             data.primaryGoal,
-            baseline.mealPattern
-          ).then(result => {
-            if (result.success) {
-              console.log("Baseline email sent successfully");
-            }
-          }).catch(err => {
-            console.error("Failed to send baseline email:", err);
-          });
+            baseline.mealPattern,
+          )
+            .then((result) => {
+              if (result.success) {
+                console.log("Baseline email sent successfully");
+              }
+            })
+            .catch((err) => {
+              console.error("Failed to send baseline email:", err);
+            });
         }
-        
+
         toast({
           title: "Profile saved!",
           description: "Your personalized baseline has been created. Check your email for a summary!",
@@ -214,7 +243,7 @@ const Index = () => {
         });
       }
     }
-    
+
     // Save to localStorage as backup
     localStorage.setItem("cjt_user_data", JSON.stringify(data));
     setAppState("baseline");
@@ -347,7 +376,9 @@ const Index = () => {
                   if (!url) {
                     const { data, error } = await Promise.race([
                       supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-                      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 8000)),
+                      new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error("Checkout timed out")), 8000),
+                      ),
                     ]);
                     if (error) throw error;
                     url = data?.url ?? null;
@@ -427,17 +458,11 @@ const Index = () => {
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         {/* Logo */}
         <div className="relative mb-6 animate-float">
-          <img 
-            src={cjtLogo} 
-            alt="CJT Nutrition Logo" 
-            className="w-64 h-auto"
-          />
+          <img src={cjtLogo} alt="CJT Nutrition Logo" className="w-64 h-auto" />
         </div>
 
         {/* Tagline */}
-        <h2 className="text-2xl font-bold text-foreground mb-2 animate-slide-up delay-100">
-          Nutrition with intention
-        </h2>
+        <h2 className="text-2xl font-bold text-foreground mb-2 animate-slide-up delay-100">Nutrition with intention</h2>
         <p className="text-lg text-muted-foreground mb-8 max-w-sm animate-slide-up delay-150">
           Like having a nutrition coach in your pocket
         </p>
@@ -449,14 +474,9 @@ const Index = () => {
             { icon: <Zap className="w-6 h-6" />, label: "Quick Logging" },
             { icon: <Sparkles className="w-6 h-6" />, label: "Smart Insights" },
           ].map((feature, index) => (
-            <div
-              key={feature.label}
-              className="flex flex-col items-center gap-2 p-4 bg-card rounded-2xl shadow-soft"
-            >
+            <div key={feature.label} className="flex flex-col items-center gap-2 p-4 bg-card rounded-2xl shadow-soft">
               <div className="text-primary">{feature.icon}</div>
-              <span className="text-xs font-semibold text-foreground">
-                {feature.label}
-              </span>
+              <span className="text-xs font-semibold text-foreground">{feature.label}</span>
             </div>
           ))}
         </div>
@@ -466,30 +486,20 @@ const Index = () => {
           <p className="text-sm text-foreground italic mb-2">
             "The nutrition app that fulfills all your needs — your one-stop shop to take care of your nutrition!"
           </p>
-          <p className="text-xs text-muted-foreground">
-            — CJT Nutrition user
-          </p>
+          <p className="text-xs text-muted-foreground">— CJT Nutrition user</p>
         </div>
       </div>
 
       {/* CTA Section */}
       <div className="p-6 space-y-4 animate-slide-up delay-400">
-        <Button
-          variant="hero"
-          size="xl"
-          className="w-full"
-          onClick={handleGetStarted}
-        >
+        <Button variant="hero" size="xl" className="w-full" onClick={handleGetStarted}>
           <Sparkles className="w-5 h-5 mr-2" />
           {user ? "Continue Setup" : "Get Started Free"}
         </Button>
         {!user && (
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <button 
-              onClick={() => navigate("/auth")}
-              className="text-primary font-semibold hover:underline"
-            >
+            <button onClick={() => navigate("/auth")} className="text-primary font-semibold hover:underline">
               Log In
             </button>
           </p>
