@@ -193,6 +193,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   const handleNext = () => {
     if (currentStepIndex < allSteps.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       onComplete(data);
     }
@@ -201,6 +202,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   const handleBack = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex(prev => prev - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
