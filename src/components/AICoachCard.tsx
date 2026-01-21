@@ -95,6 +95,7 @@ export const AICoachCard = ({
   const generateActionableRecommendations = (): InsightCard[] => {
     const recommendations: InsightCard[] = [];
     const hour = new Date().getHours();
+    const hasMeals = meals.length > 0;
 
     // Get behavioral profile from baseline (always available)
     const eatingSpeed = baseline?.eating_speed;
@@ -105,7 +106,162 @@ export const AICoachCard = ({
     const weekendHabits = baseline?.weekend_habits;
     const energyPatterns = baseline?.energy_patterns;
     const hydrationHabits = baseline?.hydration_habits;
+    const snackingHabits = baseline?.snacking_habits;
+    const cookingSkill = baseline?.cooking_skill;
+    const mealPrepTime = baseline?.meal_prep_time;
+    const primaryGoal = baseline?.primary_goal;
+    const focusPoints = baseline?.focus_points || [];
+    const dietType = baseline?.diet_type;
     const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+
+    // === PROFILE-BASED PROACTIVE COACHING (always available, even with no meals logged) ===
+    
+    // Morning proactive guidance (before logging starts)
+    if (!hasMeals && hour >= 6 && hour < 12) {
+      // Goal-specific morning guidance
+      if (primaryGoal === "fat_loss") {
+        recommendations.push({
+          type: "action",
+          icon: <Flame className="w-5 h-5 text-orange-500" />,
+          title: `Morning Fat Loss Focus${firstName ? `, ${firstName}` : ''}`,
+          description: `Your goal is fat loss. Start with ${Math.round(proteinGoal * 0.3)}g protein at breakfast to stabilize blood sugar and reduce cravings throughout the day.`,
+          details: `High-protein breakfasts increase satiety hormones and reduce ghrelin (hunger hormone) by up to 25%. This makes it easier to stick to your ${calorieGoal} kcal target.`,
+          action: `Breakfast ideas: 3-egg omelet with veggies (24g protein), Greek yogurt with berries (20g), or protein shake with oats (30g). Aim to eat within 1-2 hours of waking.`,
+          priority: 1,
+        });
+      } else if (primaryGoal === "muscle_gain") {
+        recommendations.push({
+          type: "action",
+          icon: <Activity className="w-5 h-5 text-green-500" />,
+          title: `Morning Muscle Building${firstName ? `, ${firstName}` : ''}`,
+          description: `For muscle gain, front-load protein and carbs. Target ${Math.round(proteinGoal * 0.25)}g protein and ${Math.round(carbsGoal * 0.3)}g carbs at breakfast.`,
+          details: `Your body is primed for nutrient uptake in the morning after overnight fasting. Complex carbs + protein maximize muscle protein synthesis.`,
+          action: `Power breakfast: Oatmeal with whey protein, eggs with whole grain toast, or a protein smoothie with banana and oats.`,
+          priority: 1,
+        });
+      } else {
+        recommendations.push({
+          type: "info",
+          icon: <Utensils className="w-5 h-5 text-primary" />,
+          title: `Start Your Day Right${firstName ? `, ${firstName}` : ''}`,
+          description: `Today's targets: ${calorieGoal} kcal, ${proteinGoal}g protein, ${Math.round((baseline?.water_liters || 2.5))}L water. Begin with a balanced breakfast including protein.`,
+          action: `Good options: Eggs with toast, Greek yogurt with fruit, or a protein smoothie. Aim for ${Math.round(proteinGoal * 0.25)}g protein to start.`,
+          priority: 2,
+        });
+      }
+
+      // Hydration morning reminder
+      recommendations.push({
+        type: "action",
+        icon: <Droplets className="w-5 h-5 text-blue-400" />,
+        title: "Morning Hydration",
+        description: `Start with 500ml water to rehydrate after sleep. You're targeting ${baseline?.water_liters || 2.5}L total today.`,
+        action: `Drink 1-2 glasses of water before or with breakfast. Keep a water bottle visible to maintain hydration awareness.`,
+        priority: 3,
+      });
+    }
+
+    // Afternoon without meals logged - nudge to track
+    if (!hasMeals && hour >= 12 && hour < 17) {
+      recommendations.push({
+        type: "warning",
+        icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
+        title: "No Meals Logged Yet Today",
+        description: `It's afternoon and your tracker is empty. Even if you've eaten, logging helps Coach Mac give you personalized guidance throughout the day.`,
+        details: `Tracking isn't about perfection—it's about awareness. Log what you've eaten so far, even estimates help. This lets me adjust recommendations based on your actual intake.`,
+        action: `Quick log tip: Start with your largest meal. Estimate portions using palm (protein), fist (carbs), thumb (fats). Every bit of data helps.`,
+        priority: 1,
+      });
+
+      // Add behavioral coaching based on profile
+      if (biggestChallenge === "time" || mealPrepTime === "minimal") {
+        recommendations.push({
+          type: "info",
+          icon: <Zap className="w-5 h-5 text-secondary" />,
+          title: "Quick Meal Ideas for Busy Days",
+          description: `I know time is limited for you. Here are fast options that still hit your ${proteinGoal}g protein goal.`,
+          action: `5-min options: Rotisserie chicken + microwave veggies, Greek yogurt + nuts, deli meat roll-ups with cheese, or a protein shake with banana.`,
+          priority: 2,
+        });
+      }
+    }
+
+    // Evening without meals - stronger engagement
+    if (!hasMeals && hour >= 17) {
+      recommendations.push({
+        type: "action",
+        icon: <Utensils className="w-5 h-5 text-orange-500" />,
+        title: "Evening Check-In",
+        description: `The day is winding down${firstName ? `, ${firstName}` : ''}. Let's capture what you've eaten to understand your nutrition patterns better.`,
+        details: `Even rough estimates of your meals help identify patterns over time. Did you eat well today? Were there challenges? Logging helps me help you.`,
+        action: `Take 2 minutes to log your meals. Focus on protein sources first—they're most important for your ${primaryGoal?.replace(/_/g, ' ') || 'goals'}.`,
+        priority: 1,
+      });
+    }
+
+    // === FOCUS POINT COACHING (from onboarding) ===
+    if (focusPoints.length > 0 && !hasMeals) {
+      const topFocus = focusPoints[0];
+      if (topFocus.includes("protein")) {
+        recommendations.push({
+          type: "info",
+          icon: <Flame className="w-5 h-5 text-orange-500" />,
+          title: "Focus: Protein Priority",
+          description: `Your personalized focus is hitting ${proteinGoal}g protein daily. This is key for ${primaryGoal?.replace(/_/g, ' ') || 'your goals'}.`,
+          action: `Include protein at every meal: eggs/Greek yogurt at breakfast, chicken/fish at lunch, lean meat/legumes at dinner. Track to verify you're hitting target.`,
+          priority: 3,
+        });
+      } else if (topFocus.includes("hydration")) {
+        recommendations.push({
+          type: "info",
+          icon: <Droplets className="w-5 h-5 text-blue-400" />,
+          title: "Focus: Hydration Habits",
+          description: `Water intake is a key focus for you. Target ${baseline?.water_liters || 2.5}L daily for optimal energy and metabolism.`,
+          action: `Strategy: Drink 500ml upon waking, sip throughout the day, 250ml before each meal. Set hourly reminders if you forget.`,
+          priority: 3,
+        });
+      }
+    }
+
+    // === DIET TYPE SPECIFIC GUIDANCE ===
+    if (dietType && !hasMeals && hour < 14) {
+      if (dietType === "vegetarian" || dietType === "vegan") {
+        recommendations.push({
+          type: "info",
+          icon: <Utensils className="w-5 h-5 text-green-500" />,
+          title: `${dietType.charAt(0).toUpperCase() + dietType.slice(1)} Protein Tips`,
+          description: `Hitting ${proteinGoal}g protein on a ${dietType} diet requires planning. Combine protein sources throughout the day.`,
+          action: `High-protein options: Tofu (20g/150g), tempeh (19g/100g), lentils (9g/100g), Greek yogurt (10g/100g), quinoa (8g/cup). Aim for variety.`,
+          priority: 3,
+        });
+      }
+    }
+
+    // === BEHAVIORAL PATTERN COACHING (always relevant) ===
+    
+    // Snacking habits awareness
+    if (snackingHabits === "frequent" && hour >= 14 && hour < 18) {
+      recommendations.push({
+        type: "info",
+        icon: <AlertCircle className="w-5 h-5 text-amber-500" />,
+        title: "Afternoon Snack Awareness",
+        description: `You mentioned frequent snacking. This is peak snack time—have healthy options ready.`,
+        action: `Pre-plan snacks: Greek yogurt, nuts (1 handful), protein bar, or veggies with hummus. Avoid walking past vending machines.`,
+        priority: hasMeals ? 4 : 2,
+      });
+    }
+
+    // Emotional eating awareness (from cravings triggers)
+    if (cravingsTriggers.includes("boredom") && hour >= 14 && hour < 20) {
+      recommendations.push({
+        type: "info",
+        icon: <Brain className="w-5 h-5 text-purple-500" />,
+        title: "Boredom Eating Check",
+        description: `You identified boredom as a craving trigger. Before reaching for food, ask: Am I actually hungry?`,
+        action: `Try the 10-minute rule: If you're not sure you're hungry, wait 10 minutes and drink water. If still hungry after, eat mindfully.`,
+        priority: 4,
+      });
+    }
 
     // === REAL-TIME MEAL DATA RECOMMENDATIONS (always active) ===
     
