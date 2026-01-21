@@ -24,6 +24,7 @@ import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, 
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
 import { getTodaysWaterIntake } from "@/lib/waterService";
 import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
+import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/lib/coachingAnalytics";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -71,6 +72,8 @@ export const Dashboard = () => {
   const [recalibrationResult, setRecalibrationResult] = useState<RecalibrationResult | null>(null);
   const [showRecalibration, setShowRecalibration] = useState(false);
   const [totalWaterMl, setTotalWaterMl] = useState(0);
+  const [mealPatterns, setMealPatterns] = useState<MealPatternAnalysis | null>(null);
+  const [accountAgeDays, setAccountAgeDays] = useState(0);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -321,6 +324,17 @@ export const Dashboard = () => {
       setHasWearableConnections(wearableConns.length > 0);
       setTotalWaterMl(waterData.reduce((sum, w) => sum + w.amount_ml, 0));
       
+      // Set baseline and calculate account age
+      setBaseline(userBaseline);
+      if (userBaseline) {
+        setAccountAgeDays(getAccountAgeDays(userBaseline));
+        
+        // Analyze meal patterns from the past week (non-blocking)
+        analyzeMealPatterns(userBaseline).then(patterns => {
+          setMealPatterns(patterns);
+        });
+      }
+      
       // Analyze check-in data for AI coach insights with user-specific targets
       if (recentCheckIns.length > 0) {
         const userTargets: UserTargets = {
@@ -372,7 +386,6 @@ export const Dashboard = () => {
       }));
       
       setMeals(formattedMeals);
-      setBaseline(userBaseline);
       
       // Check for baseline recalibration (every 2 weeks)
       if (userBaseline) {
@@ -587,6 +600,8 @@ export const Dashboard = () => {
             baseline={baseline}
             meals={meals}
             waterIntakeMl={totalWaterMl}
+            mealPatterns={mealPatterns}
+            accountAgeDays={accountAgeDays}
           />
         </section>
 

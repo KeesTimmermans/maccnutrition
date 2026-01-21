@@ -15,12 +15,15 @@ import {
   Activity,
   Flame,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Calendar,
+  Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/i18n";
 import { CheckInAnalysis, DailyCheckIn } from "@/lib/checkinService";
 import { UserBaseline } from "@/lib/userService";
+import { MealPatternAnalysis } from "@/lib/coachingAnalytics";
 
 interface InsightCard {
   type: "positive" | "warning" | "action" | "info";
@@ -37,12 +40,15 @@ interface AICoachCardProps {
   insights: string[];
   tip?: string;
   onChatOpen?: () => void;
-  // New props for actionable recommendations
+  // Props for actionable recommendations
   todaysCheckIn?: DailyCheckIn | null;
   analysis?: CheckInAnalysis | null;
   baseline?: UserBaseline | null;
   meals?: { calories: number; protein: number; carbs: number; fats: number }[];
   waterIntakeMl?: number;
+  // Historical data props
+  mealPatterns?: MealPatternAnalysis | null;
+  accountAgeDays?: number;
 }
 
 const getScoreColor = (score: number, inverted = false) => {
@@ -67,7 +73,9 @@ export const AICoachCard = ({
   analysis,
   baseline,
   meals = [],
-  waterIntakeMl = 0
+  waterIntakeMl = 0,
+  mealPatterns,
+  accountAgeDays = 0
 }: AICoachCardProps) => {
   const { t } = useLanguage();
   
@@ -547,7 +555,7 @@ export const AICoachCard = ({
       if (analysis.trends.energy === "declining" && analysis.averageEnergy < 3) {
         recommendations.push({
           type: "warning",
-          icon: <TrendingDown className="w-5 h-5 text-red-500" />,
+          icon: <TrendingDown className="w-5 h-5 text-destructive" />,
           title: "7-Day Energy Declining",
           description: `Avg ${analysis.averageEnergy}/5 and falling. Pattern suggests under-fueling.`,
           action: `This week: Hit ${proteinGoal}g protein daily, ${targetSleepHours}h sleep, ${baseline?.water_liters || 2.5}L water.`,
@@ -558,12 +566,174 @@ export const AICoachCard = ({
       if (analysis.trends.mood === "improving") {
         recommendations.push({
           type: "positive",
-          icon: <TrendingUp className="w-5 h-5 text-green-500" />,
+          icon: <TrendingUp className="w-5 h-5 text-primary" />,
           title: "Mood Improving!",
           description: `Trending up (avg ${analysis.averageMood}/5). Keep doing what's working.`,
           priority: 5,
         });
       }
+    }
+
+    // === HISTORICAL MEAL PATTERN INSIGHTS (from past 7 days) ===
+    if (mealPatterns && mealPatterns.daysTracked >= 3) {
+      const { weeklyProteinHitRate, weeklyCalorieHitRate, proteinTrend, weekendVsWeekday, averageProteinByMealNumber, averageMealsPerDay, proteinConsistency, calorieConsistency } = mealPatterns;
+
+      // Protein consistency coaching
+      if (weeklyProteinHitRate < 50) {
+        recommendations.push({
+          type: "warning",
+          icon: <Target className="w-5 h-5 text-destructive" />,
+          title: `Protein Goal Hit Rate: ${weeklyProteinHitRate}%`,
+          description: `You've hit your ${proteinGoal}g protein goal only ${weeklyProteinHitRate}% of tracked days this week. This is your #1 area for improvement.`,
+          details: `Consistent protein is essential for ${primaryGoal?.replace(/_/g, ' ') || 'your goals'}. Low hit rate often means breakfast lacks protein or portions are underestimated.`,
+          action: `Start breakfast with ${Math.round(proteinGoal * 0.3)}g protein today. Track every meal to stay accountable. Consider a protein shake if meals fall short.`,
+          priority: 1,
+        });
+      } else if (weeklyProteinHitRate >= 80) {
+        recommendations.push({
+          type: "positive",
+          icon: <Target className="w-5 h-5 text-primary" />,
+          title: `Protein Consistency: ${weeklyProteinHitRate}%!`,
+          description: `You're hitting your protein goal ${weeklyProteinHitRate}% of days. This consistency is exactly what drives results.`,
+          action: `Keep it up! You're building habits that compound into real progress.`,
+          priority: 6,
+        });
+      }
+
+      // Protein trend coaching
+      if (proteinTrend === "declining") {
+        recommendations.push({
+          type: "warning",
+          icon: <TrendingDown className="w-5 h-5 text-destructive" />,
+          title: "Protein Intake Declining",
+          description: `Your protein intake has dropped compared to earlier this week. Average: ${mealPatterns.averageProteinPerDay}g vs goal of ${proteinGoal}g.`,
+          action: `Reverse this today: Plan ${Math.round(proteinGoal / averageMealsPerDay)}g protein per meal. Front-load protein at breakfast and lunch.`,
+          priority: 2,
+        });
+      } else if (proteinTrend === "improving") {
+        recommendations.push({
+          type: "positive",
+          icon: <TrendingUp className="w-5 h-5 text-primary" />,
+          title: "Protein Trend Improving",
+          description: `Great progress! Your protein intake is trending up. Keep building on this momentum.`,
+          priority: 5,
+        });
+      }
+
+      // Weekend vs weekday coaching (only on weekends)
+      if (isWeekend && weekendVsWeekday.weekdayAvgCalories > 0) {
+        const weekendCalorieDiff = weekendVsWeekday.weekendAvgCalories - weekendVsWeekday.weekdayAvgCalories;
+        const weekendProteinDiff = weekendVsWeekday.weekendAvgProtein - weekendVsWeekday.weekdayAvgProtein;
+        
+        if (weekendCalorieDiff > 300) {
+          recommendations.push({
+            type: "warning",
+            icon: <Calendar className="w-5 h-5 text-amber-500" />,
+            title: "Weekend Pattern Alert",
+            description: `Your data shows weekends average +${weekendCalorieDiff} kcal vs weekdays. This can undo weekly progress.`,
+            details: `Weekend patterns are one of the most common reasons people plateau. Social events, relaxed routines, and reward eating all contribute.`,
+            action: `Today's strategy: Keep logging, aim for ${calorieGoal} kcal and ${proteinGoal}g protein. One planned indulgence is fine—just track it.`,
+            priority: 2,
+          });
+        }
+        if (weekendProteinDiff < -20) {
+          recommendations.push({
+            type: "info",
+            icon: <Flame className="w-5 h-5 text-secondary" />,
+            title: "Weekend Protein Dip",
+            description: `Weekends you average ${Math.abs(weekendProteinDiff)}g less protein. Keep protein high today for consistency.`,
+            action: `Easy weekend protein: eggs at brunch, Greek yogurt snack, grilled meat at dinner.`,
+            priority: 3,
+          });
+        }
+      }
+
+      // Meal pattern coaching
+      if (averageProteinByMealNumber[0] < proteinGoal * 0.2) {
+        recommendations.push({
+          type: "action",
+          icon: <Utensils className="w-5 h-5 text-secondary" />,
+          title: "Breakfast Protein Opportunity",
+          description: `Your first meal averages only ${averageProteinByMealNumber[0]}g protein. Front-loading protein improves satiety and energy all day.`,
+          action: `Target ${Math.round(proteinGoal * 0.3)}g at breakfast: 3-egg omelet (18g), Greek yogurt (17g), or protein shake (25g).`,
+          priority: 3,
+        });
+      }
+
+      // Consistency coaching
+      if (proteinConsistency === "low") {
+        recommendations.push({
+          type: "info",
+          icon: <Activity className="w-5 h-5 text-primary" />,
+          title: "Protein Varies Day-to-Day",
+          description: `Your protein intake swings a lot between days. Consistency beats occasional perfect days.`,
+          action: `Set a daily protein floor: Minimum ${Math.round(proteinGoal * 0.8)}g even on "off" days. Prep protein options in advance.`,
+          priority: 4,
+        });
+      }
+    }
+
+    // === NEW USER ONBOARDING COACHING ===
+    if (accountAgeDays <= 7 && !hasMeals) {
+      recommendations.push({
+        type: "info",
+        icon: <Lightbulb className="w-5 h-5 text-secondary" />,
+        title: `Welcome${firstName ? `, ${firstName}` : ''}! Let's Build Momentum`,
+        description: `You're ${accountAgeDays} day${accountAgeDays === 1 ? '' : 's'} into your journey. The first week is about building the habit of logging—perfection comes later.`,
+        details: `Your personalized targets: ${calorieGoal} kcal, ${proteinGoal}g protein, ${baseline?.water_liters || 2.5}L water daily. Based on your ${primaryGoal?.replace(/_/g, ' ') || 'goals'}.`,
+        action: `Start simple: Log your next meal, even if it's just a rough estimate. Every logged meal teaches me more about your patterns.`,
+        priority: 1,
+      });
+    }
+
+    // === OCCUPATION-BASED COACHING ===
+    const occupation = baseline?.occupation;
+    const workHours = baseline?.work_hours;
+    if (occupation && hour >= 11 && hour <= 14) {
+      if (occupation === "desk_job" || occupation === "office") {
+        recommendations.push({
+          type: "info",
+          icon: <Activity className="w-5 h-5 text-primary" />,
+          title: "Desk Worker Tip",
+          description: `Sedentary work means your body needs movement to optimize digestion and energy.`,
+          action: `After lunch: 10-min walk. Stand for 5 min every hour. This boosts metabolism and focus.`,
+          priority: 4,
+        });
+      } else if (occupation === "active" || occupation === "physical") {
+        recommendations.push({
+          type: "info",
+          icon: <Flame className="w-5 h-5 text-secondary" />,
+          title: "Active Job = Higher Needs",
+          description: `Your physical work burns extra calories. Make sure you're fueling adequately.`,
+          action: `Bring portable protein: nuts, protein bars, jerky. Don't skip lunch—your body needs it.`,
+          priority: 4,
+        });
+      }
+    }
+
+    // === TRAINING DAY COACHING ===
+    const trainingDays = baseline?.training_days;
+    const trainingIntensity = baseline?.training_intensity;
+    const dayOfWeek = new Date().getDay();
+    const trainingDaysNum = trainingDays ? parseInt(trainingDays) : 0;
+    
+    // Assume training on weekdays if training 3-5 days
+    const likelyTrainingDay = trainingDaysNum >= 3 && dayOfWeek >= 1 && dayOfWeek <= 5;
+    
+    if (likelyTrainingDay && trainingIntensity) {
+      const isHighIntensity = trainingIntensity === "high" || trainingIntensity === "intense";
+      recommendations.push({
+        type: "info",
+        icon: <Activity className="w-5 h-5 text-primary" />,
+        title: isHighIntensity ? "High-Intensity Training Day" : "Training Day Fuel",
+        description: isHighIntensity 
+          ? `Intense training requires extra carbs for performance and protein for recovery.`
+          : `Training today? Make sure you're properly fueled before and after.`,
+        action: isHighIntensity
+          ? `Pre-workout: ${Math.round(carbsGoal * 0.25)}g carbs 1-2h before. Post-workout: ${Math.round(proteinGoal * 0.25)}g protein within 1h.`
+          : `Include protein + carbs in your post-workout meal for optimal recovery.`,
+        priority: 3,
+      });
     }
 
     return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 6);
