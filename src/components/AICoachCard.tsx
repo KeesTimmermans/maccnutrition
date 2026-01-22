@@ -944,45 +944,6 @@ export const AICoachCard = ({
                 </div>
               ))}
 
-              {/* 7-Day Trends Mini Summary */}
-              {analysis && (
-                <div className="p-4 bg-muted/30 rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Activity className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-bold text-foreground">7-Day Trends</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="text-center p-2 bg-background/50 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <span className="text-sm font-bold">{analysis.averageMood}</span>
-                        {getTrendIcon(analysis.trends.mood)}
-                      </div>
-                      <span className="text-xs text-muted-foreground">Mood</span>
-                    </div>
-                    <div className="text-center p-2 bg-background/50 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <span className="text-sm font-bold">{analysis.averageEnergy}</span>
-                        {getTrendIcon(analysis.trends.energy)}
-                      </div>
-                      <span className="text-xs text-muted-foreground">Energy</span>
-                    </div>
-                    <div className="text-center p-2 bg-background/50 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <span className="text-sm font-bold">{analysis.averageSleep}</span>
-                        {getTrendIcon(analysis.trends.sleep)}
-                      </div>
-                      <span className="text-xs text-muted-foreground">Sleep</span>
-                    </div>
-                    <div className="text-center p-2 bg-background/50 rounded-lg">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <span className="text-sm font-bold">{analysis.averageStress}</span>
-                        {getTrendIcon(analysis.trends.stress)}
-                      </div>
-                      <span className="text-xs text-muted-foreground">Stress</span>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
