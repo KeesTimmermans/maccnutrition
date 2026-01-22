@@ -204,6 +204,22 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
             sleepHours: baseline.sleep_hours,
             stressLevel: baseline.stress_level,
             occupation: baseline.occupation,
+            // Eating behavior
+            eatingSpeed: baseline.eating_speed,
+            hungerPatterns: baseline.hunger_patterns,
+            cravingsTriggers: baseline.cravings_triggers,
+            emotionalEating: baseline.emotional_eating,
+            snackingHabits: baseline.snacking_habits,
+            hydrationHabits: baseline.hydration_habits,
+            energyPatterns: baseline.energy_patterns,
+            // Challenges & history
+            biggestChallenge: baseline.biggest_challenge,
+            pastDiets: baseline.past_diets,
+            weekendHabits: baseline.weekend_habits,
+            eatingOutFrequency: baseline.eating_out_frequency,
+            // Motivation
+            motivationStyle: baseline.motivation_style,
+            accountabilityPreference: baseline.accountability_preference,
             // Preferences
             dietType: baseline.diet_type,
             foodDislikes: baseline.food_dislikes,
@@ -211,6 +227,10 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
             conditions: baseline.conditions,
             coachingTone: baseline.coaching_tone,
             focusPoints: baseline.focus_points,
+            mealsPerDay: baseline.meals_per_day,
+            mealPrepTime: baseline.meal_prep_time,
+            cookingSkill: baseline.cooking_skill,
+            proteinShakesPreference: baseline.protein_shakes_preference,
             // Female-specific
             currentPhase: baseline.current_phase,
             cycleRegularity: baseline.cycle_regularity,

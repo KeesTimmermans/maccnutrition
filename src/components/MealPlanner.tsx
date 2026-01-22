@@ -176,6 +176,12 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         proteinShakesPreference: baseline?.protein_shakes_preference,
         cookingSkill: baseline?.cooking_skill,
         mealPrepTime: baseline?.meal_prep_time,
+        // Additional behavioral context
+        eatingOutFrequency: baseline?.eating_out_frequency,
+        snackingHabits: baseline?.snacking_habits,
+        weekendHabits: baseline?.weekend_habits,
+        energyPatterns: baseline?.energy_patterns,
+        conditions: baseline?.conditions,
       };
 
       const { data, error } = await supabase.functions.invoke('generate-meal-plan', {
