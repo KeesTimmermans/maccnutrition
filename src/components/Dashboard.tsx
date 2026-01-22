@@ -577,46 +577,12 @@ export const Dashboard = () => {
           </section>
         )}
 
-        {/* Streak Card */}
-        <section>
-          <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
-        </section>
-
-
-        {/* Coach Mac */}
-        <section>
-          <AICoachCard 
-            greeting={generateCoachGreeting()}
-            insights={generateCoachInsights()}
-            tip={generateCoachTip()}
-            onChatOpen={() => {
-              setShowAIChat(true);
-              updateStreak('coaching').then(streak => {
-                if (streak) setCoachingStreak(streak);
-              });
-            }}
-            todaysCheckIn={todaysCheckIn}
-            analysis={checkInAnalysis}
-            baseline={baseline}
-            meals={meals}
-            waterIntakeMl={totalWaterMl}
-            mealPatterns={mealPatterns}
-            accountAgeDays={accountAgeDays}
-          />
-        </section>
-
-        {/* Daily Summary Card */}
+        {/* Daily Summary Card - Today's Progress */}
         <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
               <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 rounded-full">
-              <Flame className="w-4 h-4 text-secondary" />
-              <span className="text-sm font-semibold text-secondary">
-                {loginStreak?.current_streak || 0} {t('day_streak')}
-              </span>
             </div>
           </div>
 
@@ -656,7 +622,7 @@ export const Dashboard = () => {
           </div>
         </section>
 
-        {/* Meals Section */}
+        {/* Meals Section - Log a Meal */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-foreground">{t('todays_meals')}</h2>
@@ -689,6 +655,28 @@ export const Dashboard = () => {
             )}
             <AddMealCard onClick={() => setShowMealLogger(true)} />
           </div>
+        </section>
+
+        {/* Coach Mac */}
+        <section>
+          <AICoachCard 
+            greeting={generateCoachGreeting()}
+            insights={generateCoachInsights()}
+            tip={generateCoachTip()}
+            onChatOpen={() => {
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
+            todaysCheckIn={todaysCheckIn}
+            analysis={checkInAnalysis}
+            baseline={baseline}
+            meals={meals}
+            waterIntakeMl={totalWaterMl}
+            mealPatterns={mealPatterns}
+            accountAgeDays={accountAgeDays}
+          />
         </section>
 
         {/* Meal Planner */}

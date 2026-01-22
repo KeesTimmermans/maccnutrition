@@ -4,11 +4,13 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { getMealsByDateRange, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
+import { getStreaks, UserStreak } from "@/lib/streakService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Target, Flame } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { WeeklyAchievements } from "@/components/WeeklyAchievements";
+import { StreakCard } from "@/components/StreakCard";
 
 interface DayData {
   date: string;
@@ -36,6 +38,8 @@ const Progress = () => {
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [weekSummary, setWeekSummary] = useState<WeekSummary | null>(null);
+  const [loginStreak, setLoginStreak] = useState<UserStreak | null>(null);
+  const [coachingStreak, setCoachingStreak] = useState<UserStreak | null>(null);
 
   useEffect(() => {
     loadChartData();
@@ -47,11 +51,18 @@ const Progress = () => {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
       
-      const [userBaseline, weekMeals, monthMeals] = await Promise.all([
+      const [userBaseline, weekMeals, monthMeals, streaks] = await Promise.all([
         getUserBaseline(),
         getMealsByDateRange(weekStart, weekEnd),
         getMealsByDateRange(subDays(today, 29), today),
+        getStreaks(),
       ]);
+
+      // Set streaks
+      const login = streaks.find(s => s.streak_type === 'login');
+      const coaching = streaks.find(s => s.streak_type === 'coaching');
+      if (login) setLoginStreak(login);
+      if (coaching) setCoachingStreak(coaching);
 
       setBaseline(userBaseline);
       const weekly = aggregateMealsByDay(weekMeals, 7);
@@ -147,6 +158,9 @@ const Progress = () => {
       </header>
 
       <main className="container py-6 space-y-6">
+        {/* Consistency Streaks */}
+        <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
+
         {/* Weekly Achievements */}
         <WeeklyAchievements />
         {/* Weekly Summary */}
