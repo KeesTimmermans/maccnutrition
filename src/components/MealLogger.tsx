@@ -9,7 +9,9 @@ import {
   searchFoodSuggestions, 
   getFoodNutritionByWeight, 
   analyzeFoodSearch,
-  type FoodSuggestion 
+  parseMealDescription,
+  type FoodSuggestion,
+  type ParsedIngredient
 } from "@/lib/mealService";
 import { getFavoriteMeals, deleteFavoriteMeal, FavoriteMeal } from "@/lib/favoriteMealService";
 import { useLanguage } from "@/lib/i18n";
@@ -43,18 +45,12 @@ interface AnalysisResult {
   defaultServingSize?: number;
 }
 
-interface ParsedFoodItem {
-  name: string;
-  quantity: number;
-  unit: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
+interface AdjustableIngredient extends ParsedIngredient {
+  adjustedGrams: number;
 }
 
 type TrackingMethod = 'select' | 'barcode' | 'describe' | 'photo';
-type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'quantity' | 'adjust' | 'confirm';
+type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'quantity' | 'adjust' | 'adjust_ingredients' | 'confirm';
 
 export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   const { t } = useLanguage();
@@ -72,8 +68,11 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [mealDescription, setMealDescription] = useState("");
-  const [parsedFoods, setParsedFoods] = useState<ParsedFoodItem[]>([]);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [ingredients, setIngredients] = useState<AdjustableIngredient[]>([]);
+  const [mealName, setMealName] = useState("");
+  const [confidence, setConfidence] = useState("");
+  const [notes, setNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -123,6 +122,22 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
     };
   }, [searchQuery, debouncedSearch]);
 
+  // Calculate totals from ingredients
+  const calculateTotals = () => {
+    return ingredients.reduce(
+      (acc, ing) => {
+        const factor = ing.adjustedGrams / 100;
+        return {
+          calories: acc.calories + Math.round(ing.caloriesPer100g * factor),
+          protein: acc.protein + Math.round(ing.proteinPer100g * factor),
+          carbs: acc.carbs + Math.round(ing.carbsPer100g * factor),
+          fats: acc.fats + Math.round(ing.fatsPer100g * factor),
+        };
+      },
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+  };
+
   const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -131,20 +146,19 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         const base64 = reader.result as string;
         setImage(base64);
         setIsAnalyzing(true);
-        setAnalysisResult(null);
         
         try {
           const result = await analyzeFoodImage(base64);
-          setAnalysisResult({
-            ...result,
-            caloriesPer100g: result.calories,
-            proteinPer100g: result.protein,
-            carbsPer100g: result.carbs,
-            fatsPer100g: result.fats,
-            defaultServingSize: 100,
-          });
-          setQuantity("100");
-          setStep('adjust');
+          setMealName(result.mealName);
+          setConfidence(result.confidence);
+          setNotes(result.notes);
+          setIngredients(
+            result.ingredients.map((ing) => ({
+              ...ing,
+              adjustedGrams: ing.estimatedGrams,
+            }))
+          );
+          setStep('adjust_ingredients');
         } catch (error) {
           console.error("Error analyzing image:", error);
           toast.error(t('error'));
@@ -230,23 +244,35 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeFoodSearch(mealDescription);
-      setAnalysisResult({
-        ...result,
-        caloriesPer100g: result.calories,
-        proteinPer100g: result.protein,
-        carbsPer100g: result.carbs,
-        fatsPer100g: result.fats,
-        defaultServingSize: 100,
-      });
-      setQuantity("100");
-      setStep('adjust');
+      const result = await parseMealDescription(mealDescription);
+      setMealName(result.mealName);
+      setConfidence(result.confidence);
+      setNotes(result.notes);
+      setIngredients(
+        result.ingredients.map((ing) => ({
+          ...ing,
+          adjustedGrams: ing.estimatedGrams,
+        }))
+      );
+      setStep('adjust_ingredients');
     } catch (error) {
       console.error("Error analyzing description:", error);
       toast.error(t('error'));
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleIngredientQuantityChange = (index: number, newGrams: number) => {
+    setIngredients((prev) =>
+      prev.map((ing, i) =>
+        i === index ? { ...ing, adjustedGrams: Math.max(0, newGrams) } : ing
+      )
+    );
+  };
+
+  const handleRemoveIngredient = (index: number) => {
+    setIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleAdjustQuantity = (newQuantity: number) => {
@@ -265,16 +291,26 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   };
 
   const handleSubmitMeal = () => {
-    if (!analysisResult) return;
-    
-    onSubmit({
-      name: analysisResult.name,
-      imageUrl: image || undefined,
-      calories: analysisResult.calories,
-      protein: analysisResult.protein,
-      carbs: analysisResult.carbs,
-      fats: analysisResult.fats,
-    });
+    if (ingredients.length > 0) {
+      const totals = calculateTotals();
+      onSubmit({
+        name: mealName || "Custom Meal",
+        imageUrl: image || undefined,
+        calories: totals.calories,
+        protein: totals.protein,
+        carbs: totals.carbs,
+        fats: totals.fats,
+      });
+    } else if (analysisResult) {
+      onSubmit({
+        name: analysisResult.name,
+        imageUrl: image || undefined,
+        calories: analysisResult.calories,
+        protein: analysisResult.protein,
+        carbs: analysisResult.carbs,
+        fats: analysisResult.fats,
+      });
+    }
     onClose();
   };
 
@@ -307,6 +343,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       setSearchQuery("");
       setSuggestions([]);
       setMealDescription("");
+      setIngredients([]);
     } else if (step === 'quantity') {
       setStep('search');
       setSelectedFood(null);
@@ -314,13 +351,20 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       if (trackingMethod === 'barcode') {
         setStep('method');
         setTrackingMethod('select');
-      } else if (trackingMethod === 'describe') {
+      } else {
+        setStep('method');
+      }
+      setAnalysisResult(null);
+    } else if (step === 'adjust_ingredients') {
+      if (trackingMethod === 'describe') {
         setStep('describe');
       } else if (trackingMethod === 'photo') {
         setStep('photo');
         setImage(null);
+      } else {
+        setStep('method');
       }
-      setAnalysisResult(null);
+      setIngredients([]);
     } else if (step === 'confirm') {
       if (selectedFood) {
         setStep('quantity');
@@ -342,8 +386,8 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
     }
   };
 
-  const getConfidenceLabel = (confidence: string) => {
-    switch (confidence) {
+  const getConfidenceLabel = (conf: string) => {
+    switch (conf) {
       case 'high': return t('high_confidence');
       case 'medium': return t('medium_confidence');
       default: return t('low_confidence');
@@ -359,6 +403,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       case 'photo': return 'Take Photo';
       case 'quantity': return 'Set Quantity';
       case 'adjust': return 'Adjust Serving';
+      case 'adjust_ingredients': return 'Adjust Ingredients';
       case 'confirm': return 'Confirm Meal';
       default: return t('log_meal');
     }
@@ -396,7 +441,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         </div>
         <div className="flex-1 text-left">
           <h3 className="font-semibold text-foreground">Describe Your Meal</h3>
-          <p className="text-sm text-muted-foreground">Write what you ate and we'll extract the macros</p>
+          <p className="text-sm text-muted-foreground">Write what you ate and we'll extract each ingredient</p>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
       </button>
@@ -411,7 +456,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         </div>
         <div className="flex-1 text-left">
           <h3 className="font-semibold text-foreground">Take a Photo</h3>
-          <p className="text-sm text-muted-foreground">AI will analyze your meal from an image</p>
+          <p className="text-sm text-muted-foreground">AI identifies each ingredient from your image</p>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
       </button>
@@ -466,7 +511,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   const renderDescribeStep = () => (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        Describe everything you ate including quantities. For example:
+        Describe everything you ate including quantities. Each ingredient will be listed separately for you to adjust.
         <span className="block text-foreground mt-2 italic">
           "2 eggs scrambled with cheese, 2 slices of toast with butter, and a glass of orange juice"
         </span>
@@ -483,7 +528,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       {isAnalyzing && (
         <div className="flex items-center justify-center gap-3 py-4">
           <Loader2 className="w-5 h-5 text-primary animate-spin" />
-          <p className="text-muted-foreground">Analyzing your meal...</p>
+          <p className="text-muted-foreground">Identifying ingredients...</p>
         </div>
       )}
     </div>
@@ -507,13 +552,13 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
           {isAnalyzing && (
             <div className="absolute inset-0 bg-foreground/50 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
-              <p className="text-primary-foreground font-semibold">{t('ai_analyzing')}</p>
+              <p className="text-primary-foreground font-semibold">Identifying ingredients...</p>
             </div>
           )}
           <button
             onClick={() => {
               setImage(null);
-              setAnalysisResult(null);
+              setIngredients([]);
             }}
             className="absolute top-3 right-3 p-2 bg-foreground/50 rounded-full hover:bg-foreground/70 transition-colors"
           >
@@ -530,7 +575,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
           </div>
           <div className="text-center">
             <p className="font-bold text-foreground">{t('take_photo')}</p>
-            <p className="text-sm text-muted-foreground">{t('ai_analyze_meal')}</p>
+            <p className="text-sm text-muted-foreground">AI will identify each ingredient</p>
           </div>
         </button>
       )}
@@ -675,7 +720,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
     </div>
   );
 
-  // Adjust step - for barcode/describe/photo with manual quantity adjustment
+  // Adjust step - for barcode with manual quantity adjustment
   const renderAdjustStep = () => (
     <div className="animate-slide-up space-y-6">
       {image && (
@@ -783,6 +828,123 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       )}
     </div>
   );
+
+  // Adjust ingredients step - for describe/photo with individual ingredient adjustment
+  const renderAdjustIngredientsStep = () => {
+    const totals = calculateTotals();
+    
+    return (
+      <div className="animate-slide-up space-y-4">
+        {image && (
+          <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted">
+            <img src={image} alt="Meal" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        {/* Meal header */}
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-primary" />
+          <h3 className="font-bold text-foreground flex-1">{mealName}</h3>
+          {confidence && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              confidence === 'high' 
+                ? 'bg-green-500/10 text-green-500' 
+                : confidence === 'medium'
+                ? 'bg-yellow-500/10 text-yellow-500'
+                : 'bg-red-500/10 text-red-500'
+            }`}>
+              {getConfidenceLabel(confidence)}
+            </span>
+          )}
+        </div>
+
+        {/* Ingredients list */}
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">Adjust each ingredient:</p>
+          
+          {ingredients.map((ing, index) => {
+            const factor = ing.adjustedGrams / 100;
+            const ingCalories = Math.round(ing.caloriesPer100g * factor);
+            const ingProtein = Math.round(ing.proteinPer100g * factor);
+            
+            return (
+              <div key={index} className="bg-card border border-border rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">{ing.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {ingCalories} cal • {ingProtein}g protein
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveIngredient(index)}
+                    className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleIngredientQuantityChange(index, ing.adjustedGrams - 10)}
+                    className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={ing.adjustedGrams}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value.replace(/[^0-9.]/g, '')) || 0;
+                        handleIngredientQuantityChange(index, val);
+                      }}
+                      className="w-full px-3 py-2 text-lg font-bold bg-muted rounded-lg text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">g</span>
+                  </div>
+                  <button
+                    onClick={() => handleIngredientQuantityChange(index, ing.adjustedGrams + 10)}
+                    className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Total summary */}
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+          <p className="text-sm font-medium text-foreground mb-3">Total for this meal:</p>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div>
+              <p className="text-xl font-bold text-calories">{totals.calories}</p>
+              <p className="text-xs text-muted-foreground">cal</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-protein">{totals.protein}g</p>
+              <p className="text-xs text-muted-foreground">protein</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-carbs">{totals.carbs}g</p>
+              <p className="text-xs text-muted-foreground">carbs</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-fats">{totals.fats}g</p>
+              <p className="text-xs text-muted-foreground">fats</p>
+            </div>
+          </div>
+        </div>
+
+        {notes && (
+          <p className="text-xs text-muted-foreground">{notes}</p>
+        )}
+      </div>
+    );
+  };
 
   // Confirm step
   const renderConfirmStep = () => (
@@ -918,6 +1080,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
             {step === 'photo' && renderPhotoStep()}
             {step === 'quantity' && renderQuantityStep()}
             {step === 'adjust' && renderAdjustStep()}
+            {step === 'adjust_ingredients' && renderAdjustIngredientsStep()}
             {step === 'confirm' && renderConfirmStep()}
           </>
         )}
@@ -967,6 +1130,19 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
             size="xl"
             className="w-full"
             disabled={!analysisResult}
+            onClick={handleSubmitMeal}
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            {t('log_this_meal')}
+          </Button>
+        )}
+
+        {step === 'adjust_ingredients' && (
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full"
+            disabled={ingredients.length === 0}
             onClick={handleSubmitMeal}
           >
             <Sparkles className="w-5 h-5 mr-2" />

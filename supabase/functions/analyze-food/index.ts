@@ -19,7 +19,7 @@ const requestSchema = z.object({
   searchQuery: z.string()
     .max(500, "Search query too long")
     .optional(),
-  mode: z.enum(['suggestions', 'calculate', 'analyze']).optional()
+  mode: z.enum(['suggestions', 'calculate', 'analyze', 'parse_meal']).optional()
 }).refine(
   (data) => data.imageBase64 || data.searchQuery,
   "Either imageBase64 or searchQuery is required"
@@ -83,24 +83,33 @@ serve(async (req) => {
     let messages: any[];
     
     if (imageBase64) {
-      // Analyze food from image
+      // Analyze food from image - parse into individual ingredients
       messages = [
         {
           role: "system",
-          content: `You are a nutrition expert AI that analyzes food images to estimate nutritional content.
-          
-When analyzing a food image, you MUST respond with ONLY a JSON object in this exact format:
+          content: `You are a nutrition expert AI that analyzes food images to identify individual ingredients and estimate nutritional content.
+
+When analyzing a food image, identify each distinct food item visible and provide nutritional data per 100g for each.
+You MUST respond with ONLY a JSON object in this exact format:
 {
-  "name": "Name of the food/dish",
-  "calories": number (total estimated calories),
-  "protein": number (grams of protein),
-  "carbs": number (grams of carbohydrates),
-  "fats": number (grams of fat),
+  "mealName": "Overall meal name",
+  "ingredients": [
+    {
+      "name": "Ingredient name",
+      "estimatedGrams": number (estimated amount in grams based on visual size),
+      "caloriesPer100g": number,
+      "proteinPer100g": number,
+      "carbsPer100g": number,
+      "fatsPer100g": number
+    }
+  ],
   "confidence": "high" | "medium" | "low",
   "notes": "Brief notes about the estimation"
 }
 
-Be as accurate as possible based on typical portion sizes. If you can't identify the food clearly, make your best estimate and set confidence to "low".
+Be thorough - identify all visible food items separately (e.g., for a plate with chicken, rice, and vegetables, list each separately).
+Estimate realistic portion sizes based on visual assessment.
+If you can't identify the food clearly, make your best estimate and set confidence to "low".
 Do not include any other text, only the JSON object.`
         },
         {
@@ -108,7 +117,7 @@ Do not include any other text, only the JSON object.`
           content: [
             {
               type: "text",
-              text: "Please analyze this food image and provide the nutritional information."
+              text: "Please analyze this food image and identify each individual ingredient with nutritional information."
             },
             {
               type: "image_url",
@@ -174,6 +183,40 @@ Do not include any other text, only the JSON object.`
         {
           role: "user",
           content: `Calculate nutrition for: ${searchQuery}`
+        }
+      ];
+    } else if (searchQuery && mode === 'parse_meal') {
+      // Parse a meal description into individual ingredients
+      messages = [
+        {
+          role: "system",
+          content: `You are a nutrition expert AI that parses meal descriptions into individual ingredients with nutritional content.
+
+When given a meal description, identify each distinct food item and provide nutritional data per 100g for each.
+You MUST respond with ONLY a JSON object in this exact format:
+{
+  "mealName": "Overall meal name",
+  "ingredients": [
+    {
+      "name": "Ingredient name",
+      "estimatedGrams": number (estimated amount in grams),
+      "caloriesPer100g": number,
+      "proteinPer100g": number,
+      "carbsPer100g": number,
+      "fatsPer100g": number
+    }
+  ],
+  "confidence": "high" | "medium" | "low",
+  "notes": "Brief notes about the estimation"
+}
+
+Be thorough - include all identifiable ingredients (e.g., for "eggs with toast and butter", list eggs, bread, and butter separately).
+Estimate realistic portion sizes based on the description.
+Do not include any other text, only the JSON object.`
+        },
+        {
+          role: "user",
+          content: `Parse this meal into individual ingredients: ${searchQuery}`
         }
       ];
     } else if (searchQuery) {

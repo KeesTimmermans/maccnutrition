@@ -109,21 +109,42 @@ export interface FoodSuggestion {
   defaultServingSize?: number;
 }
 
-export const analyzeFoodImage = async (imageBase64: string): Promise<{
+export interface ParsedIngredient {
   name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
+  estimatedGrams: number;
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatsPer100g: number;
+}
+
+export interface ParsedMealResult {
+  mealName: string;
+  ingredients: ParsedIngredient[];
   confidence: string;
   notes: string;
-}> => {
+}
+
+export const analyzeFoodImage = async (imageBase64: string): Promise<ParsedMealResult> => {
   const { data, error } = await supabase.functions.invoke("analyze-food", {
     body: { imageBase64 },
   });
 
   if (error) {
     console.error("Error analyzing food:", error);
+    throw error;
+  }
+
+  return data;
+};
+
+export const parseMealDescription = async (description: string): Promise<ParsedMealResult> => {
+  const { data, error } = await supabase.functions.invoke("analyze-food", {
+    body: { searchQuery: description, mode: 'parse_meal' },
+  });
+
+  if (error) {
+    console.error("Error parsing meal:", error);
     throw error;
   }
 
