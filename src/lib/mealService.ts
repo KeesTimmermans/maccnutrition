@@ -125,9 +125,15 @@ export interface ParsedMealResult {
   notes: string;
 }
 
-export const analyzeFoodImage = async (imageBase64: string): Promise<ParsedMealResult> => {
+export interface UserDietContext {
+  dietType?: string;
+  allergies?: string[];
+  foodDislikes?: string;
+}
+
+export const analyzeFoodImage = async (imageBase64: string, userDietContext?: UserDietContext): Promise<ParsedMealResult> => {
   const { data, error } = await supabase.functions.invoke("analyze-food", {
-    body: { imageBase64 },
+    body: { imageBase64, userDietContext },
   });
 
   if (error) {
@@ -138,9 +144,9 @@ export const analyzeFoodImage = async (imageBase64: string): Promise<ParsedMealR
   return data;
 };
 
-export const parseMealDescription = async (description: string): Promise<ParsedMealResult> => {
+export const parseMealDescription = async (description: string, userDietContext?: UserDietContext): Promise<ParsedMealResult> => {
   const { data, error } = await supabase.functions.invoke("analyze-food", {
-    body: { searchQuery: description, mode: 'parse_meal' },
+    body: { searchQuery: description, mode: 'parse_meal', userDietContext },
   });
 
   if (error) {

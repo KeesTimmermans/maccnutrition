@@ -8,6 +8,12 @@ const corsHeaders = {
 };
 
 // Input validation schema
+const userDietContextSchema = z.object({
+  dietType: z.string().max(50).optional(),
+  allergies: z.array(z.string().max(100)).max(20).optional(),
+  foodDislikes: z.string().max(500).optional()
+}).optional();
+
 const requestSchema = z.object({
   imageBase64: z.string()
     .max(10 * 1024 * 1024, "Image too large (max 10MB)")
@@ -19,7 +25,8 @@ const requestSchema = z.object({
   searchQuery: z.string()
     .max(500, "Search query too long")
     .optional(),
-  mode: z.enum(['suggestions', 'calculate', 'analyze', 'parse_meal']).optional()
+  mode: z.enum(['suggestions', 'calculate', 'analyze', 'parse_meal']).optional(),
+  userDietContext: userDietContextSchema
 }).refine(
   (data) => data.imageBase64 || data.searchQuery,
   "Either imageBase64 or searchQuery is required"
@@ -73,11 +80,38 @@ serve(async (req) => {
       );
     }
 
-    const { imageBase64, searchQuery, mode } = validationResult.data;
+    const { imageBase64, searchQuery, mode, userDietContext } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Build dietary context for warnings
+    let dietaryContextNote = '';
+    if (userDietContext) {
+      const parts = [];
+      if (userDietContext.dietType && userDietContext.dietType !== 'balanced') {
+        const dietLabels: Record<string, string> = {
+          'vegetarian': 'vegetarian (no meat/fish)',
+          'vegan': 'vegan (no animal products)',
+          'pescatarian': 'pescatarian (no meat)',
+          'keto': 'keto (very low carb)',
+          'paleo': 'paleo (no grains/legumes/dairy)',
+          'gluten_free': 'gluten-free',
+          'dairy_free': 'dairy-free',
+          'low_carb': 'low-carb'
+        };
+        parts.push(`Diet: ${dietLabels[userDietContext.dietType] || userDietContext.dietType}`);
+      }
+      if (userDietContext.allergies && userDietContext.allergies.length > 0) {
+        parts.push(`Allergies: ${userDietContext.allergies.join(', ')}`);
+      }
+      if (parts.length > 0) {
+        dietaryContextNote = `\n\nUSER DIETARY CONTEXT: ${parts.join('. ')}. 
+In the "notes" field, include a warning if any identified food doesn't match the user's diet or contains allergens.
+For example: "⚠️ Warning: This meal contains chicken which doesn't fit a vegetarian diet."`;
+      }
     }
 
     let messages: any[];
@@ -109,7 +143,7 @@ You MUST respond with ONLY a JSON object in this exact format:
 
 Be thorough - identify all visible food items separately (e.g., for a plate with chicken, rice, and vegetables, list each separately).
 Estimate realistic portion sizes based on visual assessment.
-If you can't identify the food clearly, make your best estimate and set confidence to "low".
+If you can't identify the food clearly, make your best estimate and set confidence to "low".${dietaryContextNote}
 Do not include any other text, only the JSON object.`
         },
         {
@@ -211,7 +245,7 @@ You MUST respond with ONLY a JSON object in this exact format:
 }
 
 Be thorough - include all identifiable ingredients (e.g., for "eggs with toast and butter", list eggs, bread, and butter separately).
-Estimate realistic portion sizes based on the description.
+Estimate realistic portion sizes based on the description.${dietaryContextNote}
 Do not include any other text, only the JSON object.`
         },
         {

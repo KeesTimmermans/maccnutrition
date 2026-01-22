@@ -20,7 +20,12 @@ const currentMealSchema = z.object({
 const userContextSchema = z.object({
   dietType: z.string().max(50).optional(),
   allergies: z.array(z.string().max(100)).max(20).optional(),
-  foodDislikes: z.string().max(500).optional()
+  foodDislikes: z.string().max(500).optional(),
+  proteinShakesPreference: z.string().max(50).optional(),
+  cookingSkill: z.string().max(50).optional(),
+  mealPrepTime: z.string().max(50).optional(),
+  targetCalories: z.number().min(0).max(10000).optional(),
+  proteinGrams: z.number().min(0).max(500).optional()
 }).passthrough().optional();
 
 const requestSchema = z.object({
@@ -83,6 +88,27 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Build strict dietary restrictions
+    const dietTypeRaw = userContext?.dietType || 'balanced';
+    const allergiesRaw = userContext?.allergies || [];
+    const foodDislikesRaw = userContext?.foodDislikes || '';
+    
+    // Map diet types to strict exclusion rules
+    const dietTypeRules: Record<string, string> = {
+      'vegetarian': 'STRICT VEGETARIAN: NO meat, poultry, fish, or seafood. Use plant proteins, eggs, and dairy only.',
+      'vegan': 'STRICT VEGAN: NO animal products - no meat, fish, poultry, eggs, dairy, honey. Plant-based only.',
+      'pescatarian': 'PESCATARIAN: NO meat or poultry. Fish/seafood, eggs, and dairy allowed.',
+      'keto': 'KETOGENIC: Very low carb (under 30g net carbs), high fat, moderate protein.',
+      'paleo': 'PALEO: No grains, legumes, dairy, refined sugar, or processed foods.',
+      'mediterranean': 'MEDITERRANEAN: Emphasize olive oil, fish, whole grains, legumes, vegetables.',
+      'gluten_free': 'GLUTEN-FREE: NO wheat, barley, rye, or gluten-containing ingredients.',
+      'dairy_free': 'DAIRY-FREE: NO milk, cheese, yogurt, butter, cream, or dairy products.',
+      'low_carb': 'LOW CARB: Keep carbohydrates under 100g per day.',
+      'balanced': 'Balanced diet with a variety of whole foods.'
+    };
+    
+    const dietTypeGuideline = dietTypeRules[dietTypeRaw] || dietTypeRules['balanced'];
+    
     const systemPrompt = `You are an expert meal planner for CJTNutrition. The user wants to swap a meal in their plan.
 
 Current Meal to Replace:
@@ -93,14 +119,16 @@ Current Meal to Replace:
 - Carbs: ${currentMeal.carbs}g
 - Fats: ${currentMeal.fats}g
 
-User Profile:
-- Diet Type: ${userContext?.dietType || 'balanced'}
-- Allergies: ${userContext?.allergies?.join(', ') || 'none'}
-- Food Dislikes: ${userContext?.foodDislikes || 'none'}
+⚠️ CRITICAL DIETARY REQUIREMENTS (MUST FOLLOW STRICTLY):
+${dietTypeGuideline}
+${allergiesRaw.length > 0 ? `\nCRITICAL ALLERGIES - NEVER INCLUDE: ${allergiesRaw.join(', ')}` : ''}
+${foodDislikesRaw ? `\nFOOD DISLIKES - AVOID: ${foodDislikesRaw}` : ''}
 
 Guidelines:
 - Provide an alternative meal that matches similar macro targets
-- Respect dietary restrictions and allergies
+- STRICTLY respect the dietary type - NEVER suggest foods that violate it
+- NEVER include any allergens listed above
+- Avoid any foods the user dislikes
 - Consider the user's preference for the swap
 - Keep the meal practical and easy to prepare`;
 
