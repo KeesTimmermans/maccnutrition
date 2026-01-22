@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { translations, SupportedLanguage, TranslationKey } from "./translations";
+import { translations, Language } from "./translations";
+
+type TranslationKey = keyof typeof translations.en;
 
 interface LanguageContextType {
-  language: SupportedLanguage;
-  setLanguage: (lang: SupportedLanguage) => void;
+  language: Language;
+  setLanguage: (lang: Language) => void;
   t: (key: TranslationKey) => string;
 }
 
@@ -12,9 +14,9 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   // Start with browser language or 'en' - don't block on auth
-  const [language, setLanguage] = useState<SupportedLanguage>(() => {
+  const [language, setLanguage] = useState<Language>(() => {
     const browserLang = navigator.language.split("-")[0];
-    return (browserLang in translations ? browserLang : "en") as SupportedLanguage;
+    return (browserLang in translations ? browserLang : "en") as Language;
   });
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
         } = await supabase.auth.getSession();
 
         if (session?.user?.user_metadata?.preferred_language) {
-          const userLang = session.user.user_metadata.preferred_language as SupportedLanguage;
+          const userLang = session.user.user_metadata.preferred_language as Language;
           if (userLang in translations) {
             setLanguage(userLang);
           }
@@ -45,7 +47,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user?.user_metadata?.preferred_language) {
-        const userLang = session.user.user_metadata.preferred_language as SupportedLanguage;
+        const userLang = session.user.user_metadata.preferred_language as Language;
         if (userLang in translations) {
           setLanguage(userLang);
         }
