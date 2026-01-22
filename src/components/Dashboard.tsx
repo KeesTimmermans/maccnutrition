@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MacroRing } from "@/components/MacroRing";
-import { MealCard, AddMealCard } from "@/components/MealCard";
+import { AddMealCard } from "@/components/MealCard";
+import { CollapsibleMealCard } from "@/components/CollapsibleMealCard";
 import { AICoachCard } from "@/components/AICoachCard";
 import { AICoachChat } from "@/components/AICoachChat";
 import { MealLogger } from "@/components/MealLogger";
@@ -645,7 +646,7 @@ export const Dashboard = () => {
             ) : (
               meals.map((meal, index) => (
                 <div key={meal.id} style={{ animationDelay: `${index * 100}ms` }}>
-                  <MealCard 
+                  <CollapsibleMealCard 
                     meal={meal} 
                     onEdit={handleEditMeal}
                     onDelete={handleDeleteMeal}
