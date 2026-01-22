@@ -149,9 +149,9 @@ serve(async (req) => {
     
     // Map diet types to strict exclusion rules
     const dietTypeRules: Record<string, string> = {
-      'vegetarian': 'STRICT VEGETARIAN: NO meat, poultry, fish, or seafood of any kind. Use plant proteins (tofu, tempeh, legumes, beans, lentils), eggs, and dairy only.',
-      'vegan': 'STRICT VEGAN: NO animal products whatsoever - no meat, fish, poultry, eggs, dairy, honey, or any animal-derived ingredients. Use only plant-based proteins and ingredients.',
-      'pescatarian': 'PESCATARIAN: NO meat or poultry. Fish and seafood are allowed. Include eggs and dairy.',
+      'vegetarian': 'STRICT VEGETARIAN: NO meat of any kind including beef, pork, lamb, chicken, turkey, duck, or any other poultry. NO fish or seafood. Use only plant proteins (tofu, tempeh, legumes, beans, lentils), eggs, and dairy.',
+      'vegan': 'STRICT VEGAN: NO animal products whatsoever - no meat (including chicken, beef, pork), no fish, no poultry, no eggs, no dairy, no honey, or any animal-derived ingredients. Use only plant-based proteins and ingredients.',
+      'pescatarian': 'PESCATARIAN: NO meat including beef, pork, lamb, chicken, turkey, or any poultry. Fish and seafood are allowed. Include eggs and dairy.',
       'keto': 'KETOGENIC: Very low carb (under 30g net carbs per day), high fat, moderate protein. No grains, sugar, high-carb fruits, or starchy vegetables.',
       'paleo': 'PALEO: No grains, legumes, dairy, refined sugar, or processed foods. Focus on meat, fish, vegetables, fruits, nuts, and seeds.',
       'mediterranean': 'MEDITERRANEAN: Emphasize olive oil, fish, whole grains, legumes, vegetables, and fruits. Limited red meat.',

@@ -95,9 +95,9 @@ serve(async (req) => {
     
     // Map diet types to strict exclusion rules
     const dietTypeRules: Record<string, string> = {
-      'vegetarian': 'STRICT VEGETARIAN: NO meat, poultry, fish, or seafood. Use plant proteins, eggs, and dairy only.',
-      'vegan': 'STRICT VEGAN: NO animal products - no meat, fish, poultry, eggs, dairy, honey. Plant-based only.',
-      'pescatarian': 'PESCATARIAN: NO meat or poultry. Fish/seafood, eggs, and dairy allowed.',
+      'vegetarian': 'STRICT VEGETARIAN: NO meat of any kind including beef, pork, lamb, chicken, turkey, duck, or any poultry. NO fish or seafood. Use only plant proteins (tofu, tempeh, legumes, beans, lentils), eggs, and dairy.',
+      'vegan': 'STRICT VEGAN: NO animal products - no meat (including chicken, beef, pork), no fish, no poultry, no eggs, no dairy, no honey. Plant-based only.',
+      'pescatarian': 'PESCATARIAN: NO meat including beef, pork, lamb, chicken, turkey, or any poultry. Fish/seafood, eggs, and dairy allowed.',
       'keto': 'KETOGENIC: Very low carb (under 30g net carbs), high fat, moderate protein.',
       'paleo': 'PALEO: No grains, legumes, dairy, refined sugar, or processed foods.',
       'mediterranean': 'MEDITERRANEAN: Emphasize olive oil, fish, whole grains, legumes, vegetables.',
