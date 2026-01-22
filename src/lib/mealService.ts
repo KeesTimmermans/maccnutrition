@@ -100,6 +100,45 @@ export const getMealsByDateRange = async (startDate: Date, endDate: Date): Promi
   return data || [];
 };
 
+export const getRecentUniqueMeals = async (days: number = 5): Promise<Meal[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return [];
+  }
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  startDate.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("meals")
+    .select("*")
+    .eq("user_id", user.id)
+    .gte("logged_at", startDate.toISOString())
+    .lt("logged_at", today.toISOString())
+    .order("logged_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching recent meals:", error);
+    return [];
+  }
+
+  // Get unique meals by name (keep the most recent occurrence)
+  const uniqueMealsMap = new Map<string, Meal>();
+  for (const meal of data || []) {
+    const normalizedName = meal.name.toLowerCase().trim();
+    if (!uniqueMealsMap.has(normalizedName)) {
+      uniqueMealsMap.set(normalizedName, meal);
+    }
+  }
+
+  return Array.from(uniqueMealsMap.values()).slice(0, 10);
+};
+
 export interface FoodSuggestion {
   name: string;
   caloriesPer100g: number;

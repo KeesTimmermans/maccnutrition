@@ -18,6 +18,7 @@ import { getFavoriteMeals, deleteFavoriteMeal, FavoriteMeal } from "@/lib/favori
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { QuickMeals } from "./QuickMeals";
 
 interface MealLoggerProps {
   onClose: () => void;
@@ -414,6 +415,14 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
   // Method selection screen
   const renderMethodSelection = () => (
     <div className="space-y-4">
+      {/* Quick Meals Section */}
+      <QuickMeals 
+        onSelectMeal={(meal) => {
+          onSubmit(meal);
+          onClose();
+        }} 
+      />
+
       <p className="text-muted-foreground text-center mb-6">
         Choose how you'd like to log your meal
       </p>
