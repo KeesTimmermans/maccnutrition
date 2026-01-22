@@ -21,7 +21,13 @@ const userContextSchema = z.object({
   activityLevel: z.string().max(50).optional(),
   proteinShakesPreference: z.string().max(50).optional(),
   cookingSkill: z.string().max(50).optional(),
-  mealPrepTime: z.string().max(50).optional()
+  mealPrepTime: z.string().max(50).optional(),
+  // Additional behavioral context
+  eatingOutFrequency: z.string().max(50).optional(),
+  snackingHabits: z.string().max(100).optional(),
+  weekendHabits: z.string().max(100).optional(),
+  energyPatterns: z.string().max(100).optional(),
+  conditions: z.array(z.string().max(100)).max(20).optional()
 }).passthrough().optional();
 
 const requestSchema = z.object({
@@ -169,6 +175,33 @@ serve(async (req) => {
       dislikesGuideline = `FOOD DISLIKES - AVOID: ${foodDislikesRaw}. Do not include these foods in the meal plan.`;
     }
 
+    // Build additional behavioral context
+    const eatingOutFreq = userContext?.eatingOutFrequency || '';
+    const snackingHabitsRaw = userContext?.snackingHabits || '';
+    const weekendHabitsRaw = userContext?.weekendHabits || '';
+    const energyPatternsRaw = userContext?.energyPatterns || '';
+    const conditionsRaw = userContext?.conditions || [];
+    
+    let behavioralGuidelines = '';
+    if (eatingOutFreq === 'daily' || eatingOutFreq === 'most_days') {
+      behavioralGuidelines += '\n- Include some restaurant-friendly or quick grab-and-go meal options.';
+    }
+    if (snackingHabitsRaw === 'frequent' || snackingHabitsRaw === 'constant') {
+      behavioralGuidelines += '\n- Consider including satisfying, protein-rich snacks when snacks are in the plan.';
+    }
+    if (weekendHabitsRaw === 'relaxed' || weekendHabitsRaw === 'very_different') {
+      behavioralGuidelines += '\n- Make weekend meals slightly more flexible and enjoyable while still meeting targets.';
+    }
+    if (energyPatternsRaw === 'low_afternoon') {
+      behavioralGuidelines += '\n- Include energizing, balanced lunches to prevent afternoon energy crashes.';
+    }
+    if (conditionsRaw.includes('diabetes') || conditionsRaw.includes('insulin_resistance')) {
+      behavioralGuidelines += '\n- Focus on low-glycemic foods and balanced blood sugar with protein/fat at each meal.';
+    }
+    if (conditionsRaw.includes('high_blood_pressure')) {
+      behavioralGuidelines += '\n- Keep sodium moderate in meal suggestions.';
+    }
+
     const systemPrompt = `You are an expert meal planner for CJTNutrition. Create a personalized 7-day meal plan based on the user's goals, preferences, and dietary restrictions.
 
 User Profile:
@@ -197,6 +230,8 @@ PROTEIN SHAKES PREFERENCE:
 ${proteinShakesGuideline}
 
 ${complexityGuideline ? `COMPLEXITY GUIDELINE:\n${complexityGuideline}\n` : ''}
+BEHAVIORAL ADAPTATIONS:${behavioralGuidelines || '\n- No specific behavioral adaptations needed.'}
+
 Guidelines:
 - Create balanced, whole-food focused meals
 - Distribute the ${userContext?.targetCalories || 2000} daily calories evenly across ${mealsPerDayNum} meals (approximately ${Math.round((userContext?.targetCalories || 2000) / mealsPerDayNum)} kcal per meal)

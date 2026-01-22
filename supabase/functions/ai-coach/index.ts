@@ -44,9 +44,31 @@ const userContextSchema = z.object({
   conditions: z.array(z.string().max(100)).max(20).nullish(),
   coachingTone: z.string().max(50).nullish(),
   focusPoints: z.array(z.string().max(100)).max(10).nullish(),
+  mealsPerDay: z.string().max(20).nullish(),
+  mealPrepTime: z.string().max(50).nullish(),
+  cookingSkill: z.string().max(50).nullish(),
+  proteinShakesPreference: z.string().max(50).nullish(),
+  // Eating behavior
+  eatingSpeed: z.string().max(50).nullish(),
+  hungerPatterns: z.string().max(100).nullish(),
+  cravingsTriggers: z.array(z.string().max(100)).max(20).nullish(),
+  emotionalEating: z.string().max(100).nullish(),
+  snackingHabits: z.string().max(100).nullish(),
+  hydrationHabits: z.string().max(100).nullish(),
+  energyPatterns: z.string().max(100).nullish(),
+  // Challenges & history
+  biggestChallenge: z.string().max(200).nullish(),
+  pastDiets: z.array(z.string().max(100)).max(20).nullish(),
+  weekendHabits: z.string().max(100).nullish(),
+  eatingOutFrequency: z.string().max(50).nullish(),
+  // Motivation
+  motivationStyle: z.string().max(50).nullish(),
+  accountabilityPreference: z.string().max(50).nullish(),
+  // Female-specific
   currentPhase: z.string().max(50).nullish(),
   cycleRegularity: z.string().max(50).nullish(),
   cycleSymptoms: z.array(z.string().max(100)).max(20).nullish(),
+  // Context
   checkInContext: z.string().max(2000).nullish(),
   wearableContext: z.string().max(2000).nullish(),
   preferredLanguage: z.enum(['en', 'fr', 'es', 'it', 'pt']).nullish()
@@ -311,12 +333,33 @@ NUTRITION TARGETS:
 - Carbs: ${userContext?.carbsGrams || 'not set'}g
 - Fats: ${userContext?.fatsGrams || 'not set'}g
 - Water: ${userContext?.waterLiters || 'not set'}L
+- Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
 
 PREFERENCES & RESTRICTIONS:
 - Diet Type: ${userContext?.dietType || 'not specified'}
 - Food Dislikes: ${userContext?.foodDislikes || 'none specified'}
 - Allergies: ${userContext?.allergies?.join(', ') || 'none'}
 - Conditions: ${userContext?.conditions?.join(', ') || 'none'}
+- Protein Shakes: ${userContext?.proteinShakesPreference || 'not specified'}
+- Cooking Skill: ${userContext?.cookingSkill || 'not specified'}
+- Meal Prep Time: ${userContext?.mealPrepTime || 'not specified'}
+
+EATING BEHAVIOR & PATTERNS:
+- Eating Speed: ${userContext?.eatingSpeed || 'not specified'}
+- Hunger Patterns: ${userContext?.hungerPatterns || 'not specified'}
+- Craving Triggers: ${userContext?.cravingsTriggers?.join(', ') || 'none identified'}
+- Emotional Eating: ${userContext?.emotionalEating || 'not specified'}
+- Snacking Habits: ${userContext?.snackingHabits || 'not specified'}
+- Hydration Habits: ${userContext?.hydrationHabits || 'not specified'}
+- Energy Patterns: ${userContext?.energyPatterns || 'not specified'}
+- Weekend Habits: ${userContext?.weekendHabits || 'not specified'}
+- Eating Out Frequency: ${userContext?.eatingOutFrequency || 'not specified'}
+
+CHALLENGES & MOTIVATION:
+- Biggest Challenge: ${userContext?.biggestChallenge || 'not specified'}
+- Past Diet Attempts: ${userContext?.pastDiets?.join(', ') || 'none mentioned'}
+- Motivation Style: ${userContext?.motivationStyle || 'not specified'}
+- Accountability Preference: ${userContext?.accountabilityPreference || 'not specified'}
 
 COACHING PREFERENCES:
 - Preferred Tone: ${userContext?.coachingTone || 'supportive'}
