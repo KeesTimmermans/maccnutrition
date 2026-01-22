@@ -990,16 +990,6 @@ export const AICoachCard = ({
           </div>
         )}
 
-        {/* Daily Tip */}
-        {tip && (
-          <div className="p-4 bg-secondary/10 rounded-xl border border-secondary/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Lightbulb className="w-4 h-4 text-secondary" />
-              <span className="text-sm font-semibold text-secondary">{t('tip_of_the_day')}</span>
-            </div>
-            <p className="text-sm text-foreground">{tip}</p>
-          </div>
-        )}
       </div>
     </div>
   );
