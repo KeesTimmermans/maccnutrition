@@ -786,7 +786,49 @@ export const AICoachCard = ({
       });
     }
 
-    return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 4);
+    // Deduplicate recommendations by category to ensure variety
+    // Categories: protein, calories, water, sleep, energy, stress, behavior, trend, goal
+    const categorize = (rec: InsightCard): string => {
+      const title = rec.title.toLowerCase();
+      if (title.includes('protein')) return 'protein';
+      if (title.includes('calorie') || title.includes('kcal')) return 'calories';
+      if (title.includes('water') || title.includes('hydration')) return 'water';
+      if (title.includes('sleep')) return 'sleep';
+      if (title.includes('energy')) return 'energy';
+      if (title.includes('stress')) return 'stress';
+      if (title.includes('weekend') || title.includes('pattern')) return 'pattern';
+      if (title.includes('trend') || title.includes('improving') || title.includes('declining')) return 'trend';
+      if (title.includes('goal') || title.includes('target') || title.includes('today')) return 'goal';
+      return 'other';
+    };
+
+    // Sort by priority first
+    const sorted = recommendations.sort((a, b) => a.priority - b.priority);
+    
+    // Select up to 4 recommendations, ensuring each is from a different category
+    const selected: InsightCard[] = [];
+    const usedCategories = new Set<string>();
+    
+    for (const rec of sorted) {
+      if (selected.length >= 4) break;
+      const category = categorize(rec);
+      if (!usedCategories.has(category)) {
+        selected.push(rec);
+        usedCategories.add(category);
+      }
+    }
+    
+    // If we have fewer than 4 due to limited categories, allow duplicates from highest priority remaining
+    if (selected.length < 4) {
+      for (const rec of sorted) {
+        if (selected.length >= 4) break;
+        if (!selected.includes(rec)) {
+          selected.push(rec);
+        }
+      }
+    }
+
+    return selected;
   };
 
   // Now generates recommendations from meal/water data even without check-in
