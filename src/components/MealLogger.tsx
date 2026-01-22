@@ -11,7 +11,8 @@ import {
   analyzeFoodSearch,
   parseMealDescription,
   type FoodSuggestion,
-  type ParsedIngredient
+  type ParsedIngredient,
+  type UserDietContext
 } from "@/lib/mealService";
 import { getFavoriteMeals, deleteFavoriteMeal, FavoriteMeal } from "@/lib/favoriteMealService";
 import { useLanguage } from "@/lib/i18n";
@@ -28,6 +29,7 @@ interface MealLoggerProps {
     carbs: number;
     fats: number;
   }) => void;
+  userDietContext?: UserDietContext;
 }
 
 interface AnalysisResult {
@@ -52,7 +54,7 @@ interface AdjustableIngredient extends ParsedIngredient {
 type TrackingMethod = 'select' | 'barcode' | 'describe' | 'photo';
 type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'quantity' | 'adjust' | 'adjust_ingredients' | 'confirm';
 
-export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
+export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerProps) => {
   const { t } = useLanguage();
   const [step, setStep] = useState<LoggerStep>('method');
   const [trackingMethod, setTrackingMethod] = useState<TrackingMethod>('select');
@@ -148,7 +150,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         setIsAnalyzing(true);
         
         try {
-          const result = await analyzeFoodImage(base64);
+          const result = await analyzeFoodImage(base64, userDietContext);
           setMealName(result.mealName);
           setConfidence(result.confidence);
           setNotes(result.notes);
@@ -244,7 +246,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
 
     setIsAnalyzing(true);
     try {
-      const result = await parseMealDescription(mealDescription);
+      const result = await parseMealDescription(mealDescription, userDietContext);
       setMealName(result.mealName);
       setConfidence(result.confidence);
       setNotes(result.notes);

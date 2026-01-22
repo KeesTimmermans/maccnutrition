@@ -261,6 +261,11 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         dietType: baseline?.diet_type,
         allergies: baseline?.allergies,
         foodDislikes: baseline?.food_dislikes,
+        proteinShakesPreference: baseline?.protein_shakes_preference,
+        cookingSkill: baseline?.cooking_skill,
+        mealPrepTime: baseline?.meal_prep_time,
+        targetCalories: baseline?.target_calories,
+        proteinGrams: baseline?.protein_grams,
       };
 
       const { data, error } = await supabase.functions.invoke('swap-meal', {

@@ -745,6 +745,11 @@ export const Dashboard = () => {
         <MealLogger 
           onClose={() => setShowMealLogger(false)}
           onSubmit={handleAddMeal}
+          userDietContext={{
+            dietType: baseline?.diet_type || undefined,
+            allergies: baseline?.allergies || undefined,
+            foodDislikes: baseline?.food_dislikes || undefined,
+          }}
         />
       )}
 

@@ -136,6 +136,39 @@ serve(async (req) => {
       complexityGuideline = 'Can include more complex recipes and meal prep strategies.';
     }
 
+    // Build strict dietary restrictions string
+    const dietTypeRaw = userContext?.dietType || 'balanced';
+    const allergiesRaw = userContext?.allergies || [];
+    const foodDislikesRaw = userContext?.foodDislikes || '';
+    
+    // Map diet types to strict exclusion rules
+    const dietTypeRules: Record<string, string> = {
+      'vegetarian': 'STRICT VEGETARIAN: NO meat, poultry, fish, or seafood of any kind. Use plant proteins (tofu, tempeh, legumes, beans, lentils), eggs, and dairy only.',
+      'vegan': 'STRICT VEGAN: NO animal products whatsoever - no meat, fish, poultry, eggs, dairy, honey, or any animal-derived ingredients. Use only plant-based proteins and ingredients.',
+      'pescatarian': 'PESCATARIAN: NO meat or poultry. Fish and seafood are allowed. Include eggs and dairy.',
+      'keto': 'KETOGENIC: Very low carb (under 30g net carbs per day), high fat, moderate protein. No grains, sugar, high-carb fruits, or starchy vegetables.',
+      'paleo': 'PALEO: No grains, legumes, dairy, refined sugar, or processed foods. Focus on meat, fish, vegetables, fruits, nuts, and seeds.',
+      'mediterranean': 'MEDITERRANEAN: Emphasize olive oil, fish, whole grains, legumes, vegetables, and fruits. Limited red meat.',
+      'gluten_free': 'GLUTEN-FREE: NO wheat, barley, rye, or any gluten-containing ingredients. Use rice, quinoa, corn, and certified gluten-free products.',
+      'dairy_free': 'DAIRY-FREE: NO milk, cheese, yogurt, butter, cream, or any dairy products. Use plant-based alternatives.',
+      'low_carb': 'LOW CARB: Keep carbohydrates under 100g per day. Focus on protein and healthy fats.',
+      'balanced': 'Balanced diet with a variety of whole foods.'
+    };
+    
+    const dietTypeGuideline = dietTypeRules[dietTypeRaw] || dietTypeRules['balanced'];
+    
+    // Build allergy exclusions
+    let allergyGuideline = '';
+    if (allergiesRaw.length > 0) {
+      allergyGuideline = `CRITICAL ALLERGIES - NEVER INCLUDE: ${allergiesRaw.join(', ')}. These ingredients must be completely avoided in all meals and recipes.`;
+    }
+    
+    // Build food dislikes
+    let dislikesGuideline = '';
+    if (foodDislikesRaw.trim()) {
+      dislikesGuideline = `FOOD DISLIKES - AVOID: ${foodDislikesRaw}. Do not include these foods in the meal plan.`;
+    }
+
     const systemPrompt = `You are an expert meal planner for CJTNutrition. Create a personalized 7-day meal plan based on the user's goals, preferences, and dietary restrictions.
 
 User Profile:
@@ -144,13 +177,15 @@ User Profile:
 - Protein Goal: ${userContext?.proteinGrams || 120}g
 - Carbs Goal: ${userContext?.carbsGrams || 200}g
 - Fats Goal: ${userContext?.fatsGrams || 65}g
-- Diet Type: ${userContext?.dietType || 'balanced'}
-- Allergies: ${userContext?.allergies?.join(', ') || 'none'}
-- Food Dislikes: ${userContext?.foodDislikes || 'none'}
 - Meals Per Day: ${mealsPerDayNum}
 - Activity Level: ${userContext?.activityLevel || 'moderate'}
 - Cooking Skill: ${cookingSkill}
 - Meal Prep Time Available: ${mealPrepTime}
+
+⚠️ CRITICAL DIETARY REQUIREMENTS (MUST FOLLOW STRICTLY):
+${dietTypeGuideline}
+${allergyGuideline ? `\n${allergyGuideline}` : ''}
+${dislikesGuideline ? `\n${dislikesGuideline}` : ''}
 
 CRITICAL MEAL STRUCTURE REQUIREMENT:
 ${mealStructure}
@@ -166,10 +201,10 @@ Guidelines:
 - Create balanced, whole-food focused meals
 - Distribute the ${userContext?.targetCalories || 2000} daily calories evenly across ${mealsPerDayNum} meals (approximately ${Math.round((userContext?.targetCalories || 2000) / mealsPerDayNum)} kcal per meal)
 - Ensure daily totals approximately match calorie and macro targets
-- Vary protein sources throughout the week
+- Vary protein sources throughout the week (RESPECTING the diet type above)
 - Include vegetables with most meals
 - Keep meals practical and easy to prepare
-- Respect dietary restrictions and allergies`;
+- STRICTLY respect the dietary type, restrictions, and allergies listed above - NEVER violate these`;
 
     const userPrompt = `Generate a complete 7-day meal plan with EXACTLY ${mealsPerDayNum} meals per day. 
 
