@@ -786,7 +786,7 @@ export const AICoachCard = ({
       });
     }
 
-    return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 6);
+    return recommendations.sort((a, b) => a.priority - b.priority).slice(0, 4);
   };
 
   // Now generates recommendations from meal/water data even without check-in
