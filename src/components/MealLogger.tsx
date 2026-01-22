@@ -1,10 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, X, Sparkles, Search, Loader2, Heart, Trash2, Scale, ChevronRight } from "lucide-react";
-import { analyzeFoodImage, searchFoodSuggestions, getFoodNutritionByWeight, type FoodSuggestion } from "@/lib/mealService";
+import { 
+  Camera, X, Sparkles, Search, Loader2, Heart, Trash2, Scale, 
+  ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus 
+} from "lucide-react";
+import { 
+  analyzeFoodImage, 
+  searchFoodSuggestions, 
+  getFoodNutritionByWeight, 
+  analyzeFoodSearch,
+  type FoodSuggestion 
+} from "@/lib/mealService";
 import { getFavoriteMeals, deleteFavoriteMeal, FavoriteMeal } from "@/lib/favoriteMealService";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { BarcodeScanner } from "./BarcodeScanner";
 
 interface MealLoggerProps {
   onClose: () => void;
@@ -26,7 +36,6 @@ interface AnalysisResult {
   fats: number;
   confidence: string;
   notes: string;
-  // Per 100g values for scaling
   caloriesPer100g?: number;
   proteinPer100g?: number;
   carbsPer100g?: number;
@@ -34,11 +43,23 @@ interface AnalysisResult {
   defaultServingSize?: number;
 }
 
-type LoggerStep = 'search' | 'quantity' | 'confirm';
+interface ParsedFoodItem {
+  name: string;
+  quantity: number;
+  unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
+type TrackingMethod = 'select' | 'barcode' | 'describe' | 'photo';
+type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'quantity' | 'adjust' | 'confirm';
 
 export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   const { t } = useLanguage();
-  const [step, setStep] = useState<LoggerStep>('search');
+  const [step, setStep] = useState<LoggerStep>('method');
+  const [trackingMethod, setTrackingMethod] = useState<TrackingMethod>('select');
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,6 +71,9 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [mealDescription, setMealDescription] = useState("");
+  const [parsedFoods, setParsedFoods] = useState<ParsedFoodItem[]>([]);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -119,7 +143,8 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
             fatsPer100g: result.fats,
             defaultServingSize: 100,
           });
-          setStep('confirm');
+          setQuantity("100");
+          setStep('adjust');
         } catch (error) {
           console.error("Error analyzing image:", error);
           toast.error(t('error'));
@@ -167,9 +192,76 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   };
 
   const handleQuantityChange = (value: string) => {
-    // Only allow numbers and decimal point
     const sanitized = value.replace(/[^0-9.]/g, '');
     setQuantity(sanitized);
+  };
+
+  const handleBarcodeDetected = async (barcode: string) => {
+    setShowBarcodeScanner(false);
+    setIsAnalyzing(true);
+    
+    try {
+      // Use AI to look up the barcode product
+      const result = await analyzeFoodSearch(`barcode product: ${barcode}`);
+      setAnalysisResult({
+        ...result,
+        caloriesPer100g: result.calories,
+        proteinPer100g: result.protein,
+        carbsPer100g: result.carbs,
+        fatsPer100g: result.fats,
+        defaultServingSize: 100,
+      });
+      setQuantity("100");
+      setStep('adjust');
+    } catch (error) {
+      console.error("Error looking up barcode:", error);
+      toast.error("Could not find product. Try searching manually.");
+      setStep('method');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleDescriptionSubmit = async () => {
+    if (!mealDescription.trim()) {
+      toast.error("Please describe your meal");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const result = await analyzeFoodSearch(mealDescription);
+      setAnalysisResult({
+        ...result,
+        caloriesPer100g: result.calories,
+        proteinPer100g: result.protein,
+        carbsPer100g: result.carbs,
+        fatsPer100g: result.fats,
+        defaultServingSize: 100,
+      });
+      setQuantity("100");
+      setStep('adjust');
+    } catch (error) {
+      console.error("Error analyzing description:", error);
+      toast.error(t('error'));
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleAdjustQuantity = (newQuantity: number) => {
+    if (!analysisResult || !analysisResult.caloriesPer100g) return;
+    
+    const factor = newQuantity / 100;
+    setAnalysisResult({
+      ...analysisResult,
+      calories: Math.round(analysisResult.caloriesPer100g * factor),
+      protein: Math.round(analysisResult.proteinPer100g! * factor),
+      carbs: Math.round(analysisResult.carbsPer100g! * factor),
+      fats: Math.round(analysisResult.fatsPer100g! * factor),
+      defaultServingSize: newQuantity,
+    });
+    setQuantity(newQuantity.toString());
   };
 
   const handleSubmitMeal = () => {
@@ -208,17 +300,45 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
   };
 
   const handleBack = () => {
-    if (step === 'quantity') {
+    if (step === 'search' || step === 'barcode' || step === 'describe' || step === 'photo') {
+      setStep('method');
+      setTrackingMethod('select');
+      setImage(null);
+      setSearchQuery("");
+      setSuggestions([]);
+      setMealDescription("");
+    } else if (step === 'quantity') {
       setStep('search');
       setSelectedFood(null);
-    } else if (step === 'confirm') {
-      if (image) {
-        setStep('search');
+    } else if (step === 'adjust') {
+      if (trackingMethod === 'barcode') {
+        setStep('method');
+        setTrackingMethod('select');
+      } else if (trackingMethod === 'describe') {
+        setStep('describe');
+      } else if (trackingMethod === 'photo') {
+        setStep('photo');
         setImage(null);
-        setAnalysisResult(null);
-      } else {
-        setStep('quantity');
       }
+      setAnalysisResult(null);
+    } else if (step === 'confirm') {
+      if (selectedFood) {
+        setStep('quantity');
+      } else {
+        setStep('adjust');
+      }
+    }
+  };
+
+  const selectMethod = (method: TrackingMethod) => {
+    setTrackingMethod(method);
+    if (method === 'barcode') {
+      setStep('barcode');
+      setShowBarcodeScanner(true);
+    } else if (method === 'describe') {
+      setStep('describe');
+    } else if (method === 'photo') {
+      setStep('photo');
     }
   };
 
@@ -230,64 +350,148 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
     }
   };
 
-  const renderSearchStep = () => (
-    <>
-      {/* Search */}
-      <div className="relative mb-4">
+  const getStepTitle = () => {
+    switch (step) {
+      case 'method': return t('log_meal');
+      case 'search': return 'Search Food';
+      case 'barcode': return 'Scan Barcode';
+      case 'describe': return 'Describe Your Meal';
+      case 'photo': return 'Take Photo';
+      case 'quantity': return 'Set Quantity';
+      case 'adjust': return 'Adjust Serving';
+      case 'confirm': return 'Confirm Meal';
+      default: return t('log_meal');
+    }
+  };
+
+  // Method selection screen
+  const renderMethodSelection = () => (
+    <div className="space-y-4">
+      <p className="text-muted-foreground text-center mb-6">
+        Choose how you'd like to log your meal
+      </p>
+      
+      {/* Barcode Scan Option */}
+      <button
+        onClick={() => selectMethod('barcode')}
+        className="w-full p-5 bg-card border border-border rounded-2xl flex items-center gap-4 hover:border-primary hover:bg-accent/50 transition-all group"
+      >
+        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+          <ScanBarcode className="w-7 h-7 text-primary" />
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-semibold text-foreground">Scan Barcode</h3>
+          <p className="text-sm text-muted-foreground">Scan a product barcode for instant macros</p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      </button>
+
+      {/* Describe Meal Option */}
+      <button
+        onClick={() => selectMethod('describe')}
+        className="w-full p-5 bg-card border border-border rounded-2xl flex items-center gap-4 hover:border-primary hover:bg-accent/50 transition-all group"
+      >
+        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+          <MessageSquareText className="w-7 h-7 text-primary" />
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-semibold text-foreground">Describe Your Meal</h3>
+          <p className="text-sm text-muted-foreground">Write what you ate and we'll extract the macros</p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      </button>
+
+      {/* Photo Option */}
+      <button
+        onClick={() => selectMethod('photo')}
+        className="w-full p-5 bg-card border border-border rounded-2xl flex items-center gap-4 hover:border-primary hover:bg-accent/50 transition-all group"
+      >
+        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+          <Camera className="w-7 h-7 text-primary" />
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-semibold text-foreground">Take a Photo</h3>
+          <p className="text-sm text-muted-foreground">AI will analyze your meal from an image</p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      </button>
+
+      {/* Quick Search Divider */}
+      <div className="flex items-center gap-4 my-4">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-sm text-muted-foreground">or search manually</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      {/* Quick Search */}
+      <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <input
           type="text"
           placeholder={t('search_food')}
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            if (e.target.value.length >= 2) {
+              setStep('search');
+            }
+          }}
           className="w-full pl-12 pr-4 py-3 bg-muted rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          autoFocus
         />
-        {isSearching && (
-          <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-muted-foreground" />
-        )}
       </div>
+    </div>
+  );
 
-      {/* Suggestions dropdown */}
-      {suggestions.length > 0 && (
-        <div className="bg-card border border-border rounded-xl shadow-medium mb-4 max-h-64 overflow-auto">
-          {suggestions.map((food, index) => (
-            <button
-              key={`${food.name}-${index}`}
-              onClick={() => handleSelectFood(food)}
-              className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-center justify-between border-b border-border last:border-b-0"
-            >
-              <div>
-                <p className="font-medium text-foreground">{food.name}</p>
-                <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
-                  <span>{food.caloriesPer100g} cal/100g</span>
-                  <span>•</span>
-                  <span>P: {food.proteinPer100g}g</span>
-                  <span>C: {food.carbsPer100g}g</span>
-                  <span>F: {food.fatsPer100g}g</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
-          ))}
+  // Barcode scanner screen
+  const renderBarcodeStep = () => (
+    <div className="space-y-4">
+      {showBarcodeScanner ? (
+        <BarcodeScanner
+          onDetected={handleBarcodeDetected}
+          onClose={() => {
+            setShowBarcodeScanner(false);
+            setStep('method');
+          }}
+        />
+      ) : isAnalyzing ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground">Looking up product...</p>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  // Describe meal screen
+  const renderDescribeStep = () => (
+    <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">
+        Describe everything you ate including quantities. For example:
+        <span className="block text-foreground mt-2 italic">
+          "2 eggs scrambled with cheese, 2 slices of toast with butter, and a glass of orange juice"
+        </span>
+      </p>
+      
+      <textarea
+        value={mealDescription}
+        onChange={(e) => setMealDescription(e.target.value)}
+        placeholder="Describe your meal in detail..."
+        className="w-full h-40 p-4 bg-muted rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+        autoFocus
+      />
+
+      {isAnalyzing && (
+        <div className="flex items-center justify-center gap-3 py-4">
+          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+          <p className="text-muted-foreground">Analyzing your meal...</p>
         </div>
       )}
+    </div>
+  );
 
-      {/* No results message */}
-      {searchQuery.length >= 2 && !isSearching && suggestions.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No foods found. Try a different search term.
-        </p>
-      )}
-
-      {/* Or divider */}
-      <div className="flex items-center gap-4 my-6">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-sm text-muted-foreground">{t('or_snap_photo')}</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-
-      {/* Camera capture */}
+  // Photo capture screen
+  const renderPhotoStep = () => (
+    <div className="space-y-4">
       <input
         ref={fileInputRef}
         type="file"
@@ -298,7 +502,7 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       />
 
       {image ? (
-        <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted mb-6">
+        <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted">
           <img src={image} alt="Meal" className="w-full h-full object-cover" />
           {isAnalyzing && (
             <div className="absolute inset-0 bg-foreground/50 flex flex-col items-center justify-center gap-3">
@@ -330,12 +534,62 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
           </div>
         </button>
       )}
+    </div>
+  );
+
+  // Search step (manual food search)
+  const renderSearchStep = () => (
+    <>
+      <div className="relative mb-4">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder={t('search_food')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-4 py-3 bg-muted rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          autoFocus
+        />
+        {isSearching && (
+          <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-muted-foreground" />
+        )}
+      </div>
+
+      {suggestions.length > 0 && (
+        <div className="bg-card border border-border rounded-xl shadow-medium mb-4 max-h-64 overflow-auto">
+          {suggestions.map((food, index) => (
+            <button
+              key={`${food.name}-${index}`}
+              onClick={() => handleSelectFood(food)}
+              className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-center justify-between border-b border-border last:border-b-0"
+            >
+              <div>
+                <p className="font-medium text-foreground">{food.name}</p>
+                <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                  <span>{food.caloriesPer100g} cal/100g</span>
+                  <span>•</span>
+                  <span>P: {food.proteinPer100g}g</span>
+                  <span>C: {food.carbsPer100g}g</span>
+                  <span>F: {food.fatsPer100g}g</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {searchQuery.length >= 2 && !isSearching && suggestions.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          No foods found. Try a different search term.
+        </p>
+      )}
     </>
   );
 
+  // Quantity step for manual search
   const renderQuantityStep = () => (
     <div className="animate-slide-up">
-      {/* Selected food info */}
       {selectedFood && (
         <div className="bg-card border border-border rounded-2xl p-4 mb-6">
           <h3 className="font-bold text-lg text-foreground mb-2">{selectedFood.name}</h3>
@@ -352,7 +606,6 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         </div>
       )}
 
-      {/* Quantity input */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-foreground mb-2">
           <Scale className="w-4 h-4 inline mr-2" />
@@ -372,7 +625,6 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         </div>
       </div>
 
-      {/* Quick quantity buttons */}
       <div className="grid grid-cols-4 gap-2 mb-6">
         {[50, 100, 150, 200].map((q) => (
           <button
@@ -389,7 +641,6 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         ))}
       </div>
 
-      {/* Preview calculation */}
       {selectedFood && quantity && parseFloat(quantity) > 0 && (
         <div className="bg-accent/50 rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-2">Estimated for {quantity}g:</p>
@@ -424,6 +675,116 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
     </div>
   );
 
+  // Adjust step - for barcode/describe/photo with manual quantity adjustment
+  const renderAdjustStep = () => (
+    <div className="animate-slide-up space-y-6">
+      {image && (
+        <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted">
+          <img src={image} alt="Meal" className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      {analysisResult && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h3 className="font-bold text-foreground">{analysisResult.name}</h3>
+            {analysisResult.confidence && (
+              <span className={`text-xs px-2 py-0.5 rounded-full ml-auto ${
+                analysisResult.confidence === 'high' 
+                  ? 'bg-green-500/10 text-green-500' 
+                  : analysisResult.confidence === 'medium'
+                  ? 'bg-yellow-500/10 text-yellow-500'
+                  : 'bg-red-500/10 text-red-500'
+              }`}>
+                {getConfidenceLabel(analysisResult.confidence)}
+              </span>
+            )}
+          </div>
+
+          {/* Quantity Adjuster */}
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-muted-foreground mb-3">
+              Adjust serving size (grams)
+            </label>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => handleAdjustQuantity(Math.max(10, parseFloat(quantity) - 10))}
+                className="w-12 h-12 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+              <div className="relative w-32">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={quantity}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                    setQuantity(val);
+                    if (parseFloat(val) > 0) {
+                      handleAdjustQuantity(parseFloat(val));
+                    }
+                  }}
+                  className="w-full px-4 py-3 text-2xl font-bold bg-muted rounded-xl text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">g</span>
+              </div>
+              <button
+                onClick={() => handleAdjustQuantity(parseFloat(quantity) + 10)}
+                className="w-12 h-12 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Quick adjust buttons */}
+            <div className="flex justify-center gap-2 mt-3">
+              {[50, 100, 150, 200, 250].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleAdjustQuantity(q)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    parseInt(quantity) === q
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {q}g
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Macro display */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-accent rounded-xl text-center">
+              <p className="text-2xl font-bold text-calories">{analysisResult.calories}</p>
+              <p className="text-xs text-muted-foreground">{t('calories')}</p>
+            </div>
+            <div className="p-3 bg-protein/10 rounded-xl text-center">
+              <p className="text-2xl font-bold text-protein">{analysisResult.protein}g</p>
+              <p className="text-xs text-muted-foreground">{t('protein')}</p>
+            </div>
+            <div className="p-3 bg-carbs/10 rounded-xl text-center">
+              <p className="text-2xl font-bold text-carbs">{analysisResult.carbs}g</p>
+              <p className="text-xs text-muted-foreground">{t('carbs')}</p>
+            </div>
+            <div className="p-3 bg-fats/10 rounded-xl text-center">
+              <p className="text-2xl font-bold text-fats">{analysisResult.fats}g</p>
+              <p className="text-xs text-muted-foreground">{t('fats')}</p>
+            </div>
+          </div>
+
+          {analysisResult.notes && (
+            <p className="text-xs text-muted-foreground mt-4">{analysisResult.notes}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Confirm step
   const renderConfirmStep = () => (
     <div className="animate-scale-in">
       {image && (
@@ -432,7 +793,6 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
         </div>
       )}
 
-      {/* AI Analysis Preview */}
       {analysisResult && (
         <div className="bg-card rounded-2xl p-6 shadow-soft">
           <div className="flex items-center gap-2 mb-4">
@@ -495,15 +855,17 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <button 
-          onClick={step === 'search' ? onClose : handleBack} 
+          onClick={step === 'method' ? onClose : handleBack} 
           className="p-2 hover:bg-muted rounded-xl transition-colors"
         >
-          <X className="w-6 h-6 text-foreground" />
+          {step === 'method' ? (
+            <X className="w-6 h-6 text-foreground" />
+          ) : (
+            <ArrowLeft className="w-6 h-6 text-foreground" />
+          )}
         </button>
         <h2 className="font-bold text-lg text-foreground">
-          {step === 'search' && t('log_meal')}
-          {step === 'quantity' && 'Set Quantity'}
-          {step === 'confirm' && 'Confirm Meal'}
+          {getStepTitle()}
         </h2>
         <button 
           onClick={() => setShowFavorites(!showFavorites)}
@@ -515,7 +877,6 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
-        {/* Favorites section */}
         {showFavorites ? (
           <div className="space-y-3">
             <h3 className="font-semibold text-foreground mb-3">{t('favorite_meals')}</h3>
@@ -550,8 +911,13 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
           </div>
         ) : (
           <>
+            {step === 'method' && renderMethodSelection()}
             {step === 'search' && renderSearchStep()}
+            {step === 'barcode' && renderBarcodeStep()}
+            {step === 'describe' && renderDescribeStep()}
+            {step === 'photo' && renderPhotoStep()}
             {step === 'quantity' && renderQuantityStep()}
+            {step === 'adjust' && renderAdjustStep()}
             {step === 'confirm' && renderConfirmStep()}
           </>
         )}
@@ -559,10 +925,23 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
 
       {/* Footer */}
       <div className="p-6 border-t border-border">
-        {step === 'search' && !showFavorites && (
+        {step === 'method' && !showFavorites && (
           <p className="text-xs text-muted-foreground text-center">
-            Search for a food or take a photo to get started
+            Choose a tracking method or search for food
           </p>
+        )}
+
+        {step === 'describe' && !isAnalyzing && (
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full"
+            disabled={!mealDescription.trim()}
+            onClick={handleDescriptionSubmit}
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            Analyze My Meal
+          </Button>
         )}
         
         {step === 'quantity' && (
@@ -579,6 +958,19 @@ export const MealLogger = ({ onClose, onSubmit }: MealLoggerProps) => {
               <Sparkles className="w-5 h-5 mr-2" />
             )}
             Calculate Nutrition
+          </Button>
+        )}
+
+        {step === 'adjust' && (
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full"
+            disabled={!analysisResult}
+            onClick={handleSubmitMeal}
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            {t('log_this_meal')}
           </Button>
         )}
         
