@@ -90,7 +90,19 @@ serve(async (req) => {
 
     // Parse meals per day to determine meal structure
     const mealsPerDayRaw = userContext?.mealsPerDay || '3';
-    const mealsPerDayNum = parseInt(mealsPerDayRaw, 10) || 3;
+    // Handle values like "4+" or "5+" by extracting the number
+    const mealsPerDayNum = parseInt(mealsPerDayRaw.replace(/\D/g, ''), 10) || 3;
+    
+    console.log("User context received:", JSON.stringify({
+      mealsPerDay: userContext?.mealsPerDay,
+      targetCalories: userContext?.targetCalories,
+      proteinGrams: userContext?.proteinGrams,
+      carbsGrams: userContext?.carbsGrams,
+      fatsGrams: userContext?.fatsGrams,
+      dietType: userContext?.dietType,
+      primaryGoal: userContext?.primaryGoal
+    }));
+    console.log(`Parsed mealsPerDay: "${mealsPerDayRaw}" -> ${mealsPerDayNum}`);
     
     // Define meal structure based on number of meals
     let mealStructure = '';
