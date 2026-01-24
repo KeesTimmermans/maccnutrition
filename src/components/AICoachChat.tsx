@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, Watch } from "lucide-react";
+import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, Watch, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, buildTemporalCheckInContext, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
 import { getTodaysWearableData, getRecentWearableData, formatWearableDataForAI, type WearableSummary } from "@/lib/wearableService";
+import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation, type ChatMessage } from "@/lib/coachConversationService";
 import { useLanguage, Language } from "@/lib/i18n";
+import { toast } from "sonner";
 
 interface Message {
   role: "user" | "assistant";
@@ -32,7 +34,23 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
   const [wearableContext, setWearableContext] = useState<string>("");
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Save conversation whenever messages change (debounced)
+  const saveConversation = useCallback(async (msgs: Message[]) => {
+    if (msgs.length === 0) return;
+    try {
+      const chatMessages: ChatMessage[] = msgs.map(m => ({
+        role: m.role,
+        content: m.content,
+        timestamp: new Date().toISOString(),
+      }));
+      await saveWeeklyConversation(chatMessages);
+    } catch (error) {
+      console.error("Error saving conversation:", error);
+    }
+  }, []);
 
   useEffect(() => {
     initializeChat();
@@ -42,14 +60,22 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Save messages when they change (after initial load)
+  useEffect(() => {
+    if (hasLoadedHistory && messages.length > 0) {
+      saveConversation(messages);
+    }
+  }, [messages, hasLoadedHistory, saveConversation]);
+
   const initializeChat = async () => {
     try {
-      const [userBaseline, meals, recentCheckIns, wearableSummary, recentWearable] = await Promise.all([
+      const [userBaseline, meals, recentCheckIns, wearableSummary, recentWearable, savedConversation] = await Promise.all([
         getUserBaseline(),
         getTodaysMeals(),
         getRecentCheckIns(7),
         getTodaysWearableData(),
-        getRecentWearableData(7)
+        getRecentWearableData(7),
+        loadWeeklyConversation(),
       ]);
 
       setBaseline(userBaseline);
@@ -68,104 +94,117 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
       const analysis = analyzeCheckIns(recentCheckIns);
       setCheckInAnalysis(analysis);
 
-      // Generate personalized greeting based on data
-      let greeting = "";
-      
-      // If fresh check-in was just submitted, acknowledge it naturally like a human coach
-      if (freshCheckIn) {
-        const moodEmoji = EMOJI_SCALE[freshCheckIn.mood - 1] || '😐';
-        
-        // Build a natural, conversational response
-        const parts: string[] = [];
-        
-        // Opening based on how they're feeling
-        if (freshCheckIn.mood <= 2 && freshCheckIn.energy_level <= 2) {
-          parts.push("Hey, sounds like you're having a rough one.");
-        } else if (freshCheckIn.mood >= 4 && freshCheckIn.energy_level >= 4) {
-          parts.push(`${moodEmoji} Nice — you're feeling good today!`);
-        } else {
-          parts.push(`Got it, thanks for checking in ${moodEmoji}`);
-        }
-        
-        // Address the most pressing issue naturally
-        if (freshCheckIn.sleep_quality <= 2 && freshCheckIn.energy_level <= 2) {
-          parts.push("Sleep was rough and energy's tanked — that's a tough combo. Let's focus on foods that won't make it worse: complex carbs, some protein, and definitely stay hydrated.");
-        } else if (freshCheckIn.stress_level >= 4) {
-          parts.push("Stress is really up there. When you're this wound up, don't worry about optimizing — just make sure you're eating something decent and not skipping meals.");
-        } else if (freshCheckIn.energy_level <= 2) {
-          parts.push("Energy's dragging. Are you eating enough? Sometimes we just need more fuel. Try adding some protein and complex carbs to your next meal.");
-        } else if (freshCheckIn.sleep_quality <= 2) {
-          parts.push("Sleep wasn't great — that always makes everything harder. Consider magnesium-rich foods and maybe ease up on caffeine after noon.");
-        } else if (freshCheckIn.mood <= 2) {
-          parts.push("Mood's low, which happens. Food won't fix everything, but stable blood sugar helps — try to avoid big sugar spikes today.");
-        }
-        
-        // Add hunger context if relevant
-        if (freshCheckIn.hunger_level && freshCheckIn.hunger_level >= 4) {
-          parts.push("You mentioned feeling hungry — make sure you're getting enough protein and fiber to stay full.");
-        }
-        
-        parts.push("\nWhat's on your mind?");
-        greeting = parts.join(" ");
+      // If we have saved conversation, load it; otherwise generate greeting
+      if (savedConversation.length > 0 && !freshCheckIn) {
+        // Load existing conversation
+        const loadedMessages: Message[] = savedConversation.map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
+        setMessages(loadedMessages);
+        setHasLoadedHistory(true);
       } else {
-        const firstName = userBaseline?.name?.split(' ')[0] || '';
-        const greetParts: string[] = [];
+        // Generate fresh greeting
+        let greeting = "";
         
-        // Natural opening
-        greetParts.push(`Hey${firstName ? ` ${firstName}` : ''}!`);
-        
-        // Reference wearable data naturally if available
-        if (wearableSummary) {
-          if (wearableSummary.sleepHours && wearableSummary.sleepHours < 6) {
-            greetParts.push(`Your ${wearableSummary.provider} says only ${wearableSummary.sleepHours}h of sleep — that's rough.`);
-          } else if (wearableSummary.recoveryScore && wearableSummary.recoveryScore <= 2) {
-            greetParts.push(`Recovery looks low today according to your ${wearableSummary.provider} — might want to take it easy.`);
-          }
-        }
-        
-        // Reference today's check-in naturally
-        if (todayCheck) {
-          const temporal = buildTemporalCheckInContext(recentCheckIns);
+        // If fresh check-in was just submitted, acknowledge it naturally like a human coach
+        if (freshCheckIn) {
+          const moodEmoji = EMOJI_SCALE[freshCheckIn.mood - 1] || '😐';
           
-          // Reference day-over-day changes
-          if (temporal.changes.energyChange === 'worse') {
-            greetParts.push("Energy dipped from yesterday — what's going on?");
-          } else if (temporal.changes.energyChange === 'better') {
-            greetParts.push("Energy's bouncing back from yesterday — nice.");
-          } else if (todayCheck.energy_level <= 2) {
-            greetParts.push("Looks like you're running on empty today.");
-          } else if (todayCheck.energy_level >= 4) {
-            greetParts.push("Good energy today!");
+          // Build a natural, conversational response
+          const parts: string[] = [];
+          
+          // Opening based on how they're feeling
+          if (freshCheckIn.mood <= 2 && freshCheckIn.energy_level <= 2) {
+            parts.push("Hey, sounds like you're having a rough one.");
+          } else if (freshCheckIn.mood >= 4 && freshCheckIn.energy_level >= 4) {
+            parts.push(`${moodEmoji} Nice — you're feeling good today!`);
+          } else {
+            parts.push(`Got it, thanks for checking in ${moodEmoji}`);
           }
           
-          if (todayCheck.stress_level >= 4 && temporal.patterns.consistentlyHighStress) {
-            greetParts.push("Stress has been high for a few days — we should talk about that.");
+          // Address the most pressing issue naturally
+          if (freshCheckIn.sleep_quality <= 2 && freshCheckIn.energy_level <= 2) {
+            parts.push("Sleep was rough and energy's tanked — that's a tough combo. Let's focus on foods that won't make it worse: complex carbs, some protein, and definitely stay hydrated.");
+          } else if (freshCheckIn.stress_level >= 4) {
+            parts.push("Stress is really up there. When you're this wound up, don't worry about optimizing — just make sure you're eating something decent and not skipping meals.");
+          } else if (freshCheckIn.energy_level <= 2) {
+            parts.push("Energy's dragging. Are you eating enough? Sometimes we just need more fuel. Try adding some protein and complex carbs to your next meal.");
+          } else if (freshCheckIn.sleep_quality <= 2) {
+            parts.push("Sleep wasn't great — that always makes everything harder. Consider magnesium-rich foods and maybe ease up on caffeine after noon.");
+          } else if (freshCheckIn.mood <= 2) {
+            parts.push("Mood's low, which happens. Food won't fix everything, but stable blood sugar helps — try to avoid big sugar spikes today.");
           }
+          
+          // Add hunger context if relevant
+          if (freshCheckIn.hunger_level && freshCheckIn.hunger_level >= 4) {
+            parts.push("You mentioned feeling hungry — make sure you're getting enough protein and fiber to stay full.");
+          }
+          
+          parts.push("\nWhat's on your mind?");
+          greeting = parts.join(" ");
+        } else {
+          const firstName = userBaseline?.name?.split(' ')[0] || '';
+          const greetParts: string[] = [];
+          
+          // Natural opening
+          greetParts.push(`Hey${firstName ? ` ${firstName}` : ''}!`);
+          
+          // Reference wearable data naturally if available
+          if (wearableSummary) {
+            if (wearableSummary.sleepHours && wearableSummary.sleepHours < 6) {
+              greetParts.push(`Your ${wearableSummary.provider} says only ${wearableSummary.sleepHours}h of sleep — that's rough.`);
+            } else if (wearableSummary.recoveryScore && wearableSummary.recoveryScore <= 2) {
+              greetParts.push(`Recovery looks low today according to your ${wearableSummary.provider} — might want to take it easy.`);
+            }
+          }
+          
+          // Reference today's check-in naturally
+          if (todayCheck) {
+            const temporal = buildTemporalCheckInContext(recentCheckIns);
+            
+            // Reference day-over-day changes
+            if (temporal.changes.energyChange === 'worse') {
+              greetParts.push("Energy dipped from yesterday — what's going on?");
+            } else if (temporal.changes.energyChange === 'better') {
+              greetParts.push("Energy's bouncing back from yesterday — nice.");
+            } else if (todayCheck.energy_level <= 2) {
+              greetParts.push("Looks like you're running on empty today.");
+            } else if (todayCheck.energy_level >= 4) {
+              greetParts.push("Good energy today!");
+            }
+            
+            if (todayCheck.stress_level >= 4 && temporal.patterns.consistentlyHighStress) {
+              greetParts.push("Stress has been high for a few days — we should talk about that.");
+            }
+          }
+
+          // Meal progress mention
+          if (meals.length > 0) {
+            const totalCals = meals.reduce((s, m) => s + m.calories, 0);
+            const targetCals = userBaseline?.target_calories || 2000;
+            const percent = Math.round((totalCals / targetCals) * 100);
+            if (percent >= 80) {
+              greetParts.push(`You're at ${percent}% of calories — almost there.`);
+            } else if (percent < 50 && new Date().getHours() > 15) {
+              greetParts.push(`Only ${percent}% of calories so far and it's getting late — make sure to eat.`);
+            }
+          }
+
+          greetParts.push("\nWhat can I help with?");
+          greeting = greetParts.join(" ");
         }
 
-        // Meal progress mention
-        if (meals.length > 0) {
-          const totalCals = meals.reduce((s, m) => s + m.calories, 0);
-          const targetCals = userBaseline?.target_calories || 2000;
-          const percent = Math.round((totalCals / targetCals) * 100);
-          if (percent >= 80) {
-            greetParts.push(`You're at ${percent}% of calories — almost there.`);
-          } else if (percent < 50 && new Date().getHours() > 15) {
-            greetParts.push(`Only ${percent}% of calories so far and it's getting late — make sure to eat.`);
-          }
-        }
-
-        greetParts.push("\nWhat can I help with?");
-        greeting = greetParts.join(" ");
+        setMessages([{ role: "assistant", content: greeting }]);
+        setHasLoadedHistory(true);
       }
-
-      setMessages([{ role: "assistant", content: greeting }]);
     } catch (error) {
       console.error("Error initializing chat:", error);
       setMessages([{
         role: "assistant",
-        content: "Hi! I'm Coach Mac, your personal nutrition guide. Ask me anything about nutrition, meal suggestions, or how you're tracking today!"
+        content: "Hey! I'm Coach Mac. What can I help with today?"
       }]);
+      setHasLoadedHistory(true);
     } finally {
       setIsInitializing(false);
     }
@@ -281,9 +320,23 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
     }
   };
 
+  const handleClearConversation = async () => {
+    try {
+      await clearWeeklyConversation();
+      setMessages([{
+        role: "assistant",
+        content: "Hey! Fresh start. What can I help with?"
+      }]);
+      toast.success("Conversation cleared");
+    } catch (error) {
+      console.error("Error clearing conversation:", error);
+      toast.error("Failed to clear conversation");
+    }
+  };
+
   const getTrendIcon = (trend: "improving" | "declining" | "stable") => {
-    if (trend === "improving") return <TrendingUp className="w-3 h-3 text-green-500" />;
-    if (trend === "declining") return <TrendingDown className="w-3 h-3 text-red-500" />;
+    if (trend === "improving") return <TrendingUp className="w-3 h-3 text-emerald-500" />;
+    if (trend === "declining") return <TrendingDown className="w-3 h-3 text-destructive" />;
     return <Minus className="w-3 h-3 text-muted-foreground" />;
   };
 
@@ -311,9 +364,20 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
             <p className="text-xs text-muted-foreground">Your nutrition coach</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-muted rounded-xl transition-colors">
-          <X className="w-6 h-6 text-foreground" />
-        </button>
+        <div className="flex items-center gap-2">
+          {messages.length > 1 && (
+            <button 
+              onClick={handleClearConversation} 
+              className="p-2 hover:bg-muted rounded-xl transition-colors"
+              title="Start fresh conversation"
+            >
+              <RotateCcw className="w-5 h-5 text-muted-foreground" />
+            </button>
+          )}
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-xl transition-colors">
+            <X className="w-6 h-6 text-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Check-In Summary Card - only show when there's actual data */}
