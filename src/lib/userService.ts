@@ -61,6 +61,7 @@ export interface UserBaseline {
   energy_patterns: string | null;
   weekend_habits: string | null;
   protein_shakes_preference: string | null;
+  preferred_currency: string | null;
 }
 
 export const saveUserBaseline = async (
@@ -200,7 +201,7 @@ export const getAICoachingResponse = async (
   return data;
 };
 
-export const updateUserSettings = async (settings: { unit_system?: string }) => {
+export const updateUserSettings = async (settings: { unit_system?: string; preferred_currency?: string }) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 

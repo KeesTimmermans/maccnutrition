@@ -34,8 +34,17 @@ export const SettingsSheet = ({
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
   const [isMetric, setIsMetric] = useState(baseline?.unit_system === "metric");
+  const [currency, setCurrency] = useState(baseline?.preferred_currency || "USD");
   const [isUpdating, setIsUpdating] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const currencies = [
+    { code: "GBP", symbol: "£", name: "British Pound" },
+    { code: "USD", symbol: "$", name: "US Dollar" },
+    { code: "EUR", symbol: "€", name: "Euro" },
+    { code: "CAD", symbol: "C$", name: "Canadian Dollar" },
+    { code: "AUD", symbol: "A$", name: "Australian Dollar" },
+  ];
 
   const handleUnitChange = async (checked: boolean) => {
     setIsMetric(checked);
@@ -49,6 +58,24 @@ export const SettingsSheet = ({
       console.error("Error updating unit system:", error);
       toast.error(t('error'));
       setIsMetric(!checked);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCurrencyChange = async (newCurrency: string) => {
+    setCurrency(newCurrency);
+    setIsUpdating(true);
+    
+    try {
+      await updateUserSettings({ preferred_currency: newCurrency });
+      const currencyInfo = currencies.find(c => c.code === newCurrency);
+      toast.success(`${t('settings_updated')}: ${currencyInfo?.name || newCurrency}`);
+      onSettingsChange?.();
+    } catch (error) {
+      console.error("Error updating currency:", error);
+      toast.error(t('error'));
+      setCurrency(baseline?.preferred_currency || "USD");
     } finally {
       setIsUpdating(false);
     }
@@ -233,6 +260,28 @@ export const SettingsSheet = ({
                       onCheckedChange={handleUnitChange}
                       disabled={isUpdating}
                     />
+                  </div>
+                </div>
+
+                {/* Currency */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">{t('currency') || 'Currency'}</h3>
+                  <div className="p-4 bg-muted rounded-xl">
+                    <p className="text-xs text-muted-foreground mb-3">
+                      {t('currency_desc') || 'Used for grocery list cost estimates'}
+                    </p>
+                    <Select value={currency} onValueChange={handleCurrencyChange} disabled={isUpdating}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t('select_currency') || 'Select currency'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((curr) => (
+                          <SelectItem key={curr.code} value={curr.code}>
+                            {curr.symbol} {curr.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

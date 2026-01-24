@@ -36,6 +36,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'not_set': 'Not set',
     'language': 'Language',
     'select_language': 'Select Language',
+    'currency': 'Currency',
+    'currency_desc': 'Used for grocery list cost estimates',
+    'select_currency': 'Select currency',
     
     // Dashboard
     'dashboard': 'Dashboard',
@@ -445,6 +448,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'not_set': 'Non défini',
     'language': 'Langue',
     'select_language': 'Sélectionner la langue',
+    'currency': 'Devise',
+    'currency_desc': 'Utilisé pour les estimations de coût des courses',
+    'select_currency': 'Sélectionner la devise',
     
     // Dashboard
     'dashboard': 'Tableau de bord',
@@ -854,7 +860,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'not_set': 'No definido',
     'language': 'Idioma',
     'select_language': 'Seleccionar idioma',
-    
+    'currency': 'Moneda',
+    'currency_desc': 'Usado para estimaciones de costo de compras',
+    'select_currency': 'Seleccionar moneda',
     // Dashboard
     'dashboard': 'Panel',
     'good_morning': 'Buenos días',
@@ -1263,7 +1271,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'not_set': 'Non impostato',
     'language': 'Lingua',
     'select_language': 'Seleziona lingua',
-    
+    'currency': 'Valuta',
+    'currency_desc': 'Usato per stime dei costi della spesa',
+    'select_currency': 'Seleziona valuta',
     // Dashboard
     'dashboard': 'Dashboard',
     'good_morning': 'Buongiorno',
@@ -1672,7 +1682,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'not_set': 'Não definido',
     'language': 'Idioma',
     'select_language': 'Selecionar idioma',
-    
+    'currency': 'Moeda',
+    'currency_desc': 'Usado para estimativas de custo de compras',
+    'select_currency': 'Selecionar moeda',
     // Dashboard
     'dashboard': 'Painel',
     'good_morning': 'Bom dia',
