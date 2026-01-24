@@ -9,25 +9,25 @@ const corsHeaders = {
 
 // Input validation schema
 const userContextSchema = z.object({
-  primaryGoal: z.string().max(100).optional(),
-  targetCalories: z.number().min(500).max(10000).optional(),
-  proteinGrams: z.number().min(0).max(500).optional(),
-  carbsGrams: z.number().min(0).max(1000).optional(),
-  fatsGrams: z.number().min(0).max(500).optional(),
-  dietType: z.string().max(50).optional(),
-  allergies: z.array(z.string().max(100)).max(20).optional(),
-  foodDislikes: z.string().max(500).optional(),
-  mealsPerDay: z.string().max(10).optional(),
-  activityLevel: z.string().max(50).optional(),
-  proteinShakesPreference: z.string().max(50).optional(),
-  cookingSkill: z.string().max(50).optional(),
-  mealPrepTime: z.string().max(50).optional(),
+  primaryGoal: z.string().max(100).nullable().optional(),
+  targetCalories: z.number().min(500).max(10000).nullable().optional(),
+  proteinGrams: z.number().min(0).max(500).nullable().optional(),
+  carbsGrams: z.number().min(0).max(1000).nullable().optional(),
+  fatsGrams: z.number().min(0).max(500).nullable().optional(),
+  dietType: z.string().max(50).nullable().optional(),
+  allergies: z.array(z.string().max(100)).max(20).nullable().optional(),
+  foodDislikes: z.string().max(500).nullable().optional(),
+  mealsPerDay: z.string().max(10).nullable().optional(),
+  activityLevel: z.string().max(50).nullable().optional(),
+  proteinShakesPreference: z.string().max(50).nullable().optional(),
+  cookingSkill: z.string().max(50).nullable().optional(),
+  mealPrepTime: z.string().max(50).nullable().optional(),
   // Additional behavioral context
-  eatingOutFrequency: z.string().max(50).optional(),
-  snackingHabits: z.string().max(100).optional(),
-  weekendHabits: z.string().max(100).optional(),
-  energyPatterns: z.string().max(100).optional(),
-  conditions: z.array(z.string().max(100)).max(20).optional()
+  eatingOutFrequency: z.string().max(50).nullable().optional(),
+  snackingHabits: z.string().max(100).nullable().optional(),
+  weekendHabits: z.string().max(100).nullable().optional(),
+  energyPatterns: z.string().max(100).nullable().optional(),
+  conditions: z.array(z.string().max(100)).max(20).nullable().optional()
 }).passthrough().optional();
 
 const requestSchema = z.object({
