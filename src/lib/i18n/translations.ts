@@ -194,6 +194,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'failed_generate_grocery': 'Failed to generate grocery list.',
     'failed_swap_meal': 'Failed to swap meal. Please try again.',
     'failed_copy_clipboard': 'Failed to copy to clipboard',
+    'generating_plan_please_wait': 'Generating your personalized meal plan... This may take up to 30 seconds.',
+    'complete_questionnaire_first': 'Please complete the questionnaire first to set your nutrition targets.',
+    'please_login': 'Please log in to generate a meal plan.',
+    'network_error': 'Network error. Please check your connection and try again.',
+    'service_unavailable': 'Service temporarily unavailable. Please try again later.',
     
     // Auth
     'sign_in': 'Sign In',
@@ -598,6 +603,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'failed_generate_grocery': 'Échec de la génération de la liste de courses.',
     'failed_swap_meal': 'Échec du changement de repas. Réessayez.',
     'failed_copy_clipboard': 'Échec de la copie dans le presse-papiers',
+    'generating_plan_please_wait': 'Génération de votre plan personnalisé... Cela peut prendre jusqu\'à 30 secondes.',
+    'complete_questionnaire_first': 'Veuillez d\'abord compléter le questionnaire pour définir vos objectifs nutritionnels.',
+    'please_login': 'Veuillez vous connecter pour générer un plan de repas.',
+    'network_error': 'Erreur réseau. Vérifiez votre connexion et réessayez.',
+    'service_unavailable': 'Service temporairement indisponible. Réessayez plus tard.',
     
     // Auth
     'sign_in': 'Se connecter',
@@ -1002,6 +1012,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'failed_generate_grocery': 'Error al generar la lista de compras.',
     'failed_swap_meal': 'Error al cambiar la comida. Inténtalo de nuevo.',
     'failed_copy_clipboard': 'Error al copiar al portapapeles',
+    'generating_plan_please_wait': 'Generando tu plan personalizado... Esto puede tardar hasta 30 segundos.',
+    'complete_questionnaire_first': 'Por favor completa el cuestionario primero para establecer tus objetivos nutricionales.',
+    'please_login': 'Por favor inicia sesión para generar un plan de comidas.',
+    'network_error': 'Error de red. Verifica tu conexión e inténtalo de nuevo.',
+    'service_unavailable': 'Servicio temporalmente no disponible. Inténtalo más tarde.',
     
     // Auth
     'sign_in': 'Iniciar sesión',
@@ -1406,6 +1421,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'failed_generate_grocery': 'Errore nella generazione della lista della spesa.',
     'failed_swap_meal': 'Errore nel cambio pasto. Riprova.',
     'failed_copy_clipboard': 'Errore nella copia negli appunti',
+    'generating_plan_please_wait': 'Generazione del piano personalizzato... Potrebbe richiedere fino a 30 secondi.',
+    'complete_questionnaire_first': 'Completa prima il questionario per impostare i tuoi obiettivi nutrizionali.',
+    'please_login': 'Accedi per generare un piano pasti.',
+    'network_error': 'Errore di rete. Verifica la connessione e riprova.',
+    'service_unavailable': 'Servizio temporaneamente non disponibile. Riprova più tardi.',
     
     // Auth
     'sign_in': 'Accedi',
@@ -1810,6 +1830,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'failed_generate_grocery': 'Erro ao gerar a lista de compras.',
     'failed_swap_meal': 'Erro ao trocar refeição. Tente novamente.',
     'failed_copy_clipboard': 'Erro ao copiar para área de transferência',
+    'generating_plan_please_wait': 'Gerando seu plano personalizado... Isso pode levar até 30 segundos.',
+    'complete_questionnaire_first': 'Por favor complete o questionário primeiro para definir suas metas nutricionais.',
+    'please_login': 'Por favor faça login para gerar um plano de refeições.',
+    'network_error': 'Erro de rede. Verifique sua conexão e tente novamente.',
+    'service_unavailable': 'Serviço temporariamente indisponível. Tente novamente mais tarde.',
     
     // Auth
     'sign_in': 'Entrar',
