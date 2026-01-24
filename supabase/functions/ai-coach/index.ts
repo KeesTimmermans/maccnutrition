@@ -313,6 +313,49 @@ TODAY'S PROGRESS:
 
     // Build comprehensive user profile
     const userName = userContext?.userName?.split(' ')[0] || '';
+    
+    // Build strict dietary restrictions - CRITICAL for vegetarian/vegan enforcement
+    const dietTypeRaw = userContext?.dietType || 'balanced';
+    const allergiesRaw = userContext?.allergies || [];
+    const foodDislikesRaw = userContext?.foodDislikes || '';
+    
+    // Map diet types to strict exclusion rules
+    const dietTypeRules: Record<string, string> = {
+      'vegetarian': 'STRICT VEGETARIAN: The user does NOT eat any meat whatsoever. This means NO beef, NO pork, NO lamb, NO chicken, NO turkey, NO duck, NO poultry of any kind, NO fish, NO seafood. When suggesting meals, snacks, or recipes, ONLY use plant proteins (tofu, tempeh, legumes, beans, lentils, seitan), eggs, and dairy. NEVER suggest chicken, fish, or any meat.',
+      'vegan': 'STRICT VEGAN: The user eats NO animal products whatsoever. This means NO meat (including chicken, beef, pork, fish), NO eggs, NO dairy (milk, cheese, yogurt, butter), NO honey. When suggesting meals, use ONLY plant-based proteins and ingredients. NEVER suggest any animal-derived foods.',
+      'pescatarian': 'PESCATARIAN: The user does NOT eat meat but DOES eat fish. NO beef, NO pork, NO lamb, NO chicken, NO turkey, NO poultry. Fish, seafood, eggs, and dairy are allowed.',
+      'keto': 'KETOGENIC: Very low carb (under 30g net carbs per day), high fat, moderate protein. No grains, sugar, high-carb fruits, or starchy vegetables.',
+      'paleo': 'PALEO: No grains, legumes, dairy, refined sugar, or processed foods.',
+      'mediterranean': 'MEDITERRANEAN: Emphasize olive oil, fish, whole grains, legumes, vegetables. Limited red meat.',
+      'gluten_free': 'GLUTEN-FREE: NO wheat, barley, rye, or any gluten-containing ingredients.',
+      'dairy_free': 'DAIRY-FREE: NO milk, cheese, yogurt, butter, cream, or any dairy products.',
+      'low_carb': 'LOW CARB: Keep carbohydrates under 100g per day.',
+      'balanced': 'Balanced diet with a variety of whole foods.'
+    };
+    
+    const dietTypeGuideline = dietTypeRules[dietTypeRaw] || '';
+    
+    // Build allergy exclusions
+    let allergyGuideline = '';
+    if (allergiesRaw.length > 0) {
+      allergyGuideline = `CRITICAL ALLERGIES - NEVER SUGGEST FOODS CONTAINING: ${allergiesRaw.join(', ')}.`;
+    }
+    
+    // Build food dislikes
+    let dislikesGuideline = '';
+    if (foodDislikesRaw.trim()) {
+      dislikesGuideline = `FOOD DISLIKES - AVOID SUGGESTING: ${foodDislikesRaw}`;
+    }
+    
+    // Build dietary restrictions section (only if there are restrictions)
+    const dietaryRestrictionsSection = (dietTypeGuideline || allergyGuideline || dislikesGuideline) ? `
+⚠️ CRITICAL DIETARY RESTRICTIONS (MUST FOLLOW WHEN SUGGESTING MEALS OR SNACKS):
+${dietTypeGuideline}
+${allergyGuideline}
+${dislikesGuideline}
+
+IMPORTANT: When suggesting any food, meal, snack, or recipe, you MUST respect these restrictions. Double-check that your suggestions do not violate the user's dietary preferences.` : '';
+    
     const userProfile = `
 USER PROFILE:
 - Name: ${userName || 'not provided'}
@@ -343,6 +386,7 @@ PREFERENCES & RESTRICTIONS:
 - Protein Shakes: ${userContext?.proteinShakesPreference || 'not specified'}
 - Cooking Skill: ${userContext?.cookingSkill || 'not specified'}
 - Meal Prep Time: ${userContext?.mealPrepTime || 'not specified'}
+${dietaryRestrictionsSection}
 
 EATING BEHAVIOR & PATTERNS:
 - Eating Speed: ${userContext?.eatingSpeed || 'not specified'}
