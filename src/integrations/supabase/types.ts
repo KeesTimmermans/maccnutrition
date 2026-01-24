@@ -253,6 +253,7 @@ export type Database = {
           occupation: string | null
           past_diets: string[] | null
           potassium_mg: number | null
+          preferred_currency: string | null
           preferred_language: string | null
           primary_goal: string | null
           protein_grams: number | null
@@ -312,6 +313,7 @@ export type Database = {
           occupation?: string | null
           past_diets?: string[] | null
           potassium_mg?: number | null
+          preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
           protein_grams?: number | null
@@ -371,6 +373,7 @@ export type Database = {
           occupation?: string | null
           past_diets?: string[] | null
           potassium_mg?: number | null
+          preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
           protein_grams?: number | null

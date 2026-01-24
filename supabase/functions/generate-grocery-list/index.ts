@@ -23,7 +23,8 @@ const mealPlanSchema = z.object({
 }).passthrough();
 
 const requestSchema = z.object({
-  mealPlan: mealPlanSchema
+  mealPlan: mealPlanSchema,
+  currency: z.string().max(10).optional().default("USD")
 });
 
 serve(async (req) => {
@@ -73,27 +74,39 @@ serve(async (req) => {
       });
     }
 
-    const { mealPlan } = validationResult.data;
+    const { mealPlan, currency } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Currency symbol mapping
+    const currencySymbols: Record<string, string> = {
+      GBP: "£",
+      USD: "$",
+      EUR: "€",
+      CAD: "C$",
+      AUD: "A$",
+    };
+    const currencySymbol = currencySymbols[currency] || "$";
+
     // Extract all meals from the plan
     const allMeals = mealPlan.days.flatMap((day: any) => 
       day.meals.map((meal: any) => `${meal.name}: ${meal.description}`)
     ).join('\n');
 
-    const systemPrompt = `You are an expert grocery planner. Analyze the meal plan and generate a consolidated grocery list with quantities. Group items by category and combine duplicate ingredients with total quantities needed for the week.`;
+    const systemPrompt = `You are an expert grocery planner. Analyze the meal plan and generate a consolidated grocery list with quantities. Group items by category and combine duplicate ingredients with total quantities needed for the week. IMPORTANT: All cost estimates must be in ${currency} (${currencySymbol}).`;
 
     const userPrompt = `Generate a grocery list for this weekly meal plan:
 
 ${allMeals}
 
-Consolidate all ingredients, combine duplicates, and estimate quantities needed for one person for the whole week. Be practical with quantities (e.g., buy 1 dozen eggs instead of 7 eggs).`;
+Consolidate all ingredients, combine duplicates, and estimate quantities needed for one person for the whole week. Be practical with quantities (e.g., buy 1 dozen eggs instead of 7 eggs).
 
-    console.log("Generating grocery list");
+IMPORTANT: Provide the cost estimate in ${currency} using the ${currencySymbol} symbol.`;
+
+    console.log("Generating grocery list with currency:", currency);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
