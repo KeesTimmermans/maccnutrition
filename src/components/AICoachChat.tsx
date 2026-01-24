@@ -94,7 +94,7 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
       const analysis = analyzeCheckIns(recentCheckIns);
       setCheckInAnalysis(analysis);
 
-      // If we have saved conversation, load it; otherwise generate greeting
+      // If we have saved conversation AND no fresh check-in, load history
       if (savedConversation.length > 0 && !freshCheckIn) {
         // Load existing conversation
         const loadedMessages: Message[] = savedConversation.map(m => ({
@@ -103,97 +103,130 @@ export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
         }));
         setMessages(loadedMessages);
         setHasLoadedHistory(true);
-      } else {
-        // Generate fresh greeting
-        let greeting = "";
+      } else if (freshCheckIn) {
+        // Fresh check-in just submitted — call the AI coach for a comprehensive response
+        setHasLoadedHistory(true);
+        setIsInitializing(false);
         
-        // If fresh check-in was just submitted, acknowledge it naturally like a human coach
-        if (freshCheckIn) {
-          const moodEmoji = EMOJI_SCALE[freshCheckIn.mood - 1] || '😐';
+        // Show a loading message while we get the AI response
+        setMessages([{ role: "assistant", content: "Let me take a look at your check-in..." }]);
+        setIsLoading(true);
+        
+        try {
+          // Build check-in context
+          const checkInContext = formatCheckInsForAI(recentCheckIns, analysis);
           
-          // Build a natural, conversational response
-          const parts: string[] = [];
-          
-          // Opening based on how they're feeling
-          if (freshCheckIn.mood <= 2 && freshCheckIn.energy_level <= 2) {
-            parts.push("Hey, sounds like you're having a rough one.");
-          } else if (freshCheckIn.mood >= 4 && freshCheckIn.energy_level >= 4) {
-            parts.push(`${moodEmoji} Nice — you're feeling good today!`);
-          } else {
-            parts.push(`Got it, thanks for checking in ${moodEmoji}`);
-          }
-          
-          // Address the most pressing issue naturally
-          if (freshCheckIn.sleep_quality <= 2 && freshCheckIn.energy_level <= 2) {
-            parts.push("Sleep was rough and energy's tanked — that's a tough combo. Let's focus on foods that won't make it worse: complex carbs, some protein, and definitely stay hydrated.");
-          } else if (freshCheckIn.stress_level >= 4) {
-            parts.push("Stress is really up there. When you're this wound up, don't worry about optimizing — just make sure you're eating something decent and not skipping meals.");
-          } else if (freshCheckIn.energy_level <= 2) {
-            parts.push("Energy's dragging. Are you eating enough? Sometimes we just need more fuel. Try adding some protein and complex carbs to your next meal.");
-          } else if (freshCheckIn.sleep_quality <= 2) {
-            parts.push("Sleep wasn't great — that always makes everything harder. Consider magnesium-rich foods and maybe ease up on caffeine after noon.");
-          } else if (freshCheckIn.mood <= 2) {
-            parts.push("Mood's low, which happens. Food won't fix everything, but stable blood sugar helps — try to avoid big sugar spikes today.");
-          }
-          
-          // Add hunger context if relevant
-          if (freshCheckIn.hunger_level && freshCheckIn.hunger_level >= 4) {
-            parts.push("You mentioned feeling hungry — make sure you're getting enough protein and fiber to stay full.");
-          }
-          
-          parts.push("\nWhat's on your mind?");
-          greeting = parts.join(" ");
-        } else {
-          const firstName = userBaseline?.name?.split(' ')[0] || '';
-          const greetParts: string[] = [];
-          
-          // Natural opening
-          greetParts.push(`Hey${firstName ? ` ${firstName}` : ''}!`);
-          
-          // Reference wearable data naturally if available
-          if (wearableSummary) {
-            if (wearableSummary.sleepHours && wearableSummary.sleepHours < 6) {
-              greetParts.push(`Your ${wearableSummary.provider} says only ${wearableSummary.sleepHours}h of sleep — that's rough.`);
-            } else if (wearableSummary.recoveryScore && wearableSummary.recoveryScore <= 2) {
-              greetParts.push(`Recovery looks low today according to your ${wearableSummary.provider} — might want to take it easy.`);
-            }
-          }
-          
-          // Reference today's check-in naturally
-          if (todayCheck) {
-            const temporal = buildTemporalCheckInContext(recentCheckIns);
-            
-            // Reference day-over-day changes
-            if (temporal.changes.energyChange === 'worse') {
-              greetParts.push("Energy dipped from yesterday — what's going on?");
-            } else if (temporal.changes.energyChange === 'better') {
-              greetParts.push("Energy's bouncing back from yesterday — nice.");
-            } else if (todayCheck.energy_level <= 2) {
-              greetParts.push("Looks like you're running on empty today.");
-            } else if (todayCheck.energy_level >= 4) {
-              greetParts.push("Good energy today!");
-            }
-            
-            if (todayCheck.stress_level >= 4 && temporal.patterns.consistentlyHighStress) {
-              greetParts.push("Stress has been high for a few days — we should talk about that.");
-            }
-          }
+          const { data, error } = await supabase.functions.invoke("ai-coach", {
+            body: {
+              message: `I just completed my daily check-in. Here's how I'm feeling today:
+- Mood: ${freshCheckIn.mood}/5
+- Energy: ${freshCheckIn.energy_level}/5
+- Sleep quality: ${freshCheckIn.sleep_quality}/5
+- Stress: ${freshCheckIn.stress_level}/5
+${freshCheckIn.sleep_hours ? `- Sleep hours: ${freshCheckIn.sleep_hours}` : ''}
+${freshCheckIn.notes ? `- Notes: ${freshCheckIn.notes}` : ''}
 
-          // Meal progress mention
-          if (meals.length > 0) {
-            const totalCals = meals.reduce((s, m) => s + m.calories, 0);
-            const targetCals = userBaseline?.target_calories || 2000;
-            const percent = Math.round((totalCals / targetCals) * 100);
-            if (percent >= 80) {
-              greetParts.push(`You're at ${percent}% of calories — almost there.`);
-            } else if (percent < 50 && new Date().getHours() > 15) {
-              greetParts.push(`Only ${percent}% of calories so far and it's getting late — make sure to eat.`);
+Please give me a comprehensive game plan for my day based on how I'm feeling.`,
+              userContext: userBaseline ? {
+                userName: userBaseline.name,
+                primaryGoal: userBaseline.primary_goal,
+                secondaryGoals: userBaseline.secondary_goals,
+                sex: userBaseline.sex,
+                age: userBaseline.age,
+                targetCalories: userBaseline.target_calories,
+                proteinGrams: userBaseline.protein_grams,
+                carbsGrams: userBaseline.carbs_grams,
+                fatsGrams: userBaseline.fats_grams,
+                waterLiters: userBaseline.water_liters,
+                activityLevel: userBaseline.activity_level,
+                trainingDays: userBaseline.training_days,
+                trainingIntensity: userBaseline.training_intensity,
+                sleepHours: userBaseline.sleep_hours,
+                stressLevel: userBaseline.stress_level,
+                occupation: userBaseline.occupation,
+                eatingSpeed: userBaseline.eating_speed,
+                hungerPatterns: userBaseline.hunger_patterns,
+                cravingsTriggers: userBaseline.cravings_triggers,
+                emotionalEating: userBaseline.emotional_eating,
+                snackingHabits: userBaseline.snacking_habits,
+                hydrationHabits: userBaseline.hydration_habits,
+                energyPatterns: userBaseline.energy_patterns,
+                biggestChallenge: userBaseline.biggest_challenge,
+                pastDiets: userBaseline.past_diets,
+                weekendHabits: userBaseline.weekend_habits,
+                eatingOutFrequency: userBaseline.eating_out_frequency,
+                motivationStyle: userBaseline.motivation_style,
+                accountabilityPreference: userBaseline.accountability_preference,
+                dietType: userBaseline.diet_type,
+                foodDislikes: userBaseline.food_dislikes,
+                allergies: userBaseline.allergies,
+                conditions: userBaseline.conditions,
+                coachingTone: userBaseline.coaching_tone,
+                focusPoints: userBaseline.focus_points,
+                mealsPerDay: userBaseline.meals_per_day,
+                mealPrepTime: userBaseline.meal_prep_time,
+                cookingSkill: userBaseline.cooking_skill,
+                proteinShakesPreference: userBaseline.protein_shakes_preference,
+                currentPhase: userBaseline.current_phase,
+                cycleRegularity: userBaseline.cycle_regularity,
+                cycleSymptoms: userBaseline.cycle_symptoms,
+                checkInContext: checkInContext,
+                wearableContext: wearableCtx,
+                preferredLanguage: language as Language,
+              } : {},
+              todaysMeals: meals.map(m => ({
+                name: m.name,
+                calories: m.calories,
+                protein: m.protein,
+                carbs: m.carbs,
+                fats: m.fats
+              }))
             }
-          }
+          });
 
-          greetParts.push("\nWhat can I help with?");
-          greeting = greetParts.join(" ");
+          if (error) throw error;
+          
+          setMessages([{ role: "assistant", content: data.response }]);
+        } catch (error) {
+          console.error("Error getting check-in response:", error);
+          setMessages([{
+            role: "assistant",
+            content: "Hey! I saw your check-in. How are you feeling and what can I help with today?"
+          }]);
+        } finally {
+          setIsLoading(false);
         }
+        return; // Exit early since we handled everything
+      } else {
+        // No saved conversation and no fresh check-in — generate simple greeting
+        const firstName = userBaseline?.name?.split(' ')[0] || '';
+        const greetParts: string[] = [];
+        
+        greetParts.push(`Hey${firstName ? ` ${firstName}` : ''}!`);
+        
+        // Reference wearable data naturally if available
+        if (wearableSummary) {
+          if (wearableSummary.sleepHours && wearableSummary.sleepHours < 6) {
+            greetParts.push(`Your ${wearableSummary.provider} says only ${wearableSummary.sleepHours}h of sleep — that's rough.`);
+          } else if (wearableSummary.recoveryScore && wearableSummary.recoveryScore <= 2) {
+            greetParts.push(`Recovery looks low today according to your ${wearableSummary.provider} — might want to take it easy.`);
+          }
+        }
+        
+        // Meal progress mention
+        if (meals.length > 0) {
+          const totalCals = meals.reduce((s, m) => s + m.calories, 0);
+          const targetCals = userBaseline?.target_calories || 2000;
+          const percent = Math.round((totalCals / targetCals) * 100);
+          if (percent >= 80) {
+            greetParts.push(`You're at ${percent}% of calories — almost there.`);
+          } else if (percent < 50 && new Date().getHours() > 15) {
+            greetParts.push(`Only ${percent}% of calories so far and it's getting late — make sure to eat.`);
+          }
+        }
+
+        greetParts.push("\nWhat can I help with?");
+        const greeting = greetParts.join(" ");
 
         setMessages([{ role: "assistant", content: greeting }]);
         setHasLoadedHistory(true);
