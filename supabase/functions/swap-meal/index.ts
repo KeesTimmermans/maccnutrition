@@ -109,6 +109,9 @@ serve(async (req) => {
     
     const dietTypeGuideline = dietTypeRules[dietTypeRaw] || dietTypeRules['balanced'];
     
+    // Check if we need multiple options or a single custom swap
+    const generateMultipleOptions = !userPreference || userPreference.trim() === '' || userPreference === 'generate_options';
+
     const systemPrompt = `You are an expert meal planner for CJTNutrition. The user wants to swap a meal in their plan.
 
 Current Meal to Replace:
@@ -125,16 +128,89 @@ ${allergiesRaw.length > 0 ? `\nCRITICAL ALLERGIES - NEVER INCLUDE: ${allergiesRa
 ${foodDislikesRaw ? `\nFOOD DISLIKES - AVOID: ${foodDislikesRaw}` : ''}
 
 Guidelines:
-- Provide an alternative meal that matches similar macro targets
+- ${generateMultipleOptions ? 'Provide 3 DIVERSE alternative meals' : 'Provide an alternative meal'} that match similar macro targets
 - STRICTLY respect the dietary type - NEVER suggest foods that violate it
 - NEVER include any allergens listed above
 - Avoid any foods the user dislikes
-- Consider the user's preference for the swap
-- Keep the meal practical and easy to prepare`;
+- ${generateMultipleOptions ? 'Make each option distinctly different (different cuisines, cooking methods, or main ingredients)' : 'Consider the user\'s preference for the swap'}
+- Keep meals practical and easy to prepare
+- Include detailed ingredients with quantities`;
 
-    const userPrompt = `The user says: "${userPreference}". Please suggest an alternative ${currentMeal.type} meal that addresses their preference while maintaining similar nutritional values.`;
+    const userPrompt = generateMultipleOptions
+      ? `Please suggest 3 diverse alternative ${currentMeal.type} meals with similar nutritional values. Make them varied - different cuisines or cooking styles.`
+      : `The user says: "${userPreference}". Please suggest an alternative ${currentMeal.type} meal that addresses their preference while maintaining similar nutritional values.`;
 
-    console.log("Swapping meal:", currentMeal.name);
+    console.log("Swapping meal:", currentMeal.name, "Multiple options:", generateMultipleOptions);
+
+    const mealSchema = {
+      type: "object",
+      properties: {
+        type: { type: "string", description: "Meal type (Breakfast, Lunch, Dinner, Snack)" },
+        name: { type: "string", description: "Meal name" },
+        description: { type: "string", description: "Brief description of the meal" },
+        calories: { type: "number" },
+        protein: { type: "number" },
+        carbs: { type: "number" },
+        fats: { type: "number" },
+        ingredients: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              quantity: { type: "number" },
+              unit: { type: "string", description: "pcs, g, or ml" },
+              gramsPerUnit: { type: "number" },
+              caloriesPer100g: { type: "number" },
+              proteinPer100g: { type: "number" },
+              carbsPer100g: { type: "number" },
+              fatsPer100g: { type: "number" }
+            },
+            required: ["name", "quantity", "unit", "gramsPerUnit", "caloriesPer100g", "proteinPer100g", "carbsPer100g", "fatsPer100g"]
+          }
+        }
+      },
+      required: ["type", "name", "description", "calories", "protein", "carbs", "fats", "ingredients"]
+    };
+
+    const tools = generateMultipleOptions ? [
+      {
+        type: "function",
+        function: {
+          name: "suggest_meal_options",
+          description: "Suggest 3 diverse alternative meals to replace the current one",
+          parameters: {
+            type: "object",
+            properties: {
+              options: {
+                type: "array",
+                items: mealSchema,
+                minItems: 3,
+                maxItems: 3,
+                description: "Array of 3 diverse meal alternatives"
+              }
+            },
+            required: ["options"]
+          }
+        }
+      }
+    ] : [
+      {
+        type: "function",
+        function: {
+          name: "suggest_meal_swap",
+          description: "Suggest an alternative meal to replace the current one",
+          parameters: {
+            type: "object",
+            properties: {
+              newMeal: mealSchema,
+              reason: { type: "string", description: "Brief explanation of why this swap works for the user" }
+            },
+            required: ["newMeal", "reason"]
+          }
+        }
+      }
+    ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -148,36 +224,8 @@ Guidelines:
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "suggest_meal_swap",
-              description: "Suggest an alternative meal to replace the current one",
-              parameters: {
-                type: "object",
-                properties: {
-                  newMeal: {
-                    type: "object",
-                    properties: {
-                      type: { type: "string", description: "Meal type (Breakfast, Lunch, Dinner, Snack)" },
-                      name: { type: "string", description: "New meal name" },
-                      description: { type: "string", description: "Brief description of ingredients" },
-                      calories: { type: "number" },
-                      protein: { type: "number" },
-                      carbs: { type: "number" },
-                      fats: { type: "number" }
-                    },
-                    required: ["type", "name", "description", "calories", "protein", "carbs", "fats"]
-                  },
-                  reason: { type: "string", description: "Brief explanation of why this swap works for the user" }
-                },
-                required: ["newMeal", "reason"]
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "suggest_meal_swap" } }
+        tools,
+        tool_choice: { type: "function", function: { name: generateMultipleOptions ? "suggest_meal_options" : "suggest_meal_swap" } }
       }),
     });
 
@@ -207,10 +255,18 @@ Guidelines:
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall && toolCall.function?.arguments) {
       const swapResult = JSON.parse(toolCall.function.arguments);
-      console.log("Meal swap generated successfully");
-      return new Response(JSON.stringify(swapResult), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.log("Meal swap generated successfully, multiple options:", generateMultipleOptions);
+      
+      // Return consistent format
+      if (generateMultipleOptions) {
+        return new Response(JSON.stringify({ options: swapResult.options }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } else {
+        return new Response(JSON.stringify(swapResult), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     throw new Error("Failed to generate meal swap");

@@ -9,16 +9,9 @@ import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { saveMeal } from "@/lib/mealService";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { jsPDF } from "jspdf";
 import { MealPlanCard, MealWithIngredients, MealIngredient } from "@/components/MealPlanCard";
+import { MealSwapDialog } from "@/components/MealSwapDialog";
 
 type Meal = MealWithIngredients;
 
@@ -81,7 +74,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const [showGroceryList, setShowGroceryList] = useState(false);
   const [swapDialogOpen, setSwapDialogOpen] = useState(false);
   const [mealToSwap, setMealToSwap] = useState<{ meal: Meal; dayIndex: number; mealIndex: number } | null>(null);
-  const [swapPreference, setSwapPreference] = useState("");
+  
   const [isSwapping, setIsSwapping] = useState(false);
   const [mealPlanId, setMealPlanId] = useState<string | null>(null);
 
@@ -300,27 +293,58 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     saveMealPlan(updatedPlan);
   };
 
-  const handleSwapMeal = async () => {
-    if (!mealToSwap || !swapPreference.trim()) return;
-    
-    setIsSwapping(true);
-    try {
-      const userContext = {
-        dietType: baseline?.diet_type,
-        allergies: baseline?.allergies,
-        foodDislikes: baseline?.food_dislikes,
-        proteinShakesPreference: baseline?.protein_shakes_preference,
-        cookingSkill: baseline?.cooking_skill,
-        mealPrepTime: baseline?.meal_prep_time,
-        targetCalories: baseline?.target_calories,
-        proteinGrams: baseline?.protein_grams,
-      };
+  const getUserContext = () => ({
+    dietType: baseline?.diet_type,
+    allergies: baseline?.allergies,
+    foodDislikes: baseline?.food_dislikes,
+    proteinShakesPreference: baseline?.protein_shakes_preference,
+    cookingSkill: baseline?.cooking_skill,
+    mealPrepTime: baseline?.meal_prep_time,
+    targetCalories: baseline?.target_calories,
+    proteinGrams: baseline?.protein_grams,
+  });
 
+  const handleGenerateSwapOptions = async (): Promise<MealWithIngredients[]> => {
+    if (!mealToSwap) return [];
+    
+    try {
       const { data, error } = await supabase.functions.invoke('swap-meal', {
         body: { 
           currentMeal: mealToSwap.meal,
-          userPreference: swapPreference,
-          userContext 
+          userPreference: 'generate_options',
+          userContext: getUserContext()
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return [];
+      }
+
+      if (data.options && Array.isArray(data.options)) {
+        return data.options;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error generating swap options:', error);
+      toast.error(t('failed_generate_options') || 'Failed to generate options');
+      return [];
+    }
+  };
+
+  const handleSwapWithCustom = async (preference: string) => {
+    if (!mealToSwap || !preference.trim()) return;
+    
+    setIsSwapping(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('swap-meal', {
+        body: { 
+          currentMeal: mealToSwap.meal,
+          userPreference: preference,
+          userContext: getUserContext()
         }
       });
 
@@ -332,33 +356,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       }
 
       if (data.newMeal) {
-        // Update the meal plan with the new meal
-        const updatedPlan = (() => {
-          if (!mealPlan) return null;
-          const newDays = [...mealPlan.days];
-          newDays[mealToSwap.dayIndex].meals[mealToSwap.mealIndex] = data.newMeal;
-          
-          // Recalculate day totals
-          const dayMeals = newDays[mealToSwap.dayIndex].meals;
-          newDays[mealToSwap.dayIndex].totals = {
-            calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
-            protein: dayMeals.reduce((sum, m) => sum + m.protein, 0),
-            carbs: dayMeals.reduce((sum, m) => sum + m.carbs, 0),
-            fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
-          };
-          
-          return { ...mealPlan, days: newDays };
-        })();
-
-        if (updatedPlan) {
-          setMealPlan(updatedPlan);
-          await saveMealPlan(updatedPlan);
-        }
-        
-        toast.success(t('swapped_to').replace('{meal}', data.newMeal.name));
-        setSwapDialogOpen(false);
-        setSwapPreference("");
-        setMealToSwap(null);
+        applyMealSwap(data.newMeal);
       }
     } catch (error) {
       console.error('Error swapping meal:', error);
@@ -366,6 +364,34 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     } finally {
       setIsSwapping(false);
     }
+  };
+
+  const handleSelectSwapOption = (option: MealWithIngredients) => {
+    applyMealSwap(option);
+  };
+
+  const applyMealSwap = async (newMeal: MealWithIngredients) => {
+    if (!mealToSwap || !mealPlan) return;
+
+    const newDays = [...mealPlan.days];
+    newDays[mealToSwap.dayIndex].meals[mealToSwap.mealIndex] = newMeal;
+    
+    // Recalculate day totals
+    const dayMeals = newDays[mealToSwap.dayIndex].meals;
+    newDays[mealToSwap.dayIndex].totals = {
+      calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
+      protein: dayMeals.reduce((sum, m) => sum + m.protein, 0),
+      carbs: dayMeals.reduce((sum, m) => sum + m.carbs, 0),
+      fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
+    };
+    
+    const updatedPlan = { ...mealPlan, days: newDays };
+    setMealPlan(updatedPlan);
+    await saveMealPlan(updatedPlan);
+    
+    toast.success(t('swapped_to').replace('{meal}', newMeal.name));
+    setSwapDialogOpen(false);
+    setMealToSwap(null);
   };
 
   const exportToPDF = () => {
@@ -714,46 +740,16 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       </CardContent>
 
       {/* Swap Meal Dialog */}
-      <Dialog open={swapDialogOpen} onOpenChange={setSwapDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('swap_meal_title')}</DialogTitle>
-            <DialogDescription>
-              {mealToSwap && t('swap_meal_desc').replace('{meal}', mealToSwap.meal.name)}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <Input
-              placeholder={t('preference_placeholder')}
-              value={swapPreference}
-              onChange={(e) => setSwapPreference(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && swapPreference.trim()) {
-                  handleSwapMeal();
-                }
-              }}
-            />
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setSwapDialogOpen(false)}>
-                {t('cancel')}
-              </Button>
-              <Button 
-                onClick={handleSwapMeal} 
-                disabled={isSwapping || !swapPreference.trim()}
-              >
-                {isSwapping ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    {t('swapping')}
-                  </>
-                ) : (
-                  t('swap')
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <MealSwapDialog
+        open={swapDialogOpen}
+        onOpenChange={setSwapDialogOpen}
+        meal={mealToSwap?.meal || null}
+        onSwapWithCustom={handleSwapWithCustom}
+        onSelectOption={handleSelectSwapOption}
+        onGenerateOptions={handleGenerateSwapOptions}
+        isLoading={isSwapping}
+        getMealTypeColor={getMealTypeColor}
+      />
     </Card>
   );
 };
