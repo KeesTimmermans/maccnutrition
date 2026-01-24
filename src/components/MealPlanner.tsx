@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Utensils, Lightbulb, ShoppingCart, Heart, Repeat, Download, Share2 } from "lucide-react";
+import { Calendar, ChefHat, RefreshCw, ChevronLeft, ChevronRight, Lightbulb, ShoppingCart, Download, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { UserBaseline } from "@/lib/userService";
 import { GroceryList } from "@/components/GroceryList";
 import { saveFavoriteMeal } from "@/lib/favoriteMealService";
+import { saveMeal } from "@/lib/mealService";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import {
@@ -18,16 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { jsPDF } from "jspdf";
+import { MealPlanCard, MealWithIngredients, MealIngredient } from "@/components/MealPlanCard";
 
-interface Meal {
-  type: string;
-  name: string;
-  description: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
-}
+type Meal = MealWithIngredients;
 
 interface DayPlan {
   day: string;
@@ -282,6 +275,29 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       case 'snack': return 'bg-purple-100 text-purple-800';
       default: return 'bg-muted text-muted-foreground';
     }
+  };
+
+  // Handle ingredient quantity updates with real-time macro recalculation
+  const handleMealUpdate = (dayIndex: number, mealIndex: number, updatedMeal: Meal) => {
+    if (!mealPlan) return;
+
+    const newDays = [...mealPlan.days];
+    newDays[dayIndex].meals[mealIndex] = updatedMeal;
+
+    // Recalculate day totals
+    const dayMeals = newDays[dayIndex].meals;
+    newDays[dayIndex].totals = {
+      calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
+      protein: dayMeals.reduce((sum, m) => sum + m.protein, 0),
+      carbs: dayMeals.reduce((sum, m) => sum + m.carbs, 0),
+      fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
+    };
+
+    const updatedPlan = { ...mealPlan, days: newDays };
+    setMealPlan(updatedPlan);
+    
+    // Debounce save to avoid too many writes
+    saveMealPlan(updatedPlan);
   };
 
   const handleSwapMeal = async () => {
@@ -613,61 +629,46 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
 
             {/* Meals */}
             <div className="space-y-3 mb-4">
-              {currentDay.meals.map((meal, index) => (
-                <div key={index} className="bg-background border border-border rounded-xl p-3">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <Badge className={`${getMealTypeColor(meal.type)} mb-1`}>
-                        {meal.type}
-                      </Badge>
-                      <h4 className="font-semibold text-foreground">{meal.name}</h4>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                          setMealToSwap({ meal, dayIndex: selectedDay, mealIndex: index });
-                          setSwapDialogOpen(true);
-                        }}
-                        title={t('swap_meal')}
-                      >
-                        <Repeat className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={async () => {
-                          try {
-                            await saveFavoriteMeal({
-                              name: meal.name,
-                              calories: meal.calories,
-                              protein: meal.protein,
-                              carbs: meal.carbs,
-                              fats: meal.fats,
-                              ingredients: meal.description,
-                            });
-                            toast.success(t('saved_to_favorites'));
-                          } catch (error) {
-                            toast.error("Failed to save favorite");
-                          }
-                        }}
-                        title={t('save_to_favorites')}
-                      >
-                        <Heart className="w-4 h-4 text-muted-foreground hover:text-primary" />
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">{meal.description}</p>
-                  <div className="flex gap-3 text-xs">
-                    <span className="text-primary font-medium">{meal.calories} {t('cal')}</span>
-                    <span className="text-muted-foreground">P: {meal.protein}g</span>
-                    <span className="text-muted-foreground">C: {meal.carbs}g</span>
-                    <span className="text-muted-foreground">F: {meal.fats}g</span>
-                  </div>
-                </div>
+              {currentDay.meals.map((meal, mealIndex) => (
+                <MealPlanCard
+                  key={mealIndex}
+                  meal={meal}
+                  onUpdate={(updatedMeal) => handleMealUpdate(selectedDay, mealIndex, updatedMeal)}
+                  onSaveToFavorites={async () => {
+                    try {
+                      await saveFavoriteMeal({
+                        name: meal.name,
+                        calories: meal.calories,
+                        protein: meal.protein,
+                        carbs: meal.carbs,
+                        fats: meal.fats,
+                        ingredients: meal.description,
+                      });
+                      toast.success(t('saved_to_favorites'));
+                    } catch (error) {
+                      toast.error("Failed to save favorite");
+                    }
+                  }}
+                  onSwap={() => {
+                    setMealToSwap({ meal, dayIndex: selectedDay, mealIndex });
+                    setSwapDialogOpen(true);
+                  }}
+                  onLogMeal={async () => {
+                    try {
+                      await saveMeal({
+                        name: meal.name,
+                        calories: meal.calories,
+                        protein: meal.protein,
+                        carbs: meal.carbs,
+                        fats: meal.fats,
+                      });
+                      toast.success(t('meal_logged') || `${meal.name} logged successfully!`);
+                    } catch (error) {
+                      toast.error("Failed to log meal");
+                    }
+                  }}
+                  getMealTypeColor={getMealTypeColor}
+                />
               ))}
             </div>
           </>

@@ -259,7 +259,18 @@ IMPORTANT: Each day MUST have exactly these meals: ${allowedMealTypes.join(', ')
 
 ${proteinShakesPref === 'never' ? 'REMINDER: NO protein shakes or smoothies - whole foods only!' : ''}
 
-Each meal should include name, estimated calories, protein, carbs, and fats. Make it varied and delicious while meeting the nutritional targets.
+For EACH meal, include:
+- Name and description
+- Total calories, protein, carbs, and fats
+- A detailed "ingredients" array with each ingredient's:
+  - name (e.g., "Chicken Breast", "Large Eggs", "Banana")
+  - quantity (e.g., 2 for eggs, 150 for grams)
+  - unit: Use "pcs" for countable items (eggs, bananas, apples), "g" for weight-based items, "ml" for liquids
+  - gramsPerUnit: Weight in grams per single unit (1 for "g" unit, ~50 for eggs, ~120 for banana, etc.)
+  - Nutrition per 100g (caloriesPer100g, proteinPer100g, carbsPer100g, fatsPer100g)
+
+Example ingredient for eggs: { "name": "Large Eggs", "quantity": 2, "unit": "pcs", "gramsPerUnit": 50, "caloriesPer100g": 155, "proteinPer100g": 13, "carbsPer100g": 1, "fatsPer100g": 11 }
+Example for chicken: { "name": "Chicken Breast", "quantity": 150, "unit": "g", "gramsPerUnit": 1, "caloriesPer100g": 165, "proteinPer100g": 31, "carbsPer100g": 0, "fatsPer100g": 3.6 }
 
 Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
 
@@ -282,7 +293,7 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
             type: "function",
             function: {
               name: "create_meal_plan",
-              description: "Create a structured 7-day meal plan",
+              description: "Create a structured 7-day meal plan with detailed ingredient breakdowns",
               parameters: {
                 type: "object",
                 properties: {
@@ -303,9 +314,27 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
                               calories: { type: "number" },
                               protein: { type: "number" },
                               carbs: { type: "number" },
-                              fats: { type: "number" }
+                              fats: { type: "number" },
+                              ingredients: {
+                                type: "array",
+                                description: "Detailed ingredient breakdown with quantities and nutrition per 100g",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    name: { type: "string", description: "Ingredient name (e.g., 'Chicken Breast', 'Eggs', 'Banana')" },
+                                    quantity: { type: "number", description: "Amount (e.g., 2 for eggs, 150 for grams)" },
+                                    unit: { type: "string", description: "Unit type: 'pcs' for countable items (eggs, bananas), 'g' for grams, 'ml' for liquids" },
+                                    gramsPerUnit: { type: "number", description: "Grams per single unit. For 'g' unit use 1, for eggs ~50, for banana ~120, etc." },
+                                    caloriesPer100g: { type: "number", description: "Calories per 100g of this ingredient" },
+                                    proteinPer100g: { type: "number", description: "Protein grams per 100g" },
+                                    carbsPer100g: { type: "number", description: "Carbs grams per 100g" },
+                                    fatsPer100g: { type: "number", description: "Fats grams per 100g" }
+                                  },
+                                  required: ["name", "quantity", "unit", "gramsPerUnit", "caloriesPer100g", "proteinPer100g", "carbsPer100g", "fatsPer100g"]
+                                }
+                              }
                             },
-                            required: ["type", "name", "description", "calories", "protein", "carbs", "fats"]
+                            required: ["type", "name", "description", "calories", "protein", "carbs", "fats", "ingredients"]
                           }
                         },
                         totals: {
