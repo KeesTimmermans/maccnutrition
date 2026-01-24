@@ -18,19 +18,19 @@ const currentMealSchema = z.object({
 }).passthrough();
 
 const userContextSchema = z.object({
-  dietType: z.string().max(50).optional(),
-  allergies: z.array(z.string().max(100)).max(20).optional(),
-  foodDislikes: z.string().max(500).optional(),
-  proteinShakesPreference: z.string().max(50).optional(),
-  cookingSkill: z.string().max(50).optional(),
-  mealPrepTime: z.string().max(50).optional(),
-  targetCalories: z.number().min(0).max(10000).optional(),
-  proteinGrams: z.number().min(0).max(500).optional()
+  dietType: z.string().max(50).nullable().optional(),
+  allergies: z.array(z.string().max(100)).max(20).nullable().optional(),
+  foodDislikes: z.string().max(500).nullable().optional(),
+  proteinShakesPreference: z.string().max(50).nullable().optional(),
+  cookingSkill: z.string().max(50).nullable().optional(),
+  mealPrepTime: z.string().max(50).nullable().optional(),
+  targetCalories: z.number().min(0).max(10000).nullable().optional(),
+  proteinGrams: z.number().min(0).max(500).nullable().optional()
 }).passthrough().optional();
 
 const requestSchema = z.object({
   currentMeal: currentMealSchema,
-  userPreference: z.string().max(1000, "Preference description too long"),
+  userPreference: z.string().max(1000, "Preference description too long").nullable().optional().default('generate_options'),
   userContext: userContextSchema
 });
 
