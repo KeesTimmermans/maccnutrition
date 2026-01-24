@@ -227,17 +227,29 @@ Do not include any other text, only the JSON object.`
           content: `You are a nutrition expert AI that parses meal descriptions into individual ingredients with nutritional content.
 
 When given a meal description, identify each distinct food item and provide nutritional data per 100g for each.
+
+CRITICAL: If the user provides EXACT measurements (e.g., "200g chicken", "150ml milk", "2 eggs", "1 cup rice"), you MUST use those EXACT amounts in the "estimatedGrams" field. Do NOT round, adjust, or change user-provided quantities.
+
+Conversion rules for user measurements:
+- If user says "Xg" → use X exactly as estimatedGrams
+- If user says "X eggs" → use 50g per egg (so 2 eggs = 100g)
+- If user says "X cups" → convert to grams (1 cup rice ≈ 185g, 1 cup milk ≈ 244g, etc.)
+- If user says "X oz" → convert to grams (1 oz ≈ 28g)
+- If user says "X ml" for liquids → use X as estimatedGrams (water-based liquids)
+- ONLY estimate if the user does NOT provide a measurement
+
 You MUST respond with ONLY a JSON object in this exact format:
 {
   "mealName": "Overall meal name",
   "ingredients": [
     {
       "name": "Ingredient name",
-      "estimatedGrams": number (estimated amount in grams),
+      "estimatedGrams": number (EXACT user amount if provided, otherwise estimate),
       "caloriesPer100g": number,
       "proteinPer100g": number,
       "carbsPer100g": number,
-      "fatsPer100g": number
+      "fatsPer100g": number,
+      "userProvided": boolean (true if user gave exact measurement, false if estimated)
     }
   ],
   "confidence": "high" | "medium" | "low",
@@ -245,12 +257,12 @@ You MUST respond with ONLY a JSON object in this exact format:
 }
 
 Be thorough - include all identifiable ingredients (e.g., for "eggs with toast and butter", list eggs, bread, and butter separately).
-Estimate realistic portion sizes based on the description.${dietaryContextNote}
+When user provides exact amounts, set confidence to "high" for those items.${dietaryContextNote}
 Do not include any other text, only the JSON object.`
         },
         {
           role: "user",
-          content: `Parse this meal into individual ingredients: ${searchQuery}`
+          content: `Parse this meal into individual ingredients, preserving any exact measurements the user provided: ${searchQuery}`
         }
       ];
     } else if (searchQuery) {
