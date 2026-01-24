@@ -160,7 +160,17 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   };
 
   const generateMealPlan = async () => {
+    // Check if baseline exists with required data
+    if (!baseline?.target_calories) {
+      toast.error(t('complete_questionnaire_first') || 'Please complete the questionnaire first to set your nutrition targets.');
+      return;
+    }
+
     setIsLoading(true);
+    
+    // Show info toast that this takes time
+    toast.info(t('generating_plan_please_wait') || 'Generating your personalized meal plan... This may take up to 30 seconds.');
+    
     try {
       const userContext = {
         primaryGoal: baseline?.primary_goal,
@@ -184,34 +194,50 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         conditions: baseline?.conditions,
       };
 
+      console.log('Generating meal plan with context:', userContext);
+
       const { data, error } = await supabase.functions.invoke('generate-meal-plan', {
         body: { userContext }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
-      if (data.error) {
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
         if (data.error.includes('Rate limit')) {
-          toast.error(t('too_many_requests'));
+          toast.error(t('too_many_requests') || 'Too many requests. Please try again in a moment.');
         } else if (data.error.includes('credits')) {
-          toast.error(t('ai_service_unavailable'));
+          toast.error(t('ai_service_unavailable') || 'AI service temporarily unavailable.');
+        } else if (data.error.includes('Unauthorized')) {
+          toast.error(t('please_login') || 'Please log in to generate a meal plan.');
         } else {
           toast.error(data.error);
         }
         return;
       }
 
-      if (data.mealPlan) {
+      if (data?.mealPlan) {
         setMealPlan(data.mealPlan);
         setMealPlanId(null); // Reset so it creates a new record
         await saveMealPlan(data.mealPlan);
-        toast.success(t('meal_plan_generated'));
+        toast.success(t('meal_plan_generated') || 'Meal plan generated successfully!');
       } else {
-        toast.error(t('failed_generate_plan'));
+        console.error('No meal plan in response:', data);
+        toast.error(t('failed_generate_plan') || 'Failed to generate meal plan. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating meal plan:', error);
-      toast.error(t('failed_generate_plan'));
+      // Check for common error types
+      if (error?.message?.includes('timeout') || error?.message?.includes('network')) {
+        toast.error(t('network_error') || 'Network error. Please check your connection and try again.');
+      } else if (error?.message?.includes('FunctionsFetchError')) {
+        toast.error(t('service_unavailable') || 'Service temporarily unavailable. Please try again later.');
+      } else {
+        toast.error(t('failed_generate_plan') || 'Failed to generate meal plan. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
