@@ -266,42 +266,177 @@ export function analyzeCheckIns(checkIns: DailyCheckIn[], userTargets?: UserTarg
 }
 
 /**
- * Format check-in data for AI coach context
+ * Build temporal check-in analysis (today vs yesterday vs recent trend)
+ */
+export interface TemporalCheckInContext {
+  today: DailyCheckIn | null;
+  yesterday: DailyCheckIn | null;
+  dayBeforeYesterday: DailyCheckIn | null;
+  recentDays: DailyCheckIn[];
+  changes: {
+    moodChange: "better" | "worse" | "same" | "unknown";
+    energyChange: "better" | "worse" | "same" | "unknown";
+    sleepChange: "better" | "worse" | "same" | "unknown";
+    stressChange: "better" | "worse" | "same" | "unknown"; // Note: lower is better for stress
+  };
+  patterns: {
+    consistentlyLowEnergy: boolean;
+    consistentlyHighStress: boolean;
+    sleepDebtAccumulating: boolean;
+    moodImproving: boolean;
+    recoveryNeeded: boolean;
+  };
+}
+
+export function buildTemporalCheckInContext(checkIns: DailyCheckIn[]): TemporalCheckInContext {
+  const sortedByDate = [...checkIns].sort((a, b) => 
+    new Date(b.check_in_date).getTime() - new Date(a.check_in_date).getTime()
+  );
+
+  const today = new Date().toISOString().split('T')[0];
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = yesterdayDate.toISOString().split('T')[0];
+  const dayBeforeDate = new Date();
+  dayBeforeDate.setDate(dayBeforeDate.getDate() - 2);
+  const dayBefore = dayBeforeDate.toISOString().split('T')[0];
+
+  const todaysCheckIn = sortedByDate.find(c => c.check_in_date === today) || null;
+  const yesterdaysCheckIn = sortedByDate.find(c => c.check_in_date === yesterday) || null;
+  const dayBeforeCheckIn = sortedByDate.find(c => c.check_in_date === dayBefore) || null;
+
+  // Calculate changes (today vs yesterday, or yesterday vs day before if no today)
+  const compareWith = todaysCheckIn ? yesterdaysCheckIn : dayBeforeCheckIn;
+  const current = todaysCheckIn || yesterdaysCheckIn;
+
+  const getChange = (
+    currentVal: number | null | undefined, 
+    previousVal: number | null | undefined,
+    invert = false
+  ): "better" | "worse" | "same" | "unknown" => {
+    if (currentVal == null || previousVal == null) return "unknown";
+    const diff = currentVal - previousVal;
+    if (Math.abs(diff) < 1) return "same";
+    if (invert) return diff < 0 ? "better" : "worse"; // For stress
+    return diff > 0 ? "better" : "worse";
+  };
+
+  const changes = {
+    moodChange: getChange(current?.mood, compareWith?.mood),
+    energyChange: getChange(current?.energy_level, compareWith?.energy_level),
+    sleepChange: getChange(current?.sleep_quality, compareWith?.sleep_quality),
+    stressChange: getChange(current?.stress_level, compareWith?.stress_level, true), // Invert: lower stress is better
+  };
+
+  // Build patterns from last 3-5 days
+  const recentDays = sortedByDate.slice(0, 5);
+  
+  const avgEnergy = recentDays.length > 0
+    ? recentDays.reduce((sum, c) => sum + (c.energy_level || 3), 0) / recentDays.length
+    : 3;
+  const avgStress = recentDays.length > 0
+    ? recentDays.reduce((sum, c) => sum + (c.stress_level || 3), 0) / recentDays.length
+    : 3;
+  const avgSleep = recentDays.length > 0
+    ? recentDays.reduce((sum, c) => sum + (c.sleep_quality || 3), 0) / recentDays.length
+    : 3;
+  const avgMood = recentDays.length > 0
+    ? recentDays.reduce((sum, c) => sum + (c.mood || 3), 0) / recentDays.length
+    : 3;
+
+  // Check if mood is trending up over last 3 check-ins
+  const moodTrend = recentDays.slice(0, 3);
+  const moodImproving = moodTrend.length >= 2 && 
+    (moodTrend[0]?.mood || 3) > (moodTrend[moodTrend.length - 1]?.mood || 3);
+
+  const patterns = {
+    consistentlyLowEnergy: avgEnergy < 2.5,
+    consistentlyHighStress: avgStress > 3.5,
+    sleepDebtAccumulating: avgSleep < 2.5,
+    moodImproving,
+    recoveryNeeded: avgEnergy < 2.5 && avgSleep < 3,
+  };
+
+  return {
+    today: todaysCheckIn,
+    yesterday: yesterdaysCheckIn,
+    dayBeforeYesterday: dayBeforeCheckIn,
+    recentDays,
+    changes,
+    patterns,
+  };
+}
+
+/**
+ * Format check-in data for AI coach context with temporal awareness
  */
 export function formatCheckInsForAI(checkIns: DailyCheckIn[], analysis: CheckInAnalysis): string {
   if (checkIns.length === 0) return "";
 
-  const todaysCheckIn = checkIns[0];
-  const today = new Date().toISOString().split('T')[0];
-  
-  let context = `
-DAILY CHECK-IN DATA:`;
+  const temporal = buildTemporalCheckInContext(checkIns);
+  const { today, yesterday, changes, patterns } = temporal;
 
-  if (todaysCheckIn?.check_in_date === today) {
+  let context = `
+DAILY CHECK-IN DATA (Temporal View):`;
+
+  // Today's check-in
+  if (today) {
     context += `
-Today's Check-In:
-- Mood: ${todaysCheckIn.mood}/5
-- Energy Level: ${todaysCheckIn.energy_level}/5
-- Sleep Quality: ${todaysCheckIn.sleep_quality}/5${todaysCheckIn.sleep_hours ? ` (${todaysCheckIn.sleep_hours} hours)` : ''}
-- Stress Level: ${todaysCheckIn.stress_level}/5
-${todaysCheckIn.notes ? `- Notes: "${todaysCheckIn.notes}"` : ''}`;
+
+📍 TODAY'S CHECK-IN:
+- Mood: ${today.mood}/5
+- Energy Level: ${today.energy_level}/5
+- Sleep Quality: ${today.sleep_quality}/5${today.sleep_hours ? ` (${today.sleep_hours} hours)` : ''}
+- Stress Level: ${today.stress_level}/5
+${today.notes ? `- Notes: "${today.notes}"` : ''}`;
   }
 
+  // Yesterday's check-in for comparison
+  if (yesterday) {
+    context += `
+
+📍 YESTERDAY'S CHECK-IN (for comparison):
+- Mood: ${yesterday.mood}/5
+- Energy Level: ${yesterday.energy_level}/5
+- Sleep Quality: ${yesterday.sleep_quality}/5${yesterday.sleep_hours ? ` (${yesterday.sleep_hours} hours)` : ''}
+- Stress Level: ${yesterday.stress_level}/5`;
+  }
+
+  // Day-over-day changes
+  if (today && yesterday) {
+    context += `
+
+📊 DAY-OVER-DAY CHANGES (Today vs Yesterday):
+- Mood: ${changes.moodChange === 'better' ? '⬆️ improved' : changes.moodChange === 'worse' ? '⬇️ declined' : changes.moodChange === 'same' ? '➡️ stable' : 'N/A'}
+- Energy: ${changes.energyChange === 'better' ? '⬆️ improved' : changes.energyChange === 'worse' ? '⬇️ declined' : changes.energyChange === 'same' ? '➡️ stable' : 'N/A'}
+- Sleep: ${changes.sleepChange === 'better' ? '⬆️ improved' : changes.sleepChange === 'worse' ? '⬇️ declined' : changes.sleepChange === 'same' ? '➡️ stable' : 'N/A'}
+- Stress: ${changes.stressChange === 'better' ? '⬇️ reduced (good)' : changes.stressChange === 'worse' ? '⬆️ increased' : changes.stressChange === 'same' ? '➡️ stable' : 'N/A'}`;
+  }
+
+  // Multi-day patterns
+  const activePatterns: string[] = [];
+  if (patterns.consistentlyLowEnergy) activePatterns.push("Energy has been consistently low over recent days");
+  if (patterns.consistentlyHighStress) activePatterns.push("Stress levels have been elevated for several days");
+  if (patterns.sleepDebtAccumulating) activePatterns.push("Sleep debt appears to be accumulating");
+  if (patterns.moodImproving) activePatterns.push("Mood has been trending upward");
+  if (patterns.recoveryNeeded) activePatterns.push("Body may need recovery focus (low energy + poor sleep)");
+
+  if (activePatterns.length > 0) {
+    context += `
+
+🔍 MULTI-DAY PATTERNS DETECTED:
+${activePatterns.map(p => `- ${p}`).join('\n')}`;
+  }
+
+  // 7-day trends
   if (checkIns.length >= 3) {
     context += `
 
-7-Day Averages:
+📈 7-DAY AVERAGES & TRENDS:
 - Mood: ${analysis.averageMood}/5 (${analysis.trends.mood})
 - Energy: ${analysis.averageEnergy}/5 (${analysis.trends.energy})
 - Sleep: ${analysis.averageSleep}/5 (${analysis.trends.sleep})
 - Stress: ${analysis.averageStress}/5 (${analysis.trends.stress})`;
-
-    if (analysis.recommendations.length > 0) {
-      context += `
-
-Pattern-Based Insights:
-${analysis.recommendations.map(r => `- ${r}`).join('\n')}`;
-    }
   }
 
   return context;
