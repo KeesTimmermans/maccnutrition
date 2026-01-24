@@ -228,15 +228,20 @@ Do not include any other text, only the JSON object.`
 
 When given a meal description, identify each distinct food item and provide nutritional data per 100g for each.
 
-CRITICAL: If the user provides EXACT measurements (e.g., "200g chicken", "150ml milk", "2 eggs", "1 cup rice"), you MUST use those EXACT amounts in the "estimatedGrams" field. Do NOT round, adjust, or change user-provided quantities.
+CRITICAL MEASUREMENT RULES:
+1. If user provides EXACT gram measurements (e.g., "200g chicken"), use those EXACT amounts in "estimatedGrams". Do NOT round or change them.
 
-Conversion rules for user measurements:
-- If user says "Xg" → use X exactly as estimatedGrams
-- If user says "X eggs" → use 50g per egg (so 2 eggs = 100g)
-- If user says "X cups" → convert to grams (1 cup rice ≈ 185g, 1 cup milk ≈ 244g, etc.)
-- If user says "X oz" → convert to grams (1 oz ≈ 28g)
-- If user says "X ml" for liquids → use X as estimatedGrams (water-based liquids)
-- ONLY estimate if the user does NOT provide a measurement
+2. For QUANTITY-BASED ITEMS (eggs, apples, bananas, oranges, slices of bread, etc.):
+   - If user says "2 eggs" → keep as quantity, set estimatedGrams to weight of 2 eggs (≈100g), set "quantity": 2, "unit": "eggs"
+   - If user says "1 apple" → keep as quantity, set estimatedGrams to weight of 1 medium apple (≈180g), set "quantity": 1, "unit": "apple"
+   - If user says "1 banana" → keep as quantity, set estimatedGrams to weight of 1 medium banana (≈120g), set "quantity": 1, "unit": "banana"
+   - ONLY convert to grams if user specifically says "Xg of eggs" or similar
+
+3. Conversion rules for other measurements:
+   - "X cups" → convert to grams (1 cup rice ≈ 185g, 1 cup milk ≈ 244g, etc.)
+   - "X oz" → convert to grams (1 oz ≈ 28g)
+   - "X ml" for liquids → use X as estimatedGrams
+   - ONLY estimate if user does NOT provide any measurement
 
 You MUST respond with ONLY a JSON object in this exact format:
 {
@@ -244,7 +249,9 @@ You MUST respond with ONLY a JSON object in this exact format:
   "ingredients": [
     {
       "name": "Ingredient name",
-      "estimatedGrams": number (EXACT user amount if provided, otherwise estimate),
+      "estimatedGrams": number (total weight in grams for nutrition calculation),
+      "quantity": number (optional - for countable items like eggs, fruits),
+      "unit": string (optional - "eggs", "apple", "banana", "slice", etc.),
       "caloriesPer100g": number,
       "proteinPer100g": number,
       "carbsPer100g": number,
@@ -262,7 +269,7 @@ Do not include any other text, only the JSON object.`
         },
         {
           role: "user",
-          content: `Parse this meal into individual ingredients, preserving any exact measurements the user provided: ${searchQuery}`
+          content: `Parse this meal into individual ingredients. For countable items (eggs, fruits, slices), preserve the quantity. Only use grams if the user specifically mentioned grams: ${searchQuery}`
         }
       ];
     } else if (searchQuery) {
