@@ -22,7 +22,7 @@ export interface MealInput {
   fats: number;
 }
 
-export const saveMeal = async (meal: MealInput): Promise<Meal | null> => {
+export const saveMeal = async (meal: MealInput, loggedAt?: Date): Promise<Meal | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
@@ -39,6 +39,7 @@ export const saveMeal = async (meal: MealInput): Promise<Meal | null> => {
       protein: meal.protein,
       carbs: meal.carbs,
       fats: meal.fats,
+      logged_at: loggedAt ? loggedAt.toISOString() : new Date().toISOString(),
     })
     .select()
     .single();

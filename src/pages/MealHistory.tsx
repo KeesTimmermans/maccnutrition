@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MealCard } from "@/components/MealCard";
-import { getMealsByDateRange, updateMeal, deleteMeal, Meal } from "@/lib/mealService";
-import { format, startOfDay, endOfDay, subDays, addDays, isSameDay, isToday } from "date-fns";
+import { getMealsByDateRange, updateMeal, deleteMeal, saveMeal, Meal, MealInput } from "@/lib/mealService";
+import { format, startOfDay, endOfDay, subDays, addDays, isToday } from "date-fns";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
+import { MealLogger } from "@/components/MealLogger";
 
 interface DayData {
   date: Date;
@@ -25,6 +26,8 @@ const MealHistory = () => {
   const [days, setDays] = useState<DayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState(() => subDays(new Date(), 6));
+  const [loggerOpen, setLoggerOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     loadMeals();
@@ -117,6 +120,29 @@ const MealHistory = () => {
     }
   };
 
+  const handleOpenLogger = (date: Date) => {
+    setSelectedDate(date);
+    setLoggerOpen(true);
+  };
+
+  const handleAddMeal = async (meal: MealInput) => {
+    if (!selectedDate) return;
+    
+    try {
+      // Set the time to noon on the selected date to avoid timezone issues
+      const logDate = new Date(selectedDate);
+      logDate.setHours(12, 0, 0, 0);
+      
+      await saveMeal(meal, logDate);
+      loadMeals();
+      toast.success(t('meal_logged'));
+      setLoggerOpen(false);
+      setSelectedDate(null);
+    } catch (error) {
+      toast.error(t('failed_log_meal'));
+    }
+  };
+
   const endDate = addDays(startDate, 6);
   const canGoNext = addDays(startDate, 7) <= new Date();
 
@@ -191,6 +217,19 @@ const MealHistory = () => {
                   )}
                 </div>
 
+                {/* Add Meal Button */}
+                {!isToday(day.date) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenLogger(day.date)}
+                    className="w-full border-dashed"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add forgotten meal
+                  </Button>
+                )}
+
                 {/* Meals */}
                 {day.meals.length === 0 ? (
                   <div className="bg-muted/50 rounded-2xl p-6 text-center">
@@ -220,6 +259,17 @@ const MealHistory = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Meal Logger Modal */}
+        {loggerOpen && selectedDate && (
+          <MealLogger
+            onClose={() => {
+              setLoggerOpen(false);
+              setSelectedDate(null);
+            }}
+            onSubmit={handleAddMeal}
+          />
         )}
       </main>
     </div>
