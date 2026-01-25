@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Instagram, Loader2, ChefHat, Plus, Minus, Check, AlertCircle, ExternalLink } from "lucide-react";
+import { Instagram, Loader2, ChefHat, Plus, Minus, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { saveMeal, MealInput } from "@/lib/mealService";
-import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 
 interface Ingredient {
@@ -32,7 +32,6 @@ interface ParsedRecipe {
   };
   notes: string;
   confidence: string;
-  sourceUrl: string;
 }
 
 interface InstagramRecipeImportProps {
@@ -44,37 +43,16 @@ interface InstagramRecipeImportProps {
 }
 
 export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initialUrl, onInitialUrlProcessed }: InstagramRecipeImportProps) => {
-  const { t } = useLanguage();
-  const [url, setUrl] = useState("");
+  const [captionText, setCaptionText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [recipe, setRecipe] = useState<ParsedRecipe | null>(null);
   const [editedIngredients, setEditedIngredients] = useState<Ingredient[]>([]);
   const [servings, setServings] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
-  const [autoImportTriggered, setAutoImportTriggered] = useState(false);
 
-  // Auto-import when initialUrl is provided and dialog opens
-  useEffect(() => {
-    if (open && initialUrl && !autoImportTriggered) {
-      setUrl(initialUrl);
-      setAutoImportTriggered(true);
-      // Trigger import after a short delay to let state settle
-      setTimeout(() => {
-        handleImportWithUrl(initialUrl);
-      }, 100);
-    }
-  }, [open, initialUrl, autoImportTriggered]);
-
-  // Reset autoImportTriggered when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setAutoImportTriggered(false);
-    }
-  }, [open]);
-
-  const handleImportWithUrl = async (importUrl: string) => {
-    if (!importUrl.trim()) {
-      toast.error("Please enter an Instagram URL");
+  const handleImport = async () => {
+    if (!captionText.trim()) {
+      toast.error("Please paste the recipe caption");
       return;
     }
 
@@ -83,32 +61,28 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
 
     try {
       const { data, error } = await supabase.functions.invoke('import-instagram-recipe', {
-        body: { instagramUrl: importUrl.trim() }
+        body: { captionText: captionText.trim() }
       });
 
       if (error) throw error;
 
       if (!data.success) {
-        toast.error(data.error || "Failed to import recipe");
+        toast.error(data.error || "Failed to parse recipe");
         return;
       }
 
       setRecipe(data.recipe);
       setEditedIngredients(data.recipe.ingredients);
       setServings(data.recipe.servings || 1);
-      toast.success("Recipe imported successfully!");
+      toast.success("Recipe parsed successfully!");
       onInitialUrlProcessed?.();
     } catch (error) {
       console.error("Import error:", error);
-      toast.error("Failed to import recipe. Please try again.");
+      toast.error("Failed to parse recipe. Please try again.");
       onInitialUrlProcessed?.();
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleImport = async () => {
-    await handleImportWithUrl(url);
   };
 
   const updateIngredient = (index: number, field: keyof Ingredient, value: number | string) => {
@@ -160,7 +134,7 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
   };
 
   const handleClose = () => {
-    setUrl("");
+    setCaptionText("");
     setRecipe(null);
     setEditedIngredients([]);
     setServings(1);
@@ -181,47 +155,51 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Instagram className="w-5 h-5 text-pink-500" />
-            Import Instagram Recipe
+            Import Recipe
           </DialogTitle>
           <DialogDescription>
-            Paste an Instagram recipe post URL and we'll extract the ingredients and macros for you.
+            Paste the recipe caption or ingredients list and we'll extract the macros for you.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col">
           {!recipe ? (
             <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="https://instagram.com/p/..."
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button onClick={handleImport} disabled={isLoading || !url.trim()}>
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "Import"
-                  )}
-                </Button>
-              </div>
+              <Textarea
+                placeholder="Paste the recipe caption here...&#10;&#10;Example:&#10;🍳 High Protein Pancakes&#10;- 2 eggs&#10;- 1 banana&#10;- 40g oats&#10;- 1 scoop protein powder"
+                value={captionText}
+                onChange={(e) => setCaptionText(e.target.value)}
+                disabled={isLoading}
+                className="min-h-[150px] resize-none"
+              />
+              
+              <Button 
+                onClick={handleImport} 
+                disabled={isLoading || !captionText.trim()}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Analyzing...
+                  </>
+                ) : (
+                  "Analyze Recipe"
+                )}
+              </Button>
 
               {isLoading && (
-                <div className="text-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary mb-3" />
-                  <p className="text-sm text-muted-foreground">Extracting recipe...</p>
-                  <p className="text-xs text-muted-foreground mt-1">This may take a moment</p>
+                <div className="text-center py-4">
+                  <p className="text-xs text-muted-foreground">Extracting ingredients and calculating macros...</p>
                 </div>
               )}
 
               <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
                 <p className="font-medium mb-2">💡 Tips:</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Works best with posts that list ingredients</li>
-                  <li>The post must be public</li>
-                  <li>Supports both posts and reels</li>
+                  <li>Copy the full caption from Instagram</li>
+                  <li>Include ingredient amounts for best results</li>
+                  <li>Works with any recipe text format</li>
                 </ul>
               </div>
             </div>
@@ -236,20 +214,9 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-foreground">{recipe.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={recipe.confidence === 'high' ? 'default' : 'secondary'} className="text-xs">
-                          {recipe.confidence} confidence
-                        </Badge>
-                        <a 
-                          href={recipe.sourceUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          Source
-                        </a>
-                      </div>
+                      <Badge variant={recipe.confidence === 'high' ? 'default' : 'secondary'} className="text-xs mt-1">
+                        {recipe.confidence} confidence
+                      </Badge>
                     </div>
                   </div>
                 </div>

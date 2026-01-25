@@ -35,93 +35,33 @@ serve(async (req) => {
       });
     }
 
-    const { instagramUrl } = await req.json();
+    const { captionText } = await req.json();
     
-    if (!instagramUrl) {
+    if (!captionText || captionText.trim().length < 10) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Instagram URL is required' }),
+        JSON.stringify({ success: false, error: 'Please provide a recipe caption with at least 10 characters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate Instagram URL
-    const urlPattern = /^https?:\/\/(www\.)?instagram\.com\/(p|reel)\/[\w-]+/i;
-    if (!urlPattern.test(instagramUrl)) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Please provide a valid Instagram post or reel URL' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('Parsing recipe caption, length:', captionText.length);
 
-    console.log('Scraping Instagram URL:', instagramUrl);
-
-    // Step 1: Use Firecrawl to scrape the Instagram post
-    const firecrawlKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!firecrawlKey) {
-      console.error('FIRECRAWL_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Instagram scraping not configured. Please connect Firecrawl.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${firecrawlKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: instagramUrl,
-        formats: ['markdown'],
-        onlyMainContent: true,
-        waitFor: 3000, // Wait for dynamic content
-      }),
-    });
-
-    const scrapeData = await scrapeResponse.json();
-    
-    if (!scrapeResponse.ok || !scrapeData.success) {
-      console.error('Firecrawl error:', scrapeData);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Could not access Instagram post. The post may be private or unavailable.' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const captionText = scrapeData.data?.markdown || scrapeData.markdown || '';
-    
-    if (!captionText || captionText.length < 20) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Could not extract caption from Instagram post. The post may not contain recipe information.' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Extracted caption length:', captionText.length);
-
-    // Step 2: Use AI to parse the recipe and estimate macros
+    // Use AI to parse the recipe and estimate macros
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const aiPrompt = `You are a nutrition expert. Analyze this Instagram post caption and extract recipe information with macro estimates.
+    const aiPrompt = `You are a nutrition expert. Analyze this recipe text and extract recipe information with macro estimates.
 
-INSTAGRAM CAPTION:
+RECIPE TEXT:
 ${captionText.substring(0, 4000)}
 
 INSTRUCTIONS:
-1. Identify if this is a recipe or food-related post
+1. Identify if this contains recipe or food information
 2. Extract the recipe name/dish name
 3. List all ingredients mentioned (estimate quantities if not specified)
-4. Calculate estimated macros per serving
+4. Calculate estimated macros per serving based on standard nutritional data
 
 Respond with ONLY valid JSON in this exact format:
 {
@@ -149,10 +89,10 @@ Respond with ONLY valid JSON in this exact format:
   "confidence": "high/medium/low"
 }
 
-If this is NOT a recipe post, return:
+If this is NOT a recipe or food-related text, return:
 {
   "isRecipe": false,
-  "error": "This post doesn't appear to contain a recipe"
+  "error": "This text doesn't appear to contain a recipe"
 }`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -207,7 +147,7 @@ If this is NOT a recipe post, return:
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Could not parse recipe information from this post.' 
+          error: 'Could not parse recipe information from this text.' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -217,7 +157,7 @@ If this is NOT a recipe post, return:
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: recipeData.error || 'This post doesn\'t appear to contain a recipe.' 
+          error: recipeData.error || 'This text doesn\'t appear to contain a recipe.' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -239,19 +179,18 @@ If this is NOT a recipe post, return:
             fats: 0
           },
           notes: recipeData.notes || '',
-          confidence: recipeData.confidence || 'medium',
-          sourceUrl: instagramUrl
+          confidence: recipeData.confidence || 'medium'
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error importing Instagram recipe:', error);
+    console.error('Error parsing recipe:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Failed to import recipe' 
+        error: error instanceof Error ? error.message : 'Failed to parse recipe' 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
