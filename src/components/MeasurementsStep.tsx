@@ -3,7 +3,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { 
   Ruler, 
-  Scale, 
   Percent, 
   Camera, 
   Info,
@@ -12,7 +11,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ProgressPhotoUpload } from "@/components/ProgressPhotoUpload";
+import { ProgressPhotoUpload, ProgressPhotos } from "@/components/ProgressPhotoUpload";
 
 export interface MeasurementsData {
   bodyFatPercentage: string;
@@ -24,6 +23,8 @@ export interface MeasurementsData {
   neck: string;
   hasProgressPhoto: boolean;
   progressPhotoUrl: string | null;
+  // New multi-photo fields
+  progressPhotos: ProgressPhotos;
 }
 
 interface MeasurementsStepProps {
@@ -42,11 +43,26 @@ export const MeasurementsStep = ({
   isOnboarding = true 
 }: MeasurementsStepProps) => {
   const [showCircumferenceTips, setShowCircumferenceTips] = useState(false);
-  const [showWeightTips, setShowWeightTips] = useState(false);
   const [showBodyFatTips, setShowBodyFatTips] = useState(false);
   const [showPhotoTips, setShowPhotoTips] = useState(false);
 
   const unit = unitSystem === "metric" ? "cm" : "in";
+
+  // Ensure progressPhotos exists with defaults
+  const currentPhotos: ProgressPhotos = data.progressPhotos || {
+    front: data.progressPhotoUrl || null,
+    back: null,
+    left: null,
+    right: null,
+  };
+
+  const handlePhotosChange = (photos: ProgressPhotos) => {
+    updateData("progressPhotos", photos);
+    // Update legacy fields for backwards compatibility
+    const hasAnyPhoto = Object.values(photos).some(url => url !== null);
+    updateData("hasProgressPhoto", hasAnyPhoto);
+    updateData("progressPhotoUrl", photos.front);
+  };
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -244,7 +260,7 @@ export const MeasurementsStep = ({
                 <li>• <strong>Same time:</strong> First thing in the morning, before eating</li>
                 <li>• <strong>Same lighting:</strong> Natural light works best, avoid direct overhead</li>
                 <li>• <strong>Same location:</strong> Use the same spot with a plain background</li>
-                <li>• <strong>Same poses:</strong> Front, side, and back views are most useful</li>
+                <li>• <strong>All 4 angles:</strong> Front, back, and both side views</li>
                 <li>• <strong>Same distance:</strong> Mark a spot on the floor or use a tripod</li>
                 <li>• <strong>Minimal clothing:</strong> Swimwear or fitted clothes for visibility</li>
               </ul>
@@ -256,11 +272,8 @@ export const MeasurementsStep = ({
         </Collapsible>
 
         <ProgressPhotoUpload
-          currentPhotoUrl={data.progressPhotoUrl}
-          onPhotoChange={(url) => {
-            updateData("progressPhotoUrl", url);
-            updateData("hasProgressPhoto", !!url);
-          }}
+          photos={currentPhotos}
+          onPhotosChange={handlePhotosChange}
           disabled={false}
         />
       </div>

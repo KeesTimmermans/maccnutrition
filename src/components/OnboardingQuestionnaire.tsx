@@ -103,6 +103,12 @@ export interface OnboardingData {
   neck: string;
   hasProgressPhoto: boolean;
   progressPhotoUrl: string | null;
+  progressPhotos: {
+    front: string | null;
+    back: string | null;
+    left: string | null;
+    right: string | null;
+  };
 }
 
 const initialData: OnboardingData = {
@@ -162,6 +168,12 @@ const initialData: OnboardingData = {
   neck: "",
   hasProgressPhoto: false,
   progressPhotoUrl: null,
+  progressPhotos: {
+    front: null,
+    back: null,
+    left: null,
+    right: null,
+  },
 };
 
 const getSteps = (t: (key: string) => string): { id: StepType; title: string; icon: React.ReactNode }[] => [
@@ -297,6 +309,12 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
               neck: data.neck,
               hasProgressPhoto: data.hasProgressPhoto,
               progressPhotoUrl: data.progressPhotoUrl,
+              progressPhotos: data.progressPhotos || {
+                front: data.progressPhotoUrl || null,
+                back: null,
+                left: null,
+                right: null,
+              },
             }}
             updateData={(key, value) => updateData(key as keyof OnboardingData, value as never)}
             unitSystem={data.unitSystem}

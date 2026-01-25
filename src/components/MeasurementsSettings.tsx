@@ -20,8 +20,14 @@ export const MeasurementsSettings = ({ baseline, onUpdate }: MeasurementsSetting
     arm: baseline?.arm_cm?.toString() || "",
     thigh: baseline?.thigh_cm?.toString() || "",
     neck: baseline?.neck_cm?.toString() || "",
-    hasProgressPhoto: !!baseline?.progress_photo_url,
+    hasProgressPhoto: !!baseline?.progress_photo_url || !!baseline?.progress_photo_front,
     progressPhotoUrl: baseline?.progress_photo_url || null,
+    progressPhotos: {
+      front: baseline?.progress_photo_front || baseline?.progress_photo_url || null,
+      back: baseline?.progress_photo_back || null,
+      left: baseline?.progress_photo_left || null,
+      right: baseline?.progress_photo_right || null,
+    },
   });
 
   const updateData = <K extends keyof MeasurementsData>(key: K, value: MeasurementsData[K]) => {
@@ -39,7 +45,11 @@ export const MeasurementsSettings = ({ baseline, onUpdate }: MeasurementsSetting
         arm_cm: data.arm ? parseFloat(data.arm) : null,
         thigh_cm: data.thigh ? parseFloat(data.thigh) : null,
         neck_cm: data.neck ? parseFloat(data.neck) : null,
-        progress_photo_url: data.progressPhotoUrl,
+        progress_photo_url: data.progressPhotos?.front || data.progressPhotoUrl,
+        progress_photo_front: data.progressPhotos?.front || null,
+        progress_photo_back: data.progressPhotos?.back || null,
+        progress_photo_left: data.progressPhotos?.left || null,
+        progress_photo_right: data.progressPhotos?.right || null,
       });
       toast.success("Measurements updated successfully!");
       onUpdate?.();

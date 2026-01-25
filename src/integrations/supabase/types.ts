@@ -361,6 +361,10 @@ export type Database = {
           preferred_currency: string | null
           preferred_language: string | null
           primary_goal: string | null
+          progress_photo_back: string | null
+          progress_photo_front: string | null
+          progress_photo_left: string | null
+          progress_photo_right: string | null
           progress_photo_url: string | null
           protein_grams: number | null
           protein_shakes_preference: string | null
@@ -434,6 +438,10 @@ export type Database = {
           preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
+          progress_photo_back?: string | null
+          progress_photo_front?: string | null
+          progress_photo_left?: string | null
+          progress_photo_right?: string | null
           progress_photo_url?: string | null
           protein_grams?: number | null
           protein_shakes_preference?: string | null
@@ -507,6 +515,10 @@ export type Database = {
           preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
+          progress_photo_back?: string | null
+          progress_photo_front?: string | null
+          progress_photo_left?: string | null
+          progress_photo_right?: string | null
           progress_photo_url?: string | null
           protein_grams?: number | null
           protein_shakes_preference?: string | null

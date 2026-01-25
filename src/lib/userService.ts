@@ -77,6 +77,10 @@ export interface UserBaseline {
   thigh_cm: number | null;
   neck_cm: number | null;
   progress_photo_url: string | null;
+  progress_photo_front: string | null;
+  progress_photo_back: string | null;
+  progress_photo_left: string | null;
+  progress_photo_right: string | null;
   measurements_updated_at: string | null;
   last_progress_update: string | null;
 }
@@ -159,8 +163,12 @@ export const saveUserBaseline = async (
       arm_cm: onboardingData.arm ? parseFloat(onboardingData.arm) : null,
       thigh_cm: onboardingData.thigh ? parseFloat(onboardingData.thigh) : null,
       neck_cm: onboardingData.neck ? parseFloat(onboardingData.neck) : null,
-      progress_photo_url: onboardingData.progressPhotoUrl || null,
-      measurements_updated_at: (onboardingData.waist || onboardingData.bodyFatPercentage || onboardingData.progressPhotoUrl) ? new Date().toISOString() : null,
+      progress_photo_url: onboardingData.progressPhotoUrl || onboardingData.progressPhotos?.front || null,
+      progress_photo_front: onboardingData.progressPhotos?.front || null,
+      progress_photo_back: onboardingData.progressPhotos?.back || null,
+      progress_photo_left: onboardingData.progressPhotos?.left || null,
+      progress_photo_right: onboardingData.progressPhotos?.right || null,
+      measurements_updated_at: (onboardingData.waist || onboardingData.bodyFatPercentage || onboardingData.progressPhotoUrl || Object.values(onboardingData.progressPhotos || {}).some(v => v)) ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -267,6 +275,10 @@ export const updateUserMeasurements = async (measurements: {
   neck_cm?: number | null;
   weight?: number | null;
   progress_photo_url?: string | null;
+  progress_photo_front?: string | null;
+  progress_photo_back?: string | null;
+  progress_photo_left?: string | null;
+  progress_photo_right?: string | null;
 }) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
