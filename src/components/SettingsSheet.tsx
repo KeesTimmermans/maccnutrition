@@ -211,20 +211,21 @@ export const SettingsSheet = ({
           <Settings className="w-6 h-6 text-foreground" />
         </button>
       </SheetTrigger>
-      <SheetContent className="flex flex-col h-full p-0">
-        <SheetHeader className="px-6 pt-6 pb-2">
+      <SheetContent className="flex flex-col h-full p-0 overflow-hidden">
+        <SheetHeader className="px-6 pt-6 pb-2 flex-shrink-0">
           <SheetTitle>{t('settings')}</SheetTitle>
         </SheetHeader>
         
-        <Tabs defaultValue="general" className="flex-1 flex flex-col">
-          <TabsList className="mx-6 mb-2 grid w-auto grid-cols-4">
+        <Tabs defaultValue="general" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="mx-6 mb-2 grid w-auto grid-cols-4 flex-shrink-0">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="layout">Layout</TabsTrigger>
             <TabsTrigger value="measurements">Body</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
           
-          <ScrollArea className="flex-1 px-6">
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="px-6">
             <TabsContent value="general" className="mt-0">
               <div className="space-y-6 pb-6">
                 {/* Language Selection */}
@@ -490,6 +491,7 @@ export const SettingsSheet = ({
                 )}
               </div>
             </TabsContent>
+            </div>
           </ScrollArea>
         </Tabs>
       </SheetContent>
