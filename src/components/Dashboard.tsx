@@ -15,6 +15,7 @@ import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
 import { RecalibrationNotification } from "@/components/RecalibrationNotification";
+import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
 
 import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
@@ -511,6 +512,162 @@ export const Dashboard = () => {
     }
   };
 
+  // Get layout preferences
+  const layout = baseline?.dashboard_layout || DEFAULT_LAYOUT;
+  const visibleSections = layout.sections.filter(s => !layout.hidden.includes(s));
+
+  // Section rendering helpers
+  const renderProgressSection = () => (
+    <section key="progress" className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
+          <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
+        </div>
+      </div>
+      <div className="flex justify-around items-center">
+        <MacroRing 
+          value={totalCalories} 
+          max={baseline?.target_calories || 2000} 
+          label={t('calories')} 
+          color="calories"
+          size="lg"
+          unit=""
+        />
+        <div className="space-y-4">
+          <MacroRing 
+            value={totalProtein} 
+            max={baseline?.protein_grams || 120} 
+            label={t('protein')} 
+            color="protein"
+            size="sm"
+          />
+          <MacroRing 
+            value={totalCarbs} 
+            max={baseline?.carbs_grams || 200} 
+            label={t('carbs')} 
+            color="carbs"
+            size="sm"
+          />
+          <MacroRing 
+            value={totalFats} 
+            max={baseline?.fats_grams || 65} 
+            label={t('fats')} 
+            color="fats"
+            size="sm"
+          />
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderMealsSection = () => (
+    <section key="meals">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-foreground">{t('todays_meals')}</h2>
+        <button 
+          onClick={() => navigate("/history")}
+          className="text-sm font-semibold text-primary flex items-center gap-1 hover:underline"
+        >
+          {t('view_all')}
+          <TrendingUp className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="space-y-3">
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">{t('loading_meals')}</div>
+        ) : meals.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground text-sm">
+            {t('no_meals_yet')}
+          </div>
+        ) : (
+          meals.map((meal, index) => (
+            <div key={meal.id} style={{ animationDelay: `${index * 100}ms` }}>
+              <CollapsibleMealCard 
+                meal={meal} 
+                onEdit={handleEditMeal}
+                onDelete={handleDeleteMeal}
+              />
+            </div>
+          ))
+        )}
+        <AddMealCard onClick={() => setShowMealLogger(true)} />
+      </div>
+    </section>
+  );
+
+  const renderCoachSection = () => (
+    <section key="coach">
+      <AICoachCard 
+        greeting={generateCoachGreeting()}
+        insights={generateCoachInsights()}
+        tip={generateCoachTip()}
+        onChatOpen={() => {
+          setShowAIChat(true);
+          updateStreak('coaching').then(streak => {
+            if (streak) setCoachingStreak(streak);
+          });
+        }}
+        todaysCheckIn={todaysCheckIn}
+        analysis={checkInAnalysis}
+        baseline={baseline}
+        meals={meals}
+        waterIntakeMl={totalWaterMl}
+        mealPatterns={mealPatterns}
+        accountAgeDays={accountAgeDays}
+      />
+    </section>
+  );
+
+  const renderPlannerSection = () => (
+    <section key="planner">
+      <MealPlanner baseline={baseline} />
+    </section>
+  );
+
+  const renderWaterSection = () => (
+    <section key="water">
+      <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
+    </section>
+  );
+
+  const renderWearablesSection = () => (
+    <section key="wearables" className="mb-2">
+      <button
+        onClick={() => setShowWearableSettings(true)}
+        className="w-full p-4 glass rounded-2xl border border-border/50 flex items-center gap-4 hover:bg-accent/10 transition-colors"
+      >
+        <div className="text-2xl">⌚</div>
+        <div className="text-left flex-1">
+          <h4 className="font-semibold text-foreground">{t('wearables')}</h4>
+          {wearableData ? (
+            <p className="text-sm text-muted-foreground">
+              {wearableData.sleepHours && `${wearableData.sleepHours}h ${t('sleep')}`}
+              {wearableData.hrv && ` • HRV ${wearableData.hrv}ms`}
+              {wearableData.steps && ` • ${wearableData.steps.toLocaleString()} steps`}
+            </p>
+          ) : hasWearableConnections ? (
+            <p className="text-sm text-muted-foreground">{t('waiting_sync')}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('connect_wearables')}</p>
+          )}
+        </div>
+        {wearableData && (
+          <span className="text-xs text-green-500 font-medium">{t('synced')}</span>
+        )}
+      </button>
+    </section>
+  );
+
+  const sectionRenderers: Record<string, () => JSX.Element> = {
+    progress: renderProgressSection,
+    meals: renderMealsSection,
+    coach: renderCoachSection,
+    planner: renderPlannerSection,
+    water: renderWaterSection,
+    wearables: renderWearablesSection,
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -578,144 +735,11 @@ export const Dashboard = () => {
           </section>
         )}
 
-        {/* Daily Summary Card - Today's Progress */}
-        <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
-              <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
-            </div>
-          </div>
-
-          {/* Macro Rings */}
-          <div className="flex justify-around items-center">
-            <MacroRing 
-              value={totalCalories} 
-              max={baseline?.target_calories || 2000} 
-              label={t('calories')} 
-              color="calories"
-              size="lg"
-              unit=""
-            />
-            <div className="space-y-4">
-              <MacroRing 
-                value={totalProtein} 
-                max={baseline?.protein_grams || 120} 
-                label={t('protein')} 
-                color="protein"
-                size="sm"
-              />
-              <MacroRing 
-                value={totalCarbs} 
-                max={baseline?.carbs_grams || 200} 
-                label={t('carbs')} 
-                color="carbs"
-                size="sm"
-              />
-              <MacroRing 
-                value={totalFats} 
-                max={baseline?.fats_grams || 65} 
-                label={t('fats')} 
-                color="fats"
-                size="sm"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Meals Section - Log a Meal */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">{t('todays_meals')}</h2>
-            <button 
-              onClick={() => navigate("/history")}
-              className="text-sm font-semibold text-primary flex items-center gap-1 hover:underline"
-            >
-              {t('view_all')}
-              <TrendingUp className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">{t('loading_meals')}</div>
-            ) : meals.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground text-sm">
-                {t('no_meals_yet')}
-              </div>
-            ) : (
-              meals.map((meal, index) => (
-                <div key={meal.id} style={{ animationDelay: `${index * 100}ms` }}>
-                  <CollapsibleMealCard 
-                    meal={meal} 
-                    onEdit={handleEditMeal}
-                    onDelete={handleDeleteMeal}
-                  />
-                </div>
-              ))
-            )}
-            <AddMealCard onClick={() => setShowMealLogger(true)} />
-          </div>
-        </section>
-
-        {/* Coach Mac */}
-        <section>
-          <AICoachCard 
-            greeting={generateCoachGreeting()}
-            insights={generateCoachInsights()}
-            tip={generateCoachTip()}
-            onChatOpen={() => {
-              setShowAIChat(true);
-              updateStreak('coaching').then(streak => {
-                if (streak) setCoachingStreak(streak);
-              });
-            }}
-            todaysCheckIn={todaysCheckIn}
-            analysis={checkInAnalysis}
-            baseline={baseline}
-            meals={meals}
-            waterIntakeMl={totalWaterMl}
-            mealPatterns={mealPatterns}
-            accountAgeDays={accountAgeDays}
-          />
-        </section>
-
-        {/* Meal Planner */}
-        <section>
-          <MealPlanner baseline={baseline} />
-        </section>
-
-        {/* Wearable Data Banner */}
-        <section className="mb-2">
-          <button
-            onClick={() => setShowWearableSettings(true)}
-            className="w-full p-4 glass rounded-2xl border border-border/50 flex items-center gap-4 hover:bg-accent/10 transition-colors"
-          >
-            <div className="text-2xl">⌚</div>
-            <div className="text-left flex-1">
-              <h4 className="font-semibold text-foreground">{t('wearables')}</h4>
-              {wearableData ? (
-                <p className="text-sm text-muted-foreground">
-                  {wearableData.sleepHours && `${wearableData.sleepHours}h ${t('sleep')}`}
-                  {wearableData.hrv && ` • HRV ${wearableData.hrv}ms`}
-                  {wearableData.steps && ` • ${wearableData.steps.toLocaleString()} steps`}
-                </p>
-              ) : hasWearableConnections ? (
-                <p className="text-sm text-muted-foreground">{t('waiting_sync')}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('connect_wearables')}</p>
-              )}
-            </div>
-            {wearableData && (
-              <span className="text-xs text-green-500 font-medium">{t('synced')}</span>
-            )}
-          </button>
-        </section>
-
-        {/* Water Tracker */}
-        <section>
-          <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
-        </section>
+        {/* Dynamic Dashboard Sections */}
+        {visibleSections.map(sectionId => {
+          const renderer = sectionRenderers[sectionId];
+          return renderer ? renderer() : null;
+        })}
       </main>
 
       {/* Bottom Navigation */}
