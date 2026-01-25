@@ -78,6 +78,7 @@ export interface UserBaseline {
   neck_cm: number | null;
   progress_photo_url: string | null;
   measurements_updated_at: string | null;
+  last_progress_update: string | null;
 }
 
 export const saveUserBaseline = async (

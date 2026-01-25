@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler } from "lucide-react";
+import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +15,7 @@ import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { MeasurementsSettings } from "@/components/MeasurementsSettings";
+import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
@@ -39,6 +40,7 @@ export const SettingsSheet = ({
   const [currency, setCurrency] = useState(baseline?.preferred_currency || "USD");
   const [isUpdating, setIsUpdating] = useState(false);
   const [open, setOpen] = useState(false);
+  const [showProgressUpdate, setShowProgressUpdate] = useState(false);
 
   const currencies = [
     { code: "GBP", symbol: "£", name: "British Pound" },
@@ -375,6 +377,30 @@ export const SettingsSheet = ({
                   </div>
                 </div>
 
+                {/* Monthly Progress Check-in Button */}
+                <div className="p-4 bg-muted rounded-xl space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Monthly Progress Check-in</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Update your measurements, share how you're feeling about your progress, or let Coach Mac know you want to push harder.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setShowProgressUpdate(true)}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Start Progress Check-in
+                  </Button>
+                  {baseline?.last_progress_update && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Last check-in: {new Date(baseline.last_progress_update).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+
                 <MeasurementsSettings
                   baseline={baseline}
                   onUpdate={onSettingsChange}
@@ -455,6 +481,16 @@ export const SettingsSheet = ({
           </ScrollArea>
         </Tabs>
       </SheetContent>
+
+      {/* Progress Update Dialog */}
+      <ProgressUpdateDialog
+        open={showProgressUpdate}
+        onOpenChange={setShowProgressUpdate}
+        baseline={baseline}
+        onComplete={() => {
+          onSettingsChange?.();
+        }}
+      />
     </Sheet>
   );
 };

@@ -15,6 +15,7 @@ import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
 import { RecalibrationNotification } from "@/components/RecalibrationNotification";
+import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
 
@@ -76,6 +77,24 @@ export const Dashboard = () => {
   const [totalWaterMl, setTotalWaterMl] = useState(0);
   const [mealPatterns, setMealPatterns] = useState<MealPatternAnalysis | null>(null);
   const [accountAgeDays, setAccountAgeDays] = useState(0);
+  const [showProgressUpdate, setShowProgressUpdate] = useState(false);
+
+  // Check if monthly progress update is needed
+  const checkProgressUpdateNeeded = (userBaseline: UserBaseline | null) => {
+    if (!userBaseline) return false;
+    
+    const lastUpdate = userBaseline.last_progress_update;
+    if (!lastUpdate) {
+      // If no progress update ever done, check if account is older than 30 days
+      const createdAt = new Date(userBaseline.created_at);
+      const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      return daysSinceCreation >= 30;
+    }
+    
+    const lastUpdateDate = new Date(lastUpdate);
+    const daysSinceUpdate = Math.floor((Date.now() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceUpdate >= 30;
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -401,6 +420,16 @@ export const Dashboard = () => {
               setShowRecalibration(true);
             }
           });
+        }
+        
+        // Check for monthly progress update (once per session per day)
+        const progressUpdateCheck = localStorage.getItem('cjt_progress_update_check');
+        if (progressUpdateCheck !== today && checkProgressUpdateNeeded(userBaseline)) {
+          localStorage.setItem('cjt_progress_update_check', today);
+          // Delay slightly so other modals can show first
+          setTimeout(() => {
+            setShowProgressUpdate(true);
+          }, 2000);
         }
       }
     } catch (error) {
@@ -859,6 +888,14 @@ export const Dashboard = () => {
       {showWearableSettings && (
         <WearableSettings onClose={() => setShowWearableSettings(false)} />
       )}
+
+      {/* Progress Update Dialog */}
+      <ProgressUpdateDialog
+        open={showProgressUpdate}
+        onOpenChange={setShowProgressUpdate}
+        baseline={baseline}
+        onComplete={loadData}
+      />
     </div>
   );
 };
