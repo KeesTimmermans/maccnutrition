@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
 import { updateUserMeasurements, UserBaseline } from "@/lib/userService";
+import { applyProgressBoost } from "@/lib/baselineRecalibration";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { TrendingUp, ThumbsUp, Target, Ruler, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { TrendingUp, ThumbsUp, Target, Ruler, ChevronRight, ChevronLeft, Sparkles, Loader2, MessageCircle } from "lucide-react";
 
 interface ProgressUpdateDialogProps {
   open: boolean;
@@ -24,6 +26,7 @@ interface ProgressUpdateDialogProps {
 }
 
 type ProgressChoice = "happy" | "more_progress" | "update_measurements";
+type DialogStep = "choice" | "measurements" | "feedback" | "response";
 
 export const ProgressUpdateDialog = ({
   open,
@@ -31,10 +34,16 @@ export const ProgressUpdateDialog = ({
   baseline,
   onComplete,
 }: ProgressUpdateDialogProps) => {
-  const [step, setStep] = useState<"choice" | "measurements" | "feedback">("choice");
+  const [step, setStep] = useState<DialogStep>("choice");
   const [choice, setChoice] = useState<ProgressChoice | null>(null);
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [coachResponse, setCoachResponse] = useState<string | null>(null);
+  const [recalibrationInfo, setRecalibrationInfo] = useState<{
+    calorieChange: number;
+    proteinChange: number;
+    reason: string;
+  } | null>(null);
   const [measurementsData, setMeasurementsData] = useState<MeasurementsData>({
     bodyFatPercentage: baseline?.body_fat_percentage?.toString() || "",
     waist: baseline?.waist_cm?.toString() || "",
@@ -71,6 +80,8 @@ export const ProgressUpdateDialog = ({
   const handleBack = () => {
     if (step === "feedback" || step === "measurements") {
       setStep("choice");
+    } else if (step === "response") {
+      setStep("choice");
     }
   };
 
@@ -84,10 +95,61 @@ export const ProgressUpdateDialog = ({
       .eq("user_id", user.id);
   };
 
+  const callAICoach = async (userChoice: ProgressChoice, userFeedback: string, measurementsUpdated: boolean) => {
+    if (!baseline) return null;
+
+    const choiceMessages: Record<ProgressChoice, string> = {
+      happy: "I just completed my monthly progress check-in. I'm feeling happy with my current progress and want to keep going with the current plan!",
+      more_progress: `I just completed my monthly progress check-in. I want to push harder and progress more! ${userFeedback ? `Here's what I'm thinking: ${userFeedback}` : ''}`,
+      update_measurements: `I just completed my monthly progress check-in and updated my body measurements. ${userFeedback ? `Additional notes: ${userFeedback}` : ''}`,
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-coach", {
+        body: {
+          message: choiceMessages[userChoice],
+          type: "progress_update",
+          progressUpdateData: {
+            choice: userChoice,
+            feedback: userFeedback || undefined,
+            measurementsUpdated,
+          },
+          userContext: {
+            userName: baseline.name,
+            primaryGoal: baseline.primary_goal,
+            secondaryGoals: baseline.secondary_goals,
+            targetCalories: baseline.target_calories,
+            proteinGrams: baseline.protein_grams,
+            carbsGrams: baseline.carbs_grams,
+            fatsGrams: baseline.fats_grams,
+            activityLevel: baseline.activity_level,
+            coachingTone: baseline.coaching_tone,
+            focusPoints: baseline.focus_points,
+            preferredLanguage: baseline.preferred_language,
+          },
+        },
+      });
+
+      if (error) {
+        console.error("Error calling AI coach:", error);
+        return null;
+      }
+
+      return data?.response || null;
+    } catch (err) {
+      console.error("Error invoking AI coach:", err);
+      return null;
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!choice) return;
+    
     setIsSubmitting(true);
     try {
-      // If updating measurements, save them
+      let measurementsUpdated = false;
+
+      // If updating measurements, save them first
       if (choice === "update_measurements") {
         await updateUserMeasurements({
           body_fat_percentage: measurementsData.bodyFatPercentage
@@ -101,19 +163,41 @@ export const ProgressUpdateDialog = ({
           neck_cm: measurementsData.neck ? parseFloat(measurementsData.neck) : null,
           progress_photo_url: measurementsData.progressPhotoUrl,
         });
+        measurementsUpdated = true;
         toast.success("Measurements updated successfully!");
-      } else if (choice === "happy") {
-        toast.success("Great to hear you're happy with your progress! Keep it up! 🎉");
-      } else if (choice === "more_progress") {
-        toast.success("Noted! Coach Mac will adjust recommendations to help you progress further.");
+      }
+
+      // If user wants more progress, apply baseline recalibration
+      if (choice === "more_progress" && baseline) {
+        const boostResult = await applyProgressBoost(baseline);
+        if (boostResult.success && boostResult.adjustments) {
+          setRecalibrationInfo(boostResult.adjustments);
+          toast.success("Your targets have been adjusted to push you further! 💪");
+        }
+      }
+
+      // Call AI Coach for personalized response
+      const response = await callAICoach(choice, feedback, measurementsUpdated);
+      
+      if (response) {
+        setCoachResponse(response);
+        setStep("response");
+      } else {
+        // Fallback if AI fails
+        if (choice === "happy") {
+          toast.success("Great to hear you're happy with your progress! Keep it up! 🎉");
+        } else if (choice === "more_progress") {
+          toast.success("Your plan has been intensified. Let's push harder! 💪");
+        }
+        await markProgressUpdateComplete();
+        onComplete?.();
+        onOpenChange(false);
+        resetDialog();
       }
 
       // Mark progress update as complete
       await markProgressUpdateComplete();
 
-      onComplete?.();
-      onOpenChange(false);
-      resetDialog();
     } catch (error) {
       console.error("Error submitting progress update:", error);
       toast.error("Failed to save progress update");
@@ -122,10 +206,18 @@ export const ProgressUpdateDialog = ({
     }
   };
 
+  const handleFinish = () => {
+    onComplete?.();
+    onOpenChange(false);
+    resetDialog();
+  };
+
   const resetDialog = () => {
     setStep("choice");
     setChoice(null);
     setFeedback("");
+    setCoachResponse(null);
+    setRecalibrationInfo(null);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -147,6 +239,7 @@ export const ProgressUpdateDialog = ({
             {step === "choice" && "It's time for your monthly check-in! How are you feeling about your progress?"}
             {step === "measurements" && "Update your body measurements to track your progress."}
             {step === "feedback" && "Any additional thoughts to share with Coach Mac?"}
+            {step === "response" && "Here's what Coach Mac has to say!"}
           </DialogDescription>
         </DialogHeader>
 
@@ -259,8 +352,17 @@ export const ProgressUpdateDialog = ({
                   disabled={isSubmitting}
                   className="flex-1"
                 >
-                  {isSubmitting ? "Saving..." : "Save & Complete"}
-                  <TrendingUp className="w-4 h-4 ml-2" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Save & Get Feedback
+                      <TrendingUp className="w-4 h-4 ml-2" />
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -309,10 +411,68 @@ export const ProgressUpdateDialog = ({
                   disabled={isSubmitting}
                   className="flex-1"
                 >
-                  {isSubmitting ? "Saving..." : "Complete Check-in"}
-                  <Sparkles className="w-4 h-4 ml-2" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Getting response...
+                    </>
+                  ) : (
+                    <>
+                      Complete Check-in
+                      <Sparkles className="w-4 h-4 ml-2" />
+                    </>
+                  )}
                 </Button>
               </div>
+            </div>
+          )}
+
+          {step === "response" && (
+            <div className="space-y-4">
+              {/* Recalibration info badge */}
+              {recalibrationInfo && (
+                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">Targets Adjusted</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {recalibrationInfo.reason}
+                    {recalibrationInfo.calorieChange !== 0 && (
+                      <span className="block mt-1">
+                        Calories: {recalibrationInfo.calorieChange > 0 ? '+' : ''}{recalibrationInfo.calorieChange} kcal
+                      </span>
+                    )}
+                    {recalibrationInfo.proteinChange !== 0 && (
+                      <span className="block">
+                        Protein: {recalibrationInfo.proteinChange > 0 ? '+' : ''}{recalibrationInfo.proteinChange}g
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {/* Coach response */}
+              <div className="p-4 rounded-lg bg-muted">
+                <div className="flex items-center gap-2 mb-3">
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Coach Mac</span>
+                </div>
+                <ScrollArea className="max-h-[300px]">
+                  <div className="prose prose-sm max-w-none text-foreground">
+                    {coachResponse?.split('\n').map((paragraph, i) => (
+                      <p key={i} className="mb-2 last:mb-0 text-sm leading-relaxed">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              <Button onClick={handleFinish} className="w-full">
+                Done
+                <Sparkles className="w-4 h-4 ml-2" />
+              </Button>
             </div>
           )}
         </div>

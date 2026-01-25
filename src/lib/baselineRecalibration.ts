@@ -99,6 +99,102 @@ export async function checkRecalibrationNeeded(baseline: UserBaseline): Promise<
 }
 
 /**
+ * Apply recalibration when user wants "more progress"
+ * This increases the deficit/intensity based on their goal
+ */
+export async function applyProgressBoost(baseline: UserBaseline): Promise<{
+  success: boolean;
+  adjustments: {
+    calorieChange: number;
+    proteinChange: number;
+    reason: string;
+  };
+  newTargets: {
+    targetCalories: number;
+    proteinGrams: number;
+    carbsGrams: number;
+    fatsGrams: number;
+  } | null;
+}> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, adjustments: { calorieChange: 0, proteinChange: 0, reason: 'Not authenticated' }, newTargets: null };
+  }
+
+  const currentCalories = baseline.target_calories || 2000;
+  const currentProtein = baseline.protein_grams || 120;
+  const currentCarbs = baseline.carbs_grams || 200;
+  const currentFats = baseline.fats_grams || 65;
+  const goal = baseline.primary_goal || 'general_health';
+
+  let calorieChange = 0;
+  let proteinChange = 0;
+  let carbsChange = 0;
+  let fatsChange = 0;
+  let reason = '';
+
+  // Apply adjustments based on goal
+  if (goal === 'fat_loss' || goal === 'weight_loss') {
+    // Increase deficit by 5-10% (up to 300 cal max reduction)
+    calorieChange = -Math.min(Math.round(currentCalories * 0.07), 300);
+    // Boost protein to preserve muscle during harder cut
+    proteinChange = Math.round(currentProtein * 0.1);
+    // Reduce carbs slightly
+    carbsChange = -Math.round(currentCarbs * 0.1);
+    reason = 'Increased calorie deficit and boosted protein for accelerated fat loss';
+  } else if (goal === 'muscle_gain' || goal === 'performance') {
+    // Increase surplus slightly
+    calorieChange = Math.round(currentCalories * 0.05);
+    // Boost protein for muscle synthesis
+    proteinChange = Math.round(currentProtein * 0.1);
+    // Add carbs for training fuel
+    carbsChange = Math.round(currentCarbs * 0.1);
+    reason = 'Increased calories and protein to support muscle growth';
+  } else if (goal === 'body_recomposition') {
+    // Keep calories same but shift macros
+    proteinChange = Math.round(currentProtein * 0.15);
+    carbsChange = -Math.round(currentCarbs * 0.05);
+    reason = 'Boosted protein for body recomposition while maintaining calories';
+  } else {
+    // General health - modest increase in protein, slight calorie adjustment
+    proteinChange = 10;
+    reason = 'Modest protein boost to support your progress goals';
+  }
+
+  const newTargets = {
+    targetCalories: Math.round(currentCalories + calorieChange),
+    proteinGrams: Math.round(currentProtein + proteinChange),
+    carbsGrams: Math.round(currentCarbs + carbsChange),
+    fatsGrams: Math.round(currentFats + fatsChange),
+  };
+
+  // Apply the changes
+  const { error } = await supabase
+    .from('user_baselines')
+    .update({
+      target_calories: newTargets.targetCalories,
+      protein_grams: newTargets.proteinGrams,
+      carbs_grams: newTargets.carbsGrams,
+      fats_grams: newTargets.fatsGrams,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error applying progress boost:', error);
+    return { success: false, adjustments: { calorieChange: 0, proteinChange: 0, reason: 'Database error' }, newTargets: null };
+  }
+
+  console.log('Progress boost applied:', { calorieChange, proteinChange, reason, newTargets });
+
+  return {
+    success: true,
+    adjustments: { calorieChange, proteinChange, reason },
+    newTargets,
+  };
+}
+
+/**
  * Apply recalibration to user baseline
  */
 export async function applyRecalibration(result: RecalibrationResult): Promise<boolean> {
