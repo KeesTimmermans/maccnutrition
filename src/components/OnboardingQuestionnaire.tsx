@@ -200,7 +200,12 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   useEffect(() => {
     const prefillUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const firstName = user?.user_metadata?.first_name || user?.user_metadata?.full_name;
+      // Extract first name from metadata, handling both first_name and legacy full_name
+      let firstName = user?.user_metadata?.first_name;
+      if (!firstName && user?.user_metadata?.full_name) {
+        // Extract just the first name from full_name
+        firstName = user.user_metadata.full_name.split(' ')[0];
+      }
       if (firstName) {
         setData(prev => ({ ...prev, name: firstName }));
       }
