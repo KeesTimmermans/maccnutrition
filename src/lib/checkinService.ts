@@ -377,17 +377,23 @@ export function formatCheckInsForAI(checkIns: DailyCheckIn[], analysis: CheckInA
   const { today, yesterday, changes, patterns } = temporal;
 
   let context = `
-DAILY CHECK-IN DATA (Temporal View):`;
+DAILY CHECK-IN DATA (Temporal View):
+
+⚠️ RATING SCALE INTERPRETATION:
+- Mood: 1 = terrible, 5 = excellent (higher is better)
+- Energy: 1 = exhausted, 5 = energized (higher is better)
+- Sleep Quality: 1 = poor, 5 = excellent (higher is better)
+- Stress: 1 = calm/relaxed, 5 = very stressed (LOWER is better for stress)`;
 
   // Today's check-in
   if (today) {
     context += `
 
 📍 TODAY'S CHECK-IN:
-- Mood: ${today.mood}/5
-- Energy Level: ${today.energy_level}/5
-- Sleep Quality: ${today.sleep_quality}/5${today.sleep_hours ? ` (${today.sleep_hours} hours)` : ''}
-- Stress Level: ${today.stress_level}/5
+- Mood: ${today.mood}/5 ${today.mood >= 4 ? '(good)' : today.mood <= 2 ? '(struggling)' : '(okay)'}
+- Energy Level: ${today.energy_level}/5 ${today.energy_level >= 4 ? '(energized)' : today.energy_level <= 2 ? '(low)' : '(moderate)'}
+- Sleep Quality: ${today.sleep_quality}/5 ${today.sleep_quality >= 4 ? '(rested well)' : today.sleep_quality <= 2 ? '(poor sleep)' : '(okay)'}${today.sleep_hours ? ` (${today.sleep_hours} hours)` : ''}
+- Stress Level: ${today.stress_level}/5 ${today.stress_level <= 2 ? '(calm)' : today.stress_level >= 4 ? '(stressed)' : '(moderate)'}
 ${today.notes ? `- Notes: "${today.notes}"` : ''}`;
   }
 
@@ -396,10 +402,10 @@ ${today.notes ? `- Notes: "${today.notes}"` : ''}`;
     context += `
 
 📍 YESTERDAY'S CHECK-IN (for comparison):
-- Mood: ${yesterday.mood}/5
-- Energy Level: ${yesterday.energy_level}/5
-- Sleep Quality: ${yesterday.sleep_quality}/5${yesterday.sleep_hours ? ` (${yesterday.sleep_hours} hours)` : ''}
-- Stress Level: ${yesterday.stress_level}/5`;
+- Mood: ${yesterday.mood}/5 ${yesterday.mood >= 4 ? '(good)' : yesterday.mood <= 2 ? '(struggling)' : '(okay)'}
+- Energy Level: ${yesterday.energy_level}/5 ${yesterday.energy_level >= 4 ? '(energized)' : yesterday.energy_level <= 2 ? '(low)' : '(moderate)'}
+- Sleep Quality: ${yesterday.sleep_quality}/5 ${yesterday.sleep_quality >= 4 ? '(rested well)' : yesterday.sleep_quality <= 2 ? '(poor sleep)' : '(okay)'}${yesterday.sleep_hours ? ` (${yesterday.sleep_hours} hours)` : ''}
+- Stress Level: ${yesterday.stress_level}/5 ${yesterday.stress_level <= 2 ? '(calm)' : yesterday.stress_level >= 4 ? '(stressed)' : '(moderate)'}`;
   }
 
   // Day-over-day changes
