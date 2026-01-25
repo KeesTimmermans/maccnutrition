@@ -21,6 +21,7 @@ export const MeasurementsSettings = ({ baseline, onUpdate }: MeasurementsSetting
     thigh: baseline?.thigh_cm?.toString() || "",
     neck: baseline?.neck_cm?.toString() || "",
     hasProgressPhoto: !!baseline?.progress_photo_url,
+    progressPhotoUrl: baseline?.progress_photo_url || null,
   });
 
   const updateData = <K extends keyof MeasurementsData>(key: K, value: MeasurementsData[K]) => {
@@ -38,6 +39,7 @@ export const MeasurementsSettings = ({ baseline, onUpdate }: MeasurementsSetting
         arm_cm: data.arm ? parseFloat(data.arm) : null,
         thigh_cm: data.thigh ? parseFloat(data.thigh) : null,
         neck_cm: data.neck ? parseFloat(data.neck) : null,
+        progress_photo_url: data.progressPhotoUrl,
       });
       toast.success("Measurements updated successfully!");
       onUpdate?.();

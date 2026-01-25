@@ -102,6 +102,7 @@ export interface OnboardingData {
   thigh: string;
   neck: string;
   hasProgressPhoto: boolean;
+  progressPhotoUrl: string | null;
 }
 
 const initialData: OnboardingData = {
@@ -160,6 +161,7 @@ const initialData: OnboardingData = {
   thigh: "",
   neck: "",
   hasProgressPhoto: false,
+  progressPhotoUrl: null,
 };
 
 const getSteps = (t: (key: string) => string): { id: StepType; title: string; icon: React.ReactNode }[] => [
@@ -294,6 +296,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
               thigh: data.thigh,
               neck: data.neck,
               hasProgressPhoto: data.hasProgressPhoto,
+              progressPhotoUrl: data.progressPhotoUrl,
             }}
             updateData={(key, value) => updateData(key as keyof OnboardingData, value as never)}
             unitSystem={data.unitSystem}
