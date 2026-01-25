@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler, Sparkles } from "lucide-react";
+import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler, Sparkles, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { MeasurementsSettings } from "@/components/MeasurementsSettings";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
+import { ProgressHistory } from "@/components/ProgressHistory";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
@@ -405,6 +406,17 @@ export const SettingsSheet = ({
                   baseline={baseline}
                   onUpdate={onSettingsChange}
                 />
+
+                {/* Progress History Section */}
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <History className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Check-in History</span>
+                  </div>
+                  <ProgressHistory 
+                    unitSystem={baseline?.unit_system === "metric" ? "metric" : "imperial"} 
+                  />
+                </div>
               </div>
             </TabsContent>
             

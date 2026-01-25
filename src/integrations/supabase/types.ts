@@ -242,6 +242,72 @@ export type Database = {
         }
         Relationships: []
       }
+      progress_updates: {
+        Row: {
+          adjustments: Json | null
+          arm_cm: number | null
+          body_fat_percentage: number | null
+          carbs_grams: number | null
+          chest_cm: number | null
+          coach_response: string | null
+          created_at: string
+          fats_grams: number | null
+          hip_cm: number | null
+          id: string
+          neck_cm: number | null
+          protein_grams: number | null
+          satisfaction_choice: string
+          target_calories: number | null
+          thigh_cm: number | null
+          user_feedback: string | null
+          user_id: string
+          waist_cm: number | null
+          weight: number | null
+        }
+        Insert: {
+          adjustments?: Json | null
+          arm_cm?: number | null
+          body_fat_percentage?: number | null
+          carbs_grams?: number | null
+          chest_cm?: number | null
+          coach_response?: string | null
+          created_at?: string
+          fats_grams?: number | null
+          hip_cm?: number | null
+          id?: string
+          neck_cm?: number | null
+          protein_grams?: number | null
+          satisfaction_choice: string
+          target_calories?: number | null
+          thigh_cm?: number | null
+          user_feedback?: string | null
+          user_id: string
+          waist_cm?: number | null
+          weight?: number | null
+        }
+        Update: {
+          adjustments?: Json | null
+          arm_cm?: number | null
+          body_fat_percentage?: number | null
+          carbs_grams?: number | null
+          chest_cm?: number | null
+          coach_response?: string | null
+          created_at?: string
+          fats_grams?: number | null
+          hip_cm?: number | null
+          id?: string
+          neck_cm?: number | null
+          protein_grams?: number | null
+          satisfaction_choice?: string
+          target_calories?: number | null
+          thigh_cm?: number | null
+          user_feedback?: string | null
+          user_id?: string
+          waist_cm?: number | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
       user_baselines: {
         Row: {
           accountability_preference: string | null

@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
 import { updateUserMeasurements, UserBaseline } from "@/lib/userService";
 import { applyProgressBoost } from "@/lib/baselineRecalibration";
+import { saveProgressUpdate } from "@/lib/progressUpdateService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TrendingUp, ThumbsUp, Target, Ruler, ChevronRight, ChevronLeft, Sparkles, Loader2, MessageCircle } from "lucide-react";
@@ -143,24 +144,44 @@ export const ProgressUpdateDialog = ({
   };
 
   const handleSubmit = async () => {
-    if (!choice) return;
+    if (!choice || !baseline) return;
     
     setIsSubmitting(true);
     try {
       let measurementsUpdated = false;
+      let currentMeasurements: {
+        weight?: number | null;
+        bodyFatPercentage?: number | null;
+        waistCm?: number | null;
+        hipCm?: number | null;
+        chestCm?: number | null;
+        armCm?: number | null;
+        thighCm?: number | null;
+        neckCm?: number | null;
+      } = {};
 
       // If updating measurements, save them first
       if (choice === "update_measurements") {
-        await updateUserMeasurements({
-          body_fat_percentage: measurementsData.bodyFatPercentage
+        currentMeasurements = {
+          bodyFatPercentage: measurementsData.bodyFatPercentage
             ? parseFloat(measurementsData.bodyFatPercentage)
             : null,
-          waist_cm: measurementsData.waist ? parseFloat(measurementsData.waist) : null,
-          hip_cm: measurementsData.hip ? parseFloat(measurementsData.hip) : null,
-          chest_cm: measurementsData.chest ? parseFloat(measurementsData.chest) : null,
-          arm_cm: measurementsData.arm ? parseFloat(measurementsData.arm) : null,
-          thigh_cm: measurementsData.thigh ? parseFloat(measurementsData.thigh) : null,
-          neck_cm: measurementsData.neck ? parseFloat(measurementsData.neck) : null,
+          waistCm: measurementsData.waist ? parseFloat(measurementsData.waist) : null,
+          hipCm: measurementsData.hip ? parseFloat(measurementsData.hip) : null,
+          chestCm: measurementsData.chest ? parseFloat(measurementsData.chest) : null,
+          armCm: measurementsData.arm ? parseFloat(measurementsData.arm) : null,
+          thighCm: measurementsData.thigh ? parseFloat(measurementsData.thigh) : null,
+          neckCm: measurementsData.neck ? parseFloat(measurementsData.neck) : null,
+        };
+
+        await updateUserMeasurements({
+          body_fat_percentage: currentMeasurements.bodyFatPercentage,
+          waist_cm: currentMeasurements.waistCm,
+          hip_cm: currentMeasurements.hipCm,
+          chest_cm: currentMeasurements.chestCm,
+          arm_cm: currentMeasurements.armCm,
+          thigh_cm: currentMeasurements.thighCm,
+          neck_cm: currentMeasurements.neckCm,
           progress_photo_url: measurementsData.progressPhotoUrl,
         });
         measurementsUpdated = true;
@@ -168,16 +189,33 @@ export const ProgressUpdateDialog = ({
       }
 
       // If user wants more progress, apply baseline recalibration
-      if (choice === "more_progress" && baseline) {
+      let adjustmentsInfo: { calorieChange: number; proteinChange: number; reason: string } | undefined;
+      if (choice === "more_progress") {
         const boostResult = await applyProgressBoost(baseline);
         if (boostResult.success && boostResult.adjustments) {
           setRecalibrationInfo(boostResult.adjustments);
+          adjustmentsInfo = boostResult.adjustments;
           toast.success("Your targets have been adjusted to push you further! 💪");
         }
       }
 
       // Call AI Coach for personalized response
       const response = await callAICoach(choice, feedback, measurementsUpdated);
+      
+      // Save progress update to database
+      try {
+        await saveProgressUpdate({
+          satisfactionChoice: choice,
+          userFeedback: feedback || undefined,
+          coachResponse: response || undefined,
+          adjustments: adjustmentsInfo,
+          baseline,
+          measurements: choice === "update_measurements" ? currentMeasurements : undefined,
+        });
+      } catch (saveError) {
+        console.error("Error saving progress update history:", saveError);
+        // Don't fail the whole flow if history save fails
+      }
       
       if (response) {
         setCoachResponse(response);
