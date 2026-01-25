@@ -268,6 +268,13 @@ export function analyzeCheckIns(checkIns: DailyCheckIn[], userTargets?: UserTarg
 /**
  * Build temporal check-in analysis (today vs yesterday vs recent trend)
  */
+export interface ConsecutivePattern {
+  metric: string;
+  value: number;
+  days: number;
+  interpretation: string;
+}
+
 export interface TemporalCheckInContext {
   today: DailyCheckIn | null;
   yesterday: DailyCheckIn | null;
@@ -286,6 +293,119 @@ export interface TemporalCheckInContext {
     moodImproving: boolean;
     recoveryNeeded: boolean;
   };
+  consecutivePatterns: ConsecutivePattern[];
+}
+
+/**
+ * Detect when a metric has the same or very similar value for 3+ consecutive days
+ */
+function detectConsecutivePatterns(checkIns: DailyCheckIn[]): ConsecutivePattern[] {
+  if (checkIns.length < 3) return [];
+
+  // Sort by date descending (most recent first)
+  const sorted = [...checkIns].sort((a, b) => 
+    new Date(b.check_in_date).getTime() - new Date(a.check_in_date).getTime()
+  );
+
+  const patterns: ConsecutivePattern[] = [];
+  
+  const metrics: {
+    key: keyof DailyCheckIn;
+    label: string;
+    getInterpretation: (value: number, days: number) => string;
+  }[] = [
+    {
+      key: 'mood',
+      label: 'Mood',
+      getInterpretation: (value, days) => {
+        if (value <= 2) return `Mood has been low (${value}/5) for ${days} consecutive days — this is a pattern worth addressing`;
+        if (value >= 4) return `Mood has been consistently good (${value}/5) for ${days} days — great stability!`;
+        return `Mood has been steady at ${value}/5 for ${days} days`;
+      }
+    },
+    {
+      key: 'energy_level',
+      label: 'Energy',
+      getInterpretation: (value, days) => {
+        if (value <= 2) return `Energy has been persistently low (${value}/5) for ${days} days straight — this needs attention`;
+        if (value >= 4) return `Energy has been high (${value}/5) for ${days} consecutive days — momentum is building!`;
+        return `Energy has been stable at ${value}/5 for ${days} days`;
+      }
+    },
+    {
+      key: 'sleep_quality',
+      label: 'Sleep Quality',
+      getInterpretation: (value, days) => {
+        if (value <= 2) return `Sleep quality has been poor (${value}/5) for ${days} days in a row — this is impacting recovery`;
+        if (value >= 4) return `Sleep has been excellent (${value}/5) for ${days} consecutive nights`;
+        return `Sleep quality has been consistent at ${value}/5 for ${days} days`;
+      }
+    },
+    {
+      key: 'stress_level',
+      label: 'Stress',
+      getInterpretation: (value, days) => {
+        if (value >= 4) return `Stress has been elevated (${value}/5) for ${days} consecutive days — chronic stress needs intervention`;
+        if (value <= 2) return `Stress has been well-managed (${value}/5) for ${days} days — keep up the good work`;
+        return `Stress has been moderate (${value}/5) for ${days} days`;
+      }
+    },
+    {
+      key: 'hunger_level',
+      label: 'Hunger',
+      getInterpretation: (value, days) => {
+        if (value >= 4) return `Hunger has been high (${value}/5) for ${days} consecutive days — may need to adjust meal timing or portions`;
+        if (value <= 2) return `Appetite has been low (${value}/5) for ${days} days — worth monitoring`;
+        return `Hunger has been stable at ${value}/5 for ${days} days`;
+      }
+    },
+    {
+      key: 'hydration_feeling',
+      label: 'Hydration',
+      getInterpretation: (value, days) => {
+        if (value <= 2) return `Hydration feeling has been low (${value}/5) for ${days} days — consistent dehydration is concerning`;
+        if (value >= 4) return `Hydration has been solid (${value}/5) for ${days} consecutive days`;
+        return `Hydration feeling has been at ${value}/5 for ${days} days`;
+      }
+    }
+  ];
+
+  for (const metric of metrics) {
+    // Find consecutive days with same value (allowing ±0.5 tolerance for similarity)
+    let consecutiveCount = 1;
+    let lastValue = sorted[0]?.[metric.key] as number | null | undefined;
+    
+    if (lastValue == null) continue;
+
+    for (let i = 1; i < sorted.length; i++) {
+      const currentValue = sorted[i]?.[metric.key] as number | null | undefined;
+      
+      // Check if dates are consecutive
+      const prevDate = new Date(sorted[i - 1].check_in_date);
+      const currDate = new Date(sorted[i].check_in_date);
+      const dayDiff = (prevDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (dayDiff !== 1) break; // Not consecutive days
+      
+      if (currentValue != null && currentValue === lastValue) {
+        consecutiveCount++;
+      } else {
+        break;
+      }
+    }
+
+    // Only report if 3+ consecutive days with same value
+    if (consecutiveCount >= 3) {
+      patterns.push({
+        metric: metric.label,
+        value: lastValue,
+        days: consecutiveCount,
+        interpretation: metric.getInterpretation(lastValue, consecutiveCount)
+      });
+    }
+  }
+
+  return patterns;
 }
 
 export function buildTemporalCheckInContext(checkIns: DailyCheckIn[]): TemporalCheckInContext {
@@ -357,6 +477,9 @@ export function buildTemporalCheckInContext(checkIns: DailyCheckIn[]): TemporalC
     recoveryNeeded: avgEnergy < 2.5 && avgSleep < 3,
   };
 
+  // Detect consecutive same-value patterns (3+ days)
+  const consecutivePatterns = detectConsecutivePatterns(checkIns);
+
   return {
     today: todaysCheckIn,
     yesterday: yesterdaysCheckIn,
@@ -364,6 +487,7 @@ export function buildTemporalCheckInContext(checkIns: DailyCheckIn[]): TemporalC
     recentDays,
     changes,
     patterns,
+    consecutivePatterns,
   };
 }
 
@@ -374,7 +498,7 @@ export function formatCheckInsForAI(checkIns: DailyCheckIn[], analysis: CheckInA
   if (checkIns.length === 0) return "";
 
   const temporal = buildTemporalCheckInContext(checkIns);
-  const { today, yesterday, changes, patterns } = temporal;
+  const { today, yesterday, changes, patterns, consecutivePatterns } = temporal;
 
   let context = `
 DAILY CHECK-IN DATA (Temporal View):
@@ -417,6 +541,19 @@ ${today.notes ? `- Notes: "${today.notes}"` : ''}`;
 - Energy: ${changes.energyChange === 'better' ? '⬆️ improved' : changes.energyChange === 'worse' ? '⬇️ declined' : changes.energyChange === 'same' ? '➡️ stable' : 'N/A'}
 - Sleep: ${changes.sleepChange === 'better' ? '⬆️ improved' : changes.sleepChange === 'worse' ? '⬇️ declined' : changes.sleepChange === 'same' ? '➡️ stable' : 'N/A'}
 - Stress: ${changes.stressChange === 'better' ? '⬇️ reduced (good)' : changes.stressChange === 'worse' ? '⬆️ increased' : changes.stressChange === 'same' ? '➡️ stable' : 'N/A'}`;
+  }
+
+  // CONSECUTIVE PATTERNS - This is the key addition!
+  if (consecutivePatterns.length > 0) {
+    context += `
+
+🔴 CONSECUTIVE PATTERN ALERT (SAME VALUES FOR 3+ DAYS):
+${consecutivePatterns.map(p => `- ${p.metric}: ${p.interpretation}`).join('\n')}
+
+⚠️ IMPORTANT: When a user logs the same value for 3+ consecutive days, this is a SIGNIFICANT pattern that should be directly addressed in your response. 
+- If it's a NEGATIVE pattern (low energy, high stress, poor sleep), acknowledge the persistence and offer specific interventions
+- If it's a POSITIVE pattern (good mood, low stress), celebrate the consistency and reinforce what's working
+- Use phrases like "I notice you've been at [X] for [N] days straight" to show you're paying attention`;
   }
 
   // Multi-day patterns
