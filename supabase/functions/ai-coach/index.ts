@@ -79,7 +79,12 @@ const requestSchema = z.object({
   messages: z.array(messageSchema).max(50, "Too many messages").optional(),
   userContext: userContextSchema,
   todaysMeals: z.array(mealSchema).max(20, "Too many meals").optional(),
-  type: z.enum(['chat', 'meal_feedback', 'daily_checkin', 'focus_tip']).optional()
+  type: z.enum(['chat', 'meal_feedback', 'daily_checkin', 'focus_tip', 'progress_update']).optional(),
+  progressUpdateData: z.object({
+    choice: z.enum(['happy', 'more_progress', 'update_measurements']),
+    feedback: z.string().max(1000).optional(),
+    measurementsUpdated: z.boolean().optional(),
+  }).optional()
 });
 
 // CJT Nutrition Core Values and Guidelines - COMPLETE KNOWLEDGE BASE
@@ -202,11 +207,33 @@ serve(async (req) => {
       });
     }
 
-    const { message, messages, userContext, todaysMeals, type } = validationResult.data;
+    const { message, messages, userContext, todaysMeals, type, progressUpdateData } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Build progress update context if applicable
+    let progressUpdateContext = "";
+    if (type === 'progress_update' && progressUpdateData) {
+      const choiceLabels: Record<string, string> = {
+        happy: "is happy with their current progress and wants to maintain the current approach",
+        more_progress: "wants to push harder and progress more - they're ready for increased intensity or stricter targets",
+        update_measurements: "has updated their body measurements to track their physical progress"
+      };
+      
+      progressUpdateContext = `
+MONTHLY PROGRESS CHECK-IN:
+The user just completed their monthly progress check-in and ${choiceLabels[progressUpdateData.choice]}.
+${progressUpdateData.feedback ? `Additional feedback from user: "${progressUpdateData.feedback}"` : ''}
+${progressUpdateData.measurementsUpdated ? 'They have also updated their body measurements.' : ''}
+
+RESPOND APPROPRIATELY:
+- If they're happy: Celebrate their consistency, reinforce what's working, encourage them to keep going
+- If they want more progress: Acknowledge their drive, provide specific actionable steps to intensify (e.g., tighten calorie target, increase protein, add training), but remind them to listen to their body
+- If they updated measurements: Congratulate them on tracking, note that consistent measurement helps identify trends
+- Be warm, personal, and motivational — this is a milestone moment`;
     }
 
     // Build context from today's meals
@@ -370,6 +397,7 @@ ${mealsContext}${mealsAnalysis}`;
     const systemPrompt = `${CJT_CORE_SYSTEM}
 
 ${userProfile}
+${progressUpdateContext}
 
 LANGUAGE INSTRUCTION:
 ${languageInstruction}
