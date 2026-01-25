@@ -44,7 +44,7 @@ export interface UserBaseline {
   potassium_mg: number | null;
   focus_points: string[] | null;
   preferred_language: string | null;
-  // New behavioral fields
+  // Behavioral fields
   eating_speed: string | null;
   hunger_patterns: string | null;
   cravings_triggers: string[] | null;
@@ -66,6 +66,18 @@ export interface UserBaseline {
     sections: string[];
     hidden: string[];
   } | null;
+  // New fields
+  job_activity_level: string | null;
+  workout_types: string[] | null;
+  body_fat_percentage: number | null;
+  waist_cm: number | null;
+  hip_cm: number | null;
+  chest_cm: number | null;
+  arm_cm: number | null;
+  thigh_cm: number | null;
+  neck_cm: number | null;
+  progress_photo_url: string | null;
+  measurements_updated_at: string | null;
 }
 
 export const saveUserBaseline = async (
@@ -118,7 +130,7 @@ export const saveUserBaseline = async (
       magnesium_mg: baseline.hydration.magnesiumMg,
       potassium_mg: baseline.hydration.potassiumMg,
       focus_points: baseline.focusPoints,
-      // New behavioral fields
+      // Behavioral fields
       eating_speed: onboardingData.eatingSpeed || null,
       hunger_patterns: onboardingData.hungerPatterns || null,
       cravings_triggers: onboardingData.cravingsTriggers,
@@ -135,6 +147,18 @@ export const saveUserBaseline = async (
       energy_patterns: onboardingData.energyPatterns || null,
       weekend_habits: onboardingData.weekendHabits || null,
       protein_shakes_preference: onboardingData.proteinShakesPreference || null,
+      // New fields
+      job_activity_level: onboardingData.jobActivityLevel || null,
+      workout_types: onboardingData.workoutTypes,
+      // Measurements (optional during onboarding)
+      body_fat_percentage: onboardingData.bodyFatPercentage ? parseFloat(onboardingData.bodyFatPercentage) : null,
+      waist_cm: onboardingData.waist ? parseFloat(onboardingData.waist) : null,
+      hip_cm: onboardingData.hip ? parseFloat(onboardingData.hip) : null,
+      chest_cm: onboardingData.chest ? parseFloat(onboardingData.chest) : null,
+      arm_cm: onboardingData.arm ? parseFloat(onboardingData.arm) : null,
+      thigh_cm: onboardingData.thigh ? parseFloat(onboardingData.thigh) : null,
+      neck_cm: onboardingData.neck ? parseFloat(onboardingData.neck) : null,
+      measurements_updated_at: (onboardingData.waist || onboardingData.bodyFatPercentage) ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -222,6 +246,40 @@ export const updateUserSettings = async (settings: {
 
   if (error) {
     console.error("Error updating user settings:", error);
+    throw error;
+  }
+
+  return data as UserBaseline;
+};
+
+/**
+ * Update user body measurements
+ */
+export const updateUserMeasurements = async (measurements: {
+  body_fat_percentage?: number | null;
+  waist_cm?: number | null;
+  hip_cm?: number | null;
+  chest_cm?: number | null;
+  arm_cm?: number | null;
+  thigh_cm?: number | null;
+  neck_cm?: number | null;
+  weight?: number | null;
+}) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("user_baselines")
+    .update({
+      ...measurements,
+      measurements_updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating measurements:", error);
     throw error;
   }
 

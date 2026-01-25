@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid } from "lucide-react";
+import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,7 @@ import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
+import { MeasurementsSettings } from "@/components/MeasurementsSettings";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
@@ -213,9 +214,10 @@ export const SettingsSheet = ({
         </SheetHeader>
         
         <Tabs defaultValue="general" className="flex-1 flex flex-col">
-          <TabsList className="mx-6 mb-2 grid w-auto grid-cols-3">
+          <TabsList className="mx-6 mb-2 grid w-auto grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="layout">Layout</TabsTrigger>
+            <TabsTrigger value="measurements">Body</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
           
@@ -357,6 +359,25 @@ export const SettingsSheet = ({
                 <DashboardLayoutSettings
                   currentLayout={baseline?.dashboard_layout || null}
                   onLayoutChange={onSettingsChange}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="measurements" className="mt-0">
+              <div className="space-y-6 pb-6">
+                <div className="flex items-center gap-3 pb-2">
+                  <div className="p-2 rounded-xl bg-secondary/10">
+                    <Ruler className="w-5 h-5 text-secondary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Body Measurements</h3>
+                    <p className="text-xs text-muted-foreground">Track your progress beyond the scale</p>
+                  </div>
+                </div>
+
+                <MeasurementsSettings
+                  baseline={baseline}
+                  onUpdate={onSettingsChange}
                 />
               </div>
             </TabsContent>

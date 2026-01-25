@@ -23,7 +23,10 @@ import {
 import cjtLogo from "@/assets/cjt-logo.png";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-type StepType = "demographics" | "medical" | "lifestyle" | "eating_behavior" | "challenges" | "goals" | "preferences" | "female";
+import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
+import { Dumbbell, Ruler as RulerIcon } from "lucide-react";
+
+type StepType = "demographics" | "medical" | "lifestyle" | "eating_behavior" | "challenges" | "goals" | "preferences" | "female" | "measurements";
 
 export interface OnboardingData {
   // Demographics
@@ -48,8 +51,10 @@ export interface OnboardingData {
   sleepHours: string;
   activityLevel: string;
   stressLevel: string;
+  jobActivityLevel: string;  // NEW: How active is their job
+  workoutTypes: string[];    // NEW: Types of workouts they do
   
-  // Eating Behavior (NEW)
+  // Eating Behavior
   eatingSpeed: string;
   hungerPatterns: string;
   cravingsTriggers: string[];
@@ -57,18 +62,18 @@ export interface OnboardingData {
   snackingHabits: string;
   hydrationHabits: string;
   
-  // Challenges & History (NEW)
+  // Challenges & History
   biggestChallenge: string;
   pastDiets: string[];
   weekendHabits: string;
   eatingOutFrequency: string;
   
-  // Practical (NEW)
+  // Practical
   mealPrepTime: string;
   cookingSkill: string;
   energyPatterns: string;
   
-  // Motivation (NEW)
+  // Motivation
   motivationStyle: string;
   accountabilityPreference: string;
   
@@ -87,6 +92,16 @@ export interface OnboardingData {
   cycleRegularity: string;
   currentPhase: string;
   cycleSymptoms: string[];
+
+  // Measurements (optional during onboarding)
+  bodyFatPercentage: string;
+  waist: string;
+  hip: string;
+  chest: string;
+  arm: string;
+  thigh: string;
+  neck: string;
+  hasProgressPhoto: boolean;
 }
 
 const initialData: OnboardingData = {
@@ -107,7 +122,9 @@ const initialData: OnboardingData = {
   sleepHours: "",
   activityLevel: "",
   stressLevel: "",
-  // New fields
+  jobActivityLevel: "",     // NEW
+  workoutTypes: [],         // NEW
+  // Eating behavior fields
   eatingSpeed: "",
   hungerPatterns: "",
   cravingsTriggers: [],
@@ -123,7 +140,7 @@ const initialData: OnboardingData = {
   energyPatterns: "",
   motivationStyle: "",
   accountabilityPreference: "",
-  // Existing
+  // Goals & Preferences
   primaryGoal: "",
   secondaryGoals: [],
   dietType: "",
@@ -134,6 +151,15 @@ const initialData: OnboardingData = {
   cycleRegularity: "",
   currentPhase: "",
   cycleSymptoms: [],
+  // Measurements (optional)
+  bodyFatPercentage: "",
+  waist: "",
+  hip: "",
+  chest: "",
+  arm: "",
+  thigh: "",
+  neck: "",
+  hasProgressPhoto: false,
 };
 
 const getSteps = (t: (key: string) => string): { id: StepType; title: string; icon: React.ReactNode }[] => [
@@ -144,6 +170,7 @@ const getSteps = (t: (key: string) => string): { id: StepType; title: string; ic
   { id: "challenges", title: "Your Journey", icon: <Brain className="w-6 h-6" /> },
   { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
   { id: "preferences", title: t('preferences'), icon: <Utensils className="w-6 h-6" /> },
+  { id: "measurements", title: "Measurements", icon: <RulerIcon className="w-6 h-6" /> },
 ];
 
 interface OnboardingQuestionnaireProps {
@@ -169,8 +196,13 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   
   const steps = getSteps(t);
   
+  // Insert female step before measurements if applicable
   const allSteps = data.sex === "female" 
-    ? [...steps, { id: "female" as StepType, title: t('cycle_info'), icon: <Moon className="w-6 h-6" /> }]
+    ? [
+        ...steps.slice(0, -1), // All steps except measurements
+        { id: "female" as StepType, title: t('cycle_info'), icon: <Moon className="w-6 h-6" /> },
+        steps[steps.length - 1] // Measurements at the end
+      ]
     : steps;
   
   const currentStep = allSteps[currentStepIndex];
@@ -225,6 +257,8 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         return data.dietType && data.coachingTone;
       case "female":
         return data.cycleRegularity;
+      case "measurements":
+        return true; // Measurements are optional
       default:
         return true;
     }
@@ -237,7 +271,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       case "medical":
         return <MedicalStep data={data} toggleArrayItem={toggleArrayItem} t={t} />;
       case "lifestyle":
-        return <LifestyleStep data={data} updateData={updateData} t={t} />;
+        return <LifestyleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "eating_behavior":
         return <EatingBehaviorStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "challenges":
@@ -248,6 +282,25 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         return <PreferencesStep data={data} updateData={updateData} t={t} />;
       case "female":
         return <FemaleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
+      case "measurements":
+        return (
+          <MeasurementsStep 
+            data={{
+              bodyFatPercentage: data.bodyFatPercentage,
+              waist: data.waist,
+              hip: data.hip,
+              chest: data.chest,
+              arm: data.arm,
+              thigh: data.thigh,
+              neck: data.neck,
+              hasProgressPhoto: data.hasProgressPhoto,
+            }}
+            updateData={(key, value) => updateData(key as keyof OnboardingData, value as never)}
+            unitSystem={data.unitSystem}
+            t={t}
+            isOnboarding={true}
+          />
+        );
       default:
         return null;
     }
@@ -534,9 +587,10 @@ const MedicalStep = ({ data, toggleArrayItem, t }: {
   );
 };
 
-const LifestyleStep = ({ data, updateData, t }: { 
+const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
 }) => {
   const activityLevels = [
@@ -544,6 +598,28 @@ const LifestyleStep = ({ data, updateData, t }: {
     { label: t('semi_active'), desc: t('semi_active_desc'), value: "semi_active" },
     { label: t('active'), desc: t('active_desc'), value: "active" },
     { label: t('very_active'), desc: t('very_active_desc'), value: "very_active" },
+  ];
+
+  const jobActivityLevels = [
+    { label: "Sedentary", desc: "Desk job, mostly sitting", value: "sedentary", icon: "🖥️" },
+    { label: "Lightly Active", desc: "Some walking, standing occasionally", value: "light", icon: "🚶" },
+    { label: "Moderately Active", desc: "On feet most of the day", value: "moderate", icon: "🏃" },
+    { label: "Very Active", desc: "Physical labor, constant movement", value: "active", icon: "💪" },
+  ];
+
+  const workoutTypeOptions = [
+    { key: "weightlifting", label: "Weightlifting", icon: "🏋️" },
+    { key: "cardio", label: "Cardio/Running", icon: "🏃" },
+    { key: "crossfit", label: "CrossFit", icon: "⚡" },
+    { key: "yoga", label: "Yoga/Pilates", icon: "🧘" },
+    { key: "hiit", label: "HIIT", icon: "🔥" },
+    { key: "swimming", label: "Swimming", icon: "🏊" },
+    { key: "cycling", label: "Cycling", icon: "🚴" },
+    { key: "sports", label: "Team Sports", icon: "⚽" },
+    { key: "martial_arts", label: "Martial Arts", icon: "🥋" },
+    { key: "dance", label: "Dance", icon: "💃" },
+    { key: "walking", label: "Walking Only", icon: "🚶" },
+    { key: "none", label: "None Currently", icon: "❌" },
   ];
 
   const trainingOptions = [
@@ -568,8 +644,36 @@ const LifestyleStep = ({ data, updateData, t }: {
 
   return (
     <div className="space-y-6 animate-slide-up">
+      {/* Job Activity Level - NEW */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">How active is your job?</Label>
+        <div className="space-y-2">
+          {jobActivityLevels.map((level) => (
+            <button
+              key={level.value}
+              onClick={() => updateData("jobActivityLevel", level.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
+                data.jobActivityLevel === level.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-xl">{level.icon}</span>
+              <div>
+                <span className="font-semibold block">{level.label}</span>
+                <span className={`text-sm ${data.jobActivityLevel === level.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  {level.desc}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Overall Activity Level */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('daily_activity_level')}</Label>
+        <p className="text-xs text-muted-foreground -mt-1">Including work + leisure</p>
         <div className="space-y-2">
           {activityLevels.map((level) => (
             <button
@@ -590,6 +694,7 @@ const LifestyleStep = ({ data, updateData, t }: {
         </div>
       </div>
 
+      {/* Training Days */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('training_days_week')}</Label>
         <div className="grid grid-cols-4 gap-2">
@@ -609,6 +714,29 @@ const LifestyleStep = ({ data, updateData, t }: {
         </div>
       </div>
 
+      {/* Workout Types - NEW */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What type of workouts do you do?</Label>
+        <p className="text-xs text-muted-foreground -mt-1">Select all that apply</p>
+        <div className="grid grid-cols-2 gap-2">
+          {workoutTypeOptions.map((workout) => (
+            <button
+              key={workout.key}
+              onClick={() => toggleArrayItem("workoutTypes", workout.key)}
+              className={`p-3 rounded-xl text-left transition-all flex items-center gap-2 ${
+                data.workoutTypes.includes(workout.key)
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-lg">{workout.icon}</span>
+              <span className="text-sm font-medium">{workout.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sleep Hours */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('avg_sleep_night')}</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -628,6 +756,7 @@ const LifestyleStep = ({ data, updateData, t }: {
         </div>
       </div>
 
+      {/* Stress Level */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('current_stress_level')}</Label>
         <div className="grid grid-cols-3 gap-2">

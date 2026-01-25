@@ -44,6 +44,30 @@ const ACTIVITY_MULTIPLIERS = {
   },
 };
 
+// Job activity adjustments (added to base multiplier)
+const JOB_ACTIVITY_ADJUSTMENTS: Record<string, number> = {
+  sedentary: -0.5,
+  light: 0,
+  moderate: 0.5,
+  active: 1.0,
+};
+
+// Workout type intensity factors (affects TDEE calculation)
+const WORKOUT_TYPE_INTENSITY: Record<string, number> = {
+  crossfit: 1.15,
+  hiit: 1.12,
+  weightlifting: 1.10,
+  sports: 1.08,
+  martial_arts: 1.08,
+  swimming: 1.05,
+  cycling: 1.05,
+  cardio: 1.05,
+  dance: 1.03,
+  yoga: 1.00,
+  walking: 1.00,
+  none: 1.00,
+};
+
 // Goal adjustments
 const GOAL_ADJUSTMENTS: Record<string, { min: number; max: number; default: number }> = {
   fat_loss: { min: -0.20, max: -0.10, default: -0.15 },
@@ -84,16 +108,52 @@ function getWeightFromData(data: OnboardingData): { weightLbs: number; weightKg:
 
 /**
  * Step 1: Calculate TDEE (Total Daily Energy Expenditure)
+ * Now incorporates job activity level and workout types
  */
 function calculateTDEE(data: OnboardingData): { tdee: number; target: number; deficit: number } {
   const { weightLbs } = getWeightFromData(data);
   const sex = data.sex || "male";
   const activityLevel = (data.activityLevel || "semi_active") as keyof typeof ACTIVITY_MULTIPLIERS.male;
   const goal = data.primaryGoal || "general_health";
+  const jobActivity = data.jobActivityLevel || "light";
+  const workoutTypes = data.workoutTypes || [];
 
-  // Formula: weight (lbs) × activity multiplier = baseline TDEE
-  const multiplier = ACTIVITY_MULTIPLIERS[sex][activityLevel];
-  const tdee = Math.round(weightLbs * multiplier);
+  // Base multiplier from general activity level
+  let multiplier = ACTIVITY_MULTIPLIERS[sex][activityLevel];
+  
+  // Adjust for job activity level
+  const jobAdjustment = JOB_ACTIVITY_ADJUSTMENTS[jobActivity] || 0;
+  multiplier += jobAdjustment;
+
+  // Calculate workout intensity factor from workout types
+  // Use the highest intensity workout if multiple selected, with diminishing returns for additional types
+  let workoutIntensityFactor = 1.0;
+  if (workoutTypes.length > 0 && !workoutTypes.includes("none")) {
+    const intensities = workoutTypes
+      .map(type => WORKOUT_TYPE_INTENSITY[type] || 1.0)
+      .sort((a, b) => b - a);
+    
+    // Primary workout type gets full effect, each additional adds 20% of its bonus
+    workoutIntensityFactor = intensities[0];
+    for (let i = 1; i < Math.min(intensities.length, 3); i++) {
+      workoutIntensityFactor += (intensities[i] - 1.0) * 0.2;
+    }
+  }
+
+  // Base TDEE calculation
+  let baseTdee = weightLbs * multiplier;
+  
+  // Apply workout intensity factor based on training frequency
+  const trainingDays = data.trainingDays || "2-3";
+  let trainingMultiplier = 1.0;
+  if (trainingDays === "0-1") trainingMultiplier = 0.25;
+  else if (trainingDays === "2-3") trainingMultiplier = 0.5;
+  else if (trainingDays === "4-5") trainingMultiplier = 0.75;
+  else if (trainingDays === "6+") trainingMultiplier = 1.0;
+  
+  // Apply scaled workout intensity
+  const scaledIntensity = 1 + ((workoutIntensityFactor - 1) * trainingMultiplier);
+  const tdee = Math.round(baseTdee * scaledIntensity);
 
   // Apply goal adjustment
   const adjustment = GOAL_ADJUSTMENTS[goal]?.default || 0;
