@@ -151,8 +151,8 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Instagram className="w-5 h-5 text-pink-500" />
             Import Recipe
@@ -162,9 +162,9 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <ScrollArea className="flex-1 -mx-6 px-6">
           {!recipe ? (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-4">
               <Textarea
                 placeholder="Paste the recipe caption here...&#10;&#10;Example:&#10;🍳 High Protein Pancakes&#10;- 2 eggs&#10;- 1 banana&#10;- 40g oats&#10;- 1 scoop protein powder"
                 value={captionText}
@@ -204,149 +204,165 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
               </div>
             </div>
           ) : (
-            <ScrollArea className="flex-1 -mx-6 px-6">
-              <div className="space-y-4 pb-4">
-                {/* Recipe Header */}
-                <div className="bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center">
-                      <ChefHat className="w-5 h-5 text-pink-500" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{recipe.name}</h3>
-                      <Badge variant={recipe.confidence === 'high' ? 'default' : 'secondary'} className="text-xs mt-1">
-                        {recipe.confidence} confidence
-                      </Badge>
-                    </div>
+            <div className="space-y-4 pb-4">
+              {/* Recipe Header */}
+              <div className="bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center">
+                    <ChefHat className="w-5 h-5 text-pink-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-foreground">{recipe.name}</h3>
+                    <Badge variant={recipe.confidence === 'high' ? 'default' : 'secondary'} className="text-xs mt-1">
+                      {recipe.confidence} confidence
+                    </Badge>
                   </div>
                 </div>
+              </div>
 
-                {/* Servings Adjuster */}
-                <div className="flex items-center justify-between bg-card rounded-lg p-3 border">
-                  <span className="text-sm font-medium">Servings</span>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={() => setServings(Math.max(1, servings - 1))}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                    <span className="font-semibold w-6 text-center">{servings}</span>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={() => setServings(servings + 1)}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Per Serving Macros */}
+              {/* Single Portion Summary - Highlighted */}
+              <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  🍽️ Per Single Portion
+                </h4>
                 {perServing && (
                   <div className="grid grid-cols-4 gap-2 text-center">
-                    <div className="bg-orange-500/10 rounded-lg p-2">
-                      <p className="text-lg font-bold text-orange-500">{perServing.calories}</p>
+                    <div className="bg-background/80 rounded-lg p-2.5 shadow-sm">
+                      <p className="text-xl font-bold text-orange-500">{perServing.calories}</p>
                       <p className="text-xs text-muted-foreground">kcal</p>
                     </div>
-                    <div className="bg-red-500/10 rounded-lg p-2">
-                      <p className="text-lg font-bold text-red-500">{perServing.protein}g</p>
+                    <div className="bg-background/80 rounded-lg p-2.5 shadow-sm">
+                      <p className="text-xl font-bold text-red-500">{perServing.protein}g</p>
                       <p className="text-xs text-muted-foreground">Protein</p>
                     </div>
-                    <div className="bg-yellow-500/10 rounded-lg p-2">
-                      <p className="text-lg font-bold text-yellow-500">{perServing.carbs}g</p>
+                    <div className="bg-background/80 rounded-lg p-2.5 shadow-sm">
+                      <p className="text-xl font-bold text-yellow-500">{perServing.carbs}g</p>
                       <p className="text-xs text-muted-foreground">Carbs</p>
                     </div>
-                    <div className="bg-blue-500/10 rounded-lg p-2">
-                      <p className="text-lg font-bold text-blue-500">{perServing.fats}g</p>
+                    <div className="bg-background/80 rounded-lg p-2.5 shadow-sm">
+                      <p className="text-xl font-bold text-blue-500">{perServing.fats}g</p>
                       <p className="text-xs text-muted-foreground">Fats</p>
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Ingredients List */}
+              {/* Servings Adjuster */}
+              <div className="flex items-center justify-between bg-card rounded-lg p-3 border">
                 <div>
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    Ingredients
-                    <Badge variant="outline" className="text-xs">{editedIngredients.length}</Badge>
-                  </h4>
-                  <div className="space-y-2">
-                    {editedIngredients.map((ing, idx) => (
-                      <div key={idx} className="bg-muted/50 rounded-lg p-3 text-sm">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p className="font-medium">{ing.name}</p>
-                            <p className="text-xs text-muted-foreground">{ing.amount}</p>
+                  <span className="text-sm font-medium">Number of Portions</span>
+                  <p className="text-xs text-muted-foreground">Adjust to match what you'll eat</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={() => setServings(Math.max(1, servings - 1))}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="font-semibold w-8 text-center text-lg">{servings}</span>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={() => setServings(servings + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Ingredients List */}
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  📝 Ingredients
+                  <Badge variant="outline" className="text-xs">{editedIngredients.length}</Badge>
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">Tap any value to edit it</p>
+                <div className="space-y-2">
+                  {editedIngredients.map((ing, idx) => (
+                    <div key={idx} className="bg-muted/50 rounded-lg p-3 text-sm">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1">
+                          <p className="font-medium">{ing.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              type="text"
+                              value={ing.amount}
+                              onChange={(e) => updateIngredient(idx, 'amount', e.target.value)}
+                              className="h-6 text-xs w-24 px-2"
+                              placeholder="Amount"
+                            />
+                            <span className="text-xs text-muted-foreground">({ing.estimatedGrams}g)</span>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            onClick={() => removeIngredient(idx)}
-                          >
-                            <Minus className="w-3 h-3" />
-                          </Button>
                         </div>
-                        <div className="grid grid-cols-4 gap-2 mt-2 text-xs">
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={ing.calories}
-                              onChange={(e) => updateIngredient(idx, 'calories', parseInt(e.target.value) || 0)}
-                              className="h-7 text-xs"
-                            />
-                            <span className="text-muted-foreground">cal</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={ing.protein}
-                              onChange={(e) => updateIngredient(idx, 'protein', parseInt(e.target.value) || 0)}
-                              className="h-7 text-xs"
-                            />
-                            <span className="text-muted-foreground">P</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={ing.carbs}
-                              onChange={(e) => updateIngredient(idx, 'carbs', parseInt(e.target.value) || 0)}
-                              className="h-7 text-xs"
-                            />
-                            <span className="text-muted-foreground">C</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={ing.fats}
-                              onChange={(e) => updateIngredient(idx, 'fats', parseInt(e.target.value) || 0)}
-                              className="h-7 text-xs"
-                            />
-                            <span className="text-muted-foreground">F</span>
-                          </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeIngredient(idx)}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-xs">
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            value={ing.calories}
+                            onChange={(e) => updateIngredient(idx, 'calories', parseInt(e.target.value) || 0)}
+                            className="h-7 text-xs text-center"
+                          />
+                          <p className="text-center text-muted-foreground">cal</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            value={ing.protein}
+                            onChange={(e) => updateIngredient(idx, 'protein', parseInt(e.target.value) || 0)}
+                            className="h-7 text-xs text-center"
+                          />
+                          <p className="text-center text-muted-foreground">P (g)</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            value={ing.carbs}
+                            onChange={(e) => updateIngredient(idx, 'carbs', parseInt(e.target.value) || 0)}
+                            className="h-7 text-xs text-center"
+                          />
+                          <p className="text-center text-muted-foreground">C (g)</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            value={ing.fats}
+                            onChange={(e) => updateIngredient(idx, 'fats', parseInt(e.target.value) || 0)}
+                            className="h-7 text-xs text-center"
+                          />
+                          <p className="text-center text-muted-foreground">F (g)</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Notes */}
-                {recipe.notes && (
-                  <div className="bg-amber-500/10 rounded-lg p-3 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5" />
-                    <p className="text-xs text-muted-foreground">{recipe.notes}</p>
-                  </div>
-                )}
               </div>
-            </ScrollArea>
+
+              {/* Notes */}
+              {recipe.notes && (
+                <div className="bg-amber-500/10 rounded-lg p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5" />
+                  <p className="text-xs text-muted-foreground">{recipe.notes}</p>
+                </div>
+              )}
+            </div>
           )}
-        </div>
+        </ScrollArea>
 
         {recipe && (
-          <div className="flex gap-2 pt-4 border-t">
+          <div className="flex-shrink-0 flex gap-2 pt-4 border-t">
             <Button variant="outline" onClick={handleClose} className="flex-1">
               Cancel
             </Button>
@@ -356,7 +372,7 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initia
               ) : (
                 <Check className="w-4 h-4 mr-2" />
               )}
-              Log Meal
+              Log {servings > 1 ? `${servings} Portions` : '1 Portion'}
             </Button>
           </div>
         )}
