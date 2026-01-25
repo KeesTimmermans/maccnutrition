@@ -248,8 +248,11 @@ export type Database = {
           activity_level: string | null
           age: number | null
           allergies: string[] | null
+          arm_cm: number | null
           biggest_challenge: string | null
+          body_fat_percentage: number | null
           carbs_grams: number | null
+          chest_cm: number | null
           coaching_tone: string | null
           conditions: string[] | null
           cooking_skill: string | null
@@ -270,20 +273,25 @@ export type Database = {
           height_cm: number | null
           height_feet: number | null
           height_inches: number | null
+          hip_cm: number | null
           hunger_patterns: string | null
           hydration_habits: string | null
           id: string
+          job_activity_level: string | null
           magnesium_mg: number | null
           meal_prep_time: string | null
           meals_per_day: string | null
+          measurements_updated_at: string | null
           motivation_style: string | null
           name: string | null
+          neck_cm: number | null
           occupation: string | null
           past_diets: string[] | null
           potassium_mg: number | null
           preferred_currency: string | null
           preferred_language: string | null
           primary_goal: string | null
+          progress_photo_url: string | null
           protein_grams: number | null
           protein_shakes_preference: string | null
           secondary_goals: string[] | null
@@ -294,23 +302,29 @@ export type Database = {
           stress_level: string | null
           target_calories: number | null
           tdee: number | null
+          thigh_cm: number | null
           training_days: string | null
           training_intensity: string | null
           unit_system: string | null
           updated_at: string
           user_id: string
+          waist_cm: number | null
           water_liters: number | null
           weekend_habits: string | null
           weight: number | null
           work_hours: string | null
+          workout_types: string[] | null
         }
         Insert: {
           accountability_preference?: string | null
           activity_level?: string | null
           age?: number | null
           allergies?: string[] | null
+          arm_cm?: number | null
           biggest_challenge?: string | null
+          body_fat_percentage?: number | null
           carbs_grams?: number | null
+          chest_cm?: number | null
           coaching_tone?: string | null
           conditions?: string[] | null
           cooking_skill?: string | null
@@ -331,20 +345,25 @@ export type Database = {
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
+          hip_cm?: number | null
           hunger_patterns?: string | null
           hydration_habits?: string | null
           id?: string
+          job_activity_level?: string | null
           magnesium_mg?: number | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
+          measurements_updated_at?: string | null
           motivation_style?: string | null
           name?: string | null
+          neck_cm?: number | null
           occupation?: string | null
           past_diets?: string[] | null
           potassium_mg?: number | null
           preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
+          progress_photo_url?: string | null
           protein_grams?: number | null
           protein_shakes_preference?: string | null
           secondary_goals?: string[] | null
@@ -355,23 +374,29 @@ export type Database = {
           stress_level?: string | null
           target_calories?: number | null
           tdee?: number | null
+          thigh_cm?: number | null
           training_days?: string | null
           training_intensity?: string | null
           unit_system?: string | null
           updated_at?: string
           user_id: string
+          waist_cm?: number | null
           water_liters?: number | null
           weekend_habits?: string | null
           weight?: number | null
           work_hours?: string | null
+          workout_types?: string[] | null
         }
         Update: {
           accountability_preference?: string | null
           activity_level?: string | null
           age?: number | null
           allergies?: string[] | null
+          arm_cm?: number | null
           biggest_challenge?: string | null
+          body_fat_percentage?: number | null
           carbs_grams?: number | null
+          chest_cm?: number | null
           coaching_tone?: string | null
           conditions?: string[] | null
           cooking_skill?: string | null
@@ -392,20 +417,25 @@ export type Database = {
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
+          hip_cm?: number | null
           hunger_patterns?: string | null
           hydration_habits?: string | null
           id?: string
+          job_activity_level?: string | null
           magnesium_mg?: number | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
+          measurements_updated_at?: string | null
           motivation_style?: string | null
           name?: string | null
+          neck_cm?: number | null
           occupation?: string | null
           past_diets?: string[] | null
           potassium_mg?: number | null
           preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
+          progress_photo_url?: string | null
           protein_grams?: number | null
           protein_shakes_preference?: string | null
           secondary_goals?: string[] | null
@@ -416,15 +446,18 @@ export type Database = {
           stress_level?: string | null
           target_calories?: number | null
           tdee?: number | null
+          thigh_cm?: number | null
           training_days?: string | null
           training_intensity?: string | null
           unit_system?: string | null
           updated_at?: string
           user_id?: string
+          waist_cm?: number | null
           water_liters?: number | null
           weekend_habits?: string | null
           weight?: number | null
           work_hours?: string | null
+          workout_types?: string[] | null
         }
         Relationships: []
       }
