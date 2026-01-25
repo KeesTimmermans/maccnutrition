@@ -7,10 +7,12 @@ import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, UserStreak } from "@/lib/streakService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Target, Flame } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Target, Flame, ClipboardCheck } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { WeeklyAchievements } from "@/components/WeeklyAchievements";
 import { StreakCard } from "@/components/StreakCard";
+import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 
 interface DayData {
   date: string;
@@ -40,6 +42,7 @@ const Progress = () => {
   const [weekSummary, setWeekSummary] = useState<WeekSummary | null>(null);
   const [loginStreak, setLoginStreak] = useState<UserStreak | null>(null);
   const [coachingStreak, setCoachingStreak] = useState<UserStreak | null>(null);
+  const [showProgressUpdate, setShowProgressUpdate] = useState(false);
 
   useEffect(() => {
     loadChartData();
@@ -160,6 +163,16 @@ const Progress = () => {
       <main className="container py-6 space-y-6">
         {/* Consistency Streaks */}
         <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
+
+        {/* Progress Check-in Button */}
+        <Button
+          onClick={() => setShowProgressUpdate(true)}
+          variant="outline"
+          className="w-full flex items-center justify-center gap-2 py-6 rounded-2xl border-primary/30 hover:bg-primary/5"
+        >
+          <ClipboardCheck className="w-5 h-5 text-primary" />
+          <span className="font-medium">{t('progress_checkin') || 'Progress check-in'}</span>
+        </Button>
 
         {/* Weekly Achievements */}
         <WeeklyAchievements />
@@ -361,6 +374,17 @@ const Progress = () => {
           ))}
         </div>
       </nav>
+
+      {/* Progress Update Dialog */}
+      <ProgressUpdateDialog
+        open={showProgressUpdate}
+        onOpenChange={setShowProgressUpdate}
+        baseline={baseline}
+        onComplete={() => {
+          setShowProgressUpdate(false);
+          loadChartData();
+        }}
+      />
     </div>
   );
 };
