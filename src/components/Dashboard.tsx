@@ -18,7 +18,7 @@ import { RecalibrationNotification } from "@/components/RecalibrationNotificatio
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
 
-import { Bell, Flame, TrendingUp, Sun, Watch } from "lucide-react";
+import { Flame, TrendingUp, Sun, Watch } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
@@ -680,9 +680,12 @@ export const Dashboard = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-muted rounded-xl transition-colors relative">
-              <Bell className="w-6 h-6 text-foreground" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-secondary rounded-full" />
+            <button 
+              onClick={() => setShowAIChat(true)}
+              className="p-2 hover:bg-muted rounded-xl transition-colors"
+              aria-label="Open Coach Mac"
+            >
+              <span className="text-2xl">🧠</span>
             </button>
             <SettingsSheet 
               baseline={baseline} 
