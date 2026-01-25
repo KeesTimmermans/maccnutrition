@@ -52,8 +52,8 @@ interface AdjustableIngredient extends ParsedIngredient {
   adjustedGrams: number;
 }
 
-type TrackingMethod = 'select' | 'barcode' | 'describe' | 'photo';
-type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'quantity' | 'adjust' | 'adjust_ingredients' | 'confirm';
+type TrackingMethod = 'select' | 'barcode' | 'describe' | 'photo' | 'upload';
+type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'upload' | 'quantity' | 'adjust' | 'adjust_ingredients' | 'confirm';
 
 export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerProps) => {
   const { t } = useLanguage();
@@ -340,7 +340,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
   };
 
   const handleBack = () => {
-    if (step === 'search' || step === 'barcode' || step === 'describe' || step === 'photo') {
+    if (step === 'search' || step === 'barcode' || step === 'describe' || step === 'photo' || step === 'upload') {
       setStep('method');
       setTrackingMethod('select');
       setImage(null);
@@ -365,6 +365,9 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
       } else if (trackingMethod === 'photo') {
         setStep('photo');
         setImage(null);
+      } else if (trackingMethod === 'upload') {
+        setStep('upload');
+        setImage(null);
       } else {
         setStep('method');
       }
@@ -387,6 +390,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
       setStep('describe');
     } else if (method === 'photo') {
       setStep('photo');
+    } else if (method === 'upload') {
+      setStep('upload');
     }
   };
 
@@ -405,6 +410,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
       case 'barcode': return 'Scan Barcode';
       case 'describe': return 'Describe Your Meal';
       case 'photo': return 'Take Photo';
+      case 'upload': return 'Upload Photo';
       case 'quantity': return 'Set Quantity';
       case 'adjust': return 'Adjust Serving';
       case 'adjust_ingredients': return 'Adjust Ingredients';
@@ -468,7 +474,22 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
         </div>
         <div className="flex-1 text-left">
           <h3 className="font-semibold text-foreground">Take a Photo</h3>
-          <p className="text-sm text-muted-foreground">AI identifies each ingredient from your image</p>
+          <p className="text-sm text-muted-foreground">Use your camera to capture your meal</p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      </button>
+
+      {/* Upload Photo Option */}
+      <button
+        onClick={() => selectMethod('upload')}
+        className="w-full p-5 bg-card border border-border rounded-2xl flex items-center gap-4 hover:border-primary hover:bg-accent/50 transition-all group"
+      >
+        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+          <Upload className="w-7 h-7 text-primary" />
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-semibold text-foreground">Upload Photo</h3>
+          <p className="text-sm text-muted-foreground">Choose an image from your gallery</p>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
       </button>
@@ -578,44 +599,65 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Take Photo Button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full aspect-[2/1] rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-3 hover:border-primary hover:bg-accent/50 transition-all duration-300"
-          >
-            <div className="w-14 h-14 rounded-full gradient-hero flex items-center justify-center">
-              <Camera className="w-7 h-7 text-primary-foreground" />
-            </div>
-            <div className="text-center">
-              <p className="font-bold text-foreground">{t('take_photo')}</p>
-              <p className="text-sm text-muted-foreground">Use your camera</p>
-            </div>
-          </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full aspect-video rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-accent/50 transition-all duration-300"
+        >
+          <div className="w-16 h-16 rounded-full gradient-hero flex items-center justify-center">
+            <Camera className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-foreground">{t('take_photo')}</p>
+            <p className="text-sm text-muted-foreground">AI will identify each ingredient</p>
+          </div>
+        </button>
+      )}
+    </div>
+  );
 
-          {/* Upload Photo Button */}
-          <button
-            onClick={() => galleryInputRef.current?.click()}
-            className="w-full aspect-[2/1] rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-3 hover:border-primary hover:bg-accent/50 transition-all duration-300"
-          >
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-              <Upload className="w-7 h-7 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="font-bold text-foreground">Upload Photo</p>
-              <p className="text-sm text-muted-foreground">Choose from your gallery</p>
-            </div>
-          </button>
+  // Upload photo step
+  const renderUploadStep = () => (
+    <div className="animate-slide-up space-y-4">
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageCapture}
+        className="hidden"
+      />
 
-          {/* Hidden gallery input */}
-          <input
-            ref={galleryInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageCapture}
-            className="hidden"
-          />
+      {image ? (
+        <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted">
+          <img src={image} alt="Meal" className="w-full h-full object-cover" />
+          {isAnalyzing && (
+            <div className="absolute inset-0 bg-foreground/50 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
+              <p className="text-primary-foreground font-semibold">Identifying ingredients...</p>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              setImage(null);
+              setIngredients([]);
+            }}
+            className="absolute top-3 right-3 p-2 bg-foreground/50 rounded-full hover:bg-foreground/70 transition-colors"
+          >
+            <X className="w-5 h-5 text-primary-foreground" />
+          </button>
         </div>
+      ) : (
+        <button
+          onClick={() => galleryInputRef.current?.click()}
+          className="w-full aspect-video rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-accent/50 transition-all duration-300"
+        >
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <Upload className="w-8 h-8 text-primary" />
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-foreground">Upload Photo</p>
+            <p className="text-sm text-muted-foreground">Choose an image from your gallery</p>
+          </div>
+        </button>
       )}
     </div>
   );
@@ -1116,6 +1158,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
             {step === 'barcode' && renderBarcodeStep()}
             {step === 'describe' && renderDescribeStep()}
             {step === 'photo' && renderPhotoStep()}
+            {step === 'upload' && renderUploadStep()}
             {step === 'quantity' && renderQuantityStep()}
             {step === 'adjust' && renderAdjustStep()}
             {step === 'adjust_ingredients' && renderAdjustIngredientsStep()}
