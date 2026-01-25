@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Camera, X, Sparkles, Search, Loader2, Heart, Trash2, Scale, 
-  ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus 
+  ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus, Upload 
 } from "lucide-react";
 import { 
   analyzeFoodImage, 
@@ -77,6 +77,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
   const [confidence, setConfidence] = useState("");
   const [notes, setNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -577,18 +578,44 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
           </button>
         </div>
       ) : (
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full aspect-video rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-accent/50 transition-all duration-300"
-        >
-          <div className="w-16 h-16 rounded-full gradient-hero flex items-center justify-center">
-            <Camera className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <div className="text-center">
-            <p className="font-bold text-foreground">{t('take_photo')}</p>
-            <p className="text-sm text-muted-foreground">AI will identify each ingredient</p>
-          </div>
-        </button>
+        <div className="space-y-4">
+          {/* Take Photo Button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full aspect-[2/1] rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-3 hover:border-primary hover:bg-accent/50 transition-all duration-300"
+          >
+            <div className="w-14 h-14 rounded-full gradient-hero flex items-center justify-center">
+              <Camera className="w-7 h-7 text-primary-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-foreground">{t('take_photo')}</p>
+              <p className="text-sm text-muted-foreground">Use your camera</p>
+            </div>
+          </button>
+
+          {/* Upload Photo Button */}
+          <button
+            onClick={() => galleryInputRef.current?.click()}
+            className="w-full aspect-[2/1] rounded-2xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-3 hover:border-primary hover:bg-accent/50 transition-all duration-300"
+          >
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <Upload className="w-7 h-7 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-foreground">Upload Photo</p>
+              <p className="text-sm text-muted-foreground">Choose from your gallery</p>
+            </div>
+          </button>
+
+          {/* Hidden gallery input */}
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageCapture}
+            className="hidden"
+          />
+        </div>
       )}
     </div>
   );
