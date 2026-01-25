@@ -82,16 +82,34 @@ export const MealPlanCard = ({
   const incrementQuantity = (index: number) => {
     if (!meal.ingredients) return;
     const ing = meal.ingredients[index];
-    // Increment by 0.5 for small units, 10 for grams
-    const increment = ing.unit === 'g' || ing.unit === 'ml' ? 10 : 0.5;
-    handleQuantityChange(index, Math.round((ing.quantity + increment) * 10) / 10);
+    // Increment based on unit type
+    let increment = 0.5; // default for pcs
+    if (ing.unit === 'g' || ing.unit === 'ml') {
+      increment = 10;
+    } else if (ing.unit === 'oz') {
+      increment = 1;
+    } else if (ing.unit === 'cups') {
+      increment = 0.25;
+    } else if (ing.unit === 'tbsp') {
+      increment = 1;
+    }
+    handleQuantityChange(index, Math.round((ing.quantity + increment) * 100) / 100);
   };
 
   const decrementQuantity = (index: number) => {
     if (!meal.ingredients) return;
     const ing = meal.ingredients[index];
-    const decrement = ing.unit === 'g' || ing.unit === 'ml' ? 10 : 0.5;
-    const newQty = Math.max(0, Math.round((ing.quantity - decrement) * 10) / 10);
+    let decrement = 0.5; // default for pcs
+    if (ing.unit === 'g' || ing.unit === 'ml') {
+      decrement = 10;
+    } else if (ing.unit === 'oz') {
+      decrement = 1;
+    } else if (ing.unit === 'cups') {
+      decrement = 0.25;
+    } else if (ing.unit === 'tbsp') {
+      decrement = 1;
+    }
+    const newQty = Math.max(0, Math.round((ing.quantity - decrement) * 100) / 100);
     handleQuantityChange(index, newQty);
   };
 
@@ -190,7 +208,12 @@ export const MealPlanCard = ({
                           handleQuantityChange(index, parseFloat(e.target.value) || 0)
                         }
                         className="w-14 h-7 text-center text-sm p-1"
-                        step={ingredient.unit === 'g' || ingredient.unit === 'ml' ? 10 : 0.5}
+                        step={
+                          ingredient.unit === 'g' || ingredient.unit === 'ml' ? 10 : 
+                          ingredient.unit === 'oz' ? 1 : 
+                          ingredient.unit === 'cups' ? 0.25 : 
+                          ingredient.unit === 'tbsp' ? 1 : 0.5
+                        }
                         min={0}
                       />
                       <span className="text-xs text-muted-foreground w-6">

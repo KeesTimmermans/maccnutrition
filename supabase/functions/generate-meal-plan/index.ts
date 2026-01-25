@@ -27,7 +27,9 @@ const userContextSchema = z.object({
   snackingHabits: z.string().max(100).nullable().optional(),
   weekendHabits: z.string().max(100).nullable().optional(),
   energyPatterns: z.string().max(100).nullable().optional(),
-  conditions: z.array(z.string().max(100)).max(20).nullable().optional()
+  conditions: z.array(z.string().max(100)).max(20).nullable().optional(),
+  // Unit system preference
+  unitSystem: z.enum(['metric', 'imperial']).nullable().optional()
 }).passthrough().optional();
 
 const requestSchema = z.object({
@@ -214,6 +216,31 @@ serve(async (req) => {
       behavioralGuidelines += '\n- Keep sodium moderate in meal suggestions.';
     }
 
+    // Determine unit system
+    const unitSystem = userContext?.unitSystem || 'metric';
+    const isImperial = unitSystem === 'imperial';
+    
+    // Unit-specific instructions
+    const unitInstructions = isImperial
+      ? `MEASUREMENT UNITS (IMPERIAL):
+- Use "oz" for weight-based items (meat, cheese, vegetables by weight)
+- Use "cups" for volume items like rice, pasta, liquids
+- Use "tbsp" for smaller amounts
+- Use "pcs" for countable items (eggs, bananas, slices)
+- gramsPerUnit: For "oz" use 28.35, for "cups" use approximate gram weight, for "pcs" use actual weight per item
+- All nutrition values (caloriesPer100g, proteinPer100g, etc.) should still be per 100 GRAMS for calculation accuracy
+
+Example for chicken (imperial): { "name": "Chicken Breast", "quantity": 5, "unit": "oz", "gramsPerUnit": 28.35, "caloriesPer100g": 165, "proteinPer100g": 31, "carbsPer100g": 0, "fatsPer100g": 3.6 }
+Example for rice (imperial): { "name": "Cooked Rice", "quantity": 0.5, "unit": "cups", "gramsPerUnit": 158, "caloriesPer100g": 130, "proteinPer100g": 2.7, "carbsPer100g": 28, "fatsPer100g": 0.3 }`
+      : `MEASUREMENT UNITS (METRIC):
+- Use "g" for weight-based items (meat, vegetables, cheese)
+- Use "ml" for liquids
+- Use "pcs" for countable items (eggs, bananas, slices)
+- gramsPerUnit: For "g" unit use 1, for "pcs" use actual weight per item (e.g., ~50 for eggs, ~120 for banana)
+
+Example for chicken (metric): { "name": "Chicken Breast", "quantity": 150, "unit": "g", "gramsPerUnit": 1, "caloriesPer100g": 165, "proteinPer100g": 31, "carbsPer100g": 0, "fatsPer100g": 3.6 }
+Example for eggs: { "name": "Large Eggs", "quantity": 2, "unit": "pcs", "gramsPerUnit": 50, "caloriesPer100g": 155, "proteinPer100g": 13, "carbsPer100g": 1, "fatsPer100g": 11 }`;
+
     const systemPrompt = `You are an expert meal planner for CJTNutrition. Create a personalized 7-day meal plan based on the user's goals, preferences, and dietary restrictions.
 
 User Profile:
@@ -226,6 +253,7 @@ User Profile:
 - Activity Level: ${userContext?.activityLevel || 'moderate'}
 - Cooking Skill: ${cookingSkill}
 - Meal Prep Time Available: ${mealPrepTime}
+- Unit System: ${isImperial ? 'IMPERIAL (oz, cups, tbsp)' : 'METRIC (grams, ml)'}
 
 ⚠️ CRITICAL DIETARY REQUIREMENTS (MUST FOLLOW STRICTLY):
 ${dietTypeGuideline}
@@ -244,6 +272,8 @@ ${proteinShakesGuideline}
 ${complexityGuideline ? `COMPLEXITY GUIDELINE:\n${complexityGuideline}\n` : ''}
 BEHAVIORAL ADAPTATIONS:${behavioralGuidelines || '\n- No specific behavioral adaptations needed.'}
 
+${unitInstructions}
+
 Guidelines:
 - Create balanced, whole-food focused meals
 - Distribute the ${userContext?.targetCalories || 2000} daily calories evenly across ${mealsPerDayNum} meals (approximately ${Math.round((userContext?.targetCalories || 2000) / mealsPerDayNum)} kcal per meal)
@@ -251,11 +281,13 @@ Guidelines:
 - Vary protein sources throughout the week (RESPECTING the diet type above)
 - Include vegetables with most meals
 - Keep meals practical and easy to prepare
-- STRICTLY respect the dietary type, restrictions, and allergies listed above - NEVER violate these`;
+- STRICTLY respect the dietary type, restrictions, and allergies listed above - NEVER violate these
+- USE THE CORRECT UNIT SYSTEM (${isImperial ? 'imperial' : 'metric'}) for all ingredient quantities`;
 
     const userPrompt = `Generate a complete 7-day meal plan with EXACTLY ${mealsPerDayNum} meals per day. 
 
 IMPORTANT: Each day MUST have exactly these meals: ${allowedMealTypes.join(', ')}.
+IMPORTANT: Use ${isImperial ? 'IMPERIAL units (oz, cups, tbsp, pcs)' : 'METRIC units (g, ml, pcs)'} for all ingredient quantities.
 
 ${proteinShakesPref === 'never' ? 'REMINDER: NO protein shakes or smoothies - whole foods only!' : ''}
 
@@ -264,13 +296,10 @@ For EACH meal, include:
 - Total calories, protein, carbs, and fats
 - A detailed "ingredients" array with each ingredient's:
   - name (e.g., "Chicken Breast", "Large Eggs", "Banana")
-  - quantity (e.g., 2 for eggs, 150 for grams)
-  - unit: Use "pcs" for countable items (eggs, bananas, apples), "g" for weight-based items, "ml" for liquids
-  - gramsPerUnit: Weight in grams per single unit (1 for "g" unit, ~50 for eggs, ~120 for banana, etc.)
-  - Nutrition per 100g (caloriesPer100g, proteinPer100g, carbsPer100g, fatsPer100g)
-
-Example ingredient for eggs: { "name": "Large Eggs", "quantity": 2, "unit": "pcs", "gramsPerUnit": 50, "caloriesPer100g": 155, "proteinPer100g": 13, "carbsPer100g": 1, "fatsPer100g": 11 }
-Example for chicken: { "name": "Chicken Breast", "quantity": 150, "unit": "g", "gramsPerUnit": 1, "caloriesPer100g": 165, "proteinPer100g": 31, "carbsPer100g": 0, "fatsPer100g": 3.6 }
+  - quantity (e.g., 2 for eggs, ${isImperial ? '5 for ounces' : '150 for grams'})
+  - unit: ${isImperial ? 'Use "oz" for weight, "cups" for volume, "tbsp" for small amounts, "pcs" for countable items' : 'Use "g" for weight, "ml" for liquids, "pcs" for countable items'}
+  - gramsPerUnit: Weight in grams per single unit (${isImperial ? '28.35 for oz, ~158 for cup of rice' : '1 for "g" unit, ~50 for eggs, ~120 for banana'})
+  - Nutrition per 100g (caloriesPer100g, proteinPer100g, carbsPer100g, fatsPer100g) - ALWAYS in grams for calculation accuracy
 
 Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
 

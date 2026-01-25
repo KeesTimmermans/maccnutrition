@@ -178,6 +178,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         weekendHabits: baseline?.weekend_habits,
         energyPatterns: baseline?.energy_patterns,
         conditions: baseline?.conditions,
+        // Unit system preference
+        unitSystem: baseline?.unit_system || 'metric',
       };
 
       console.log('Generating meal plan with context:', userContext);
