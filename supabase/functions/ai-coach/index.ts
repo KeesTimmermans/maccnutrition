@@ -276,6 +276,23 @@ RESPOND APPROPRIATELY TO THEIR CHOICE:
 - If they want more progress: Acknowledge their drive, provide specific actionable steps to intensify (e.g., tighten calorie target, increase protein, add training), but remind them to listen to their body
 - If they updated measurements: Congratulate them on tracking, note that consistent measurement helps identify trends
 
+CRITICAL OUTPUT FORMAT:
+At the END of your response, you MUST include exactly 4 personalized focus points for this user's upcoming month.
+Format them EXACTLY like this (each on its own line, starting with an emoji):
+
+---FOCUS_POINTS---
+🎯 [First actionable focus - specific to their choice and goals]
+💪 [Second actionable focus - related to their targets]  
+🥗 [Third actionable focus - nutrition or habit related]
+✨ [Fourth actionable focus - mindset or consistency tip]
+---END_FOCUS---
+
+These focus points will replace their daily coaching plan for the next month. Make them:
+- Specific to THIS user's choice (happy/more progress/measurements)
+- Aligned with their goal (${userContext?.primaryGoal?.replace(/_/g, ' ') || 'their goals'})
+- Actionable and measurable where possible
+- Formatted as short phrases (not full sentences)
+
 This is a milestone moment — match their preferred communication style while being genuine.`;
     }
 

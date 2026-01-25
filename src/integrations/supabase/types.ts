@@ -250,6 +250,7 @@ export type Database = {
           carbs_grams: number | null
           chest_cm: number | null
           coach_response: string | null
+          coaching_focus_points: Json | null
           created_at: string
           fats_grams: number | null
           hip_cm: number | null
@@ -271,6 +272,7 @@ export type Database = {
           carbs_grams?: number | null
           chest_cm?: number | null
           coach_response?: string | null
+          coaching_focus_points?: Json | null
           created_at?: string
           fats_grams?: number | null
           hip_cm?: number | null
@@ -292,6 +294,7 @@ export type Database = {
           carbs_grams?: number | null
           chest_cm?: number | null
           coach_response?: string | null
+          coaching_focus_points?: Json | null
           created_at?: string
           fats_grams?: number | null
           hip_cm?: number | null

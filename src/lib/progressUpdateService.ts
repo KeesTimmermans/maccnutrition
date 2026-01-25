@@ -1,6 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { UserBaseline } from "@/lib/userService";
 
+export interface CoachingFocusPoint {
+  emoji: string;
+  text: string;
+}
+
 export interface ProgressUpdate {
   id: string;
   user_id: string;
@@ -8,6 +13,7 @@ export interface ProgressUpdate {
   satisfaction_choice: string;
   user_feedback: string | null;
   coach_response: string | null;
+  coaching_focus_points: CoachingFocusPoint[] | null;
   adjustments: {
     calorieChange?: number;
     proteinChange?: number;
@@ -31,6 +37,7 @@ export interface SaveProgressUpdateParams {
   satisfactionChoice: "happy" | "more_progress" | "update_measurements";
   userFeedback?: string;
   coachResponse?: string;
+  coachingFocusPoints?: CoachingFocusPoint[];
   adjustments?: {
     calorieChange: number;
     proteinChange: number;
@@ -50,19 +57,55 @@ export interface SaveProgressUpdateParams {
 }
 
 /**
+ * Parse focus points from AI coach response
+ * Looks for content between ---FOCUS_POINTS--- and ---END_FOCUS---
+ */
+export const parseFocusPoints = (response: string): { cleanResponse: string; focusPoints: CoachingFocusPoint[] } => {
+  const focusPointsMatch = response.match(/---FOCUS_POINTS---([\s\S]*?)---END_FOCUS---/);
+  
+  if (!focusPointsMatch) {
+    return { cleanResponse: response, focusPoints: [] };
+  }
+  
+  // Extract and clean the focus points section
+  const focusPointsRaw = focusPointsMatch[1].trim();
+  const focusPoints: CoachingFocusPoint[] = [];
+  
+  // Parse each line that starts with an emoji
+  const lines = focusPointsRaw.split('\n').filter(line => line.trim());
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Match emoji at start of line
+    const emojiMatch = trimmed.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉)/u);
+    if (emojiMatch) {
+      focusPoints.push({
+        emoji: emojiMatch[1],
+        text: trimmed.slice(emojiMatch[1].length).trim()
+      });
+    }
+  }
+  
+  // Remove the focus points section from the response
+  const cleanResponse = response.replace(/---FOCUS_POINTS---[\s\S]*?---END_FOCUS---/, '').trim();
+  
+  return { cleanResponse, focusPoints };
+};
+
+/**
  * Save a progress update to the database
  */
 export const saveProgressUpdate = async (params: SaveProgressUpdateParams): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { satisfactionChoice, userFeedback, coachResponse, adjustments, baseline, measurements } = params;
+  const { satisfactionChoice, userFeedback, coachResponse, coachingFocusPoints, adjustments, baseline, measurements } = params;
 
-  const { error } = await supabase.from("progress_updates").insert({
+  const insertData = {
     user_id: user.id,
     satisfaction_choice: satisfactionChoice,
     user_feedback: userFeedback || null,
     coach_response: coachResponse || null,
+    coaching_focus_points: coachingFocusPoints ? JSON.parse(JSON.stringify(coachingFocusPoints)) : null,
     adjustments: adjustments ? {
       calorieChange: adjustments.calorieChange,
       proteinChange: adjustments.proteinChange,
@@ -82,7 +125,9 @@ export const saveProgressUpdate = async (params: SaveProgressUpdateParams): Prom
     arm_cm: measurements?.armCm ?? baseline.arm_cm,
     thigh_cm: measurements?.thighCm ?? baseline.thigh_cm,
     neck_cm: measurements?.neckCm ?? baseline.neck_cm,
-  });
+  };
+
+  const { error } = await supabase.from("progress_updates").insert(insertData);
 
   if (error) {
     console.error("Error saving progress update:", error);
@@ -110,7 +155,8 @@ export const getProgressUpdates = async (): Promise<ProgressUpdate[]> => {
 
   return (data || []).map((item) => ({
     ...item,
-    adjustments: item.adjustments as ProgressUpdate["adjustments"],
+    adjustments: item.adjustments as unknown as ProgressUpdate["adjustments"],
+    coaching_focus_points: item.coaching_focus_points as unknown as ProgressUpdate["coaching_focus_points"],
   }));
 };
 
@@ -138,6 +184,23 @@ export const getLatestProgressUpdate = async (): Promise<ProgressUpdate | null> 
 
   return {
     ...data,
-    adjustments: data.adjustments as ProgressUpdate["adjustments"],
+    adjustments: data.adjustments as unknown as ProgressUpdate["adjustments"],
+    coaching_focus_points: data.coaching_focus_points as unknown as ProgressUpdate["coaching_focus_points"],
   };
+};
+
+/**
+ * Get the active coaching focus points (from most recent progress update within last 30 days)
+ */
+export const getActiveCoachingFocusPoints = async (): Promise<CoachingFocusPoint[] | null> => {
+  const latest = await getLatestProgressUpdate();
+  if (!latest || !latest.coaching_focus_points) return null;
+  
+  // Check if the progress update is within the last 30 days
+  const updateDate = new Date(latest.created_at);
+  const daysSinceUpdate = Math.floor((Date.now() - updateDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysSinceUpdate > 30) return null;
+  
+  return latest.coaching_focus_points;
 };
