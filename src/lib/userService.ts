@@ -242,6 +242,7 @@ export const getAICoachingResponse = async (
 export const updateUserSettings = async (settings: { 
   unit_system?: string; 
   preferred_currency?: string;
+  coaching_tone?: string;
   dashboard_layout?: { sections: string[]; hidden: string[] };
 }) => {
   const { data: { user } } = await supabase.auth.getUser();

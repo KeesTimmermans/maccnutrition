@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler, Sparkles, History } from "lucide-react";
+import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler, Sparkles, History, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
 import { useNavigate } from "react-router-dom";
@@ -39,9 +39,17 @@ export const SettingsSheet = ({
   const { language, setLanguage, t } = useLanguage();
   const [isMetric, setIsMetric] = useState(baseline?.unit_system === "metric");
   const [currency, setCurrency] = useState(baseline?.preferred_currency || "USD");
+  const [coachingTone, setCoachingTone] = useState(baseline?.coaching_tone || "supportive");
   const [isUpdating, setIsUpdating] = useState(false);
   const [open, setOpen] = useState(false);
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
+
+  const coachingTones = [
+    { value: "direct", label: "Direct", description: "Concise and action-focused" },
+    { value: "supportive", label: "Supportive", description: "Warm and encouraging" },
+    { value: "educational", label: "Educational", description: "Explains the 'why' behind advice" },
+    { value: "motivational", label: "Motivational", description: "High-energy and action-oriented" },
+  ];
 
   const currencies = [
     { code: "GBP", symbol: "£", name: "British Pound" },
@@ -94,6 +102,24 @@ export const SettingsSheet = ({
     } catch (error) {
       console.error("Error updating language:", error);
       toast.error(t('error'));
+    }
+  };
+
+  const handleCoachingToneChange = async (newTone: string) => {
+    setCoachingTone(newTone);
+    setIsUpdating(true);
+    
+    try {
+      await updateUserSettings({ coaching_tone: newTone });
+      const toneInfo = coachingTones.find(t => t.value === newTone);
+      toast.success(`Coaching style updated: ${toneInfo?.label || newTone}`);
+      onSettingsChange?.();
+    } catch (error) {
+      console.error("Error updating coaching tone:", error);
+      toast.error(t('error'));
+      setCoachingTone(baseline?.coaching_tone || "supportive");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -423,6 +449,38 @@ export const SettingsSheet = ({
             
             <TabsContent value="profile" className="mt-0">
               <div className="space-y-6 pb-6">
+                {/* Coaching Style Selector */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 pb-2">
+                    <div className="p-2 rounded-xl bg-primary/10">
+                      <MessageSquare className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Coaching Style</h3>
+                      <p className="text-xs text-muted-foreground">How Coach Mac communicates with you</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted rounded-xl">
+                    <Select value={coachingTone} onValueChange={handleCoachingToneChange} disabled={isUpdating}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select coaching style" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {coachingTones.map((tone) => (
+                          <SelectItem key={tone.value} value={tone.value}>
+                            <div className="flex flex-col">
+                              <span>{tone.label}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {coachingTones.find(t => t.value === coachingTone)?.description || 'Choose how you prefer to receive advice'}
+                    </p>
+                  </div>
+                </div>
+
                 {hasPersonalityData ? (
                   <>
                     {/* Header */}
