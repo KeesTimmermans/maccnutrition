@@ -53,8 +53,14 @@ export const ProgressUpdateDialog = ({
     arm: baseline?.arm_cm?.toString() || "",
     thigh: baseline?.thigh_cm?.toString() || "",
     neck: baseline?.neck_cm?.toString() || "",
-    hasProgressPhoto: !!baseline?.progress_photo_url,
+    hasProgressPhoto: !!baseline?.progress_photo_url || !!baseline?.progress_photo_front,
     progressPhotoUrl: baseline?.progress_photo_url || null,
+    progressPhotos: {
+      front: baseline?.progress_photo_front || baseline?.progress_photo_url || null,
+      back: baseline?.progress_photo_back || null,
+      left: baseline?.progress_photo_left || null,
+      right: baseline?.progress_photo_right || null,
+    },
   });
 
   const unitSystem = baseline?.unit_system === "metric" ? "metric" : "imperial";
