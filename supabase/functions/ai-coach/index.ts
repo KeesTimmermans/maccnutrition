@@ -462,6 +462,14 @@ ${progressUpdateContext}
 LANGUAGE INSTRUCTION:
 ${languageInstruction}
 
+CONSECUTIVE PATTERN DETECTION:
+If the check-in data shows "CONSECUTIVE PATTERN ALERT" with metrics logged at the SAME VALUE for 3+ days:
+- You MUST directly acknowledge this pattern in your response
+- Start by calling it out: "I notice your [metric] has been at [value]/5 for [X] days straight..."
+- If it's a negative pattern (low energy, high stress, poor sleep), this is URGENT — provide specific, targeted interventions
+- If it's a positive pattern, celebrate the consistency and reinforce what's working
+- Never ignore these patterns — they indicate the user is stuck and needs specific help or recognition
+
 RESPONSE GUIDELINES:
 - Sound like a real person, not an AI reading data
 - Match the user's emotional state before offering advice
