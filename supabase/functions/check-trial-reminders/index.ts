@@ -39,8 +39,11 @@ serve(async (req) => {
 
     logStep("Found trialing subscriptions", { count: subscriptions.data.length });
 
+const supabase = createClient(supabaseUrl, supabaseKey);
+
     const remindersToSend: Array<{
       email: string;
+      firstName?: string;
       daysRemaining: number;
       trialEndDate: string;
     }> = [];
@@ -54,12 +57,45 @@ serve(async (req) => {
 
       // Check if we should send a reminder today
       if (REMINDER_DAYS.includes(daysRemaining)) {
-        // Get customer email
+        // Get customer email and name
         const customer = await stripe.customers.retrieve(subscription.customer as string);
         
         if (customer && !customer.deleted && customer.email) {
+          // Try to get user's first name from user_baselines via their email
+          let firstName: string | undefined;
+          
+          // First check Stripe customer name
+          if (customer.name) {
+            firstName = customer.name.split(' ')[0];
+          }
+          
+          // Try to get from our database if Stripe doesn't have it
+          if (!firstName) {
+            const { data: authUser } = await supabase.auth.admin.listUsers();
+            const matchedUser = authUser?.users?.find(u => u.email === customer.email);
+            
+            if (matchedUser) {
+              // Check user metadata first
+              firstName = matchedUser.user_metadata?.first_name || matchedUser.user_metadata?.full_name?.split(' ')[0];
+              
+              // If not in metadata, check user_baselines
+              if (!firstName) {
+                const { data: baseline } = await supabase
+                  .from('user_baselines')
+                  .select('name')
+                  .eq('user_id', matchedUser.id)
+                  .maybeSingle();
+                
+                if (baseline?.name) {
+                  firstName = baseline.name.split(' ')[0];
+                }
+              }
+            }
+          }
+          
           remindersToSend.push({
             email: customer.email,
+            firstName,
             daysRemaining,
             trialEndDate: trialEndDate.toISOString(),
           });

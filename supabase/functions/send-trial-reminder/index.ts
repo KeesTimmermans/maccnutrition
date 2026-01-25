@@ -15,11 +15,12 @@ const logStep = (step: string, details?: any) => {
 
 interface TrialReminderRequest {
   email: string;
+  firstName?: string;
   daysRemaining: number;
   trialEndDate: string;
 }
 
-const generateEmailHtml = (daysRemaining: number, trialEndDate: string) => {
+const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstName?: string) => {
   const formattedDate = new Date(trialEndDate).toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -28,6 +29,7 @@ const generateEmailHtml = (daysRemaining: number, trialEndDate: string) => {
   });
 
   const isUrgent = daysRemaining <= 3;
+  const greeting = firstName ? `Hi ${firstName}! 👋` : 'Hi there! 👋';
 
   return `
     <!DOCTYPE html>
@@ -49,7 +51,7 @@ const generateEmailHtml = (daysRemaining: number, trialEndDate: string) => {
           <!-- Content -->
           <div style="padding: 32px;">
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px;">
-              Hi there! 👋
+              ${greeting}
             </p>
             
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px;">
@@ -108,13 +110,13 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { email, daysRemaining, trialEndDate }: TrialReminderRequest = await req.json();
+    const { email, firstName, daysRemaining, trialEndDate }: TrialReminderRequest = await req.json();
 
     if (!email || daysRemaining === undefined || !trialEndDate) {
       throw new Error("Missing required fields: email, daysRemaining, trialEndDate");
     }
 
-    logStep("Sending reminder email", { email, daysRemaining });
+    logStep("Sending reminder email", { email, firstName, daysRemaining });
 
     const isUrgent = daysRemaining <= 3;
     const subject = isUrgent 
@@ -125,7 +127,7 @@ serve(async (req) => {
       from: "MACCnutrition <onboarding@resend.dev>",
       to: [email],
       subject,
-      html: generateEmailHtml(daysRemaining, trialEndDate),
+      html: generateEmailHtml(daysRemaining, trialEndDate, firstName),
     });
 
     logStep("Email sent successfully", { emailResponse });
