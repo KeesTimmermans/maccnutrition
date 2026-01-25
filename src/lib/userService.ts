@@ -158,7 +158,8 @@ export const saveUserBaseline = async (
       arm_cm: onboardingData.arm ? parseFloat(onboardingData.arm) : null,
       thigh_cm: onboardingData.thigh ? parseFloat(onboardingData.thigh) : null,
       neck_cm: onboardingData.neck ? parseFloat(onboardingData.neck) : null,
-      measurements_updated_at: (onboardingData.waist || onboardingData.bodyFatPercentage) ? new Date().toISOString() : null,
+      progress_photo_url: onboardingData.progressPhotoUrl || null,
+      measurements_updated_at: (onboardingData.waist || onboardingData.bodyFatPercentage || onboardingData.progressPhotoUrl) ? new Date().toISOString() : null,
     })
     .select()
     .single();
@@ -264,6 +265,7 @@ export const updateUserMeasurements = async (measurements: {
   thigh_cm?: number | null;
   neck_cm?: number | null;
   weight?: number | null;
+  progress_photo_url?: string | null;
 }) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");

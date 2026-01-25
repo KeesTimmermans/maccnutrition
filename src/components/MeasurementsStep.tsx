@@ -12,6 +12,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ProgressPhotoUpload } from "@/components/ProgressPhotoUpload";
 
 export interface MeasurementsData {
   bodyFatPercentage: string;
@@ -22,6 +23,7 @@ export interface MeasurementsData {
   thigh: string;
   neck: string;
   hasProgressPhoto: boolean;
+  progressPhotoUrl: string | null;
 }
 
 interface MeasurementsStepProps {
@@ -253,17 +255,14 @@ export const MeasurementsStep = ({
           </CollapsibleContent>
         </Collapsible>
 
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">Photo uploads coming soon</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                You'll be able to upload progress photos to track visual changes over time.
-              </p>
-            </div>
-            <Camera className="w-8 h-8 text-muted-foreground/50" />
-          </div>
-        </div>
+        <ProgressPhotoUpload
+          currentPhotoUrl={data.progressPhotoUrl}
+          onPhotoChange={(url) => {
+            updateData("progressPhotoUrl", url);
+            updateData("hasProgressPhoto", !!url);
+          }}
+          disabled={false}
+        />
       </div>
     </div>
   );
