@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Camera, X, Sparkles, Search, Loader2, Heart, Trash2, Scale, 
@@ -20,6 +20,13 @@ import { toast } from "sonner";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { QuickMeals } from "./QuickMeals";
 
+interface DailyTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
 interface MealLoggerProps {
   onClose: () => void;
   onSubmit: (meal: {
@@ -31,6 +38,8 @@ interface MealLoggerProps {
     fats: number;
   }) => void;
   userDietContext?: UserDietContext;
+  currentDayTotals?: DailyTotals;
+  dailyTargets?: DailyTotals;
 }
 
 interface AnalysisResult {
@@ -55,7 +64,7 @@ interface AdjustableIngredient extends ParsedIngredient {
 type TrackingMethod = 'select' | 'barcode' | 'describe' | 'photo' | 'upload';
 type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'upload' | 'quantity' | 'adjust' | 'adjust_ingredients' | 'confirm';
 
-export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerProps) => {
+export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotals, dailyTargets }: MealLoggerProps) => {
   const { t } = useLanguage();
   const [step, setStep] = useState<LoggerStep>('method');
   const [trackingMethod, setTrackingMethod] = useState<TrackingMethod>('select');
@@ -127,7 +136,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
   }, [searchQuery, debouncedSearch]);
 
   // Calculate totals from ingredients
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     return ingredients.reduce(
       (acc, ing) => {
         const factor = ing.adjustedGrams / 100;
@@ -140,7 +149,34 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
       },
       { calories: 0, protein: 0, carbs: 0, fats: 0 }
     );
-  };
+  }, [ingredients]);
+
+  // Get current meal macros (either from ingredients or analysisResult)
+  const getCurrentMealMacros = useCallback(() => {
+    if (ingredients.length > 0) {
+      return calculateTotals();
+    } else if (analysisResult) {
+      return {
+        calories: analysisResult.calories,
+        protein: analysisResult.protein,
+        carbs: analysisResult.carbs,
+        fats: analysisResult.fats,
+      };
+    }
+    return { calories: 0, protein: 0, carbs: 0, fats: 0 };
+  }, [ingredients, analysisResult, calculateTotals]);
+
+  // Calculate projected daily totals including current meal
+  const projectedDayTotals = useCallback(() => {
+    const mealMacros = getCurrentMealMacros();
+    const current = currentDayTotals || { calories: 0, protein: 0, carbs: 0, fats: 0 };
+    return {
+      calories: current.calories + mealMacros.calories,
+      protein: current.protein + mealMacros.protein,
+      carbs: current.carbs + mealMacros.carbs,
+      fats: current.fats + mealMacros.fats,
+    };
+  }, [getCurrentMealMacros, currentDayTotals]);
 
   const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -961,6 +997,47 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
           {analysisResult.notes && (
             <p className="text-xs text-muted-foreground mt-4">{analysisResult.notes}</p>
           )}
+
+          {/* Daily total preview - only show if we have current day totals */}
+          {currentDayTotals && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-sm font-medium text-foreground mb-3">Today's total (after logging):</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div>
+                  <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().calories > dailyTargets.calories ? 'text-destructive' : 'text-calories'}`}>
+                    {projectedDayTotals().calories}
+                  </p>
+                  {dailyTargets && (
+                    <p className="text-xs text-muted-foreground">/ {dailyTargets.calories}</p>
+                  )}
+                </div>
+                <div>
+                  <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().protein >= dailyTargets.protein ? 'text-green-500' : 'text-protein'}`}>
+                    {projectedDayTotals().protein}g
+                  </p>
+                  {dailyTargets && (
+                    <p className="text-xs text-muted-foreground">/ {dailyTargets.protein}g</p>
+                  )}
+                </div>
+                <div>
+                  <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().carbs > dailyTargets.carbs ? 'text-destructive' : 'text-carbs'}`}>
+                    {projectedDayTotals().carbs}g
+                  </p>
+                  {dailyTargets && (
+                    <p className="text-xs text-muted-foreground">/ {dailyTargets.carbs}g</p>
+                  )}
+                </div>
+                <div>
+                  <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().fats > dailyTargets.fats ? 'text-destructive' : 'text-fats'}`}>
+                    {projectedDayTotals().fats}g
+                  </p>
+                  {dailyTargets && (
+                    <p className="text-xs text-muted-foreground">/ {dailyTargets.fats}g</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1144,6 +1221,47 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
             </div>
           </div>
         </div>
+
+        {/* Daily total preview - only show if we have current day totals */}
+        {currentDayTotals && (
+          <div className="bg-accent/50 border border-border rounded-xl p-4">
+            <p className="text-sm font-medium text-foreground mb-3">Today's total (after logging):</p>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div>
+                <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().calories > dailyTargets.calories ? 'text-destructive' : 'text-calories'}`}>
+                  {projectedDayTotals().calories}
+                </p>
+                {dailyTargets && (
+                  <p className="text-xs text-muted-foreground">/ {dailyTargets.calories}</p>
+                )}
+              </div>
+              <div>
+                <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().protein >= dailyTargets.protein ? 'text-green-500' : 'text-protein'}`}>
+                  {projectedDayTotals().protein}g
+                </p>
+                {dailyTargets && (
+                  <p className="text-xs text-muted-foreground">/ {dailyTargets.protein}g</p>
+                )}
+              </div>
+              <div>
+                <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().carbs > dailyTargets.carbs ? 'text-destructive' : 'text-carbs'}`}>
+                  {projectedDayTotals().carbs}g
+                </p>
+                {dailyTargets && (
+                  <p className="text-xs text-muted-foreground">/ {dailyTargets.carbs}g</p>
+                )}
+              </div>
+              <div>
+                <p className={`text-lg font-bold ${dailyTargets && projectedDayTotals().fats > dailyTargets.fats ? 'text-destructive' : 'text-fats'}`}>
+                  {projectedDayTotals().fats}g
+                </p>
+                {dailyTargets && (
+                  <p className="text-xs text-muted-foreground">/ {dailyTargets.fats}g</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {notes && (
           <p className="text-xs text-muted-foreground">{notes}</p>

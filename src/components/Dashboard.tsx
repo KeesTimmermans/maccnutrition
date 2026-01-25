@@ -778,6 +778,18 @@ export const Dashboard = () => {
             allergies: baseline?.allergies || undefined,
             foodDislikes: baseline?.food_dislikes || undefined,
           }}
+          currentDayTotals={{
+            calories: totalCalories,
+            protein: totalProtein,
+            carbs: totalCarbs,
+            fats: totalFats,
+          }}
+          dailyTargets={{
+            calories: baseline?.target_calories || 2000,
+            protein: baseline?.protein_grams || 120,
+            carbs: baseline?.carbs_grams || 250,
+            fats: baseline?.fats_grams || 65,
+          }}
         />
       )}
 
