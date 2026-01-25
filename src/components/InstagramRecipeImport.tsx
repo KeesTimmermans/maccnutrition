@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,9 +39,11 @@ interface InstagramRecipeImportProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMealLogged?: () => void;
+  initialUrl?: string | null;
+  onInitialUrlProcessed?: () => void;
 }
 
-export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged }: InstagramRecipeImportProps) => {
+export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged, initialUrl, onInitialUrlProcessed }: InstagramRecipeImportProps) => {
   const { t } = useLanguage();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -49,9 +51,29 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged }: Inst
   const [editedIngredients, setEditedIngredients] = useState<Ingredient[]>([]);
   const [servings, setServings] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  const [autoImportTriggered, setAutoImportTriggered] = useState(false);
 
-  const handleImport = async () => {
-    if (!url.trim()) {
+  // Auto-import when initialUrl is provided and dialog opens
+  useEffect(() => {
+    if (open && initialUrl && !autoImportTriggered) {
+      setUrl(initialUrl);
+      setAutoImportTriggered(true);
+      // Trigger import after a short delay to let state settle
+      setTimeout(() => {
+        handleImportWithUrl(initialUrl);
+      }, 100);
+    }
+  }, [open, initialUrl, autoImportTriggered]);
+
+  // Reset autoImportTriggered when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setAutoImportTriggered(false);
+    }
+  }, [open]);
+
+  const handleImportWithUrl = async (importUrl: string) => {
+    if (!importUrl.trim()) {
       toast.error("Please enter an Instagram URL");
       return;
     }
@@ -61,7 +83,7 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged }: Inst
 
     try {
       const { data, error } = await supabase.functions.invoke('import-instagram-recipe', {
-        body: { instagramUrl: url.trim() }
+        body: { instagramUrl: importUrl.trim() }
       });
 
       if (error) throw error;
@@ -75,12 +97,18 @@ export const InstagramRecipeImport = ({ open, onOpenChange, onMealLogged }: Inst
       setEditedIngredients(data.recipe.ingredients);
       setServings(data.recipe.servings || 1);
       toast.success("Recipe imported successfully!");
+      onInitialUrlProcessed?.();
     } catch (error) {
       console.error("Import error:", error);
       toast.error("Failed to import recipe. Please try again.");
+      onInitialUrlProcessed?.();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleImport = async () => {
+    await handleImportWithUrl(url);
   };
 
   const updateIngredient = (index: number, field: keyof Ingredient, value: number | string) => {

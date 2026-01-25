@@ -18,6 +18,7 @@ import { RecalibrationNotification } from "@/components/RecalibrationNotificatio
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { InstagramRecipeImport } from "@/components/InstagramRecipeImport";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
+import { useShareHandler } from "@/hooks/useShareHandler";
 
 
 import { Flame, TrendingUp, Sun, Watch, Instagram } from "lucide-react";
@@ -82,6 +83,16 @@ export const Dashboard = () => {
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
   const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
   const [showInstagramImport, setShowInstagramImport] = useState(false);
+  
+  // Share handler for receiving Instagram URLs from native share
+  const { sharedUrl, clearSharedUrl, isReady: shareHandlerReady } = useShareHandler();
+
+  // Auto-open Instagram import dialog when a shared URL is received
+  useEffect(() => {
+    if (shareHandlerReady && sharedUrl && !isLoading) {
+      setShowInstagramImport(true);
+    }
+  }, [sharedUrl, shareHandlerReady, isLoading]);
 
   // Check if monthly progress update is needed
   const checkProgressUpdateNeeded = (userBaseline: UserBaseline | null) => {
@@ -920,6 +931,8 @@ export const Dashboard = () => {
         open={showInstagramImport}
         onOpenChange={setShowInstagramImport}
         onMealLogged={loadData}
+        initialUrl={sharedUrl}
+        onInitialUrlProcessed={clearSharedUrl}
       />
     </div>
   );

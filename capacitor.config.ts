@@ -7,7 +7,15 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://163a3ec2-8ca7-4b1f-9633-cd4f6368135e.lovableproject.com?forceHideBadge=true',
     cleartext: true
-  }
+  },
+  plugins: {
+    App: {
+      // Enable deep linking for share intents
+      launchShowDuration: 0
+    }
+  },
+  // Android: Add intent filters in AndroidManifest.xml after running `npx cap add android`
+  // iOS: Add share extension capability in Xcode after running `npx cap add ios`
 };
 
 export default config;
