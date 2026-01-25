@@ -12,6 +12,7 @@ import { useLanguage } from "@/lib/i18n";
 import { jsPDF } from "jspdf";
 import { MealPlanCard, MealWithIngredients, MealIngredient } from "@/components/MealPlanCard";
 import { MealSwapDialog } from "@/components/MealSwapDialog";
+import { IngredientSwapDialog, IngredientOption } from "@/components/IngredientSwapDialog";
 
 type Meal = MealWithIngredients;
 
@@ -74,6 +75,14 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const [showGroceryList, setShowGroceryList] = useState(false);
   const [swapDialogOpen, setSwapDialogOpen] = useState(false);
   const [mealToSwap, setMealToSwap] = useState<{ meal: Meal; dayIndex: number; mealIndex: number } | null>(null);
+  const [ingredientSwapDialogOpen, setIngredientSwapDialogOpen] = useState(false);
+  const [ingredientToSwap, setIngredientToSwap] = useState<{ 
+    ingredient: MealIngredient; 
+    ingredientIndex: number;
+    meal: Meal;
+    dayIndex: number; 
+    mealIndex: number;
+  } | null>(null);
   
   const [isSwapping, setIsSwapping] = useState(false);
   const [mealPlanId, setMealPlanId] = useState<string | null>(null);
@@ -399,6 +408,116 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     setMealToSwap(null);
   };
 
+  // Ingredient swap handlers
+  const handleIngredientSwap = (dayIndex: number, mealIndex: number, ingredientIndex: number) => {
+    if (!mealPlan) return;
+    const meal = mealPlan.days[dayIndex].meals[mealIndex];
+    const ingredient = meal.ingredients?.[ingredientIndex];
+    if (!ingredient) return;
+    
+    setIngredientToSwap({ ingredient, ingredientIndex, meal, dayIndex, mealIndex });
+    setIngredientSwapDialogOpen(true);
+  };
+
+  const handleGenerateIngredientOptions = async (preference?: string): Promise<IngredientOption[]> => {
+    if (!ingredientToSwap) return [];
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('swap-ingredient', {
+        body: { 
+          currentIngredient: ingredientToSwap.ingredient,
+          mealName: ingredientToSwap.meal.name,
+          mealType: ingredientToSwap.meal.type,
+          userPreference: preference,
+          userContext: {
+            dietType: baseline?.diet_type,
+            allergies: baseline?.allergies,
+            foodDislikes: baseline?.food_dislikes,
+            unitSystem: baseline?.unit_system,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return [];
+      }
+
+      if (data.options && Array.isArray(data.options)) {
+        return data.options;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error generating ingredient options:', error);
+      toast.error('Failed to generate ingredient options');
+      return [];
+    }
+  };
+
+  const handleSelectIngredientOption = async (option: IngredientOption) => {
+    if (!ingredientToSwap || !mealPlan) return;
+
+    const { dayIndex, mealIndex, ingredientIndex, meal } = ingredientToSwap;
+    
+    // Create updated ingredients array
+    const updatedIngredients = [...(meal.ingredients || [])];
+    updatedIngredients[ingredientIndex] = {
+      name: option.name,
+      quantity: option.quantity,
+      unit: option.unit,
+      gramsPerUnit: option.gramsPerUnit,
+      caloriesPer100g: option.caloriesPer100g,
+      proteinPer100g: option.proteinPer100g,
+      carbsPer100g: option.carbsPer100g,
+      fatsPer100g: option.fatsPer100g,
+    };
+    
+    // Recalculate meal macros
+    const newMacros = updatedIngredients.reduce(
+      (totals, ing) => {
+        const totalGrams = ing.quantity * ing.gramsPerUnit;
+        const multiplier = totalGrams / 100;
+        return {
+          calories: totals.calories + Math.round(ing.caloriesPer100g * multiplier),
+          protein: totals.protein + Math.round(ing.proteinPer100g * multiplier),
+          carbs: totals.carbs + Math.round(ing.carbsPer100g * multiplier),
+          fats: totals.fats + Math.round(ing.fatsPer100g * multiplier),
+        };
+      },
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+
+    const updatedMeal: Meal = {
+      ...meal,
+      ingredients: updatedIngredients,
+      ...newMacros,
+    };
+
+    // Update the meal plan
+    const newDays = [...mealPlan.days];
+    newDays[dayIndex].meals[mealIndex] = updatedMeal;
+    
+    // Recalculate day totals
+    const dayMeals = newDays[dayIndex].meals;
+    newDays[dayIndex].totals = {
+      calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
+      protein: dayMeals.reduce((sum, m) => sum + m.protein, 0),
+      carbs: dayMeals.reduce((sum, m) => sum + m.carbs, 0),
+      fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
+    };
+    
+    const updatedPlan = { ...mealPlan, days: newDays };
+    setMealPlan(updatedPlan);
+    await saveMealPlan(updatedPlan);
+    
+    toast.success(`Swapped ${ingredientToSwap.ingredient.name} for ${option.name}`);
+    setIngredientSwapDialogOpen(false);
+    setIngredientToSwap(null);
+  };
+
   const exportToPDF = () => {
     if (!mealPlan) return;
     
@@ -684,6 +803,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                     setMealToSwap({ meal, dayIndex: selectedDay, mealIndex });
                     setSwapDialogOpen(true);
                   }}
+                  onSwapIngredient={(ingredientIndex) => handleIngredientSwap(selectedDay, mealIndex, ingredientIndex)}
                   onLogMeal={async () => {
                     try {
                       await saveMeal({
@@ -754,6 +874,17 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         onGenerateOptions={handleGenerateSwapOptions}
         isLoading={isSwapping}
         getMealTypeColor={getMealTypeColor}
+      />
+
+      {/* Swap Ingredient Dialog */}
+      <IngredientSwapDialog
+        open={ingredientSwapDialogOpen}
+        onOpenChange={setIngredientSwapDialogOpen}
+        ingredient={ingredientToSwap?.ingredient || null}
+        mealName={ingredientToSwap?.meal.name || ''}
+        onSelectOption={handleSelectIngredientOption}
+        onGenerateOptions={handleGenerateIngredientOptions}
+        isLoading={isSwapping}
       />
     </Card>
   );

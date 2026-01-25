@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Minus, UtensilsCrossed, Heart, Repeat } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Minus, UtensilsCrossed, Heart, Repeat, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ interface MealPlanCardProps {
   onUpdate: (updatedMeal: MealWithIngredients) => void;
   onSaveToFavorites: () => void;
   onSwap: () => void;
+  onSwapIngredient?: (ingredientIndex: number) => void;
   onLogMeal: () => void;
   getMealTypeColor: (type: string) => string;
 }
@@ -41,6 +42,7 @@ export const MealPlanCard = ({
   onUpdate,
   onSaveToFavorites,
   onSwap,
+  onSwapIngredient,
   onLogMeal,
   getMealTypeColor,
 }: MealPlanCardProps) => {
@@ -188,9 +190,22 @@ export const MealPlanCard = ({
                   key={index}
                   className="flex items-center justify-between gap-2 py-1"
                 >
-                  <span className="text-sm text-foreground flex-1 truncate">
-                    {ingredient.name}
-                  </span>
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    <span className="text-sm text-foreground truncate">
+                      {ingredient.name}
+                    </span>
+                    {onSwapIngredient && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                        onClick={() => onSwapIngredient(index)}
+                        title="Swap this ingredient"
+                      >
+                        <ArrowLeftRight className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1">
                     <Button
                       variant="outline"
