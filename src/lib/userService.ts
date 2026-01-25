@@ -92,7 +92,14 @@ export const saveUserBaseline = async (
 ) => {
   // Get user name from auth metadata (support both first_name and legacy full_name)
   const { data: { user } } = await supabase.auth.getUser();
-  const userName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || onboardingData.name || null;
+  // Extract first name - handle full_name by taking just the first part
+  let userName = user?.user_metadata?.first_name;
+  if (!userName && user?.user_metadata?.full_name) {
+    userName = user.user_metadata.full_name.split(' ')[0];
+  }
+  if (!userName && onboardingData.name) {
+    userName = onboardingData.name.split(' ')[0]; // Ensure it's just first name
+  }
   
   const { data, error } = await supabase
     .from("user_baselines")
