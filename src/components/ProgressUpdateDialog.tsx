@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
 import { updateUserMeasurements, UserBaseline } from "@/lib/userService";
 import { applyProgressBoost } from "@/lib/baselineRecalibration";
-import { saveProgressUpdate } from "@/lib/progressUpdateService";
+import { saveProgressUpdate, parseFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TrendingUp, ThumbsUp, Target, Ruler, ChevronRight, ChevronLeft, Sparkles, Loader2, MessageCircle } from "lucide-react";
@@ -200,14 +200,25 @@ export const ProgressUpdateDialog = ({
       }
 
       // Call AI Coach for personalized response
-      const response = await callAICoach(choice, feedback, measurementsUpdated);
+      const rawResponse = await callAICoach(choice, feedback, measurementsUpdated);
       
-      // Save progress update to database
+      // Parse focus points from the response
+      let cleanResponse: string | null = null;
+      let focusPoints: CoachingFocusPoint[] = [];
+      
+      if (rawResponse) {
+        const parsed = parseFocusPoints(rawResponse);
+        cleanResponse = parsed.cleanResponse;
+        focusPoints = parsed.focusPoints;
+      }
+      
+      // Save progress update to database (including focus points)
       try {
         await saveProgressUpdate({
           satisfactionChoice: choice,
           userFeedback: feedback || undefined,
-          coachResponse: response || undefined,
+          coachResponse: cleanResponse || undefined,
+          coachingFocusPoints: focusPoints.length > 0 ? focusPoints : undefined,
           adjustments: adjustmentsInfo,
           baseline,
           measurements: choice === "update_measurements" ? currentMeasurements : undefined,
@@ -217,8 +228,8 @@ export const ProgressUpdateDialog = ({
         // Don't fail the whole flow if history save fails
       }
       
-      if (response) {
-        setCoachResponse(response);
+      if (cleanResponse) {
+        setCoachResponse(cleanResponse);
         setStep("response");
       } else {
         // Fallback if AI fails

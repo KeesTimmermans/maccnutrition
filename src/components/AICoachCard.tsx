@@ -17,13 +17,15 @@ import {
   AlertCircle,
   CheckCircle2,
   Calendar,
-  Target
+  Target,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/i18n";
 import { CheckInAnalysis, DailyCheckIn } from "@/lib/checkinService";
 import { UserBaseline } from "@/lib/userService";
 import { MealPatternAnalysis } from "@/lib/coachingAnalytics";
+import { CoachingFocusPoint } from "@/lib/progressUpdateService";
 
 interface InsightCard {
   type: "positive" | "warning" | "action" | "info";
@@ -49,6 +51,8 @@ interface AICoachCardProps {
   // Historical data props
   mealPatterns?: MealPatternAnalysis | null;
   accountAgeDays?: number;
+  // Custom focus points from progress updates
+  customFocusPoints?: CoachingFocusPoint[] | null;
 }
 
 const getScoreColor = (score: number, inverted = false) => {
@@ -75,7 +79,8 @@ export const AICoachCard = ({
   meals = [],
   waterIntakeMl = 0,
   mealPatterns,
-  accountAgeDays = 0
+  accountAgeDays = 0,
+  customFocusPoints
 }: AICoachCardProps) => {
   const { t } = useLanguage();
   
@@ -948,8 +953,31 @@ export const AICoachCard = ({
           </div>
         )}
 
-        {/* Actionable Recommendations Section - Always Visible */}
-        {hasRecommendations && (
+        {/* Custom Focus Points from Progress Update (takes priority) */}
+        {customFocusPoints && customFocusPoints.length > 0 ? (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <span className="text-base font-bold text-foreground">
+                Your Monthly Focus
+              </span>
+            </div>
+            <div className="space-y-2">
+              {customFocusPoints.slice(0, 4).map((point, index) => (
+                <div 
+                  key={index}
+                  className="p-3 rounded-xl border border-primary/20 bg-primary/5 animate-slide-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{point.emoji}</span>
+                    <p className="text-sm font-medium text-foreground">{point.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : hasRecommendations && (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
               <Flame className="w-5 h-5 text-secondary" />

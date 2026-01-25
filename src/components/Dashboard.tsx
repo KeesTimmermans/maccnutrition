@@ -28,6 +28,7 @@ import { getTodaysWearableData, getWearableConnections, type WearableSummary } f
 import { getTodaysWaterIntake } from "@/lib/waterService";
 import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
 import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/lib/coachingAnalytics";
+import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -78,6 +79,7 @@ export const Dashboard = () => {
   const [mealPatterns, setMealPatterns] = useState<MealPatternAnalysis | null>(null);
   const [accountAgeDays, setAccountAgeDays] = useState(0);
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
+  const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
 
   // Check if monthly progress update is needed
   const checkProgressUpdateNeeded = (userBaseline: UserBaseline | null) => {
@@ -328,7 +330,7 @@ export const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks, checkInData, wearable, wearableConns, recentCheckIns, waterData] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, checkInData, wearable, wearableConns, recentCheckIns, waterData, focusPoints] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
@@ -337,7 +339,10 @@ export const Dashboard = () => {
         getWearableConnections(),
         getRecentCheckIns(7),
         getTodaysWaterIntake(),
+        getActiveCoachingFocusPoints(),
       ]);
+      
+      setCustomFocusPoints(focusPoints);
       
       setHasCheckedInToday(!!checkInData);
       setTodaysCheckIn(checkInData);
@@ -644,6 +649,7 @@ export const Dashboard = () => {
         waterIntakeMl={totalWaterMl}
         mealPatterns={mealPatterns}
         accountAgeDays={accountAgeDays}
+        customFocusPoints={customFocusPoints}
       />
     </section>
   );
