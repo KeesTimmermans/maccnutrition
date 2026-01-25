@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Camera, X, Sparkles, Search, Loader2, Heart, Trash2, Scale, 
-  ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus, Upload 
+  ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus, Upload, Pencil
 } from "lucide-react";
 import { 
   analyzeFoodImage, 
@@ -360,18 +360,25 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
       }
       setAnalysisResult(null);
     } else if (step === 'adjust_ingredients') {
-      if (trackingMethod === 'describe') {
+      // Check if we came from the adjust step (barcode/search flow)
+      if (analysisResult) {
+        setStep('adjust');
+        setIngredients([]);
+      } else if (trackingMethod === 'describe') {
         setStep('describe');
+        setIngredients([]);
       } else if (trackingMethod === 'photo') {
         setStep('photo');
         setImage(null);
+        setIngredients([]);
       } else if (trackingMethod === 'upload') {
         setStep('upload');
         setImage(null);
+        setIngredients([]);
       } else {
         setStep('method');
+        setIngredients([]);
       }
-      setIngredients([]);
     } else if (step === 'confirm') {
       if (selectedFood) {
         setStep('quantity');
@@ -800,6 +807,56 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
     </div>
   );
 
+  // Convert single analysis result to editable ingredients
+  const handleSwitchToIngredientMode = () => {
+    if (analysisResult) {
+      const ingredient: AdjustableIngredient = {
+        name: analysisResult.name,
+        estimatedGrams: parseFloat(quantity) || 100,
+        caloriesPer100g: analysisResult.caloriesPer100g || analysisResult.calories,
+        proteinPer100g: analysisResult.proteinPer100g || analysisResult.protein,
+        carbsPer100g: analysisResult.carbsPer100g || analysisResult.carbs,
+        fatsPer100g: analysisResult.fatsPer100g || analysisResult.fats,
+        adjustedGrams: parseFloat(quantity) || 100,
+      };
+      setMealName(analysisResult.name);
+      setIngredients([ingredient]);
+      setStep('adjust_ingredients');
+    }
+  };
+
+  // Add a new empty ingredient
+  const handleAddIngredient = () => {
+    const newIngredient: AdjustableIngredient = {
+      name: "New ingredient",
+      estimatedGrams: 100,
+      caloriesPer100g: 0,
+      proteinPer100g: 0,
+      carbsPer100g: 0,
+      fatsPer100g: 0,
+      adjustedGrams: 100,
+    };
+    setIngredients(prev => [...prev, newIngredient]);
+  };
+
+  // Update ingredient name
+  const handleIngredientNameChange = (index: number, newName: string) => {
+    setIngredients(prev =>
+      prev.map((ing, i) =>
+        i === index ? { ...ing, name: newName } : ing
+      )
+    );
+  };
+
+  // Update ingredient nutrition (for manual entry)
+  const handleIngredientNutritionChange = (index: number, field: 'caloriesPer100g' | 'proteinPer100g' | 'carbsPer100g' | 'fatsPer100g', value: number) => {
+    setIngredients(prev =>
+      prev.map((ing, i) =>
+        i === index ? { ...ing, [field]: value } : ing
+      )
+    );
+  };
+
   // Adjust step - for barcode with manual quantity adjustment
   const renderAdjustStep = () => (
     <div className="animate-slide-up space-y-6">
@@ -906,6 +963,15 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
           )}
         </div>
       )}
+
+      {/* Switch to ingredient mode button */}
+      <button
+        onClick={handleSwitchToIngredientMode}
+        className="w-full py-3 text-sm font-medium text-primary border border-primary/30 rounded-xl hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+      >
+        <MessageSquareText className="w-4 h-4" />
+        Wrong item? Edit as ingredients
+      </button>
     </div>
   );
 
@@ -940,20 +1006,37 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
 
         {/* Ingredients list */}
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Adjust each ingredient:</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Adjust each ingredient:</p>
+            <button
+              onClick={handleAddIngredient}
+              className="text-xs font-medium text-primary flex items-center gap-1 hover:underline"
+            >
+              <Plus className="w-3 h-3" />
+              Add ingredient
+            </button>
+          </div>
           
           {ingredients.map((ing, index) => {
             const factor = ing.adjustedGrams / 100;
             const ingCalories = Math.round(ing.caloriesPer100g * factor);
             const ingProtein = Math.round(ing.proteinPer100g * factor);
+            const ingCarbs = Math.round(ing.carbsPer100g * factor);
+            const ingFats = Math.round(ing.fatsPer100g * factor);
             
             return (
               <div key={index} className="bg-card border border-border rounded-xl p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <p className="font-medium text-foreground">{ing.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {ingCalories} cal • {ingProtein}g protein
+                    <input
+                      type="text"
+                      value={ing.name}
+                      onChange={(e) => handleIngredientNameChange(index, e.target.value)}
+                      className="font-medium text-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none w-full"
+                      placeholder="Ingredient name"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {ingCalories} cal • P:{ingProtein}g • C:{ingCarbs}g • F:{ingFats}g
                     </p>
                   </div>
                   <button
@@ -964,7 +1047,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
                   </button>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                {/* Quantity adjuster */}
+                <div className="flex items-center gap-3 mb-3">
                   <button
                     onClick={() => handleIngredientQuantityChange(index, ing.adjustedGrams - 10)}
                     className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
@@ -991,6 +1075,48 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext }: MealLoggerPro
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Nutrition per 100g (editable for manual entries) */}
+                {ing.caloriesPer100g === 0 && (
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div>
+                      <label className="text-muted-foreground block mb-1">Cal/100g</label>
+                      <input
+                        type="number"
+                        value={ing.caloriesPer100g}
+                        onChange={(e) => handleIngredientNutritionChange(index, 'caloriesPer100g', parseFloat(e.target.value) || 0)}
+                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground block mb-1">P/100g</label>
+                      <input
+                        type="number"
+                        value={ing.proteinPer100g}
+                        onChange={(e) => handleIngredientNutritionChange(index, 'proteinPer100g', parseFloat(e.target.value) || 0)}
+                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground block mb-1">C/100g</label>
+                      <input
+                        type="number"
+                        value={ing.carbsPer100g}
+                        onChange={(e) => handleIngredientNutritionChange(index, 'carbsPer100g', parseFloat(e.target.value) || 0)}
+                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground block mb-1">F/100g</label>
+                      <input
+                        type="number"
+                        value={ing.fatsPer100g}
+                        onChange={(e) => handleIngredientNutritionChange(index, 'fatsPer100g', parseFloat(e.target.value) || 0)}
+                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
