@@ -278,6 +278,7 @@ export type Database = {
           hydration_habits: string | null
           id: string
           job_activity_level: string | null
+          last_progress_update: string | null
           magnesium_mg: number | null
           meal_prep_time: string | null
           meals_per_day: string | null
@@ -350,6 +351,7 @@ export type Database = {
           hydration_habits?: string | null
           id?: string
           job_activity_level?: string | null
+          last_progress_update?: string | null
           magnesium_mg?: number | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
@@ -422,6 +424,7 @@ export type Database = {
           hydration_habits?: string | null
           id?: string
           job_activity_level?: string | null
+          last_progress_update?: string | null
           magnesium_mg?: number | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
