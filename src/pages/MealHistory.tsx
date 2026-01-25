@@ -269,6 +269,12 @@ const MealHistory = () => {
               setSelectedDate(null);
             }}
             onSubmit={handleAddMeal}
+            currentDayTotals={(() => {
+              const dayData = days.find(d => 
+                d.date.toDateString() === selectedDate.toDateString()
+              );
+              return dayData?.totals || { calories: 0, protein: 0, carbs: 0, fats: 0 };
+            })()}
           />
         )}
       </main>
