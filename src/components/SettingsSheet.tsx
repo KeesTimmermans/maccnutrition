@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap } from "lucide-react";
+import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { useAuth } from "@/hooks/useAuth";
+import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
@@ -212,9 +213,10 @@ export const SettingsSheet = ({
         </SheetHeader>
         
         <Tabs defaultValue="general" className="flex-1 flex flex-col">
-          <TabsList className="mx-6 mb-2 grid w-auto grid-cols-2">
+          <TabsList className="mx-6 mb-2 grid w-auto grid-cols-3">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="profile">Eating Profile</TabsTrigger>
+            <TabsTrigger value="layout">Layout</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
           
           <ScrollArea className="flex-1 px-6">
@@ -337,6 +339,25 @@ export const SettingsSheet = ({
                     {t('logout')}
                   </Button>
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="layout" className="mt-0">
+              <div className="space-y-6 pb-6">
+                <div className="flex items-center gap-3 pb-2">
+                  <div className="p-2 rounded-xl bg-primary/10">
+                    <LayoutGrid className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Dashboard Layout</h3>
+                    <p className="text-xs text-muted-foreground">Customize your home screen</p>
+                  </div>
+                </div>
+
+                <DashboardLayoutSettings
+                  currentLayout={baseline?.dashboard_layout || null}
+                  onLayoutChange={onSettingsChange}
+                />
               </div>
             </TabsContent>
             

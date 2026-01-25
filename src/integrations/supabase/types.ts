@@ -258,6 +258,7 @@ export type Database = {
           current_phase: string | null
           cycle_regularity: string | null
           cycle_symptoms: string[] | null
+          dashboard_layout: Json | null
           diet_type: string | null
           eating_out_frequency: string | null
           eating_speed: string | null
@@ -318,6 +319,7 @@ export type Database = {
           current_phase?: string | null
           cycle_regularity?: string | null
           cycle_symptoms?: string[] | null
+          dashboard_layout?: Json | null
           diet_type?: string | null
           eating_out_frequency?: string | null
           eating_speed?: string | null
@@ -378,6 +380,7 @@ export type Database = {
           current_phase?: string | null
           cycle_regularity?: string | null
           cycle_symptoms?: string[] | null
+          dashboard_layout?: Json | null
           diet_type?: string | null
           eating_out_frequency?: string | null
           eating_speed?: string | null
