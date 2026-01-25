@@ -223,17 +223,60 @@ serve(async (req) => {
         update_measurements: "has updated their body measurements to track their physical progress"
       };
       
+      // Get coaching tone for response formatting
+      const coachingTone = userContext?.coachingTone || 'supportive';
+      
+      // Tone-specific instructions for progress update responses
+      const toneInstructions: Record<string, string> = {
+        'direct': `
+RESPONSE STYLE (DIRECT/STRAIGHT-TO-THE-POINT):
+- Keep it SHORT and focused — 2-3 concise paragraphs max
+- Use bullet points for action items — this user prefers scanning over reading
+- Skip the warm-up — get straight to what matters
+- End with a clear "do this" summary
+- Format like this:
+  1. One sentence acknowledging their choice
+  2. Quick bullet list of key takeaways or next steps
+  3. One-liner encouragement`,
+        'supportive': `
+RESPONSE STYLE (SUPPORTIVE/WARM):
+- Be warm and conversational — 3-4 flowing paragraphs
+- Celebrate their effort genuinely
+- Use encouraging, empathetic language
+- Make them feel supported and understood
+- Avoid bullet points — keep it narrative`,
+        'educational': `
+RESPONSE STYLE (EDUCATIONAL):
+- Explain the "why" behind recommendations — 3-4 paragraphs
+- Include brief science or reasoning
+- Connect their choice to expected outcomes
+- Still conversational, but informative
+- Help them understand the process`,
+        'motivational': `
+RESPONSE STYLE (MOTIVATIONAL):
+- High energy, empowering language — 3-4 paragraphs
+- Focus on what's possible and their potential
+- Use action-oriented phrasing
+- Make them feel unstoppable
+- Paint a picture of success`
+      };
+      
+      const toneInstruction = toneInstructions[coachingTone] || toneInstructions['supportive'];
+      
       progressUpdateContext = `
 MONTHLY PROGRESS CHECK-IN:
 The user just completed their monthly progress check-in and ${choiceLabels[progressUpdateData.choice]}.
 ${progressUpdateData.feedback ? `Additional feedback from user: "${progressUpdateData.feedback}"` : ''}
 ${progressUpdateData.measurementsUpdated ? 'They have also updated their body measurements.' : ''}
 
-RESPOND APPROPRIATELY:
+${toneInstruction}
+
+RESPOND APPROPRIATELY TO THEIR CHOICE:
 - If they're happy: Celebrate their consistency, reinforce what's working, encourage them to keep going
 - If they want more progress: Acknowledge their drive, provide specific actionable steps to intensify (e.g., tighten calorie target, increase protein, add training), but remind them to listen to their body
 - If they updated measurements: Congratulate them on tracking, note that consistent measurement helps identify trends
-- Be warm, personal, and motivational — this is a milestone moment`;
+
+This is a milestone moment — match their preferred communication style while being genuine.`;
     }
 
     // Build context from today's meals
