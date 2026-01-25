@@ -178,13 +178,13 @@ const MealHistory = () => {
       </header>
 
       <main className="container py-6 space-y-6">
-        {/* Import Instagram Recipe Button */}
+        {/* Import Recipe Button */}
         <button
           onClick={() => setShowInstagramImport(true)}
           className="w-full p-3 rounded-xl border border-dashed border-pink-500/30 bg-gradient-to-r from-pink-500/5 to-purple-500/5 flex items-center justify-center gap-2 hover:border-pink-500/50 hover:from-pink-500/10 hover:to-purple-500/10 transition-all"
         >
           <Instagram className="w-5 h-5 text-pink-500" />
-          <span className="text-sm font-medium text-foreground">Import Instagram Recipe</span>
+          <span className="text-sm font-medium text-foreground">Import Recipe from Caption</span>
         </button>
 
         {/* Week Navigation */}
