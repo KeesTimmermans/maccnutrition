@@ -740,10 +740,10 @@ export const Dashboard = () => {
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setShowAIChat(true)}
-              className="p-2 hover:bg-muted rounded-xl transition-colors"
+              className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors flex items-center gap-1.5"
               aria-label="Open Coach Mac"
             >
-              <span className="text-2xl">🧠</span>
+              <span className="text-sm font-semibold text-primary">Coach Mac</span>
             </button>
             <SettingsSheet 
               baseline={baseline} 
