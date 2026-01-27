@@ -465,13 +465,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   // Method selection screen
   const renderMethodSelection = () => (
     <div className="space-y-4">
-      {/* Quick Meals Section */}
-      <QuickMeals 
-        onSelectMeal={(meal) => {
-          onSubmit(meal);
-          onClose();
-        }} 
-      />
+      {/* Quick Meals Navigation Button */}
+      <QuickMeals />
 
       <p className="text-muted-foreground text-center mb-6">
         Choose how you'd like to log your meal
