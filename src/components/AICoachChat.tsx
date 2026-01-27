@@ -510,30 +510,58 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
       {/* Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-              msg.role === "user" 
-                ? "bg-primary" 
-                : "gradient-hero"
-            }`}>
-              {msg.role === "user" 
-                ? <User className="w-4 h-4 text-primary-foreground" />
-                : <Bot className="w-4 h-4 text-primary-foreground" />
-              }
+        {messages.map((msg, index) => {
+          // Parse focus points from assistant messages
+          const parsed = msg.role === "assistant" ? parseDailyFocusPoints(msg.content) : null;
+          const displayContent = parsed ? parsed.cleanResponse : msg.content;
+          const focusPoints = parsed?.focusPoints || [];
+
+          return (
+            <div key={index} className="space-y-3">
+              <div className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  msg.role === "user" 
+                    ? "bg-primary" 
+                    : "gradient-hero"
+                }`}>
+                  {msg.role === "user" 
+                    ? <User className="w-4 h-4 text-primary-foreground" />
+                    : <Bot className="w-4 h-4 text-primary-foreground" />
+                  }
+                </div>
+                <div className={`max-w-[80%] p-3 rounded-2xl ${
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-tr-sm"
+                    : "bg-muted text-foreground rounded-tl-sm"
+                }`}>
+                  <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+                </div>
+              </div>
+
+              {/* Inline Focus Points with Tips */}
+              {focusPoints.length > 0 && (
+                <div className="ml-11 bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-xl p-3">
+                  <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Today's Focus</h4>
+                  <ul className="space-y-2">
+                    {focusPoints.map((fp, fpIndex) => (
+                      <li key={fpIndex} className="space-y-0.5">
+                        <div className="flex items-start gap-2">
+                          <span className="text-base">{fp.emoji}</span>
+                          <span className="text-sm font-medium text-foreground">{fp.text}</span>
+                        </div>
+                        {fp.tip && (
+                          <p className="text-xs text-muted-foreground ml-6 pl-0.5 border-l-2 border-primary/30">
+                            {fp.tip}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-            <div className={`max-w-[80%] p-3 rounded-2xl ${
-              msg.role === "user"
-                ? "bg-primary text-primary-foreground rounded-tr-sm"
-                : "bg-muted text-foreground rounded-tl-sm"
-            }`}>
-              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {isLoading && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full gradient-hero flex items-center justify-center">
