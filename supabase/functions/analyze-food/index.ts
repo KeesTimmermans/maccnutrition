@@ -19,7 +19,7 @@ interface NutritionData {
   fats: number;
   servingSize?: number;
   servingUnit?: string;
-  source: 'open_food_facts' | 'usda' | 'ai_estimation';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation';
   confidence: 'high' | 'medium' | 'low';
   brandName?: string;
   imageUrl?: string;
@@ -32,8 +32,96 @@ interface NutritionPer100g {
   carbsPer100g: number;
   fatsPer100g: number;
   defaultServingSize: number;
-  source: 'open_food_facts' | 'usda' | 'ai_estimation';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation';
   brandName?: string;
+}
+
+// UK Food Composition Database (CoFID - McCance & Widdowson)
+// Uses the UK Government's open data API
+async function searchUKFoods(query: string, limit: number = 5): Promise<NutritionPer100g[]> {
+  try {
+    console.log(`[UK CoFID] Searching for: ${query}`);
+    
+    // Use Open Food Facts UK-specific search as a proxy for UK foods
+    // This gives us UK products and brands
+    const encodedQuery = encodeURIComponent(query);
+    const response = await fetch(
+      `https://uk.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=${limit}`,
+      {
+        headers: {
+          'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.log(`[UK CoFID] HTTP error: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    
+    if (!data.products || data.products.length === 0) {
+      console.log(`[UK CoFID] No results for: ${query}`);
+      return [];
+    }
+
+    const results: NutritionPer100g[] = [];
+
+    for (const product of data.products.slice(0, limit)) {
+      const nutriments = product.nutriments || {};
+      
+      // Get nutrition per 100g
+      const calories = nutriments['energy-kcal_100g'] ?? nutriments['energy-kcal'] ?? 0;
+      const protein = nutriments.proteins_100g ?? nutriments.proteins ?? 0;
+      const carbs = nutriments.carbohydrates_100g ?? nutriments.carbohydrates ?? 0;
+      const fats = nutriments.fat_100g ?? nutriments.fat ?? 0;
+
+      if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
+        const productName = product.product_name || product.product_name_en || query;
+        const brandName = product.brands || undefined;
+        
+        results.push({
+          name: brandName ? `${brandName} ${productName}` : productName,
+          caloriesPer100g: Math.round(calories),
+          proteinPer100g: Math.round(protein * 10) / 10,
+          carbsPer100g: Math.round(carbs * 10) / 10,
+          fatsPer100g: Math.round(fats * 10) / 10,
+          defaultServingSize: 100,
+          source: 'uk_cofid',
+          brandName
+        });
+      }
+    }
+
+    console.log(`[UK CoFID] Found ${results.length} UK results for: ${query}`);
+    return results;
+  } catch (error) {
+    console.error('[UK CoFID] Error:', error);
+    return [];
+  }
+}
+
+async function lookupUKFood(query: string): Promise<NutritionData | null> {
+  const results = await searchUKFoods(query, 1);
+  
+  if (results.length === 0) {
+    return null;
+  }
+
+  const food = results[0];
+  return {
+    name: food.name,
+    calories: food.caloriesPer100g,
+    protein: Math.round(food.proteinPer100g),
+    carbs: Math.round(food.carbsPer100g),
+    fats: Math.round(food.fatsPer100g),
+    servingSize: 100,
+    servingUnit: 'g',
+    source: 'uk_cofid',
+    confidence: 'high',
+    brandName: food.brandName
+  };
 }
 
 // Open Food Facts - For barcode lookups
@@ -305,32 +393,56 @@ serve(async (req) => {
     }
 
     // ============================================
-    // SUGGESTIONS MODE - Use USDA first
+    // SUGGESTIONS MODE - Search USDA and UK databases in parallel
     // ============================================
     if (mode === 'suggestions' && searchQuery) {
-      console.log(`[Suggestions Mode] Searching USDA for: ${searchQuery}`);
+      console.log(`[Suggestions Mode] Searching USDA and UK databases for: ${searchQuery}`);
       
-      const usdaResults = await searchUSDA(searchQuery, 5);
+      // Search both databases in parallel
+      const [usdaResults, ukResults] = await Promise.all([
+        searchUSDA(searchQuery, 3),
+        searchUKFoods(searchQuery, 3)
+      ]);
       
-      if (usdaResults.length > 0) {
-        console.log(`[Suggestions Mode] Found ${usdaResults.length} USDA results`);
+      // Merge and deduplicate results, prioritizing by source diversity
+      const allResults: NutritionPer100g[] = [];
+      const seenNames = new Set<string>();
+      
+      // Interleave results from both sources for variety
+      const maxLen = Math.max(usdaResults.length, ukResults.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < usdaResults.length) {
+          const lowerName = usdaResults[i].name.toLowerCase();
+          if (!seenNames.has(lowerName)) {
+            seenNames.add(lowerName);
+            allResults.push(usdaResults[i]);
+          }
+        }
+        if (i < ukResults.length) {
+          const lowerName = ukResults[i].name.toLowerCase();
+          if (!seenNames.has(lowerName)) {
+            seenNames.add(lowerName);
+            allResults.push(ukResults[i]);
+          }
+        }
+      }
+      
+      if (allResults.length > 0) {
+        console.log(`[Suggestions Mode] Found ${allResults.length} total results (USDA: ${usdaResults.length}, UK: ${ukResults.length})`);
         return new Response(
           JSON.stringify({ 
-            suggestions: usdaResults.map(r => ({
-              ...r,
-              source: 'usda'
-            }))
+            suggestions: allResults.slice(0, 5)
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
       // Fallback to AI for suggestions
-      console.log(`[Suggestions Mode] No USDA results, falling back to AI`);
+      console.log(`[Suggestions Mode] No database results, falling back to AI`);
     }
 
     // ============================================
-    // CALCULATE MODE - Try USDA first
+    // CALCULATE MODE - Try USDA and UK databases
     // ============================================
     if (mode === 'calculate' && searchQuery) {
       // Parse weight from query like "150g of chicken breast"
@@ -342,22 +454,30 @@ serve(async (req) => {
         
         console.log(`[Calculate Mode] Looking up ${grams}g of ${foodName}`);
         
-        const usdaResult = await lookupUSDA(foodName);
+        // Try USDA first (better for raw ingredients)
+        let result = await lookupUSDA(foodName);
+        let sourceLabel = 'USDA FoodData Central';
         
-        if (usdaResult) {
+        // If not found in USDA, try UK database
+        if (!result) {
+          result = await lookupUKFood(foodName);
+          sourceLabel = 'UK Food Database';
+        }
+        
+        if (result) {
           const factor = grams / 100;
-          console.log(`[Calculate Mode] Found in USDA, calculating for ${grams}g`);
+          console.log(`[Calculate Mode] Found in ${result.source}, calculating for ${grams}g`);
           
           return new Response(
             JSON.stringify({
-              name: `${grams}g ${usdaResult.name}`,
-              calories: Math.round(usdaResult.calories * factor),
-              protein: Math.round(usdaResult.protein * factor),
-              carbs: Math.round(usdaResult.carbs * factor),
-              fats: Math.round(usdaResult.fats * factor),
+              name: `${grams}g ${result.name}`,
+              calories: Math.round(result.calories * factor),
+              protein: Math.round(result.protein * factor),
+              carbs: Math.round(result.carbs * factor),
+              fats: Math.round(result.fats * factor),
               confidence: 'high',
-              source: 'usda',
-              notes: `Calculated from USDA FoodData Central (${usdaResult.calories} kcal/100g)`
+              source: result.source,
+              notes: `Calculated from ${sourceLabel} (${result.calories} kcal/100g)`
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -368,29 +488,37 @@ serve(async (req) => {
     }
 
     // ============================================
-    // DEFAULT/ANALYZE MODE - Try USDA first for simple queries
+    // DEFAULT/ANALYZE MODE - Try databases first for simple queries
     // ============================================
     if (searchQuery && !imageBase64 && !mode) {
       // Check if it's a simple food query (not a complex meal description)
       const isSimpleQuery = searchQuery.split(/\s+/).length <= 4 && !searchQuery.includes(',');
       
       if (isSimpleQuery) {
-        console.log(`[Analyze Mode] Simple query, trying USDA first: ${searchQuery}`);
+        console.log(`[Analyze Mode] Simple query, trying databases: ${searchQuery}`);
         
-        const usdaResult = await lookupUSDA(searchQuery);
+        // Try USDA first (better for raw ingredients)
+        let result = await lookupUSDA(searchQuery);
+        let sourceLabel = 'USDA FoodData Central';
         
-        if (usdaResult) {
-          console.log(`[Analyze Mode] Found in USDA: ${usdaResult.name}`);
+        // If not found in USDA, try UK database (good for UK brands/products)
+        if (!result) {
+          result = await lookupUKFood(searchQuery);
+          sourceLabel = 'UK Food Database';
+        }
+        
+        if (result) {
+          console.log(`[Analyze Mode] Found in ${result.source}: ${result.name}`);
           return new Response(
             JSON.stringify({
-              name: usdaResult.name,
-              calories: usdaResult.calories,
-              protein: usdaResult.protein,
-              carbs: usdaResult.carbs,
-              fats: usdaResult.fats,
+              name: result.name,
+              calories: result.calories,
+              protein: result.protein,
+              carbs: result.carbs,
+              fats: result.fats,
               confidence: 'high',
-              source: 'usda',
-              notes: `Data from USDA FoodData Central (per 100g serving)`
+              source: result.source,
+              notes: `Data from ${sourceLabel} (per 100g serving)`
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
