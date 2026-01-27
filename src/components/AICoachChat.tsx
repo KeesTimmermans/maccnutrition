@@ -4,7 +4,7 @@ import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, T
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
-import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, buildTemporalCheckInContext, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
+import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, buildTemporalCheckInContext, saveDailyFocusPoints, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
 import { getTodaysWearableData, getRecentWearableData, formatWearableDataForAI, type WearableSummary } from "@/lib/wearableService";
 import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation, type ChatMessage } from "@/lib/coachConversationService";
 import { parseDailyFocusPoints, type CoachingFocusPoint } from "@/lib/progressUpdateService";
@@ -191,9 +191,14 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
           // Parse daily focus points from the AI response
           const { cleanResponse, focusPoints } = parseDailyFocusPoints(data.response);
           
-          // Pass focus points to parent if callback provided
-          if (focusPoints.length > 0 && onDailyFocusPointsReceived) {
-            onDailyFocusPointsReceived(focusPoints);
+          // Save focus points to database for persistence
+          if (focusPoints.length > 0) {
+            await saveDailyFocusPoints(cleanResponse, focusPoints);
+            
+            // Also pass to parent for immediate display
+            if (onDailyFocusPointsReceived) {
+              onDailyFocusPointsReceived(focusPoints);
+            }
           }
           
           setMessages([{ role: "assistant", content: cleanResponse }]);

@@ -584,3 +584,67 @@ ${activePatterns.map(p => `- ${p}`).join('\n')}`;
 
   return context;
 }
+
+/**
+ * Interface for daily focus points stored with check-ins
+ */
+export interface StoredDailyFocusPoint {
+  emoji: string;
+  text: string;
+}
+
+/**
+ * Save coach response and daily focus points to today's check-in
+ */
+export async function saveDailyFocusPoints(
+  coachResponse: string,
+  focusPoints: StoredDailyFocusPoint[]
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Convert to JSON-compatible format
+  const focusPointsJson = JSON.parse(JSON.stringify(focusPoints));
+  
+  const { error } = await supabase
+    .from('daily_checkins')
+    .update({
+      coach_response: coachResponse,
+      daily_focus_points: focusPointsJson,
+    })
+    .eq('user_id', user.id)
+    .eq('check_in_date', today);
+
+  if (error) {
+    console.error('Error saving daily focus points:', error);
+  }
+}
+
+/**
+ * Get today's stored daily focus points (if check-in exists and has focus points)
+ */
+export async function getTodaysDailyFocusPoints(): Promise<StoredDailyFocusPoint[] | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const today = new Date().toISOString().split('T')[0];
+  
+  const { data, error } = await supabase
+    .from('daily_checkins')
+    .select('daily_focus_points')
+    .eq('user_id', user.id)
+    .eq('check_in_date', today)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching daily focus points:', error);
+    return null;
+  }
+
+  if (!data || !data.daily_focus_points) return null;
+
+  // Cast through unknown to handle JSON type conversion
+  return data.daily_focus_points as unknown as StoredDailyFocusPoint[];
+}
