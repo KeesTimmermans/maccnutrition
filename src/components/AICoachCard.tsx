@@ -956,32 +956,8 @@ export const AICoachCard = ({
           </div>
         )}
 
-        {/* Custom Focus Points from Progress Update (monthly - takes highest priority) */}
-        {customFocusPoints && customFocusPoints.length > 0 ? (
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <span className="text-base font-bold text-foreground">
-                Your Monthly Focus
-              </span>
-            </div>
-            <div className="space-y-2">
-              {customFocusPoints.slice(0, 4).map((point, index) => (
-                <div 
-                  key={index}
-                  className="p-3 rounded-xl border border-primary/20 bg-primary/5 animate-slide-up"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{point.emoji}</span>
-                    <p className="text-sm font-medium text-foreground">{point.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : dailyCheckInFocusPoints && dailyCheckInFocusPoints.length > 0 ? (
-          /* Daily Focus Points from today's check-in AI response */
+        {/* Daily Focus Points from today's check-in AI response (takes highest priority) */}
+        {dailyCheckInFocusPoints && dailyCheckInFocusPoints.length > 0 ? (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
               <Flame className="w-5 h-5 text-secondary" />
@@ -994,6 +970,30 @@ export const AICoachCard = ({
                 <div 
                   key={index}
                   className="p-3 rounded-xl border border-secondary/20 bg-secondary/5 animate-slide-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{point.emoji}</span>
+                    <p className="text-sm font-medium text-foreground">{point.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : customFocusPoints && customFocusPoints.length > 0 ? (
+          /* Monthly Focus Points from Progress Update */
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <span className="text-base font-bold text-foreground">
+                Your Monthly Focus
+              </span>
+            </div>
+            <div className="space-y-2">
+              {customFocusPoints.slice(0, 4).map((point, index) => (
+                <div 
+                  key={index}
+                  className="p-3 rounded-xl border border-primary/20 bg-primary/5 animate-slide-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-center gap-3">
