@@ -76,7 +76,7 @@ export const parseFocusPoints = (response: string): { cleanResponse: string; foc
   for (const line of lines) {
     const trimmed = line.trim();
     // Match emoji at start of line
-    const emojiMatch = trimmed.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉)/u);
+    const emojiMatch = trimmed.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉|🥩)/u);
     if (emojiMatch) {
       focusPoints.push({
         emoji: emojiMatch[1],
@@ -87,6 +87,41 @@ export const parseFocusPoints = (response: string): { cleanResponse: string; foc
   
   // Remove the focus points section from the response
   const cleanResponse = response.replace(/---FOCUS_POINTS---[\s\S]*?---END_FOCUS---/, '').trim();
+  
+  return { cleanResponse, focusPoints };
+};
+
+/**
+ * Parse daily focus points from AI coach check-in response
+ * Looks for content between ---DAILY_FOCUS--- and ---END_DAILY_FOCUS---
+ */
+export const parseDailyFocusPoints = (response: string): { cleanResponse: string; focusPoints: CoachingFocusPoint[] } => {
+  const focusPointsMatch = response.match(/---DAILY_FOCUS---([\s\S]*?)---END_DAILY_FOCUS---/);
+  
+  if (!focusPointsMatch) {
+    return { cleanResponse: response, focusPoints: [] };
+  }
+  
+  // Extract and clean the focus points section
+  const focusPointsRaw = focusPointsMatch[1].trim();
+  const focusPoints: CoachingFocusPoint[] = [];
+  
+  // Parse each line that starts with an emoji
+  const lines = focusPointsRaw.split('\n').filter(line => line.trim());
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Match emoji at start of line
+    const emojiMatch = trimmed.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉|🥩)/u);
+    if (emojiMatch) {
+      focusPoints.push({
+        emoji: emojiMatch[1],
+        text: trimmed.slice(emojiMatch[1].length).trim()
+      });
+    }
+  }
+  
+  // Remove the focus points section from the response
+  const cleanResponse = response.replace(/---DAILY_FOCUS---[\s\S]*?---END_DAILY_FOCUS---/, '').trim();
   
   return { cleanResponse, focusPoints };
 };

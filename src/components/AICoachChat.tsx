@@ -7,6 +7,7 @@ import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, buildTemporalCheckInContext, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
 import { getTodaysWearableData, getRecentWearableData, formatWearableDataForAI, type WearableSummary } from "@/lib/wearableService";
 import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation, type ChatMessage } from "@/lib/coachConversationService";
+import { parseDailyFocusPoints, type CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage, Language } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -18,11 +19,12 @@ interface Message {
 interface AICoachChatProps {
   onClose: () => void;
   freshCheckIn?: DailyCheckIn | null;
+  onDailyFocusPointsReceived?: (focusPoints: CoachingFocusPoint[]) => void;
 }
 
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
 
-export const AICoachChat = ({ onClose, freshCheckIn }: AICoachChatProps) => {
+export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived }: AICoachChatProps) => {
   const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -186,7 +188,15 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
           if (error) throw error;
           
-          setMessages([{ role: "assistant", content: data.response }]);
+          // Parse daily focus points from the AI response
+          const { cleanResponse, focusPoints } = parseDailyFocusPoints(data.response);
+          
+          // Pass focus points to parent if callback provided
+          if (focusPoints.length > 0 && onDailyFocusPointsReceived) {
+            onDailyFocusPointsReceived(focusPoints);
+          }
+          
+          setMessages([{ role: "assistant", content: cleanResponse }]);
         } catch (error) {
           console.error("Error getting check-in response:", error);
           setMessages([{

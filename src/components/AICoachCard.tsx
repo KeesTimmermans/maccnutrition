@@ -51,8 +51,10 @@ interface AICoachCardProps {
   // Historical data props
   mealPatterns?: MealPatternAnalysis | null;
   accountAgeDays?: number;
-  // Custom focus points from progress updates
+  // Custom focus points from progress updates (monthly)
   customFocusPoints?: CoachingFocusPoint[] | null;
+  // Daily focus points from check-in AI response
+  dailyCheckInFocusPoints?: CoachingFocusPoint[] | null;
 }
 
 const getScoreColor = (score: number, inverted = false) => {
@@ -80,7 +82,8 @@ export const AICoachCard = ({
   waterIntakeMl = 0,
   mealPatterns,
   accountAgeDays = 0,
-  customFocusPoints
+  customFocusPoints,
+  dailyCheckInFocusPoints
 }: AICoachCardProps) => {
   const { t } = useLanguage();
   
@@ -953,7 +956,7 @@ export const AICoachCard = ({
           </div>
         )}
 
-        {/* Custom Focus Points from Progress Update (takes priority) */}
+        {/* Custom Focus Points from Progress Update (monthly - takes highest priority) */}
         {customFocusPoints && customFocusPoints.length > 0 ? (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
@@ -967,6 +970,30 @@ export const AICoachCard = ({
                 <div 
                   key={index}
                   className="p-3 rounded-xl border border-primary/20 bg-primary/5 animate-slide-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{point.emoji}</span>
+                    <p className="text-sm font-medium text-foreground">{point.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : dailyCheckInFocusPoints && dailyCheckInFocusPoints.length > 0 ? (
+          /* Daily Focus Points from today's check-in AI response */
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Flame className="w-5 h-5 text-secondary" />
+              <span className="text-base font-bold text-foreground">
+                Today's Coaching Plan
+              </span>
+            </div>
+            <div className="space-y-2">
+              {dailyCheckInFocusPoints.slice(0, 4).map((point, index) => (
+                <div 
+                  key={index}
+                  className="p-3 rounded-xl border border-secondary/20 bg-secondary/5 animate-slide-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-center gap-3">
