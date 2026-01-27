@@ -7,6 +7,187 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ============================================
+// NUTRITION DATABASE LOOKUPS (inline for edge function)
+// ============================================
+
+interface NutritionData {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  servingSize?: number;
+  servingUnit?: string;
+  source: 'open_food_facts' | 'usda' | 'ai_estimation';
+  confidence: 'high' | 'medium' | 'low';
+  brandName?: string;
+  imageUrl?: string;
+}
+
+interface NutritionPer100g {
+  name: string;
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatsPer100g: number;
+  defaultServingSize: number;
+  source: 'open_food_facts' | 'usda' | 'ai_estimation';
+  brandName?: string;
+}
+
+// Open Food Facts - For barcode lookups
+async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
+  try {
+    console.log(`[OpenFoodFacts] Looking up barcode: ${barcode}`);
+    
+    const response = await fetch(
+      `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`,
+      {
+        headers: {
+          'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.log(`[OpenFoodFacts] HTTP error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data.status !== 1 || !data.product) {
+      console.log(`[OpenFoodFacts] Product not found for barcode: ${barcode}`);
+      return null;
+    }
+
+    const product = data.product;
+    const nutriments = product.nutriments || {};
+
+    // Get nutrition per 100g
+    const calories = nutriments['energy-kcal_100g'] ?? nutriments['energy-kcal'] ?? 0;
+    const protein = nutriments.proteins_100g ?? nutriments.proteins ?? 0;
+    const carbs = nutriments.carbohydrates_100g ?? nutriments.carbohydrates ?? 0;
+    const fats = nutriments.fat_100g ?? nutriments.fat ?? 0;
+
+    if (calories === 0 && protein === 0 && carbs === 0 && fats === 0) {
+      console.log(`[OpenFoodFacts] No nutrition data for barcode: ${barcode}`);
+      return null;
+    }
+
+    const productName = product.product_name || product.product_name_en || 'Unknown Product';
+    const brandName = product.brands || undefined;
+    const servingSize = parseFloat(product.serving_quantity) || 100;
+
+    console.log(`[OpenFoodFacts] Found: ${productName} (${brandName || 'no brand'})`);
+
+    return {
+      name: brandName ? `${brandName} ${productName}` : productName,
+      calories: Math.round(calories),
+      protein: Math.round(protein),
+      carbs: Math.round(carbs),
+      fats: Math.round(fats),
+      servingSize,
+      servingUnit: 'g',
+      source: 'open_food_facts',
+      confidence: 'high',
+      brandName,
+      imageUrl: product.image_url || undefined
+    };
+  } catch (error) {
+    console.error('[OpenFoodFacts] Error:', error);
+    return null;
+  }
+}
+
+// USDA FoodData Central - For whole foods
+async function searchUSDA(query: string, limit: number = 5): Promise<NutritionPer100g[]> {
+  try {
+    console.log(`[USDA] Searching for: ${query}`);
+    
+    // Use DEMO_KEY for basic access (rate limited but free)
+    const apiKey = 'DEMO_KEY';
+    const encodedQuery = encodeURIComponent(query);
+    const response = await fetch(
+      `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodedQuery}&pageSize=${limit}&dataType=Foundation,SR%20Legacy`,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.log(`[USDA] HTTP error: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    
+    if (!data.foods || data.foods.length === 0) {
+      console.log(`[USDA] No results for: ${query}`);
+      return [];
+    }
+
+    const results: NutritionPer100g[] = [];
+
+    for (const food of data.foods.slice(0, limit)) {
+      const nutrients = food.foodNutrients || [];
+      
+      const findNutrient = (nutrientNumber: number): number => {
+        const nutrient = nutrients.find((n: any) => n.nutrientNumber === String(nutrientNumber) || n.nutrientId === nutrientNumber);
+        return nutrient?.value || 0;
+      };
+
+      // USDA nutrient IDs: 1008=Energy(kcal), 1003=Protein, 1005=Carbs, 1004=Fat
+      const calories = findNutrient(1008) || findNutrient(208);
+      const protein = findNutrient(1003) || findNutrient(203);
+      const carbs = findNutrient(1005) || findNutrient(205);
+      const fats = findNutrient(1004) || findNutrient(204);
+
+      if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
+        results.push({
+          name: food.description || food.lowercaseDescription || query,
+          caloriesPer100g: Math.round(calories),
+          proteinPer100g: Math.round(protein * 10) / 10,
+          carbsPer100g: Math.round(carbs * 10) / 10,
+          fatsPer100g: Math.round(fats * 10) / 10,
+          defaultServingSize: 100,
+          source: 'usda'
+        });
+      }
+    }
+
+    console.log(`[USDA] Found ${results.length} results for: ${query}`);
+    return results;
+  } catch (error) {
+    console.error('[USDA] Error:', error);
+    return [];
+  }
+}
+
+async function lookupUSDA(query: string): Promise<NutritionData | null> {
+  const results = await searchUSDA(query, 1);
+  
+  if (results.length === 0) {
+    return null;
+  }
+
+  const food = results[0];
+  return {
+    name: food.name,
+    calories: food.caloriesPer100g,
+    protein: Math.round(food.proteinPer100g),
+    carbs: Math.round(food.carbsPer100g),
+    fats: Math.round(food.fatsPer100g),
+    servingSize: 100,
+    servingUnit: 'g',
+    source: 'usda',
+    confidence: 'high'
+  };
+}
+
 // Input validation schema
 const userDietContextSchema = z.object({
   dietType: z.string().max(50).optional(),
@@ -25,7 +206,7 @@ const requestSchema = z.object({
   searchQuery: z.string()
     .max(500, "Search query too long")
     .optional(),
-  mode: z.enum(['suggestions', 'calculate', 'analyze', 'parse_meal']).optional(),
+  mode: z.enum(['suggestions', 'calculate', 'analyze', 'parse_meal', 'barcode']).optional(),
   userDietContext: userDietContextSchema
 }).refine(
   (data) => data.imageBase64 || data.searchQuery,
@@ -33,13 +214,11 @@ const requestSchema = z.object({
 );
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Authentication check
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -65,7 +244,6 @@ serve(async (req) => {
 
     console.log("Authenticated user:", user.id);
 
-    // Parse and validate input
     const rawBody = await req.json();
     const validationResult = requestSchema.safeParse(rawBody);
     
@@ -86,6 +264,144 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    // ============================================
+    // BARCODE MODE - Use Open Food Facts first
+    // ============================================
+    if (mode === 'barcode' && searchQuery) {
+      // Extract barcode from the query (handles "barcode product: 123456789")
+      const barcodeMatch = searchQuery.match(/\d{8,14}/);
+      const barcode = barcodeMatch ? barcodeMatch[0] : searchQuery.trim();
+      
+      console.log(`[Barcode Mode] Looking up: ${barcode}`);
+      
+      // Try Open Food Facts first
+      const offResult = await lookupBarcode(barcode);
+      
+      if (offResult) {
+        console.log(`[Barcode Mode] Found in Open Food Facts: ${offResult.name}`);
+        return new Response(
+          JSON.stringify({
+            name: offResult.name,
+            calories: offResult.calories,
+            protein: offResult.protein,
+            carbs: offResult.carbs,
+            fats: offResult.fats,
+            caloriesPer100g: offResult.calories,
+            proteinPer100g: offResult.protein,
+            carbsPer100g: offResult.carbs,
+            fatsPer100g: offResult.fats,
+            defaultServingSize: offResult.servingSize || 100,
+            confidence: 'high',
+            source: 'open_food_facts',
+            notes: `Data from Open Food Facts database${offResult.brandName ? ` (${offResult.brandName})` : ''}`
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Fallback to AI for unknown barcodes
+      console.log(`[Barcode Mode] Not found in database, falling back to AI`);
+    }
+
+    // ============================================
+    // SUGGESTIONS MODE - Use USDA first
+    // ============================================
+    if (mode === 'suggestions' && searchQuery) {
+      console.log(`[Suggestions Mode] Searching USDA for: ${searchQuery}`);
+      
+      const usdaResults = await searchUSDA(searchQuery, 5);
+      
+      if (usdaResults.length > 0) {
+        console.log(`[Suggestions Mode] Found ${usdaResults.length} USDA results`);
+        return new Response(
+          JSON.stringify({ 
+            suggestions: usdaResults.map(r => ({
+              ...r,
+              source: 'usda'
+            }))
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Fallback to AI for suggestions
+      console.log(`[Suggestions Mode] No USDA results, falling back to AI`);
+    }
+
+    // ============================================
+    // CALCULATE MODE - Try USDA first
+    // ============================================
+    if (mode === 'calculate' && searchQuery) {
+      // Parse weight from query like "150g of chicken breast"
+      const weightMatch = searchQuery.match(/(\d+(?:\.\d+)?)\s*g(?:rams?)?\s+(?:of\s+)?(.+)/i);
+      
+      if (weightMatch) {
+        const grams = parseFloat(weightMatch[1]);
+        const foodName = weightMatch[2].trim();
+        
+        console.log(`[Calculate Mode] Looking up ${grams}g of ${foodName}`);
+        
+        const usdaResult = await lookupUSDA(foodName);
+        
+        if (usdaResult) {
+          const factor = grams / 100;
+          console.log(`[Calculate Mode] Found in USDA, calculating for ${grams}g`);
+          
+          return new Response(
+            JSON.stringify({
+              name: `${grams}g ${usdaResult.name}`,
+              calories: Math.round(usdaResult.calories * factor),
+              protein: Math.round(usdaResult.protein * factor),
+              carbs: Math.round(usdaResult.carbs * factor),
+              fats: Math.round(usdaResult.fats * factor),
+              confidence: 'high',
+              source: 'usda',
+              notes: `Calculated from USDA FoodData Central (${usdaResult.calories} kcal/100g)`
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+      
+      console.log(`[Calculate Mode] Falling back to AI`);
+    }
+
+    // ============================================
+    // DEFAULT/ANALYZE MODE - Try USDA first for simple queries
+    // ============================================
+    if (searchQuery && !imageBase64 && !mode) {
+      // Check if it's a simple food query (not a complex meal description)
+      const isSimpleQuery = searchQuery.split(/\s+/).length <= 4 && !searchQuery.includes(',');
+      
+      if (isSimpleQuery) {
+        console.log(`[Analyze Mode] Simple query, trying USDA first: ${searchQuery}`);
+        
+        const usdaResult = await lookupUSDA(searchQuery);
+        
+        if (usdaResult) {
+          console.log(`[Analyze Mode] Found in USDA: ${usdaResult.name}`);
+          return new Response(
+            JSON.stringify({
+              name: usdaResult.name,
+              calories: usdaResult.calories,
+              protein: usdaResult.protein,
+              carbs: usdaResult.carbs,
+              fats: usdaResult.fats,
+              confidence: 'high',
+              source: 'usda',
+              notes: `Data from USDA FoodData Central (per 100g serving)`
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
+    // ============================================
+    // AI FALLBACK - For complex queries, images, or when databases fail
+    // ============================================
+    console.log(`[AI Fallback] Using AI for analysis, mode: ${mode || 'analyze'}`);
 
     // Build dietary context for warnings
     let dietaryContextNote = '';
@@ -117,7 +433,6 @@ For example: "⚠️ Warning: This meal contains chicken which doesn't fit a veg
     let messages: any[];
     
     if (imageBase64) {
-      // Analyze food from image - parse into individual ingredients
       messages = [
         {
           role: "system",
@@ -141,7 +456,7 @@ You MUST respond with ONLY a JSON object in this exact format:
   "notes": "Brief notes about the estimation"
 }
 
-Be thorough - identify all visible food items separately (e.g., for a plate with chicken, rice, and vegetables, list each separately).
+Be thorough - identify all visible food items separately.
 Estimate realistic portion sizes based on visual assessment.
 If you can't identify the food clearly, make your best estimate and set confidence to "low".${dietaryContextNote}
 Do not include any other text, only the JSON object.`
@@ -163,7 +478,6 @@ Do not include any other text, only the JSON object.`
         }
       ];
     } else if (searchQuery && mode === 'suggestions') {
-      // Return food suggestions with per-100g nutrition
       messages = [
         {
           role: "system",
@@ -178,12 +492,13 @@ You MUST respond with ONLY a JSON object in this exact format:
       "proteinPer100g": number,
       "carbsPer100g": number,
       "fatsPer100g": number,
-      "defaultServingSize": number (typical serving in grams)
+      "defaultServingSize": number (typical serving in grams),
+      "source": "ai_estimation"
     }
   ]
 }
 
-Include common foods, branded items when recognizable, and variations (e.g., "Chicken breast, raw", "Chicken breast, grilled").
+Include common foods, branded items when recognizable, and variations.
 Sort by relevance to the search query.
 Do not include any other text, only the JSON object.`
         },
@@ -193,7 +508,6 @@ Do not include any other text, only the JSON object.`
         }
       ];
     } else if (searchQuery && mode === 'calculate') {
-      // Calculate nutrition for specific weight
       messages = [
         {
           role: "system",
@@ -207,7 +521,8 @@ You MUST respond with ONLY a JSON object in this exact format:
   "protein": number (grams of protein),
   "carbs": number (grams of carbohydrates),
   "fats": number (grams of fat),
-  "confidence": "high" | "medium" | "low",
+  "confidence": "medium",
+  "source": "ai_estimation",
   "notes": "Brief notes about the calculation"
 }
 
@@ -219,8 +534,38 @@ Do not include any other text, only the JSON object.`
           content: `Calculate nutrition for: ${searchQuery}`
         }
       ];
+    } else if (searchQuery && (mode === 'barcode' || searchQuery.includes('barcode'))) {
+      messages = [
+        {
+          role: "system",
+          content: `You are a nutrition expert AI. A barcode was scanned but not found in food databases.
+Try to identify the product and provide nutritional estimates per 100g serving.
+
+You MUST respond with ONLY a JSON object in this exact format:
+{
+  "name": "Product name (best guess)",
+  "calories": number,
+  "protein": number,
+  "carbs": number,
+  "fats": number,
+  "caloriesPer100g": number,
+  "proteinPer100g": number,
+  "carbsPer100g": number,
+  "fatsPer100g": number,
+  "defaultServingSize": 100,
+  "confidence": "low",
+  "source": "ai_estimation",
+  "notes": "Product not found in database - these are estimated values. Try searching by product name for better accuracy."
+}
+
+Do not include any other text, only the JSON object.`
+        },
+        {
+          role: "user",
+          content: `A barcode was scanned: ${searchQuery}. Please provide your best estimate for this product's nutritional information.`
+        }
+      ];
     } else if (searchQuery && mode === 'parse_meal') {
-      // Parse a meal description into individual ingredients
       messages = [
         {
           role: "system",
@@ -263,7 +608,7 @@ You MUST respond with ONLY a JSON object in this exact format:
   "notes": "Brief notes about the estimation"
 }
 
-Be thorough - include all identifiable ingredients (e.g., for "eggs with toast and butter", list eggs, bread, and butter separately).
+Be thorough - include all identifiable ingredients.
 When user provides exact amounts, set confidence to "high" for those items.${dietaryContextNote}
 Do not include any other text, only the JSON object.`
         },
@@ -273,7 +618,6 @@ Do not include any other text, only the JSON object.`
         }
       ];
     } else if (searchQuery) {
-      // Default: estimate nutrition from text search
       messages = [
         {
           role: "system",
@@ -286,7 +630,8 @@ When given a food name or description, you MUST respond with ONLY a JSON object 
   "protein": number (grams of protein),
   "carbs": number (grams of carbohydrates),
   "fats": number (grams of fat),
-  "confidence": "high" | "medium" | "low",
+  "confidence": "medium",
+  "source": "ai_estimation",
   "notes": "Brief notes about typical serving size assumed"
 }
 
@@ -305,7 +650,7 @@ Do not include any other text, only the JSON object.`
       );
     }
 
-    console.log("Calling Lovable AI for food analysis, mode:", mode || 'analyze');
+    console.log("Calling Lovable AI for food analysis");
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -346,12 +691,10 @@ Do not include any other text, only the JSON object.`
       throw new Error("No response from AI");
     }
 
-    console.log("AI response:", content);
+    console.log("AI response received");
 
-    // Parse the JSON response
     let nutritionData;
     try {
-      // Try to extract JSON from the response (in case there's extra text)
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         nutritionData = JSON.parse(jsonMatch[0]);
@@ -360,7 +703,6 @@ Do not include any other text, only the JSON object.`
       }
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
-      // Return a fallback response
       if (mode === 'suggestions') {
         nutritionData = { suggestions: [] };
       } else {
@@ -371,6 +713,7 @@ Do not include any other text, only the JSON object.`
           carbs: 20,
           fats: 8,
           confidence: "low",
+          source: "ai_estimation",
           notes: "Could not analyze accurately. These are estimated values."
         };
       }

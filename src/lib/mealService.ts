@@ -234,7 +234,7 @@ export const getFoodNutritionByWeight = async (
   return data;
 };
 
-export const analyzeFoodSearch = async (searchQuery: string): Promise<{
+export const analyzeFoodSearch = async (searchQuery: string, mode?: 'barcode' | 'analyze'): Promise<{
   name: string;
   calories: number;
   protein: number;
@@ -242,9 +242,15 @@ export const analyzeFoodSearch = async (searchQuery: string): Promise<{
   fats: number;
   confidence: string;
   notes: string;
+  source?: string;
+  caloriesPer100g?: number;
+  proteinPer100g?: number;
+  carbsPer100g?: number;
+  fatsPer100g?: number;
+  defaultServingSize?: number;
 }> => {
   const { data, error } = await supabase.functions.invoke("analyze-food", {
-    body: { searchQuery },
+    body: { searchQuery, mode },
   });
 
   if (error) {

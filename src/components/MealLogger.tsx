@@ -255,18 +255,25 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
     setIsAnalyzing(true);
     
     try {
-      // Use AI to look up the barcode product
-      const result = await analyzeFoodSearch(`barcode product: ${barcode}`);
+      // Use barcode mode - tries Open Food Facts first, then AI fallback
+      const result = await analyzeFoodSearch(barcode, 'barcode');
       setAnalysisResult({
         ...result,
-        caloriesPer100g: result.calories,
-        proteinPer100g: result.protein,
-        carbsPer100g: result.carbs,
-        fatsPer100g: result.fats,
-        defaultServingSize: 100,
+        caloriesPer100g: result.caloriesPer100g || result.calories,
+        proteinPer100g: result.proteinPer100g || result.protein,
+        carbsPer100g: result.carbsPer100g || result.carbs,
+        fatsPer100g: result.fatsPer100g || result.fats,
+        defaultServingSize: result.defaultServingSize || 100,
       });
-      setQuantity("100");
+      setQuantity((result.defaultServingSize || 100).toString());
       setStep('adjust');
+      
+      // Show source info
+      if (result.source === 'open_food_facts') {
+        toast.success(`Found: ${result.name}`);
+      } else if (result.source === 'ai_estimation') {
+        toast.info("Product not in database - using AI estimate");
+      }
     } catch (error) {
       console.error("Error looking up barcode:", error);
       toast.error("Could not find product. Try searching manually.");
