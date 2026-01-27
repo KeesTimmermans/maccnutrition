@@ -4,6 +4,7 @@ import { UserBaseline } from "@/lib/userService";
 export interface CoachingFocusPoint {
   emoji: string;
   text: string;
+  tip?: string; // Optional actionable tip on how to achieve this focus point
 }
 
 export interface ProgressUpdate {
@@ -100,6 +101,9 @@ export const parseDailyFocusPoints = (response: string): { cleanResponse: string
   const focusPoints: CoachingFocusPoint[] = [];
   let cleanResponse = response;
   
+  // Emoji pattern for matching focus point lines
+  const emojiPattern = /^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉|🥩|🍳|🧘‍♀️|🧘‍♂️|💆|💆‍♀️|💆‍♂️|🏋️|🏋️‍♀️|🏋️‍♂️|🚶|🚶‍♀️|🚶‍♂️|🏃‍♀️|🏃‍♂️|🍎|🥦|🍗|🐟|🥚|🧀|🥜|🫘|🍚|🥔|🍠|🥤|☕|🫖|🍵|🌙|⏰|📝|📈|📉|🎯|⭐|🌟|💫|✅|❌|⚠️|💡|🔔|🧠|❤️|💚|💙|💛|🧡|💜|🖤|🤍|🤎)/u;
+  
   // Primary pattern: ---DAILY_FOCUS--- markers
   const primaryMatch = response.match(/---DAILY_FOCUS---([\s\S]*?)---END_DAILY_FOCUS---/);
   
@@ -107,16 +111,34 @@ export const parseDailyFocusPoints = (response: string): { cleanResponse: string
     const focusPointsRaw = primaryMatch[1].trim();
     const lines = focusPointsRaw.split('\n').filter(line => line.trim());
     
+    let currentPoint: CoachingFocusPoint | null = null;
+    
     for (const line of lines) {
       const trimmed = line.trim();
-      // Match emoji at start of line
-      const emojiMatch = trimmed.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉|🥩|🍳|🧘‍♀️|🧘‍♂️|💆|💆‍♀️|💆‍♂️|🏋️|🏋️‍♀️|🏋️‍♂️|🚶|🚶‍♀️|🚶‍♂️|🏃‍♀️|🏃‍♂️|🍎|🥦|🍗|🐟|🥚|🧀|🥜|🫘|🍚|🥔|🍠|🥤|☕|🫖|🍵|🌙|⏰|📝|📈|📉|🎯|⭐|🌟|💫|✅|❌|⚠️|💡|🔔|🧠|❤️|💚|💙|💛|🧡|💜|🖤|🤍|🤎)/u);
+      
+      // Check if this is a tip line (starts with →)
+      if (trimmed.startsWith('→') && currentPoint) {
+        currentPoint.tip = trimmed.slice(1).trim();
+        continue;
+      }
+      
+      // Match emoji at start of line (new focus point)
+      const emojiMatch = trimmed.match(emojiPattern);
       if (emojiMatch) {
-        focusPoints.push({
+        // Save previous point if exists
+        if (currentPoint) {
+          focusPoints.push(currentPoint);
+        }
+        currentPoint = {
           emoji: emojiMatch[1],
           text: trimmed.slice(emojiMatch[1].length).trim()
-        });
+        };
       }
+    }
+    
+    // Don't forget to push the last point
+    if (currentPoint) {
+      focusPoints.push(currentPoint);
     }
     
     cleanResponse = response.replace(/---DAILY_FOCUS---[\s\S]*?---END_DAILY_FOCUS---/, '').trim();
