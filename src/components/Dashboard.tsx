@@ -25,7 +25,7 @@ import { Flame, TrendingUp, Sun, Watch, Instagram } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
-import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, CheckInAnalysis, UserTargets, DailyCheckIn as DailyCheckInType } from "@/lib/checkinService";
+import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, getTodaysDailyFocusPoints, CheckInAnalysis, UserTargets, DailyCheckIn as DailyCheckInType } from "@/lib/checkinService";
 import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
 import { getTodaysWaterIntake } from "@/lib/waterService";
 import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
@@ -344,7 +344,7 @@ export const Dashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks, checkInData, wearable, wearableConns, recentCheckIns, waterData, focusPoints] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, checkInData, wearable, wearableConns, recentCheckIns, waterData, monthlyFocusPoints, dailyFocusPoints] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
@@ -354,9 +354,16 @@ export const Dashboard = () => {
         getRecentCheckIns(7),
         getTodaysWaterIntake(),
         getActiveCoachingFocusPoints(),
+        getTodaysDailyFocusPoints(),
       ]);
       
-      setCustomFocusPoints(focusPoints);
+      // Set monthly focus points (from progress updates)
+      setCustomFocusPoints(monthlyFocusPoints);
+      
+      // Set daily focus points (from today's check-in AI response) - takes priority
+      if (dailyFocusPoints && dailyFocusPoints.length > 0) {
+        setDailyCheckInFocusPoints(dailyFocusPoints);
+      }
       
       setHasCheckedInToday(!!checkInData);
       setTodaysCheckIn(checkInData);

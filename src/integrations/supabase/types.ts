@@ -44,7 +44,9 @@ export type Database = {
       daily_checkins: {
         Row: {
           check_in_date: string
+          coach_response: string | null
           created_at: string
+          daily_focus_points: Json | null
           energy_level: number | null
           hunger_level: number | null
           hydration_feeling: number | null
@@ -59,7 +61,9 @@ export type Database = {
         }
         Insert: {
           check_in_date?: string
+          coach_response?: string | null
           created_at?: string
+          daily_focus_points?: Json | null
           energy_level?: number | null
           hunger_level?: number | null
           hydration_feeling?: number | null
@@ -74,7 +78,9 @@ export type Database = {
         }
         Update: {
           check_in_date?: string
+          coach_response?: string | null
           created_at?: string
+          daily_focus_points?: Json | null
           energy_level?: number | null
           hunger_level?: number | null
           hydration_feeling?: number | null
