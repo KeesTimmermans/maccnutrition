@@ -729,10 +729,10 @@ export const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       {/* Header */}
-      <header className="sticky top-0 z-40 glass border-b border-border/50 pt-2">
-        <div className="container flex items-center justify-between py-4 pt-6">
+      <header className="sticky top-0 z-40 glass border-b border-border/50 safe-pt-4">
+        <div className="container flex items-center justify-between py-4">
           <div>
             <p className="text-sm text-muted-foreground">{getGreeting()},</p>
             <h1 className="text-xl font-bold text-foreground">
@@ -806,8 +806,8 @@ export const Dashboard = () => {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50 pb-4">
-        <div className="container flex justify-around py-3 pb-2">
+      <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50 safe-pb-4">
+        <div className="container flex justify-around py-3">
           {[
             { icon: "🏠", label: t('home'), path: "/", active: true },
             { icon: "📊", label: t('progress'), path: "/progress", active: false },

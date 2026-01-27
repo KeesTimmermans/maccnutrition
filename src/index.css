@@ -151,6 +151,15 @@
     @apply bg-clip-text text-transparent;
     background: var(--gradient-hero);
   }
+
+  /* Safe-area helpers for iOS/Android (notches + home indicator) */
+  .safe-pt-4 {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  }
+
+  .safe-pb-4 {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
 }
 
 /* Custom animations */
