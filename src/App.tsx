@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/lib/i18n";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import MealHistory from "./pages/MealHistory";
+import QuickAddMeals from "./pages/QuickAddMeals";
 import Progress from "./pages/Progress";
 import WhoopDemo from "./pages/WhoopDemo";
 import Privacy from "./pages/Privacy";
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/history" element={<MealHistory />} />
+            <Route path="/quick-add" element={<QuickAddMeals />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/whoop-demo" element={<WhoopDemo />} />
             <Route path="/privacy" element={<Privacy />} />

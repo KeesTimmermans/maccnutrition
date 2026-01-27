@@ -1,74 +1,22 @@
-import { useState, useEffect } from "react";
-import { Clock, Plus, Loader2 } from "lucide-react";
-import { getRecentUniqueMeals, Meal } from "@/lib/mealService";
+import { useNavigate } from "react-router-dom";
+import { Clock, ChevronRight } from "lucide-react";
 
-interface QuickMealsProps {
-  onSelectMeal: (meal: {
-    name: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fats: number;
-  }) => void;
-}
-
-export const QuickMeals = ({ onSelectMeal }: QuickMealsProps) => {
-  const [recentMeals, setRecentMeals] = useState<Meal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadRecentMeals = async () => {
-      setIsLoading(true);
-      try {
-        const meals = await getRecentUniqueMeals(5);
-        setRecentMeals(meals);
-      } catch (error) {
-        console.error("Error loading recent meals:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadRecentMeals();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-4">
-        <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
-      </div>
-    );
-  }
-
-  if (recentMeals.length === 0) {
-    return null;
-  }
+export const QuickMeals = () => {
+  const navigate = useNavigate();
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Clock className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">Quick Add (Last 5 Days)</span>
+    <button
+      onClick={() => navigate("/quick-add")}
+      className="w-full p-4 bg-card border border-border rounded-2xl flex items-center gap-4 hover:border-primary hover:bg-accent/50 transition-all group"
+    >
+      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+        <Clock className="w-6 h-6 text-primary" />
       </div>
-      
-      <div className="flex flex-wrap gap-2">
-        {recentMeals.map((meal) => (
-          <button
-            key={meal.id}
-            onClick={() => onSelectMeal({
-              name: meal.name,
-              calories: meal.calories,
-              protein: meal.protein,
-              carbs: meal.carbs,
-              fats: meal.fats,
-            })}
-            className="flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted border border-border rounded-xl transition-colors group"
-          >
-            <span className="text-sm text-foreground truncate max-w-[150px]">{meal.name}</span>
-            <span className="text-xs text-muted-foreground">{meal.calories}cal</span>
-            <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-          </button>
-        ))}
+      <div className="flex-1 text-left">
+        <h3 className="font-semibold text-foreground">Quick Add Meals</h3>
+        <p className="text-sm text-muted-foreground">Re-log meals from the last 5 days</p>
       </div>
-    </div>
+      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+    </button>
   );
 };
