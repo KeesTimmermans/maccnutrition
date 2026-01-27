@@ -82,6 +82,7 @@ export const Dashboard = () => {
   const [accountAgeDays, setAccountAgeDays] = useState(0);
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
   const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
+  const [dailyCheckInFocusPoints, setDailyCheckInFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
   const [showInstagramImport, setShowInstagramImport] = useState(false);
   
   // Share handler for receiving Instagram URLs from native share
@@ -673,6 +674,7 @@ export const Dashboard = () => {
         mealPatterns={mealPatterns}
         accountAgeDays={accountAgeDays}
         customFocusPoints={customFocusPoints}
+        dailyCheckInFocusPoints={dailyCheckInFocusPoints}
       />
     </section>
   );
@@ -859,6 +861,9 @@ export const Dashboard = () => {
             setFreshCheckInData(null);
           }} 
           freshCheckIn={freshCheckInData}
+          onDailyFocusPointsReceived={(focusPoints) => {
+            setDailyCheckInFocusPoints(focusPoints);
+          }}
         />
       )}
 
