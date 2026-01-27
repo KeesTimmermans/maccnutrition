@@ -397,7 +397,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col animate-slide-up">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between px-4 pb-4 safe-pt-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center">
             <Bot className="w-5 h-5 text-primary-foreground" />
@@ -552,7 +552,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       )}
 
       {/* Input */}
-      <div className="p-4 border-t border-border">
+      <div className="px-4 pt-4 safe-pb-4 border-t border-border">
         <div className="flex gap-2">
           <input
             type="text"
