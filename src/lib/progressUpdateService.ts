@@ -94,36 +94,60 @@ export const parseFocusPoints = (response: string): { cleanResponse: string; foc
 /**
  * Parse daily focus points from AI coach check-in response
  * Looks for content between ---DAILY_FOCUS--- and ---END_DAILY_FOCUS---
+ * Also handles fallback formats like **Today's Focus:** with bullet points
  */
 export const parseDailyFocusPoints = (response: string): { cleanResponse: string; focusPoints: CoachingFocusPoint[] } => {
-  const focusPointsMatch = response.match(/---DAILY_FOCUS---([\s\S]*?)---END_DAILY_FOCUS---/);
+  const focusPoints: CoachingFocusPoint[] = [];
+  let cleanResponse = response;
   
-  if (!focusPointsMatch) {
-    return { cleanResponse: response, focusPoints: [] };
+  // Primary pattern: ---DAILY_FOCUS--- markers
+  const primaryMatch = response.match(/---DAILY_FOCUS---([\s\S]*?)---END_DAILY_FOCUS---/);
+  
+  if (primaryMatch) {
+    const focusPointsRaw = primaryMatch[1].trim();
+    const lines = focusPointsRaw.split('\n').filter(line => line.trim());
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Match emoji at start of line
+      const emojiMatch = trimmed.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉|🥩|🍳|🧘‍♀️|🧘‍♂️|💆|💆‍♀️|💆‍♂️|🏋️|🏋️‍♀️|🏋️‍♂️|🚶|🚶‍♀️|🚶‍♂️|🏃‍♀️|🏃‍♂️|🍎|🥦|🍗|🐟|🥚|🧀|🥜|🫘|🍚|🥔|🍠|🥤|☕|🫖|🍵|🌙|⏰|📝|📈|📉|🎯|⭐|🌟|💫|✅|❌|⚠️|💡|🔔|🧠|❤️|💚|💙|💛|🧡|💜|🖤|🤍|🤎)/u);
+      if (emojiMatch) {
+        focusPoints.push({
+          emoji: emojiMatch[1],
+          text: trimmed.slice(emojiMatch[1].length).trim()
+        });
+      }
+    }
+    
+    cleanResponse = response.replace(/---DAILY_FOCUS---[\s\S]*?---END_DAILY_FOCUS---/, '').trim();
+    return { cleanResponse, focusPoints };
   }
   
-  // Extract and clean the focus points section
-  const focusPointsRaw = focusPointsMatch[1].trim();
-  const focusPoints: CoachingFocusPoint[] = [];
+  // Fallback pattern: **Today's Focus:** or similar headers with bullet points (* emoji text)
+  const fallbackMatch = response.match(/\*\*Today'?s?\s*Focus:?\*\*\s*([\s\S]*?)(?=\n\n[A-Z]|\n\n\*\*|$)/i);
   
-  // Parse each line that starts with an emoji
-  const lines = focusPointsRaw.split('\n').filter(line => line.trim());
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Match emoji at start of line
-    const emojiMatch = trimmed.match(/^([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉|🥩)/u);
-    if (emojiMatch) {
+  if (fallbackMatch) {
+    const focusSection = fallbackMatch[1].trim();
+    // Match lines that start with * emoji or just emoji
+    const bulletPattern = /^\*?\s*([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|✨|💪|🎯|🥗|💧|🔥|⚡|🏃|😴|🧘|📊|🎉|🥩|🍳|💆|🏋️|🚶|🍎|🥦|🍗|🐟|🥚|🧀|🥜|🫘|🍚|🥔|🍠|🥤|☕|🌙|⏰|📝|📈|🎯|⭐|✅|💡|🧠|❤️|💚|💙|💛|🧡|💜)\s*(.+)$/gmu;
+    
+    let match;
+    while ((match = bulletPattern.exec(focusSection)) !== null) {
       focusPoints.push({
-        emoji: emojiMatch[1],
-        text: trimmed.slice(emojiMatch[1].length).trim()
+        emoji: match[1],
+        text: match[2].trim()
       });
     }
+    
+    // Remove the focus section from response if we found points
+    if (focusPoints.length > 0) {
+      cleanResponse = response.replace(/\*\*Today'?s?\s*Focus:?\*\*\s*[\s\S]*?(?=\n\n[A-Z]|\n\n\*\*|$)/i, '').trim();
+    }
+    
+    return { cleanResponse, focusPoints };
   }
   
-  // Remove the focus points section from the response
-  const cleanResponse = response.replace(/---DAILY_FOCUS---[\s\S]*?---END_DAILY_FOCUS---/, '').trim();
-  
-  return { cleanResponse, focusPoints };
+  return { cleanResponse: response, focusPoints: [] };
 };
 
 /**
