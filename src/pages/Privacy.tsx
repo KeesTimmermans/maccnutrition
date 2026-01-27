@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 
 const Privacy = () => {
   const lastUpdated = "January 27, 2026";
-  const appName = "CJT Nutrition Coaching";
   const contactEmail = "privacy@cjtnutrition.com";
 
   return (
@@ -18,26 +17,32 @@ const Privacy = () => {
         </Link>
 
         <div className="prose prose-neutral dark:prose-invert max-w-none">
-          <h1 className="text-3xl font-bold mb-2">{appName} Privacy Policy</h1>
+          <h1 className="text-3xl font-bold mb-2">CJT Nutrition Coaching Privacy Policy</h1>
           <p className="text-muted-foreground mb-8">Last updated: {lastUpdated}</p>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">1. Introduction</h2>
             <p>
-              {appName} ("we," "our," or "us") is committed to protecting your privacy. 
-              This Privacy Policy explains how we collect, use, disclose, and safeguard your 
-              information when you use our nutrition coaching application and related services,
-              including our web app, iOS app, and Android app.
+              CJT Nutrition Ltd ("we", "our", or "us") operates the CJT Nutrition Coaching platform, 
+              including our web application, iOS app, and Android app (collectively, the "App").
+            </p>
+            <p>
+              Your privacy is important to us. This Privacy Policy explains what information we collect, 
+              how we use it, how it is shared, and the choices you have when using our services.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">2. Information We Collect</h2>
+            <p>
+              We collect information you provide directly, information generated through your use of the App, 
+              and information from connected services.
+            </p>
             
-            <h3 className="text-lg font-medium mb-2">2.1 Account Information</h3>
+            <h3 className="text-lg font-medium mb-2 mt-4">2.1 Account Information</h3>
             <ul className="list-disc pl-6 mb-4">
               <li>Email address and authentication credentials</li>
-              <li>First name for personalized coaching</li>
+              <li>First name (used for personalized coaching)</li>
               <li>Language preference (English, French, Spanish, Italian, Portuguese)</li>
               <li>Preferred coaching tone (Direct, Supportive, Educational, Motivational)</li>
             </ul>
@@ -45,57 +50,58 @@ const Privacy = () => {
             <h3 className="text-lg font-medium mb-2">2.2 Health & Body Data</h3>
             <ul className="list-disc pl-6 mb-4">
               <li>Age, biological sex, height, and weight</li>
-              <li>Body measurements (waist, hip, chest, arm, thigh, neck circumferences)</li>
+              <li>Body measurements (waist, hip, chest, arms, thighs, neck)</li>
               <li>Body fat percentage</li>
-              <li>Progress photos (front, back, left side, right side views)</li>
-              <li>Medical conditions and allergies</li>
-              <li>Dietary restrictions and preferences</li>
+              <li>Medical conditions and allergies (if provided)</li>
+              <li>Dietary restrictions and food preferences</li>
+              <li>Progress photos (front, back, left, and right views)</li>
             </ul>
 
             <h3 className="text-lg font-medium mb-2">2.3 Lifestyle & Behavioral Data</h3>
             <ul className="list-disc pl-6 mb-4">
               <li>Activity level and workout types</li>
               <li>Job activity level and work hours</li>
-              <li>Sleep patterns and stress levels</li>
-              <li>Eating habits (speed, hunger patterns, emotional eating tendencies)</li>
-              <li>Cooking skill and meal prep preferences</li>
+              <li>Sleep patterns and perceived stress levels</li>
+              <li>Eating behaviors (hunger cues, emotional eating tendencies)</li>
+              <li>Cooking skill level and meal preparation preferences</li>
               <li>Past diet history and nutrition challenges</li>
             </ul>
 
             <h3 className="text-lg font-medium mb-2">2.4 Daily Tracking Data</h3>
             <ul className="list-disc pl-6 mb-4">
-              <li>Meals logged (food names, calories, protein, carbs, fats)</li>
-              <li>Food photos uploaded for AI analysis</li>
+              <li>Logged meals (food names, calories, protein, carbohydrates, fats)</li>
+              <li>Food photos uploaded for AI-based nutritional analysis</li>
               <li>Water intake records</li>
-              <li>Daily check-ins (mood, energy, sleep quality, stress, hunger levels)</li>
+              <li>Daily check-ins (mood, energy, sleep quality, stress, hunger)</li>
               <li>Activity streaks and consistency metrics</li>
             </ul>
 
             <h3 className="text-lg font-medium mb-2">2.5 AI Coaching Data</h3>
             <ul className="list-disc pl-6 mb-4">
               <li>Conversations with our AI coach</li>
-              <li>Generated meal plans and recommendations</li>
-              <li>Weekly progress updates and feedback</li>
-              <li>Personalized macro and calorie targets</li>
+              <li>AI-generated meal plans and recommendations</li>
+              <li>Weekly progress summaries and feedback</li>
+              <li>Personalized calorie and macronutrient targets</li>
             </ul>
 
             <h3 className="text-lg font-medium mb-2">2.6 Wearable Device Data</h3>
             <p className="mb-2">
-              When you connect a wearable device (such as WHOOP, Garmin, Apple Watch, or Fitbit), 
+              If you connect a supported wearable device (such as WHOOP, Garmin, Apple Watch, or Fitbit), 
               we may collect:
             </p>
             <ul className="list-disc pl-6 mb-4">
-              <li>Sleep data (duration, quality, sleep stages including deep, REM, light sleep)</li>
+              <li>Sleep duration, quality, and stages (light, deep, REM)</li>
               <li>Heart rate and heart rate variability (HRV)</li>
-              <li>Recovery and strain scores</li>
+              <li>Recovery and strain metrics</li>
               <li>Steps, active minutes, and calories burned</li>
-              <li>Stress levels and body battery metrics</li>
+              <li>Stress and readiness indicators</li>
             </ul>
 
             <h3 className="text-lg font-medium mb-2">2.7 Payment Information</h3>
             <ul className="list-disc pl-6 mb-4">
               <li>Subscription status and billing history</li>
-              <li>Payment processing is handled securely by Stripe; we do not store your credit card details</li>
+              <li>All payments are processed securely by Stripe.</li>
+              <li>We do not store or process credit card details on our servers.</li>
             </ul>
           </section>
 
@@ -103,72 +109,76 @@ const Privacy = () => {
             <h2 className="text-xl font-semibold mb-4">3. How We Use Your Information</h2>
             <p className="mb-2">We use your information to:</p>
             <ul className="list-disc pl-6">
-              <li>Calculate personalized calorie and macro targets based on your goals, body composition, and activity level</li>
-              <li>Provide AI-powered nutrition coaching tailored to your preferences and history</li>
-              <li>Generate personalized meal plans that respect your dietary restrictions and allergies</li>
+              <li>Calculate personalized calorie and macronutrient targets</li>
+              <li>Deliver AI-powered nutrition coaching tailored to your goals and preferences</li>
+              <li>Generate meal plans that respect dietary restrictions and allergies</li>
               <li>Analyze food photos to estimate nutritional content</li>
-              <li>Adjust recommendations based on your wearable data (sleep, recovery, activity)</li>
-              <li>Track your progress and provide insights on trends</li>
-              <li>Send trial reminders and subscription notifications</li>
-              <li>Improve our AI models and service quality</li>
-              <li>Provide customer support</li>
+              <li>Adjust recommendations using wearable data (sleep, recovery, activity)</li>
+              <li>Track progress and visualize trends over time</li>
+              <li>Send trial reminders, billing notices, and account-related messages</li>
+              <li>Improve our AI models and overall service quality</li>
+              <li>Provide customer support and respond to inquiries</li>
             </ul>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">4. AI-Powered Features</h2>
             <p>
-              Our app uses artificial intelligence to analyze your data and provide personalized recommendations.
-              This includes:
+              The App uses artificial intelligence to generate insights and recommendations, including:
             </p>
             <ul className="list-disc pl-6 mt-2">
-              <li><strong>Food Photo Analysis:</strong> AI analyzes images of your meals to estimate nutritional content</li>
-              <li><strong>AI Coach:</strong> Provides personalized guidance based on your check-ins, progress, and goals</li>
-              <li><strong>Meal Plan Generation:</strong> Creates weekly meal plans tailored to your macros and preferences</li>
-              <li><strong>Recipe Import:</strong> Extracts nutritional information from recipe descriptions</li>
-              <li><strong>Ingredient Swaps:</strong> Suggests alternatives based on your dietary restrictions</li>
+              <li><strong>Food Photo Analysis</strong> – estimating nutritional content from uploaded images</li>
+              <li><strong>AI Coach</strong> – personalized guidance based on your goals, check-ins, and history</li>
+              <li><strong>Meal Plan Generation</strong> – weekly meal plans aligned with your macros</li>
+              <li><strong>Recipe Import</strong> – extracting nutrition data from recipe descriptions</li>
+              <li><strong>Ingredient Swaps</strong> – suggesting alternatives for allergies or preferences</li>
             </ul>
-            <p className="mt-2">
-              AI-generated recommendations are for informational purposes only and should not replace professional medical or nutritional advice.
+            <p className="mt-4">
+              <strong>Important:</strong> AI-generated recommendations are provided for informational purposes only 
+              and do not replace professional medical or nutritional advice.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">5. Data Sharing and Disclosure</h2>
-            <p className="mb-2">We do not sell your personal information. We may share your data with:</p>
+            <p className="mb-2">We do not sell your personal information.</p>
+            <p className="mb-2">We may share limited data with trusted third parties only as necessary to operate the service:</p>
             <ul className="list-disc pl-6">
-              <li><strong>Cloud Infrastructure:</strong> Your data is stored securely using industry-standard cloud services</li>
-              <li><strong>Payment Processor:</strong> Stripe processes payments securely on our behalf</li>
-              <li><strong>Email Services:</strong> For sending account notifications and trial reminders</li>
-              <li><strong>Wearable Partners:</strong> Data is exchanged with connected wearable platforms (WHOOP, Garmin, Fitbit, Apple Health) as authorized by you</li>
-              <li><strong>AI Providers:</strong> Anonymized data may be processed by AI services to generate recommendations</li>
-              <li><strong>Legal Requirements:</strong> When required by law or to protect our rights</li>
+              <li><strong>Cloud Infrastructure Providers</strong> – for secure data storage and hosting</li>
+              <li><strong>Payment Processor (Stripe)</strong> – to process subscriptions securely</li>
+              <li><strong>Email Services</strong> – to send account notifications and reminders</li>
+              <li><strong>Wearable Platform Providers</strong> – to exchange data you authorize (e.g., WHOOP, Garmin, Fitbit, Apple Health)</li>
+              <li><strong>AI Service Providers</strong> – anonymized or pseudonymized data used to generate recommendations</li>
+              <li><strong>Legal Authorities</strong> – when required by law or to protect our rights</li>
             </ul>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">6. Data Security</h2>
-            <p>
-              We implement industry-standard security measures to protect your data, including:
-            </p>
+            <p>We use industry-standard security measures, including:</p>
             <ul className="list-disc pl-6">
-              <li>Encryption of data in transit (HTTPS/TLS) and at rest</li>
-              <li>Row-level security ensuring users can only access their own data</li>
-              <li>Secure authentication with email verification</li>
-              <li>OAuth 2.0 for wearable device connections</li>
-              <li>Regular security audits and monitoring</li>
-              <li>Secure token storage for third-party integrations</li>
+              <li>Encryption in transit (HTTPS/TLS) and at rest</li>
+              <li>Row-level access controls to ensure users can only access their own data</li>
+              <li>Secure email-based authentication with verification</li>
+              <li>OAuth 2.0 for wearable integrations</li>
+              <li>Regular monitoring and security reviews</li>
+              <li>Secure token handling for third-party connections</li>
             </ul>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">7. Data Retention</h2>
             <p>
-              We retain your personal information for as long as your account is active or as needed 
-              to provide you services. Your tracking data (meals, check-ins, progress updates) is 
-              retained to show historical trends and support AI coaching accuracy. You may request 
-              deletion of your data at any time. Upon account deletion, we will remove your personal 
-              information within 30 days, except where retention is required by law.
+              We retain your personal data for as long as your account is active or as needed to provide the service.
+            </p>
+            <p className="mt-2">Tracking data (meals, check-ins, progress history) is retained to:</p>
+            <ul className="list-disc pl-6 mt-2">
+              <li>Display long-term trends</li>
+              <li>Maintain AI coaching accuracy</li>
+            </ul>
+            <p className="mt-2">
+              You may request deletion at any time. Upon account deletion, personal data is removed within 30 days, 
+              unless retention is legally required.
             </p>
           </section>
 
@@ -176,89 +186,78 @@ const Privacy = () => {
             <h2 className="text-xl font-semibold mb-4">8. Your Rights</h2>
             <p className="mb-2">You have the right to:</p>
             <ul className="list-disc pl-6">
-              <li><strong>Access:</strong> View all your personal data through the app settings</li>
-              <li><strong>Correction:</strong> Update your profile, measurements, and preferences at any time</li>
-              <li><strong>Deletion:</strong> Request deletion of your account and all associated data</li>
-              <li><strong>Portability:</strong> Export your meal history and progress data</li>
-              <li><strong>Withdraw Consent:</strong> Disconnect wearable devices or revoke permissions at any time</li>
-              <li><strong>Opt-Out:</strong> Unsubscribe from marketing communications</li>
+              <li><strong>Access</strong> – view your data in the app</li>
+              <li><strong>Correction</strong> – update profile information and preferences</li>
+              <li><strong>Deletion</strong> – request full account and data deletion</li>
+              <li><strong>Portability</strong> – export your nutrition and progress data</li>
+              <li><strong>Withdraw Consent</strong> – disconnect wearable devices at any time</li>
+              <li><strong>Opt-Out</strong> – unsubscribe from non-essential communications</li>
             </ul>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">9. Wearable Device Integrations</h2>
-            <p>
-              When you connect a wearable device, you authorize us to access your health and fitness 
-              data from that platform. This data is used to:
-            </p>
+            <p>When you connect a wearable device, you authorize us to access its health and fitness data to:</p>
             <ul className="list-disc pl-6 mt-2">
-              <li>Auto-fill daily check-in fields (sleep, energy, stress)</li>
-              <li>Provide recovery-aware nutrition recommendations</li>
-              <li>Adjust calorie targets based on activity levels</li>
+              <li>Auto-fill daily check-ins</li>
+              <li>Provide recovery-aware nutrition guidance</li>
+              <li>Adjust calorie targets based on activity</li>
             </ul>
             <p className="mt-2">
-              You can disconnect your wearable device at any time through the app settings. 
-              Upon disconnection, we will stop collecting new data from that device, though 
-              previously collected data will be retained unless you request deletion.
+              You can disconnect wearables at any time. After disconnection, no new data is collected.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">10. Progress Photos</h2>
-            <p>
-              Progress photos you upload are stored securely and are only accessible to you. 
-              These photos are never shared with other users, used for marketing, or processed 
-              by AI for any purpose other than displaying them back to you in your progress history.
-              You can delete your progress photos at any time through the app settings.
-            </p>
+            <p>Progress photos are:</p>
+            <ul className="list-disc pl-6 mt-2">
+              <li>Stored securely</li>
+              <li>Accessible only to you</li>
+              <li>Never shared publicly or used for marketing</li>
+            </ul>
+            <p className="mt-2">You may delete progress photos at any time through the app.</p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">11. Cookies and Local Storage</h2>
-            <p>
-              Our app uses local storage and cookies to:
-            </p>
+            <p>We use cookies and local storage to:</p>
             <ul className="list-disc pl-6 mt-2">
-              <li>Maintain your authenticated session</li>
-              <li>Store your language and theme preferences</li>
-              <li>Cache data for offline functionality</li>
+              <li>Maintain authenticated sessions</li>
+              <li>Store language and theme preferences</li>
+              <li>Enable offline functionality</li>
             </ul>
-            <p className="mt-2">
-              We do not use tracking cookies for advertising purposes.
-            </p>
+            <p className="mt-2">We do not use advertising or tracking cookies.</p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">12. International Data Transfers</h2>
             <p>
-              Your data may be processed and stored on servers located outside your country of residence. 
-              We ensure appropriate safeguards are in place for any international data transfers in 
-              accordance with applicable data protection laws.
+              Your data may be processed on servers outside your country of residence. 
+              Appropriate safeguards are applied in accordance with applicable data protection laws.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">13. Children's Privacy</h2>
             <p>
-              Our services are not intended for users under 18 years of age. We do not knowingly 
-              collect personal information from children. If you believe we have collected data 
-              from a minor, please contact us immediately.
+              Our services are not intended for individuals under 18 years of age. 
+              We do not knowingly collect personal data from minors.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">14. Changes to This Policy</h2>
             <p>
-              We may update this Privacy Policy from time to time. We will notify you of any 
-              material changes by posting the new policy on this page, updating the "Last updated" 
-              date, and sending you an email notification for significant changes.
+              We may update this Privacy Policy from time to time. Changes will be posted on this page, 
+              the "Last updated" date will be revised, and significant changes will be communicated via email.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">15. Contact Us</h2>
             <p>
-              If you have any questions about this Privacy Policy or our data practices, please contact us at:
+              If you have questions about this Privacy Policy or our data practices, contact us at:
             </p>
             <p className="mt-2">
               <strong>Email:</strong>{" "}
@@ -271,9 +270,9 @@ const Privacy = () => {
           <section className="mb-8 p-4 bg-muted rounded-lg">
             <h2 className="text-lg font-semibold mb-2">Summary</h2>
             <p className="text-sm text-muted-foreground">
-              We collect health, nutrition, and lifestyle data to provide personalized AI-powered 
-              nutrition coaching. Your data is encrypted, secured with row-level access controls, 
-              and never sold. You can access, update, or delete your data at any time.
+              CJT Nutrition Coaching collects health, nutrition, and lifestyle data to provide personalized 
+              AI-powered nutrition coaching. Your data is encrypted, securely stored, never sold, and fully 
+              controllable by you.
             </p>
           </section>
         </div>
