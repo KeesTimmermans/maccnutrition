@@ -972,9 +972,14 @@ export const AICoachCard = ({
                   className="p-3 rounded-xl border border-secondary/20 bg-secondary/5 animate-slide-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{point.emoji}</span>
-                    <p className="text-sm font-medium text-foreground">{point.text}</p>
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg flex-shrink-0">{point.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{point.text}</p>
+                      {point.tip && (
+                        <p className="text-xs text-muted-foreground mt-1">→ {point.tip}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -996,9 +1001,14 @@ export const AICoachCard = ({
                   className="p-3 rounded-xl border border-primary/20 bg-primary/5 animate-slide-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{point.emoji}</span>
-                    <p className="text-sm font-medium text-foreground">{point.text}</p>
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg flex-shrink-0">{point.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{point.text}</p>
+                      {point.tip && (
+                        <p className="text-xs text-muted-foreground mt-1">→ {point.tip}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
