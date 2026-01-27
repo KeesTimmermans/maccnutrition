@@ -91,8 +91,8 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
     stress: { 
       label: t('stress_level'), 
       icon: <Brain className="w-5 h-5" />, 
-      lowLabel: t('calm'), 
-      highLabel: t('stressed'),
+      lowLabel: t('stressed'), 
+      highLabel: t('calm'),
       color: "text-purple-500"
     },
   };
