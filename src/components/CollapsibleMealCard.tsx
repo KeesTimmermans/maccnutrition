@@ -102,8 +102,9 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
               <label className="text-xs text-muted-foreground">{t('calories')}</label>
               <Input
                 type="number"
-                value={editedMeal.calories}
+                value={editedMeal.calories || ''}
                 onChange={(e) => setEditedMeal({ ...editedMeal, calories: parseInt(e.target.value) || 0 })}
+                onFocus={(e) => e.target.select()}
                 className="bg-muted"
               />
             </div>
@@ -111,8 +112,9 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
               <label className="text-xs text-muted-foreground">{t('protein')} (g)</label>
               <Input
                 type="number"
-                value={editedMeal.protein}
+                value={editedMeal.protein || ''}
                 onChange={(e) => setEditedMeal({ ...editedMeal, protein: parseInt(e.target.value) || 0 })}
+                onFocus={(e) => e.target.select()}
                 className="bg-muted"
               />
             </div>
@@ -120,8 +122,9 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
               <label className="text-xs text-muted-foreground">{t('carbs')} (g)</label>
               <Input
                 type="number"
-                value={editedMeal.carbs}
+                value={editedMeal.carbs || ''}
                 onChange={(e) => setEditedMeal({ ...editedMeal, carbs: parseInt(e.target.value) || 0 })}
+                onFocus={(e) => e.target.select()}
                 className="bg-muted"
               />
             </div>
@@ -129,8 +132,9 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
               <label className="text-xs text-muted-foreground">{t('fats')} (g)</label>
               <Input
                 type="number"
-                value={editedMeal.fats}
+                value={editedMeal.fats || ''}
                 onChange={(e) => setEditedMeal({ ...editedMeal, fats: parseInt(e.target.value) || 0 })}
+                onFocus={(e) => e.target.select()}
                 className="bg-muted"
               />
             </div>
