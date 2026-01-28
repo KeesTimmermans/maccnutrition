@@ -34,6 +34,7 @@ import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progress
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { getMealEncouragement } from "@/lib/encouragementMessages";
 
 interface DashboardMeal {
   id: string;
@@ -466,6 +467,25 @@ export const Dashboard = () => {
   };
 
 
+  // Function to refresh coaching focus points after logging meals/water
+  const refreshCoachingFocusPoints = async () => {
+    try {
+      // Check for daily check-in focus points first (highest priority)
+      const dailyFocusPoints = await getTodaysDailyFocusPoints();
+      if (dailyFocusPoints && dailyFocusPoints.length > 0) {
+        setDailyCheckInFocusPoints(dailyFocusPoints);
+      }
+      
+      // Also refresh monthly coaching focus points
+      const monthlyPoints = await getActiveCoachingFocusPoints();
+      if (monthlyPoints && monthlyPoints.length > 0) {
+        setCustomFocusPoints(monthlyPoints);
+      }
+    } catch (error) {
+      console.error("Error refreshing coaching focus points:", error);
+    }
+  };
+
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
   const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
@@ -531,7 +551,10 @@ export const Dashboard = () => {
           }, 1000);
         }
         
-        toast.success(t('meal_logged'));
+        toast.success(getMealEncouragement());
+        
+        // Refresh coaching focus points to reflect new progress
+        refreshCoachingFocusPoints();
       }
     } catch (error) {
       console.error("Error saving meal:", error);
@@ -694,7 +717,10 @@ export const Dashboard = () => {
 
   const renderWaterSection = () => (
     <section key="water">
-      <WaterTracker dailyGoalLiters={baseline?.water_liters || 2.5} />
+      <WaterTracker 
+        dailyGoalLiters={baseline?.water_liters || 2.5} 
+        onWaterLogged={refreshCoachingFocusPoints}
+      />
     </section>
   );
 
