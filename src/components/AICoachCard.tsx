@@ -966,23 +966,94 @@ export const AICoachCard = ({
               </span>
             </div>
             <div className="space-y-2">
-              {dailyCheckInFocusPoints.slice(0, 4).map((point, index) => (
-                <div 
-                  key={index}
-                  className="p-3 rounded-xl border border-secondary/20 bg-secondary/5 animate-slide-up"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-lg flex-shrink-0">{point.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{point.text}</p>
-                      {point.tip && (
-                        <p className="text-xs text-muted-foreground mt-1">→ {point.tip}</p>
-                      )}
+              {dailyCheckInFocusPoints.slice(0, 4).map((point, index) => {
+                // Add real-time progress indicators for focus points
+                const textLower = point.text.toLowerCase();
+                let progressIndicator: React.ReactNode = null;
+                
+                // Detect protein-related focus points
+                if (textLower.includes('protein') || textLower.includes('g protein')) {
+                  const percent = Math.min(100, proteinPercent);
+                  progressIndicator = (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className={percent >= 100 ? 'text-green-500 font-medium' : 'text-foreground'}>
+                          {totalProtein}g / {proteinGoal}g ({percent}%)
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-secondary/20 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 rounded-full ${percent >= 100 ? 'bg-green-500' : 'bg-secondary'}`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Detect water-related focus points
+                if (textLower.includes('water') || textLower.includes('hydrat') || textLower.includes(' l ') || /\d+\.?\d*l/i.test(textLower)) {
+                  const percent = Math.min(100, waterPercent);
+                  const waterGoalL = (baseline?.water_liters || 2.5);
+                  progressIndicator = (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className={percent >= 100 ? 'text-green-500 font-medium' : 'text-foreground'}>
+                          {(waterIntakeMl / 1000).toFixed(1)}L / {waterGoalL}L ({percent}%)
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-blue-500/20 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 rounded-full ${percent >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Detect calorie-related focus points
+                if (textLower.includes('calori') || textLower.includes('kcal') || textLower.includes('energy intake')) {
+                  const percent = Math.min(100, calPercent);
+                  progressIndicator = (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className={percent >= 90 && percent <= 110 ? 'text-green-500 font-medium' : 'text-foreground'}>
+                          {totalCalories} / {calorieGoal} kcal ({percent}%)
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-primary/20 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 rounded-full ${percent >= 90 && percent <= 110 ? 'bg-green-500' : 'bg-primary'}`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div 
+                    key={index}
+                    className="p-3 rounded-xl border border-secondary/20 bg-secondary/5 animate-slide-up"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-lg flex-shrink-0">{point.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{point.text}</p>
+                        {point.tip && (
+                          <p className="text-xs text-muted-foreground mt-1">→ {point.tip}</p>
+                        )}
+                        {progressIndicator}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : customFocusPoints && customFocusPoints.length > 0 ? (
