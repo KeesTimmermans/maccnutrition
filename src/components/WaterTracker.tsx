@@ -6,9 +6,11 @@ import { Progress } from "@/components/ui/progress";
 import { getTodaysWaterIntake, addWaterIntake, removeLastWaterIntake, WaterIntake } from "@/lib/waterService";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
+import { getWaterEncouragement, getWaterGoalCelebration } from "@/lib/encouragementMessages";
 
 interface WaterTrackerProps {
   dailyGoalLiters: number;
+  onWaterLogged?: () => void;
 }
 
 const GLASS_SIZES = [
@@ -17,7 +19,7 @@ const GLASS_SIZES = [
   { label: "Large", ml: 500, icon: "🍶" },
 ];
 
-export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
+export const WaterTracker = ({ dailyGoalLiters, onWaterLogged }: WaterTrackerProps) => {
   const { t } = useLanguage();
   const [intakes, setIntakes] = useState<WaterIntake[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,10 +72,13 @@ export const WaterTracker = ({ dailyGoalLiters }: WaterTrackerProps) => {
       
       const newTotal = totalMl + amountMl;
       if (newTotal >= dailyGoalMl && totalMl < dailyGoalMl) {
-        toast.success(`🎉 ${t('daily_water_goal_reached')}`);
+        toast.success(getWaterGoalCelebration());
       } else {
-        toast.success(t('added_water').replace('{amount}', amountMl.toString()));
+        toast.success(getWaterEncouragement());
       }
+      
+      // Notify parent to refresh coaching points
+      onWaterLogged?.();
     }
   };
 
