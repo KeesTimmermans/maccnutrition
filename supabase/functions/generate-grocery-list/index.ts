@@ -197,7 +197,15 @@ IMPORTANT: Provide the cost estimate in ${currency} using the ${currencySymbol} 
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall && toolCall.function?.arguments) {
       const groceryList = JSON.parse(toolCall.function.arguments);
-      console.log("Grocery list generated successfully");
+      
+      // Ensure the estimated cost has the correct currency symbol
+      if (groceryList.estimatedCost) {
+        // Remove any existing currency symbols and normalize
+        const numericCost = groceryList.estimatedCost.replace(/[£$€C$A$]/g, '').trim();
+        groceryList.estimatedCost = `${currencySymbol}${numericCost}`;
+      }
+      
+      console.log("Grocery list generated successfully with currency:", currency);
       return new Response(JSON.stringify({ groceryList }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
