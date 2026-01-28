@@ -511,10 +511,13 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       {/* Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {messages.map((msg, index) => {
-          // Parse focus points from assistant messages
-          const parsed = msg.role === "assistant" ? parseDailyFocusPoints(msg.content) : null;
-          const displayContent = parsed ? parsed.cleanResponse : msg.content;
-          const focusPoints = parsed?.focusPoints || [];
+          // Keep the full response but strip marker tags for display
+          const displayContent = msg.role === "assistant" 
+            ? msg.content
+                .replace(/---DAILY_FOCUS---/g, '')
+                .replace(/---END_DAILY_FOCUS---/g, '')
+                .trim()
+            : msg.content;
 
           return (
             <div key={index} className="space-y-3">
@@ -538,27 +541,6 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 </div>
               </div>
 
-              {/* Inline Focus Points with Tips */}
-              {focusPoints.length > 0 && (
-                <div className="ml-11 bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-xl p-3">
-                  <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Today's Focus</h4>
-                  <ul className="space-y-2">
-                    {focusPoints.map((fp, fpIndex) => (
-                      <li key={fpIndex} className="space-y-0.5">
-                        <div className="flex items-start gap-2">
-                          <span className="text-base">{fp.emoji}</span>
-                          <span className="text-sm font-medium text-foreground">{fp.text}</span>
-                        </div>
-                        {fp.tip && (
-                          <p className="text-xs text-muted-foreground ml-6 pl-0.5 border-l-2 border-primary/30">
-                            {fp.tip}
-                          </p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           );
         })}
