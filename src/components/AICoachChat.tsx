@@ -106,21 +106,11 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         setMessages(loadedMessages);
         setHasLoadedHistory(true);
 
-        // Backfill Daily Focus Points from the most recent coach message (if present)
-        // This ensures the dashboard can prioritize Daily Focus even if the response
-        // was generated earlier and saved without markers.
-        try {
-          const lastAssistant = [...loadedMessages].reverse().find(m => m.role === "assistant");
-          if (lastAssistant) {
-            const { cleanResponse, focusPoints } = parseDailyFocusPoints(lastAssistant.content);
-            if (focusPoints.length > 0) {
-              await saveDailyFocusPoints(cleanResponse, focusPoints);
-              onDailyFocusPointsReceived?.(focusPoints);
-            }
-          }
-        } catch (e) {
-          console.warn("Could not backfill daily focus points:", e);
-        }
+        // NOTE: We intentionally do NOT backfill focus points from conversation history here.
+        // Only focus points generated from TODAY's check-in should appear on the dashboard.
+        // If the user was chatting about future dates, those focus points should not override
+        // today's coaching plan. The dashboard already loads today's focus points from
+        // the daily_checkins table which is date-filtered.
       } else if (freshCheckIn) {
         // Fresh check-in just submitted — call the AI coach for a comprehensive response
         setHasLoadedHistory(true);
