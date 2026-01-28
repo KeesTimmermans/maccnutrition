@@ -204,20 +204,26 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
           if (error) throw error;
           
-          // Parse daily focus points from the AI response
+          // Parse daily focus points from the AI response for dashboard
           const { cleanResponse, focusPoints } = parseDailyFocusPoints(data.response);
           
-          // Save focus points to database for persistence
+          // Save focus points to database for persistence (uses clean response for storage)
           if (focusPoints.length > 0) {
             await saveDailyFocusPoints(cleanResponse, focusPoints);
             
-            // Also pass to parent for immediate display
+            // Also pass to parent for immediate display on dashboard
             if (onDailyFocusPointsReceived) {
               onDailyFocusPointsReceived(focusPoints);
             }
           }
           
-          setMessages([{ role: "assistant", content: cleanResponse }]);
+          // For chat display, keep the full response but strip marker tags only
+          const displayResponse = data.response
+            .replace(/---DAILY_FOCUS---/g, '\n\n**Today\'s Focus:**\n')
+            .replace(/---END_DAILY_FOCUS---/g, '')
+            .trim();
+          
+          setMessages([{ role: "assistant", content: displayResponse }]);
         } catch (error) {
           console.error("Error getting check-in response:", error);
           setMessages([{
