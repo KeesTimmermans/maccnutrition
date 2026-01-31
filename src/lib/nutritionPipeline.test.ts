@@ -5,11 +5,15 @@ import {
   validateMealEntry,
   deriveCaloriesFromMacros,
   toNullable,
+  determineSourceRank,
+  selectBestNutritionSource,
+  SOURCE_RANK,
   type BarcodeInput,
   type PhotoAnalysisInput,
   type DescriptionInput,
   type ManualInput,
   type MealEntry,
+  type SourceRank,
 } from './nutritionPipeline';
 
 describe('nutritionPipeline', () => {
@@ -407,6 +411,169 @@ describe('nutritionPipeline', () => {
       expect(entry.confidence).toBe('high');
       expect(entry.sourceMetadata?.method).toBe('verified');
       expect(entry.sourceMetadata?.source).toBe('user_input');
+    });
+  });
+
+  // =========================================================================
+  // Test 7: Source ranking
+  // =========================================================================
+  describe('source ranking', () => {
+    it('should rank verified barcode as highest (1)', () => {
+      const entry: MealEntry = {
+        name: 'Barcode Product',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fats: 8,
+        sourceType: 'barcode',
+        confidence: 'high',
+        sourceMetadata: {
+          method: 'verified',
+          source: 'openfoodfacts',
+          barcode: '1234567890123',
+        },
+      };
+
+      const result = computeNutrition(entry);
+      expect(result.sourceRank).toBe(SOURCE_RANK.VERIFIED_BARCODE);
+      expect(result.sourceRank).toBe(1);
+    });
+
+    it('should rank branded DB as 2', () => {
+      const entry: MealEntry = {
+        name: 'Branded Product',
+        calories: 150,
+        protein: 8,
+        carbs: 15,
+        fats: 6,
+        sourceType: 'barcode',
+        confidence: 'medium',
+        sourceMetadata: {
+          method: 'estimate',
+          source: 'openfoodfacts',
+          sourceCategory: 'branded_db',
+        },
+      };
+
+      const result = computeNutrition(entry);
+      expect(result.sourceRank).toBe(SOURCE_RANK.BRANDED_DB);
+      expect(result.sourceRank).toBe(2);
+    });
+
+    it('should rank generic DB as 3', () => {
+      const entry: MealEntry = {
+        name: 'Generic Food',
+        calories: 100,
+        protein: 5,
+        carbs: 10,
+        fats: 4,
+        sourceType: 'barcode',
+        confidence: 'medium',
+        sourceMetadata: {
+          method: 'estimate',
+          source: 'usda_sr_legacy',
+          sourceCategory: 'generic_db',
+        },
+      };
+
+      const result = computeNutrition(entry);
+      expect(result.sourceRank).toBe(SOURCE_RANK.GENERIC_DB);
+      expect(result.sourceRank).toBe(3);
+    });
+
+    it('should rank estimates as lowest (4)', () => {
+      const entry: MealEntry = {
+        name: 'Estimated Food',
+        calories: 300,
+        protein: 15,
+        carbs: 35,
+        fats: 12,
+        sourceType: 'photo',
+        confidence: 'medium',
+        sourceMetadata: {
+          method: 'estimate',
+          source: 'ai_estimate',
+        },
+      };
+
+      const result = computeNutrition(entry);
+      expect(result.sourceRank).toBe(SOURCE_RANK.ESTIMATE);
+      expect(result.sourceRank).toBe(4);
+    });
+
+    it('should infer branded rank from openfoodfacts source', () => {
+      const entry: MealEntry = {
+        name: 'OFF Product',
+        calories: 180,
+        protein: 9,
+        carbs: 18,
+        fats: 7,
+        sourceType: 'barcode',
+        confidence: 'medium',
+        sourceMetadata: {
+          method: 'estimate',
+          source: 'openfoodfacts',
+        },
+      };
+
+      const result = computeNutrition(entry);
+      expect(result.sourceRank).toBe(SOURCE_RANK.BRANDED_DB);
+    });
+
+    it('should infer generic rank from usda source', () => {
+      const entry: MealEntry = {
+        name: 'USDA Food',
+        calories: 120,
+        protein: 6,
+        carbs: 12,
+        fats: 5,
+        sourceType: 'barcode',
+        confidence: 'medium',
+        sourceMetadata: {
+          method: 'estimate',
+          source: 'usda',
+        },
+      };
+
+      const result = computeNutrition(entry);
+      expect(result.sourceRank).toBe(SOURCE_RANK.GENERIC_DB);
+    });
+
+    it('should treat manual input as verified (rank 1)', () => {
+      const entry: MealEntry = {
+        name: 'User Input',
+        calories: 250,
+        protein: 12,
+        carbs: 25,
+        fats: 10,
+        sourceType: 'manual',
+        confidence: 'high',
+        sourceMetadata: {
+          method: 'verified',
+          source: 'user_input',
+        },
+      };
+
+      const result = computeNutrition(entry);
+      expect(result.sourceRank).toBe(SOURCE_RANK.VERIFIED_BARCODE);
+    });
+
+    it('should select best source from multiple options', () => {
+      const sources = [
+        { name: 'Estimate', sourceRank: SOURCE_RANK.ESTIMATE as SourceRank },
+        { name: 'Branded', sourceRank: SOURCE_RANK.BRANDED_DB as SourceRank },
+        { name: 'Verified', sourceRank: SOURCE_RANK.VERIFIED_BARCODE as SourceRank },
+        { name: 'Generic', sourceRank: SOURCE_RANK.GENERIC_DB as SourceRank },
+      ];
+
+      const best = selectBestNutritionSource(sources);
+      expect(best?.name).toBe('Verified');
+      expect(best?.sourceRank).toBe(1);
+    });
+
+    it('should return null for empty source array', () => {
+      const best = selectBestNutritionSource([]);
+      expect(best).toBeNull();
     });
   });
 });

@@ -16,11 +16,29 @@ export type SourceType = 'barcode' | 'photo' | 'description' | 'recipe' | 'manua
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
+/**
+ * Source ranking for nutrition data quality (lower = better)
+ * 1 = verified_barcode: Verified data from barcode database (highest trust)
+ * 2 = branded_db: Branded product from nutrition database (USDA branded, OFF)
+ * 3 = generic_db: Generic food from nutrition database (USDA SR Legacy)
+ * 4 = estimate: AI estimation or user guess (lowest trust)
+ */
+export type SourceRank = 1 | 2 | 3 | 4;
+
+export const SOURCE_RANK = {
+  VERIFIED_BARCODE: 1 as SourceRank,
+  BRANDED_DB: 2 as SourceRank,
+  GENERIC_DB: 3 as SourceRank,
+  ESTIMATE: 4 as SourceRank,
+} as const;
+
 export interface SourceMetadata {
   /** The method used to obtain nutrition data */
   method: 'verified' | 'estimate';
   /** Source of the data (e.g., 'usda', 'openfoodfacts', 'ai_estimate') */
   source?: string;
+  /** Database category for ranking purposes */
+  sourceCategory?: 'verified_barcode' | 'branded_db' | 'generic_db' | 'estimate';
   /** Model or extractor used for estimation */
   model?: string;
   /** Raw output from the extractor/model */
@@ -67,6 +85,8 @@ export interface NutritionResult {
   caloriesDerived: boolean;
   /** Confidence level in the result */
   confidence: ConfidenceLevel;
+  /** Source quality rank (1=best, 4=lowest) */
+  sourceRank: SourceRank;
   /** Display values (rounded for UI) */
   display: {
     calories: string;
@@ -223,6 +243,60 @@ function deriveCaloriesFromMacros(
   return proteinCals + carbsCals + fatsCals;
 }
 
+/**
+ * Determines source rank based on source metadata
+ * Ranking: verified_barcode (1) > branded_db (2) > generic_db (3) > estimate (4)
+ */
+function determineSourceRank(mealEntry: MealEntry): SourceRank {
+  const { sourceType, sourceMetadata } = mealEntry;
+  
+  // Check explicit sourceCategory first
+  if (sourceMetadata?.sourceCategory) {
+    switch (sourceMetadata.sourceCategory) {
+      case 'verified_barcode': return SOURCE_RANK.VERIFIED_BARCODE;
+      case 'branded_db': return SOURCE_RANK.BRANDED_DB;
+      case 'generic_db': return SOURCE_RANK.GENERIC_DB;
+      case 'estimate': return SOURCE_RANK.ESTIMATE;
+    }
+  }
+  
+  // Infer from source type and metadata
+  if (sourceType === 'barcode') {
+    // Verified barcode from known DB gets top rank
+    if (sourceMetadata?.method === 'verified') {
+      return SOURCE_RANK.VERIFIED_BARCODE;
+    }
+    // Barcode lookup from branded database
+    const source = sourceMetadata?.source?.toLowerCase() || '';
+    if (source.includes('openfoodfacts') || source.includes('off')) {
+      return SOURCE_RANK.BRANDED_DB;
+    }
+    // USDA branded foods
+    if (source.includes('usda') && source.includes('branded')) {
+      return SOURCE_RANK.BRANDED_DB;
+    }
+    // USDA SR Legacy / generic
+    if (source.includes('usda') || source.includes('sr_legacy')) {
+      return SOURCE_RANK.GENERIC_DB;
+    }
+    // Default barcode to branded
+    return SOURCE_RANK.BRANDED_DB;
+  }
+  
+  // Manual user input is treated as verified
+  if (sourceType === 'manual') {
+    return SOURCE_RANK.VERIFIED_BARCODE;
+  }
+  
+  // Photo/description/recipe are estimates
+  if (sourceType === 'photo' || sourceType === 'description' || sourceType === 'recipe') {
+    return SOURCE_RANK.ESTIMATE;
+  }
+  
+  // Default to estimate
+  return SOURCE_RANK.ESTIMATE;
+}
+
 // ============================================================================
 // Main Pipeline Functions
 // ============================================================================
@@ -346,6 +420,9 @@ export function computeNutrition(mealEntry: MealEntry): NutritionResult {
   let { calories, protein, carbs, fats, confidence } = mealEntry;
   let caloriesDerived = false;
 
+  // Determine source rank for this entry
+  const sourceRank = determineSourceRank(mealEntry);
+
   // If calories missing but we have macros, derive using 4/4/9 rule
   if (calories === null && (protein !== null || carbs !== null || fats !== null)) {
     calories = deriveCaloriesFromMacros(protein, carbs, fats);
@@ -369,6 +446,7 @@ export function computeNutrition(mealEntry: MealEntry): NutritionResult {
     fats,
     caloriesDerived,
     confidence,
+    sourceRank,
     display: {
       calories: roundForDisplay(calories),
       protein: roundForDisplay(protein),
@@ -436,4 +514,17 @@ export function validateMealEntry(mealEntry: MealEntry): ValidationResult {
 // Utility Exports
 // ============================================================================
 
-export { deriveCaloriesFromMacros, roundForDisplay, toNullable, parseConfidence };
+export { deriveCaloriesFromMacros, roundForDisplay, toNullable, parseConfidence, determineSourceRank };
+
+/**
+ * Selects the best nutrition result from multiple sources based on source rank
+ * Lower rank = higher quality (1 is best, 4 is lowest)
+ */
+export function selectBestNutritionSource<T extends { sourceRank: SourceRank }>(
+  sources: T[]
+): T | null {
+  if (sources.length === 0) return null;
+  return sources.reduce((best, current) => 
+    current.sourceRank < best.sourceRank ? current : best
+  );
+}
