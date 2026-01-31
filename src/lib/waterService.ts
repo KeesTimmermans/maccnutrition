@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { triggerWaterReinforcement } from "./reinforcementService";
 
 export interface WaterIntake {
   id: string;
@@ -29,7 +30,10 @@ export const getTodaysWaterIntake = async (): Promise<WaterIntake[]> => {
   return (data || []) as WaterIntake[];
 };
 
-export const addWaterIntake = async (amountMl: number): Promise<WaterIntake | null> => {
+export const addWaterIntake = async (
+  amountMl: number,
+  options?: { currentTotalMl?: number; dailyGoalMl?: number }
+): Promise<WaterIntake | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -45,6 +49,17 @@ export const addWaterIntake = async (amountMl: number): Promise<WaterIntake | nu
   if (error) {
     console.error('Error adding water intake:', error);
     return null;
+  }
+
+  // Trigger reinforcement after successful save
+  if (data && options) {
+    const newTotal = (options.currentTotalMl || 0) + amountMl;
+    const goalReached = options.dailyGoalMl 
+      ? newTotal >= options.dailyGoalMl && (options.currentTotalMl || 0) < options.dailyGoalMl
+      : false;
+    triggerWaterReinforcement(goalReached);
+  } else if (data) {
+    triggerWaterReinforcement(false);
   }
 
   return data as WaterIntake;

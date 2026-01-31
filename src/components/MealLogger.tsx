@@ -19,7 +19,6 @@ import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { QuickMeals } from "./QuickMeals";
-import { getReinforcementMessage } from "@/lib/encouragementMessages";
 
 interface DailyTotals {
   calories: number;
@@ -359,15 +358,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         fats: analysisResult.fats,
       });
     }
-    
-    // Show positive reinforcement after successful log
-    const name = (mealName || analysisResult?.name || "").toLowerCase();
-    const mealType = name.includes('breakfast') ? 'breakfast' 
-      : name.includes('lunch') ? 'lunch' 
-      : name.includes('dinner') ? 'dinner' 
-      : undefined;
-    toast.success(getReinforcementMessage('meal', { mealType }));
-    
+    // Reinforcement toast is now triggered by mealService.saveMeal after successful DB save
     onClose();
   };
 
@@ -379,14 +370,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       carbs: fav.carbs,
       fats: fav.fats,
     });
-    
-    // Show positive reinforcement after successful log
-    const mealType = fav.name.toLowerCase().includes('breakfast') ? 'breakfast' 
-      : fav.name.toLowerCase().includes('lunch') ? 'lunch' 
-      : fav.name.toLowerCase().includes('dinner') ? 'dinner' 
-      : undefined;
-    toast.success(getReinforcementMessage('meal', { mealType }));
-    
+    // Reinforcement toast is now triggered by mealService.saveMeal after successful DB save
     onClose();
   };
 

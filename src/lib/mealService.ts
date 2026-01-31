@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { triggerMealReinforcement } from "./reinforcementService";
 
 export interface Meal {
   id: string;
@@ -47,6 +48,16 @@ export const saveMeal = async (meal: MealInput, loggedAt?: Date): Promise<Meal |
   if (error) {
     console.error("Error saving meal:", error);
     throw error;
+  }
+
+  // Trigger reinforcement after successful save
+  if (data) {
+    const mealName = data.name.toLowerCase();
+    const mealType = mealName.includes('breakfast') ? 'breakfast' 
+      : mealName.includes('lunch') ? 'lunch' 
+      : mealName.includes('dinner') ? 'dinner' 
+      : undefined;
+    triggerMealReinforcement({ mealType });
   }
 
   return data;
