@@ -445,52 +445,66 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
         {/* Logo */}
-        <div className="relative mb-6 animate-float">
-          <img src={cjtLogo} alt="CJT Nutrition Logo" className="w-64 h-auto" />
+        <div className="relative mb-10 animate-float">
+          <img src={cjtLogo} alt="CJT Nutrition" className="w-48 h-auto" />
         </div>
 
-        {/* Tagline */}
-        <h2 className="text-2xl font-bold text-foreground mb-2 animate-slide-up delay-100">Nutrition with intention</h2>
-        <p className="text-lg text-muted-foreground mb-8 max-w-sm animate-slide-up delay-150">
-          Like having a nutrition coach in your pocket
+        {/* Headline - benefit-driven */}
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 max-w-md leading-tight animate-slide-up delay-100">
+          Finally, nutrition guidance that fits your life
+        </h1>
+        
+        {/* Subheadline - explains the how */}
+        <p className="text-lg text-muted-foreground mb-12 max-w-sm animate-slide-up delay-150 leading-relaxed">
+          Personalized coaching meets simple tracking — so you can eat well without the guesswork.
         </p>
 
-        {/* Features */}
-        <div className="grid grid-cols-3 gap-4 mb-10 w-full max-w-sm animate-slide-up delay-200">
-          {[
-            { icon: <Heart className="w-6 h-6" />, label: "Personalized" },
-            { icon: <Zap className="w-6 h-6" />, label: "Quick Logging" },
-            { icon: <Sparkles className="w-6 h-6" />, label: "Smart Insights" },
-          ].map((feature, index) => (
-            <div key={feature.label} className="flex flex-col items-center gap-2 p-4 bg-card rounded-2xl shadow-soft">
-              <div className="text-primary">{feature.icon}</div>
-              <span className="text-xs font-semibold text-foreground">{feature.label}</span>
+        {/* Value propositions - not feature lists */}
+        <div className="w-full max-w-sm space-y-4 mb-12 animate-slide-up delay-200">
+          <div className="flex items-start gap-4 text-left">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Heart className="w-5 h-5 text-primary" />
             </div>
-          ))}
-        </div>
-
-        {/* Testimonial */}
-        <div className="bg-card rounded-2xl p-4 shadow-soft max-w-sm mb-8 animate-slide-up delay-300">
-          <p className="text-sm text-foreground italic mb-2">
-            "The nutrition app that fulfills all your needs — your one-stop shop to take care of your nutrition!"
-          </p>
-          <p className="text-xs text-muted-foreground">— CJT Nutrition user</p>
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Your goals, your way</h3>
+              <p className="text-sm text-muted-foreground">A plan built around your preferences, schedule, and what actually works for you.</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-4 text-left">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Coaching that adapts</h3>
+              <p className="text-sm text-muted-foreground">Daily insights that evolve with your progress — like having a coach who really knows you.</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-4 text-left">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Simple, not stressful</h3>
+              <p className="text-sm text-muted-foreground">Log meals in seconds. Focus on living, not obsessing over numbers.</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* CTA Section */}
-      <div className="p-6 space-y-4 animate-slide-up delay-400">
+      <div className="p-6 pb-8 space-y-4 animate-slide-up delay-300">
         <Button variant="hero" size="xl" className="w-full" onClick={handleGetStarted}>
-          <Sparkles className="w-5 h-5 mr-2" />
-          {user ? "Continue Setup" : "Get Started Free"}
+          {user ? "Continue Setup" : "Start Your Journey"}
         </Button>
         {!user && (
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <button onClick={() => navigate("/auth")} className="text-primary font-semibold hover:underline">
-              Log In
+              Sign in
             </button>
           </p>
         )}
