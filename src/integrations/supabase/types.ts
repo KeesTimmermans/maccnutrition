@@ -754,6 +754,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrypt_token: { Args: { p_ciphertext: string }; Returns: string }
+      encrypt_token: { Args: { p_plaintext: string }; Returns: string }
       get_wearable_token: {
         Args: { p_connection_id: string }
         Returns: {
