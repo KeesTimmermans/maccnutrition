@@ -3,6 +3,10 @@
  * Returns varied, encouraging messages to celebrate tracking
  */
 
+// Track last shown message to avoid repeats
+let lastMealMessageIndex = -1;
+let lastWaterMessageIndex = -1;
+
 const mealMessages = [
   "Nice one! Every meal tracked is a step forward 💪",
   "Logged! You're building awesome habits 🌟",
@@ -19,7 +23,30 @@ const mealMessages = [
   "Meal tracked! You're doing amazing 💪",
   "Keep it up! You're making progress every day 🌱",
   "Nailed it! Your future self will thank you 🎉",
+  "Look at you go! Staying consistent 🌟",
+  "Logged! Small steps, big results 🚶‍♂️",
+  "You showed up for yourself today! 💚",
+  "Another one down! You're unstoppable 🔥",
+  "Tracked with ease! Proud of you 🙌",
 ];
+
+const mealTypeMessages: Record<string, string[]> = {
+  breakfast: [
+    "Great start to the day! Breakfast logged 🌅",
+    "Morning fuel tracked! You're set up for success ☀️",
+    "Breakfast in the books! Nicely done 🍳",
+  ],
+  lunch: [
+    "Midday meal logged! Keeping the momentum 🌞",
+    "Lunch tracked! You're crushing it today 🥗",
+    "Afternoon fuel noted! Stay energized 💪",
+  ],
+  dinner: [
+    "Dinner logged! Ending the day strong 🌙",
+    "Evening meal tracked! Great consistency 🍽️",
+    "Dinner in the books! Well done today ✨",
+  ],
+};
 
 const waterMessages = [
   "Hydration station! Great job 💧",
@@ -37,6 +64,11 @@ const waterMessages = [
   "Hydration on point! 🎯",
   "Your cells are celebrating! 🧬",
   "Refreshed and tracked! Nice one 💧",
+  "Liquid gold logged! Keep flowing 🌊",
+  "Water warrior! You're doing great 💪",
+  "Hydration habit on lock! 🔒",
+  "Sipping your way to success! 🥤",
+  "That's the hydration spirit! 💦",
 ];
 
 const waterGoalReachedMessages = [
@@ -48,10 +80,23 @@ const waterGoalReachedMessages = [
 ];
 
 /**
+ * Get a random index avoiding the last shown
+ */
+const getRandomIndex = (arrayLength: number, lastIndex: number): number => {
+  if (arrayLength <= 1) return 0;
+  let newIndex: number;
+  do {
+    newIndex = Math.floor(Math.random() * arrayLength);
+  } while (newIndex === lastIndex);
+  return newIndex;
+};
+
+/**
  * Get a random positive message for meal logging
  */
 export const getMealEncouragement = (): string => {
-  const index = Math.floor(Math.random() * mealMessages.length);
+  const index = getRandomIndex(mealMessages.length, lastMealMessageIndex);
+  lastMealMessageIndex = index;
   return mealMessages[index];
 };
 
@@ -59,7 +104,8 @@ export const getMealEncouragement = (): string => {
  * Get a random positive message for water logging
  */
 export const getWaterEncouragement = (): string => {
-  const index = Math.floor(Math.random() * waterMessages.length);
+  const index = getRandomIndex(waterMessages.length, lastWaterMessageIndex);
+  lastWaterMessageIndex = index;
   return waterMessages[index];
 };
 
@@ -69,6 +115,35 @@ export const getWaterEncouragement = (): string => {
 export const getWaterGoalCelebration = (): string => {
   const index = Math.floor(Math.random() * waterGoalReachedMessages.length);
   return waterGoalReachedMessages[index];
+};
+
+export interface ReinforcementContext {
+  mealType?: 'breakfast' | 'lunch' | 'dinner';
+}
+
+/**
+ * Unified helper function for reinforcement messages
+ * @param type - 'meal' or 'water'
+ * @param context - optional context like meal type
+ */
+export const getReinforcementMessage = (
+  type: 'meal' | 'water',
+  context?: ReinforcementContext
+): string => {
+  if (type === 'water') {
+    return getWaterEncouragement();
+  }
+
+  // For meals, optionally use meal type specific messages
+  if (context?.mealType && mealTypeMessages[context.mealType]) {
+    const typeMessages = mealTypeMessages[context.mealType];
+    // 30% chance to use meal-type specific message
+    if (Math.random() < 0.3) {
+      return typeMessages[Math.floor(Math.random() * typeMessages.length)];
+    }
+  }
+
+  return getMealEncouragement();
 };
 
 /**
