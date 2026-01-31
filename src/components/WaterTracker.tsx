@@ -6,7 +6,6 @@ import { Progress } from "@/components/ui/progress";
 import { getTodaysWaterIntake, addWaterIntake, removeLastWaterIntake, WaterIntake } from "@/lib/waterService";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
-import { getWaterEncouragement, getWaterGoalCelebration } from "@/lib/encouragementMessages";
 
 interface WaterTrackerProps {
   dailyGoalLiters: number;
@@ -66,17 +65,14 @@ export const WaterTracker = ({ dailyGoalLiters, onWaterLogged }: WaterTrackerPro
   };
 
   const handleAddWater = async (amountMl: number) => {
-    const newIntake = await addWaterIntake(amountMl);
+    // Pass current totals so the service can determine if goal was reached
+    const newIntake = await addWaterIntake(amountMl, {
+      currentTotalMl: totalMl,
+      dailyGoalMl: dailyGoalMl,
+    });
     if (newIntake) {
       setIntakes(prev => [...prev, newIntake]);
-      
-      const newTotal = totalMl + amountMl;
-      if (newTotal >= dailyGoalMl && totalMl < dailyGoalMl) {
-        toast.success(getWaterGoalCelebration());
-      } else {
-        toast.success(getWaterEncouragement());
-      }
-      
+      // Reinforcement toast is now triggered by waterService.addWaterIntake after successful DB save
       // Notify parent to refresh coaching points
       onWaterLogged?.();
     }
