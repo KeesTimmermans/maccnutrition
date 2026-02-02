@@ -4,15 +4,22 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/lib/i18n";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import MealHistory from "./pages/MealHistory";
-import QuickAddMeals from "./pages/QuickAddMeals";
+// New page structure
+import Today from "./pages/Today";
 import Progress from "./pages/Progress";
-import WhoopDemo from "./pages/WhoopDemo";
+import Meals from "./pages/Meals";
+import Metrics from "./pages/Metrics";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+// Supporting pages
+import Auth from "./pages/Auth";
 import Privacy from "./pages/Privacy";
 import Diagnostics from "./pages/Diagnostics";
+import WhoopDemo from "./pages/WhoopDemo";
 import NotFound from "./pages/NotFound";
+// Legacy pages (kept temporarily for backwards compatibility)
+import MealHistory from "./pages/MealHistory";
+import QuickAddMeals from "./pages/QuickAddMeals";
 
 const queryClient = new QueryClient();
 
@@ -22,18 +29,26 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        {/* HashRouter ensures reloads on /progress, /history, etc. work reliably in all hosting environments */}
         <HashRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/history" element={<MealHistory />} />
-            <Route path="/quick-add" element={<QuickAddMeals />} />
+            {/* Primary tab routes */}
+            <Route path="/" element={<Today />} />
             <Route path="/progress" element={<Progress />} />
-            <Route path="/whoop-demo" element={<WhoopDemo />} />
+            <Route path="/meals" element={<Meals />} />
+            <Route path="/metrics" element={<Metrics />} />
+            <Route path="/profile" element={<Profile />} />
+            
+            {/* Secondary routes */}
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/diagnostics" element={<Diagnostics />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/whoop-demo" element={<WhoopDemo />} />
+            
+            {/* Legacy routes (to be removed in future commits) */}
+            <Route path="/history" element={<MealHistory />} />
+            <Route path="/quick-add" element={<QuickAddMeals />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </HashRouter>
