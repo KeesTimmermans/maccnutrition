@@ -17,13 +17,12 @@ export const DEFAULT_SECTIONS: DashboardSection[] = [
   { id: "progress", label: "Today's Progress", icon: "📊", canHide: false },
   { id: "meals", label: "Today's Meals", icon: "🍽️", canHide: false },
   { id: "coach", label: "Coach Mac", icon: "🤖", canHide: true },
-  { id: "planner", label: "Meal Planner", icon: "📅", canHide: true },
   { id: "water", label: "Water Intake", icon: "💧", canHide: true },
   { id: "wearables", label: "Wearables", icon: "⌚", canHide: true },
 ];
 
 export const DEFAULT_LAYOUT = {
-  sections: ["progress", "meals", "coach", "planner", "water", "wearables"],
+  sections: ["progress", "meals", "coach", "water", "wearables"],
   hidden: [] as string[],
 };
 
