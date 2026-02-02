@@ -9,7 +9,7 @@ import { MealLogger } from "@/components/MealLogger";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
-import { MealPlanner } from "@/components/MealPlanner";
+
 import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
@@ -636,11 +636,6 @@ export const TodayDashboard = () => {
     </section>
   );
 
-  const renderPlannerSection = () => (
-    <section key="planner">
-      <MealPlanner baseline={baseline} />
-    </section>
-  );
 
   const renderWaterSection = () => (
     <section key="water">
@@ -683,7 +678,6 @@ export const TodayDashboard = () => {
     progress: renderProgressSection,
     meals: renderMealsSection,
     coach: renderCoachSection,
-    planner: renderPlannerSection,
     water: renderWaterSection,
     wearables: renderWearablesSection,
   };
