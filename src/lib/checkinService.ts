@@ -219,10 +219,10 @@ export function analyzeCheckIns(checkIns: DailyCheckIn[], userTargets?: UserTarg
     recommendations.push(`Energy averaging ${averages.energy.toFixed(1)}/5. Hit ${proteinTarget}g protein at breakfast and drink ${Math.round(water * 0.4)}L water by noon.`);
   }
 
-  // Stress-specific recommendations
-  if (averages.stress > 3.5) {
+  // Stress-specific recommendations (lower score = more stressed, so < 2.5 means high stress)
+  if (averages.stress < 2.5) {
     const carbReduction = Math.round((userTargets?.carbsGrams || 200) * 0.1);
-    recommendations.push(`Stress is elevated (${averages.stress.toFixed(1)}/5). Reduce refined carbs by ${carbReduction}g and add 10min walk after lunch.`);
+    recommendations.push(`Stress is elevated (${averages.stress.toFixed(1)}/5 calmness). Reduce refined carbs by ${carbReduction}g and add 10min walk after lunch.`);
   }
 
   // Mood + sleep correlation
@@ -343,11 +343,12 @@ function detectConsecutivePatterns(checkIns: DailyCheckIn[]): ConsecutivePattern
     },
     {
       key: 'stress_level',
-      label: 'Stress',
+      label: 'Calmness',
       getInterpretation: (value, days) => {
-        if (value >= 4) return `Stress has been elevated (${value}/5) for ${days} consecutive days — chronic stress needs intervention`;
-        if (value <= 2) return `Stress has been well-managed (${value}/5) for ${days} days — keep up the good work`;
-        return `Stress has been moderate (${value}/5) for ${days} days`;
+        // 5/5 = calm, 1/5 = stressed (higher is better)
+        if (value <= 2) return `Stress has been elevated (${value}/5 calmness) for ${days} consecutive days — needs attention`;
+        if (value >= 4) return `You've been feeling calm (${value}/5) for ${days} days — keep up the good work`;
+        return `Calmness has been moderate (${value}/5) for ${days} days`;
       }
     },
     {
@@ -471,7 +472,7 @@ export function buildTemporalCheckInContext(checkIns: DailyCheckIn[]): TemporalC
 
   const patterns = {
     consistentlyLowEnergy: avgEnergy < 2.5,
-    consistentlyHighStress: avgStress > 3.5,
+    consistentlyHighStress: avgStress < 2.5, // Lower calmness score = higher stress
     sleepDebtAccumulating: avgSleep < 2.5,
     moodImproving,
     recoveryNeeded: avgEnergy < 2.5 && avgSleep < 3,
