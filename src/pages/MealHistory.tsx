@@ -10,6 +10,7 @@ import { useLanguage } from "@/lib/i18n";
 import { MealLogger } from "@/components/MealLogger";
 import { InstagramRecipeImport } from "@/components/InstagramRecipeImport";
 import { useShareHandler } from "@/hooks/useShareHandler";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 interface DayData {
   date: Date;
@@ -160,7 +161,7 @@ const MealHistory = () => {
   const canGoNext = addDays(startDate, 7) <= new Date();
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <AppLayout>
       {/* Header */}
       <header className="sticky top-0 z-40 glass border-b border-border/50">
         <div className="container flex items-center gap-4 py-4">
@@ -309,7 +310,7 @@ const MealHistory = () => {
           onInitialUrlProcessed={clearSharedUrl}
         />
       </main>
-    </div>
+    </AppLayout>
   );
 };
 
