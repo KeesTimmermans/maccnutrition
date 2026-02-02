@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { getMealsByDateRange, Meal } from "@/lib/mealService";
@@ -8,12 +7,13 @@ import { getStreaks, UserStreak } from "@/lib/streakService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Target, Flame, ClipboardCheck } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Target, Flame, ClipboardCheck } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { WeeklyAchievements } from "@/components/WeeklyAchievements";
 import { StreakCard } from "@/components/StreakCard";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
-
+import { ProgressHistory } from "@/components/ProgressHistory";
+import { AppLayout } from "@/components/layout/AppLayout";
 interface DayData {
   date: string;
   fullDate: string;
@@ -33,7 +33,6 @@ interface WeekSummary {
 }
 
 const Progress = () => {
-  const navigate = useNavigate();
   const { t } = useLanguage();
   const [weeklyData, setWeeklyData] = useState<DayData[]>([]);
   const [monthlyData, setMonthlyData] = useState<DayData[]>([]);
@@ -43,7 +42,6 @@ const Progress = () => {
   const [loginStreak, setLoginStreak] = useState<UserStreak | null>(null);
   const [coachingStreak, setCoachingStreak] = useState<UserStreak | null>(null);
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
-
   useEffect(() => {
     loadChartData();
   }, []);
@@ -139,28 +137,18 @@ const Progress = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">{t('loading_progress')}</p>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center py-20">
+          <p className="text-muted-foreground">{t('loading_progress')}</p>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-40 glass border-b border-border/50">
-        <div className="container flex items-center gap-4 py-4">
-          <button 
-            onClick={() => navigate("/")}
-            className="p-2 hover:bg-muted rounded-xl transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6 text-foreground" />
-          </button>
-          <h1 className="text-xl font-bold text-foreground">{t('progress')}</h1>
-        </div>
-      </header>
+    <AppLayout>
 
-      <main className="container py-6 space-y-6">
+      <div className="p-4 space-y-6">
         {/* Consistency Streaks */}
         <StreakCard loginStreak={loginStreak} coachingStreak={coachingStreak} />
 
@@ -350,30 +338,17 @@ const Progress = () => {
             </Tabs>
           </CardContent>
         </Card>
-      </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50">
-        <div className="container flex justify-around py-3">
-          {[
-            { icon: "🏠", label: t('home'), path: "/" },
-            { icon: "📊", label: t('progress'), path: "/progress" },
-            { icon: "🍽️", label: t('meals'), path: "/history" },
-            { icon: "👤", label: t('profile'), path: "/" },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-colors ${
-                item.path === "/progress" ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-xs font-medium">{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
+        {/* Progress History */}
+        <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-foreground">{t('check_in_history') || 'Check-in History'}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <ProgressHistory unitSystem={baseline?.unit_system as "imperial" | "metric" || "metric"} />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Progress Update Dialog */}
       <ProgressUpdateDialog
@@ -385,7 +360,7 @@ const Progress = () => {
           loadChartData();
         }}
       />
-    </div>
+    </AppLayout>
   );
 };
 
