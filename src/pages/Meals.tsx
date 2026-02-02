@@ -76,7 +76,7 @@ const Meals = () => {
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
               <History className="w-5 h-5 text-primary" />
             </div>
-            <span className="text-sm font-medium">{t('meal_history') || 'Meal History'}</span>
+            <span className="text-sm font-medium text-center">{t('meal_history_backlog') || 'Meal History / Backlog'}</span>
           </Button>
         </div>
 
