@@ -353,7 +353,10 @@ export type Database = {
           hydration_habits: string | null
           id: string
           job_activity_level: string | null
+          last_meal_reminder_sent: string | null
           last_progress_update: string | null
+          last_water_reminder_sent: string | null
+          last_weekly_summary_sent: string | null
           magnesium_mg: number | null
           meal_prep_time: string | null
           meals_per_day: string | null
@@ -374,6 +377,15 @@ export type Database = {
           progress_photo_url: string | null
           protein_grams: number | null
           protein_shakes_preference: string | null
+          reminder_frequency: string | null
+          reminder_meal_logging: boolean | null
+          reminder_quiet_end: string | null
+          reminder_quiet_start: string | null
+          reminder_time: string | null
+          reminder_timezone: string | null
+          reminder_water_logging: boolean | null
+          reminder_weekly_summary: boolean | null
+          reminders_enabled: boolean | null
           secondary_goals: string[] | null
           sex: string | null
           sleep_hours: string | null
@@ -430,7 +442,10 @@ export type Database = {
           hydration_habits?: string | null
           id?: string
           job_activity_level?: string | null
+          last_meal_reminder_sent?: string | null
           last_progress_update?: string | null
+          last_water_reminder_sent?: string | null
+          last_weekly_summary_sent?: string | null
           magnesium_mg?: number | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
@@ -451,6 +466,15 @@ export type Database = {
           progress_photo_url?: string | null
           protein_grams?: number | null
           protein_shakes_preference?: string | null
+          reminder_frequency?: string | null
+          reminder_meal_logging?: boolean | null
+          reminder_quiet_end?: string | null
+          reminder_quiet_start?: string | null
+          reminder_time?: string | null
+          reminder_timezone?: string | null
+          reminder_water_logging?: boolean | null
+          reminder_weekly_summary?: boolean | null
+          reminders_enabled?: boolean | null
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null
@@ -507,7 +531,10 @@ export type Database = {
           hydration_habits?: string | null
           id?: string
           job_activity_level?: string | null
+          last_meal_reminder_sent?: string | null
           last_progress_update?: string | null
+          last_water_reminder_sent?: string | null
+          last_weekly_summary_sent?: string | null
           magnesium_mg?: number | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
@@ -528,6 +555,15 @@ export type Database = {
           progress_photo_url?: string | null
           protein_grams?: number | null
           protein_shakes_preference?: string | null
+          reminder_frequency?: string | null
+          reminder_meal_logging?: boolean | null
+          reminder_quiet_end?: string | null
+          reminder_quiet_start?: string | null
+          reminder_time?: string | null
+          reminder_timezone?: string | null
+          reminder_water_logging?: boolean | null
+          reminder_weekly_summary?: boolean | null
+          reminders_enabled?: boolean | null
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null
