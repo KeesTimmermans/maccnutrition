@@ -419,6 +419,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'shellfish': 'Shellfish',
     'eggs': 'Eggs',
     'soy': 'Soy',
+    
+    // Profile Baseline Summary
+    'your_targets': 'Your Targets',
+    'cal_day': 'cal/day',
+    'water_day': 'water/day',
+    'current_focus': 'Current Focus',
   },
   
   fr: {
@@ -831,6 +837,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'shellfish': 'Fruits de mer',
     'eggs': 'Œufs',
     'soy': 'Soja',
+    
+    // Profile Baseline Summary
+    'your_targets': 'Vos objectifs',
+    'cal_day': 'cal/jour',
+    'water_day': 'eau/jour',
+    'current_focus': 'Votre focus actuel',
   },
   
   es: {
@@ -1242,6 +1254,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'shellfish': 'Mariscos',
     'eggs': 'Huevos',
     'soy': 'Soja',
+    
+    // Profile Baseline Summary
+    'your_targets': 'Tus objetivos',
+    'cal_day': 'cal/día',
+    'water_day': 'agua/día',
+    'current_focus': 'Tu enfoque actual',
   },
   
   it: {
@@ -1653,6 +1671,12 @@ export const translations: Record<Language, Record<string, string>> = {
     'shellfish': 'Crostacei',
     'eggs': 'Uova',
     'soy': 'Soia',
+    
+    // Profile Baseline Summary
+    'your_targets': 'I tuoi obiettivi',
+    'cal_day': 'cal/giorno',
+    'water_day': 'acqua/giorno',
+    'current_focus': 'Il tuo focus attuale',
   },
   
   pt: {
@@ -2064,5 +2088,11 @@ export const translations: Record<Language, Record<string, string>> = {
     'shellfish': 'Frutos do mar',
     'eggs': 'Ovos',
     'soy': 'Soja',
+    
+    // Profile Baseline Summary
+    'your_targets': 'Seus objetivos',
+    'cal_day': 'cal/dia',
+    'water_day': 'água/dia',
+    'current_focus': 'Seu foco atual',
   }
 };
