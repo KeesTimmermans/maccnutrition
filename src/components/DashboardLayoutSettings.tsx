@@ -18,11 +18,12 @@ export const DEFAULT_SECTIONS: DashboardSection[] = [
   { id: "meals", label: "Today's Meals", icon: "🍽️", canHide: false },
   { id: "coach", label: "Coach Mac", icon: "🤖", canHide: true },
   { id: "water", label: "Water Intake", icon: "💧", canHide: true },
-  { id: "wearables", label: "Wearables", icon: "⌚", canHide: true },
+  // Wearables hidden for now - can be restored later
+  // { id: "wearables", label: "Wearables", icon: "⌚", canHide: true },
 ];
 
 export const DEFAULT_LAYOUT = {
-  sections: ["progress", "meals", "coach", "water", "wearables"],
+  sections: ["progress", "meals", "coach", "water"],
   hidden: [] as string[],
 };
 

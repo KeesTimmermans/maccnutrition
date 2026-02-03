@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { Ruler, Watch, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Ruler, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MeasurementsSettings } from "@/components/MeasurementsSettings";
-import { WearableSettings } from "@/components/WearableSettings";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { useLanguage } from "@/lib/i18n";
 
@@ -12,7 +10,6 @@ const Metrics = () => {
   const { t } = useLanguage();
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showWearableSettings, setShowWearableSettings] = useState(false);
 
   useEffect(() => {
     loadBaseline();
@@ -55,7 +52,7 @@ const Metrics = () => {
           </CardContent>
         </Card>
 
-        {/* Wearable Devices */}
+        {/* Wearable Devices - Hidden for now, can be restored later
         <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
@@ -77,12 +74,8 @@ const Metrics = () => {
             </Button>
           </CardContent>
         </Card>
+        */}
       </div>
-
-      {/* Wearable Settings Overlay */}
-      {showWearableSettings && (
-        <WearableSettings onClose={() => setShowWearableSettings(false)} />
-      )}
     </AppLayout>
   );
 };
