@@ -1345,7 +1345,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   );
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col animate-slide-up">
+    <div className="fixed inset-0 bg-background z-[60] flex flex-col animate-slide-up">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <button 

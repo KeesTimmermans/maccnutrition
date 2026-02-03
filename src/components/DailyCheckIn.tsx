@@ -204,7 +204,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-[60] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -214,7 +214,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
   const isNotesStep = step === steps.length;
 
   return (
-    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex flex-col">
+    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-[60] flex flex-col">
       {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2">
