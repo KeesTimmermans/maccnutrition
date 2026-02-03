@@ -402,7 +402,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
   if (isInitializing) {
     return (
-      <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-background z-[60] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Loading your data...</p>
@@ -412,7 +412,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col animate-slide-up">
+    <div className="fixed inset-0 bg-background z-[60] flex flex-col animate-slide-up">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pb-4 safe-pt-4 border-b border-border">
         <div className="flex items-center gap-3">
