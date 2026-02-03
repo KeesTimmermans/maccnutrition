@@ -131,6 +131,25 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
     logStep("Reminders sent", { successful, failed });
 
+    // Also trigger the general reminder processing
+    try {
+      const reminderResponse = await fetch(`${supabaseUrl}/functions/v1/process-reminders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ source: "cron" }),
+      });
+      
+      if (reminderResponse.ok) {
+        const reminderResult = await reminderResponse.json();
+        logStep("Process reminders completed", reminderResult);
+      }
+    } catch (reminderError: any) {
+      logStep("Process reminders failed", { error: reminderError.message });
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
