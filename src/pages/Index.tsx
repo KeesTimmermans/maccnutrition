@@ -5,7 +5,7 @@ import { WearableConnection } from "@/components/WearableConnection";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
-import { Sparkles, Heart, Zap } from "lucide-react";
+import { Sparkles, Heart, Zap, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
@@ -443,71 +443,69 @@ const Index = () => {
 
   // Welcome screen
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-y-auto">
       {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center safe-pt-4">
         {/* Logo */}
-        <div className="relative mb-10 animate-float">
-          <img src={cjtLogo} alt="CJT Nutrition" className="w-48 h-auto" />
+        <div className="relative mb-8 animate-float">
+          <img src={cjtLogo} alt="CJT Nutrition" className="w-40 sm:w-48 h-auto" />
         </div>
 
         {/* Headline - benefit-driven */}
-        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 max-w-md leading-tight animate-slide-up delay-100">
+        <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-3 max-w-md leading-tight animate-slide-up delay-100">
           Finally, nutrition guidance that fits your life
         </h1>
         
         {/* Subheadline - explains the how */}
-        <p className="text-lg text-muted-foreground mb-12 max-w-sm animate-slide-up delay-150 leading-relaxed">
+        <p className="text-base sm:text-lg text-muted-foreground mb-8 max-w-sm animate-slide-up delay-150 leading-relaxed">
           Personalized coaching meets simple tracking — so you can eat well without the guesswork.
         </p>
 
         {/* Value propositions - not feature lists */}
-        <div className="w-full max-w-sm space-y-4 mb-12 animate-slide-up delay-200">
-          <div className="flex items-start gap-4 text-left">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Heart className="w-5 h-5 text-primary" />
+        <div className="w-full max-w-sm space-y-3 mb-8 animate-slide-up delay-200">
+          <div className="flex items-start gap-3 text-left">
+            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <Heart className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground mb-1">Your goals, your way</h3>
-              <p className="text-sm text-muted-foreground">A plan built around your preferences, schedule, and what actually works for you.</p>
+              <h3 className="font-semibold text-foreground text-sm mb-0.5">Your goals, your way</h3>
+              <p className="text-xs text-muted-foreground">A plan built around your preferences, schedule, and what actually works for you.</p>
             </div>
           </div>
           
-          <div className="flex items-start gap-4 text-left">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary" />
+          <div className="flex items-start gap-3 text-left">
+            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground mb-1">Coaching that adapts</h3>
-              <p className="text-sm text-muted-foreground">Daily insights that evolve with your progress — like having a coach who really knows you.</p>
+              <h3 className="font-semibold text-foreground text-sm mb-0.5">Smart, not strict</h3>
+              <p className="text-xs text-muted-foreground">AI coaching that adapts to your lifestyle and helps you stay on track without obsession.</p>
             </div>
           </div>
           
-          <div className="flex items-start gap-4 text-left">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-primary" />
+          <div className="flex items-start gap-3 text-left">
+            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <Zap className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground mb-1">Simple, not stressful</h3>
-              <p className="text-sm text-muted-foreground">Log meals in seconds. Focus on living, not obsessing over numbers.</p>
+              <h3 className="font-semibold text-foreground text-sm mb-0.5">Results that last</h3>
+              <p className="text-xs text-muted-foreground">Build sustainable habits, not quick fixes. Progress you can actually maintain.</p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* CTA Section */}
-      <div className="p-6 pb-8 space-y-4 animate-slide-up delay-300">
-        <Button variant="hero" size="xl" className="w-full" onClick={handleGetStarted}>
-          {user ? "Continue Setup" : "Start Your Journey"}
-        </Button>
-        {!user && (
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <button onClick={() => navigate("/auth")} className="text-primary font-semibold hover:underline">
-              Sign in
-            </button>
-          </p>
-        )}
+        {/* CTA Button */}
+        <div className="w-full max-w-sm animate-slide-up delay-300 safe-pb-4">
+          <Button
+            variant="hero"
+            size="xl"
+            className="w-full text-lg font-bold"
+            onClick={handleGetStarted}
+          >
+            Get Started
+            <ChevronRight className="w-5 h-5 ml-1" />
+          </Button>
+        </div>
       </div>
     </div>
   );

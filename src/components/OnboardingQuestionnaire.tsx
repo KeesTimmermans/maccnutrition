@@ -335,8 +335,8 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header with Logo */}
-      <div className="p-4 flex flex-col items-center">
-        <img src={cjtLogo} alt="CJT Nutrition" className="h-12 mb-4" />
+      <div className="p-4 flex flex-col items-center safe-pt-4">
+        <img src={cjtLogo} alt="CJT Nutrition" className="h-10 sm:h-12 mb-3" />
         
         {/* Progress bar */}
         <div className="w-full max-w-md">
@@ -346,7 +346,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="flex justify-between mt-3">
+          <div className="flex justify-between mt-2">
             {allSteps.map((step, index) => (
               <div 
                 key={step.id}
@@ -354,7 +354,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
                   index <= currentStepIndex ? "text-primary" : "text-muted-foreground"
                 }`}
               >
-                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
+                <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold ${
                   index < currentStepIndex 
                     ? "bg-primary text-primary-foreground" 
                     : index === currentStepIndex 
@@ -370,15 +370,15 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       </div>
 
       {/* Step Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3">
         <div className="max-w-md mx-auto">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl gradient-hero flex items-center justify-center text-primary-foreground">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl gradient-hero flex items-center justify-center text-primary-foreground">
               {currentStep.icon}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">{currentStep.title}</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">{currentStep.title}</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {t('step_x_of_y').replace('{current}', String(currentStepIndex + 1)).replace('{total}', String(allSteps.length))}
               </p>
             </div>
@@ -388,8 +388,8 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="p-6 flex gap-3 border-t border-border">
+      {/* Navigation - always visible at bottom */}
+      <div className="sticky bottom-0 p-4 sm:p-6 flex gap-3 border-t border-border bg-background safe-pb-4">
         {currentStepIndex > 0 && (
           <Button variant="soft" size="lg" onClick={handleBack} className="flex-1">
             <ChevronLeft className="w-5 h-5 mr-1" />
