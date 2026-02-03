@@ -19,8 +19,11 @@ interface ReminderPreferences {
 }
 
 const FREQUENCIES = [
+  { value: "smart", label: "When targets missed" },
   { value: "daily", label: "Once a day" },
-  { value: "twice_daily", label: "Twice a day" },
+  { value: "twice_daily", label: "2x per day" },
+  { value: "three_daily", label: "3x per day" },
+  { value: "four_daily", label: "4x per day" },
   { value: "weekly", label: "Once a week" },
 ];
 
