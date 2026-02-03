@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProfileBaselineSummary } from "@/components/ProfileBaselineSummary";
 import { PersonalityProfileCard } from "@/components/PersonalityProfileCard";
+import { ReminderSettings } from "@/components/ReminderSettings";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/lib/i18n";
@@ -105,6 +106,9 @@ const Profile = () => {
 
         {/* Personality Profile */}
         <PersonalityProfileCard baseline={baseline} />
+
+        {/* Reminder Settings */}
+        <ReminderSettings />
 
         {/* Sign Out */}
         <Button

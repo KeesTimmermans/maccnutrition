@@ -83,6 +83,19 @@ export interface UserBaseline {
   progress_photo_right: string | null;
   measurements_updated_at: string | null;
   last_progress_update: string | null;
+  // Reminder fields
+  reminders_enabled: boolean | null;
+  reminder_meal_logging: boolean | null;
+  reminder_water_logging: boolean | null;
+  reminder_weekly_summary: boolean | null;
+  reminder_frequency: string | null;
+  reminder_time: string | null;
+  reminder_timezone: string | null;
+  reminder_quiet_start: string | null;
+  reminder_quiet_end: string | null;
+  last_meal_reminder_sent: string | null;
+  last_water_reminder_sent: string | null;
+  last_weekly_summary_sent: string | null;
 }
 
 export const saveUserBaseline = async (
@@ -208,7 +221,7 @@ export const getUserBaseline = async (userId?: string): Promise<UserBaseline | n
     throw error;
   }
 
-  return data as UserBaseline | null;
+  return data as unknown as UserBaseline | null;
 };
 
 export const getAICoachingResponse = async (
@@ -267,7 +280,7 @@ export const updateUserSettings = async (settings: {
     throw error;
   }
 
-  return data as UserBaseline;
+  return data as unknown as UserBaseline;
 };
 
 /**
@@ -306,7 +319,7 @@ export const updateUserMeasurements = async (measurements: {
     throw error;
   }
 
-  return data as UserBaseline;
+  return data as unknown as UserBaseline;
 };
 
 /**
