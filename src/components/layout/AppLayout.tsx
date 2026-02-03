@@ -12,11 +12,12 @@ export const AppLayout = ({ children, hideNav = false }: AppLayoutProps) => {
     <div className="min-h-screen bg-background">
       {/* Main content area with safe-area padding */}
       <main
-        className="pb-20"
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingLeft: "env(safe-area-inset-left)",
           paddingRight: "env(safe-area-inset-right)",
+          // Nav height (h-16 = 4rem) + extra buffer (1rem) + safe area
+          paddingBottom: hideNav ? "env(safe-area-inset-bottom)" : "calc(5rem + env(safe-area-inset-bottom))",
         }}
       >
         {children}
