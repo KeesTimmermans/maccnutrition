@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
 import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, Watch, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals, Meal } from "@/lib/mealService";
@@ -402,19 +403,19 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
   if (isInitializing) {
     return (
-      <div className="fixed inset-0 bg-background z-[60] flex items-center justify-center">
+      <SafeAreaContainer overlay className="items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Loading your data...</p>
         </div>
-      </div>
+      </SafeAreaContainer>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-[60] flex flex-col animate-slide-up">
+    <SafeAreaContainer overlay className="animate-slide-up">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pb-4 safe-pt-4 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center">
             <Bot className="w-5 h-5 text-primary-foreground" />
@@ -579,7 +580,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       )}
 
       {/* Input */}
-      <div className="px-4 pt-4 safe-pb-4 border-t border-border">
+      <div className="px-4 py-4 border-t border-border">
         <div className="flex gap-2">
           <input
             type="text"
@@ -599,6 +600,6 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
           </Button>
         </div>
       </div>
-    </div>
+    </SafeAreaContainer>
   );
 };

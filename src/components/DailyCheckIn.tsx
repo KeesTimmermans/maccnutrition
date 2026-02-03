@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
 import { 
   X, 
   Sun, 
@@ -204,9 +205,9 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-[60] flex items-center justify-center safe-pt-4 safe-pb-4">
+      <SafeAreaContainer overlay className="bg-background/95 backdrop-blur-sm items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      </SafeAreaContainer>
     );
   }
 
@@ -214,9 +215,9 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
   const isNotesStep = step === steps.length;
 
   return (
-    <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-[60] flex flex-col">
+    <SafeAreaContainer overlay className="bg-background/95 backdrop-blur-sm">
       {/* Header */}
-      <div className="px-4 pb-4 safe-pt-4 flex items-center justify-between border-b border-border">
+      <div className="px-4 py-4 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2">
           <Sun className="w-5 h-5 text-amber-500" />
           <h2 className="font-semibold text-foreground">{t('daily_checkin')}</h2>
@@ -373,7 +374,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
       </div>
 
       {/* Navigation */}
-      <div className="px-6 pt-4 safe-pb-4 flex gap-3 border-t border-border">
+      <div className="px-6 py-4 flex gap-3 border-t border-border">
         {step > 0 && (
           <Button variant="soft" size="lg" onClick={handleBack} className="flex-1">
             {t('back')}
@@ -395,6 +396,6 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
           )}
         </Button>
       </div>
-    </div>
+    </SafeAreaContainer>
   );
 };

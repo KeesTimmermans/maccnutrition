@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
 import { 
   Camera, X, Sparkles, Search, Loader2, Heart, Trash2, Scale, 
   ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus, Upload, Pencil
@@ -1345,9 +1346,9 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   );
 
   return (
-    <div className="fixed inset-0 bg-background z-[60] flex flex-col animate-slide-up">
+    <SafeAreaContainer overlay className="animate-slide-up">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pb-4 safe-pt-4 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-border">
         <button 
           onClick={step === 'method' ? onClose : handleBack} 
           className="p-2 hover:bg-muted rounded-xl transition-colors"
@@ -1420,7 +1421,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       </div>
 
       {/* Footer */}
-      <div className="px-6 pt-4 safe-pb-4 border-t border-border">
+      <div className="px-6 py-4 border-t border-border">
         {step === 'method' && !showFavorites && (
           <p className="text-xs text-muted-foreground text-center">
             Choose a tracking method or search for food
@@ -1496,6 +1497,6 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
           </Button>
         )}
       </div>
-    </div>
+    </SafeAreaContainer>
   );
 };
