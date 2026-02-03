@@ -97,14 +97,51 @@ const shouldSendReminder = (
   }
 
   switch (frequency) {
+    case "smart":
+      return hoursDiff >= 4; // Check every 4 hours for smart reminders
     case "daily":
       return hoursDiff >= 20; // At least 20 hours apart
     case "twice_daily":
       return hoursDiff >= 10; // At least 10 hours apart
+    case "three_daily":
+      return hoursDiff >= 6; // At least 6 hours apart
+    case "four_daily":
+      return hoursDiff >= 4; // At least 4 hours apart
     case "weekly":
       return hoursDiff >= 24 * 7;
     default:
       return hoursDiff >= 20;
+  }
+};
+
+// Check if user has logged meals/water today
+const checkUserActivity = async (
+  supabase: any,
+  userId: string,
+  type: "meal" | "water"
+): Promise<boolean> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString();
+
+  if (type === "meal") {
+    const { data, error } = await supabase
+      .from("meals")
+      .select("id")
+      .eq("user_id", userId)
+      .gte("logged_at", todayStr)
+      .limit(1);
+    
+    return !error && data && data.length > 0;
+  } else {
+    const { data, error } = await supabase
+      .from("water_intake")
+      .select("id")
+      .eq("user_id", userId)
+      .gte("logged_at", todayStr)
+      .limit(1);
+    
+    return !error && data && data.length > 0;
   }
 };
 
@@ -170,8 +207,8 @@ const handler = async (req: Request): Promise<Response> => {
         continue;
       }
 
-      // Skip if not the right time
-      if (!isTimeToSend(timezone, preferredTime)) {
+      // Skip if not the right time (unless using smart mode which checks more frequently)
+      if (frequency !== "smart" && !isTimeToSend(timezone, preferredTime)) {
         console.log(`[PROCESS-REMINDERS] Skipping ${user.user_id} - not preferred time`);
         continue;
       }
@@ -187,61 +224,133 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Process meal reminder
       if (user.reminder_meal_logging && shouldSendReminder(frequency, user.last_meal_reminder_sent)) {
-        try {
-          const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify({
-              type: "meal",
-              userId: user.user_id,
-              email,
-              userName: user.name,
-            }),
-          });
+        // For smart mode, only send if user hasn't logged any meals today
+        if (frequency === "smart") {
+          const hasLoggedMeal = await checkUserActivity(supabase, user.user_id, "meal");
+          if (hasLoggedMeal) {
+            console.log(`[PROCESS-REMINDERS] Skipping meal reminder for ${user.user_id} - already logged today`);
+          } else {
+            try {
+              const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  type: "meal",
+                  userId: user.user_id,
+                  email,
+                  userName: user.name,
+                }),
+              });
 
-          if (response.ok) {
-            await supabase
-              .from("user_baselines")
-              .update({ last_meal_reminder_sent: new Date().toISOString() })
-              .eq("user_id", user.user_id);
-            sentCount++;
-            console.log(`[PROCESS-REMINDERS] Sent meal reminder to ${email}`);
+              if (response.ok) {
+                await supabase
+                  .from("user_baselines")
+                  .update({ last_meal_reminder_sent: new Date().toISOString() })
+                  .eq("user_id", user.user_id);
+                sentCount++;
+                console.log(`[PROCESS-REMINDERS] Sent meal reminder to ${email}`);
+              }
+            } catch (error) {
+              console.error(`[PROCESS-REMINDERS] Failed to send meal reminder:`, error);
+            }
           }
-        } catch (error) {
-          console.error(`[PROCESS-REMINDERS] Failed to send meal reminder:`, error);
+        } else {
+          // Regular scheduled reminder
+          try {
+            const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                type: "meal",
+                userId: user.user_id,
+                email,
+                userName: user.name,
+              }),
+            });
+
+            if (response.ok) {
+              await supabase
+                .from("user_baselines")
+                .update({ last_meal_reminder_sent: new Date().toISOString() })
+                .eq("user_id", user.user_id);
+              sentCount++;
+              console.log(`[PROCESS-REMINDERS] Sent meal reminder to ${email}`);
+            }
+          } catch (error) {
+            console.error(`[PROCESS-REMINDERS] Failed to send meal reminder:`, error);
+          }
         }
       }
 
       // Process water reminder
       if (user.reminder_water_logging && shouldSendReminder(frequency, user.last_water_reminder_sent)) {
-        try {
-          const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify({
-              type: "water",
-              userId: user.user_id,
-              email,
-              userName: user.name,
-            }),
-          });
+        // For smart mode, only send if user hasn't logged any water today
+        if (frequency === "smart") {
+          const hasLoggedWater = await checkUserActivity(supabase, user.user_id, "water");
+          if (hasLoggedWater) {
+            console.log(`[PROCESS-REMINDERS] Skipping water reminder for ${user.user_id} - already logged today`);
+          } else {
+            try {
+              const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  type: "water",
+                  userId: user.user_id,
+                  email,
+                  userName: user.name,
+                }),
+              });
 
-          if (response.ok) {
-            await supabase
-              .from("user_baselines")
-              .update({ last_water_reminder_sent: new Date().toISOString() })
-              .eq("user_id", user.user_id);
-            sentCount++;
-            console.log(`[PROCESS-REMINDERS] Sent water reminder to ${email}`);
+              if (response.ok) {
+                await supabase
+                  .from("user_baselines")
+                  .update({ last_water_reminder_sent: new Date().toISOString() })
+                  .eq("user_id", user.user_id);
+                sentCount++;
+                console.log(`[PROCESS-REMINDERS] Sent water reminder to ${email}`);
+              }
+            } catch (error) {
+              console.error(`[PROCESS-REMINDERS] Failed to send water reminder:`, error);
+            }
           }
-        } catch (error) {
-          console.error(`[PROCESS-REMINDERS] Failed to send water reminder:`, error);
+        } else {
+          // Regular scheduled reminder
+          try {
+            const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                type: "water",
+                userId: user.user_id,
+                email,
+                userName: user.name,
+              }),
+            });
+
+            if (response.ok) {
+              await supabase
+                .from("user_baselines")
+                .update({ last_water_reminder_sent: new Date().toISOString() })
+                .eq("user_id", user.user_id);
+              sentCount++;
+              console.log(`[PROCESS-REMINDERS] Sent water reminder to ${email}`);
+            }
+          } catch (error) {
+            console.error(`[PROCESS-REMINDERS] Failed to send water reminder:`, error);
+          }
         }
       }
 
