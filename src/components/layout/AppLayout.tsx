@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { BottomNav } from "@/components/BottomNav";
+import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -9,15 +10,18 @@ interface AppLayoutProps {
 
 export const AppLayout = ({ children, hideNav = false }: AppLayoutProps) => {
   return (
-    <div className="min-h-dvh bg-background">
-      {/* Main content area with safe-area padding */}
+    <SafeAreaContainer
+      safeTop={true}
+      safeBottom={hideNav} // Only apply bottom safe-area when nav is hidden
+      safeHorizontal={true}
+      className="bg-background"
+    >
+      {/* Main content area */}
       <main
+        className="flex-1"
         style={{
-          paddingTop: "env(safe-area-inset-top)",
-          paddingLeft: "env(safe-area-inset-left)",
-          paddingRight: "env(safe-area-inset-right)",
-          // Nav height (h-16 = 4rem) + extra buffer (1rem) + safe area
-          paddingBottom: hideNav ? "env(safe-area-inset-bottom)" : "calc(5rem + env(safe-area-inset-bottom))",
+          // When nav is visible, reserve space for it (nav height + safe area handled by nav itself)
+          paddingBottom: hideNav ? undefined : "4rem",
         }}
       >
         {children}
@@ -25,6 +29,6 @@ export const AppLayout = ({ children, hideNav = false }: AppLayoutProps) => {
       
       {/* Fixed bottom navigation */}
       {!hideNav && <BottomNav />}
-    </div>
+    </SafeAreaContainer>
   );
 };
