@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
 import { 
   Camera, X, Sparkles, Search, Loader2, Heart, Trash2, Scale, 
-  ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus, Upload, Pencil
+  ChevronRight, ScanBarcode, MessageSquareText, ArrowLeft, Plus, Minus, Upload, Pencil, AlertTriangle, Info
 } from "lucide-react";
 import { 
   analyzeFoodImage, 
@@ -16,6 +16,7 @@ import {
   type UserDietContext
 } from "@/lib/mealService";
 import { getFavoriteMeals, deleteFavoriteMeal, FavoriteMeal } from "@/lib/favoriteMealService";
+import { getNutritionSourceLabel } from "@/lib/brandDetection";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { BarcodeScanner } from "./BarcodeScanner";
@@ -56,6 +57,21 @@ interface AnalysisResult {
   carbsPer100g?: number;
   fatsPer100g?: number;
   defaultServingSize?: number;
+  // Provenance tracking
+  source?: string;
+  nutritionSource?: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
+  confidenceScore?: number;
+  requiresConfirmation?: boolean;
+  isChainRestaurant?: boolean;
+  brandName?: string;
+  candidateMatches?: Array<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+    source: string;
+  }>;
 }
 
 interface AdjustableIngredient extends ParsedIngredient {
@@ -257,7 +273,13 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
     
     try {
       // Use barcode mode - tries Open Food Facts first, then AI fallback
-      const result = await analyzeFoodSearch(barcode, 'barcode');
+      const result = await analyzeFoodSearch(barcode, 'barcode') as AnalysisResult & { 
+        nutritionSource?: string; 
+        confidenceScore?: number;
+        requiresConfirmation?: boolean;
+        isChainRestaurant?: boolean;
+        brandName?: string;
+      };
       setAnalysisResult({
         ...result,
         caloriesPer100g: result.caloriesPer100g || result.calories,
@@ -265,15 +287,21 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         carbsPer100g: result.carbsPer100g || result.carbs,
         fatsPer100g: result.fatsPer100g || result.fats,
         defaultServingSize: result.defaultServingSize || 100,
+        nutritionSource: result.nutritionSource as AnalysisResult['nutritionSource'],
+        confidenceScore: result.confidenceScore,
+        requiresConfirmation: result.requiresConfirmation,
+        isChainRestaurant: result.isChainRestaurant,
+        brandName: result.brandName,
       });
       setQuantity((result.defaultServingSize || 100).toString());
       setStep('adjust');
       
       // Show source info
-      if (result.source === 'open_food_facts') {
+      const sourceLabel = getNutritionSourceLabel(result.nutritionSource || result.source || 'estimate');
+      if (result.source === 'open_food_facts' || result.nutritionSource === 'barcode_verified') {
         toast.success(`Found: ${result.name}`);
-      } else if (result.source === 'ai_estimation') {
-        toast.info("Product not in database - using AI estimate");
+      } else if (result.source === 'ai_estimation' || result.nutritionSource === 'estimate') {
+        toast.info(`Using estimate for ${result.name} - please verify`, { duration: 4000 });
       }
     } catch (error) {
       console.error("Error looking up barcode:", error);
@@ -909,11 +937,11 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
 
       {analysisResult && (
         <div className="bg-card border border-border rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            <h3 className="font-bold text-foreground">{analysisResult.name}</h3>
+            <h3 className="font-bold text-foreground flex-1">{analysisResult.name}</h3>
             {analysisResult.confidence && (
-              <span className={`text-xs px-2 py-0.5 rounded-full ml-auto ${
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
                 analysisResult.confidence === 'high' 
                   ? 'bg-green-500/10 text-green-500' 
                   : analysisResult.confidence === 'medium'
@@ -924,6 +952,44 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
               </span>
             )}
           </div>
+
+          {/* Source label */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className={`text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+              analysisResult.nutritionSource === 'estimate' || analysisResult.source === 'ai_estimation'
+                ? 'bg-amber-500/10 text-amber-600'
+                : 'bg-green-500/10 text-green-600'
+            }`}>
+              {analysisResult.nutritionSource === 'estimate' || analysisResult.source === 'ai_estimation' ? (
+                <AlertTriangle className="w-3 h-3" />
+              ) : (
+                <Info className="w-3 h-3" />
+              )}
+              Source: {getNutritionSourceLabel(analysisResult.nutritionSource || analysisResult.source || 'estimate')}
+            </span>
+            {analysisResult.isChainRestaurant && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
+                {analysisResult.brandName}
+              </span>
+            )}
+          </div>
+
+          {/* Estimate warning */}
+          {(analysisResult.requiresConfirmation || analysisResult.nutritionSource === 'estimate') && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-amber-700">Estimated values</p>
+                  <p className="text-xs text-amber-600/80 mt-0.5">
+                    {analysisResult.isChainRestaurant 
+                      ? 'Actual nutrition may vary from official menu. Adjust values if needed.'
+                      : 'These values are AI-estimated. Please review and adjust if needed.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Quantity Adjuster */}
           <div className="mb-5">

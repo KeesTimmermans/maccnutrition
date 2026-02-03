@@ -32,6 +32,15 @@ export const SOURCE_RANK = {
   ESTIMATE: 4 as SourceRank,
 } as const;
 
+/**
+ * Nutrition source type for provenance tracking
+ */
+export type NutritionSourceType = 
+  | 'branded_verified'    // Official brand nutrition data (e.g., Joe & The Juice official)
+  | 'barcode_verified'    // Verified barcode scan from database
+  | 'database_generic'    // Generic food database (USDA, UK CoFID)
+  | 'estimate';           // AI estimation or user guess
+
 export interface SourceMetadata {
   /** The method used to obtain nutrition data */
   method: 'verified' | 'estimate';
@@ -39,6 +48,10 @@ export interface SourceMetadata {
   source?: string;
   /** Database category for ranking purposes */
   sourceCategory?: 'verified_barcode' | 'branded_db' | 'generic_db' | 'estimate';
+  /** Nutrition source type for provenance display */
+  nutritionSource?: NutritionSourceType;
+  /** Confidence score from 0-1 (more granular than ConfidenceLevel) */
+  confidenceScore?: number;
   /** Model or extractor used for estimation */
   model?: string;
   /** Raw output from the extractor/model */
@@ -47,6 +60,19 @@ export interface SourceMetadata {
   barcode?: string;
   /** Any additional notes from the source */
   notes?: string;
+  /** Brand name if detected */
+  brandName?: string;
+  /** Whether this is a chain/restaurant item */
+  isChainRestaurant?: boolean;
+  /** Candidate matches for estimates (for confirmation UI) */
+  candidateMatches?: Array<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+    source: string;
+  }>;
 }
 
 export interface MealEntry {
@@ -87,6 +113,10 @@ export interface NutritionResult {
   confidence: ConfidenceLevel;
   /** Source quality rank (1=best, 4=lowest) */
   sourceRank: SourceRank;
+  /** Nutrition source type for provenance display */
+  nutritionSource: NutritionSourceType;
+  /** Numeric confidence score (0-1) */
+  confidenceScore: number;
   /** Display values (rounded for UI) */
   display: {
     calories: string;
@@ -94,6 +124,8 @@ export interface NutritionResult {
     carbs: string;
     fats: string;
   };
+  /** Whether user confirmation is required before saving */
+  requiresConfirmation: boolean;
 }
 
 export interface ValidationResult {
@@ -297,6 +329,87 @@ function determineSourceRank(mealEntry: MealEntry): SourceRank {
   return SOURCE_RANK.ESTIMATE;
 }
 
+/**
+ * Determines the nutrition source type for provenance display
+ */
+function determineNutritionSource(mealEntry: MealEntry): NutritionSourceType {
+  const { sourceMetadata } = mealEntry;
+  
+  // Check explicit nutritionSource first
+  if (sourceMetadata?.nutritionSource) {
+    return sourceMetadata.nutritionSource;
+  }
+  
+  // Derive from other metadata
+  const source = sourceMetadata?.source?.toLowerCase() || '';
+  const method = sourceMetadata?.method;
+  
+  // Verified barcode data
+  if (method === 'verified' && sourceMetadata?.barcode) {
+    return 'barcode_verified';
+  }
+  
+  // Branded data from known databases
+  if (source.includes('branded') || sourceMetadata?.brandName || sourceMetadata?.isChainRestaurant) {
+    return method === 'verified' ? 'branded_verified' : 'estimate';
+  }
+  
+  // Generic database
+  if (source.includes('usda') || source.includes('uk_cofid') || source.includes('openfoodfacts')) {
+    return 'database_generic';
+  }
+  
+  // AI estimation
+  if (source.includes('ai_estimation') || source.includes('ai_estimate')) {
+    return 'estimate';
+  }
+  
+  // Default to estimate for unknown sources
+  return 'estimate';
+}
+
+/**
+ * Calculates a numeric confidence score (0-1)
+ */
+function calculateConfidenceScore(mealEntry: MealEntry, sourceRank: SourceRank): number {
+  const { confidence, sourceMetadata } = mealEntry;
+  
+  // Use explicit confidence score if provided
+  if (sourceMetadata?.confidenceScore !== undefined) {
+    return Math.max(0, Math.min(1, sourceMetadata.confidenceScore));
+  }
+  
+  // Base score from source rank (1=1.0, 2=0.85, 3=0.7, 4=0.5)
+  const rankScores: Record<SourceRank, number> = {
+    1: 1.0,
+    2: 0.85,
+    3: 0.7,
+    4: 0.5,
+  };
+  
+  let score = rankScores[sourceRank] || 0.5;
+  
+  // Adjust based on confidence level
+  if (confidence === 'high') {
+    score = Math.min(1, score + 0.1);
+  } else if (confidence === 'low') {
+    score = Math.max(0.2, score - 0.15);
+  }
+  
+  return Math.round(score * 100) / 100;
+}
+
+/**
+ * Determines if user confirmation is required before saving
+ * Estimates with confidence < 0.7 require confirmation
+ */
+function requiresUserConfirmation(nutritionSource: NutritionSourceType, confidenceScore: number): boolean {
+  if (nutritionSource === 'estimate' && confidenceScore < 0.7) {
+    return true;
+  }
+  return false;
+}
+
 // ============================================================================
 // Main Pipeline Functions
 // ============================================================================
@@ -422,6 +535,9 @@ export function computeNutrition(mealEntry: MealEntry): NutritionResult {
 
   // Determine source rank for this entry
   const sourceRank = determineSourceRank(mealEntry);
+  
+  // Determine nutrition source type
+  const nutritionSource = determineNutritionSource(mealEntry);
 
   // If calories missing but we have macros, derive using 4/4/9 rule
   if (calories === null && (protein !== null || carbs !== null || fats !== null)) {
@@ -439,6 +555,15 @@ export function computeNutrition(mealEntry: MealEntry): NutritionResult {
     confidence = 'medium';
   }
 
+  // Calculate numeric confidence score
+  const confidenceScore = calculateConfidenceScore(
+    { ...mealEntry, confidence },
+    sourceRank
+  );
+
+  // Determine if confirmation is required
+  const requiresConfirmation = requiresUserConfirmation(nutritionSource, confidenceScore);
+
   return {
     calories,
     protein,
@@ -447,12 +572,15 @@ export function computeNutrition(mealEntry: MealEntry): NutritionResult {
     caloriesDerived,
     confidence,
     sourceRank,
+    nutritionSource,
+    confidenceScore,
     display: {
       calories: roundForDisplay(calories),
       protein: roundForDisplay(protein),
       carbs: roundForDisplay(carbs),
       fats: roundForDisplay(fats),
     },
+    requiresConfirmation,
   };
 }
 
@@ -514,7 +642,7 @@ export function validateMealEntry(mealEntry: MealEntry): ValidationResult {
 // Utility Exports
 // ============================================================================
 
-export { deriveCaloriesFromMacros, roundForDisplay, toNullable, parseConfidence, determineSourceRank };
+export { deriveCaloriesFromMacros, roundForDisplay, toNullable, parseConfidence, determineSourceRank, determineNutritionSource, calculateConfidenceScore, requiresUserConfirmation };
 
 /**
  * Selects the best nutrition result from multiple sources based on source rank
