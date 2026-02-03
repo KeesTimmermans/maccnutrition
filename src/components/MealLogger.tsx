@@ -865,7 +865,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
     }
   };
 
-  // Add a new empty ingredient
+  // Add a new empty ingredient (prepend to show at top)
   const handleAddIngredient = () => {
     const newIngredient: AdjustableIngredient = {
       name: "New ingredient",
@@ -876,7 +876,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       fatsPer100g: 0,
       adjustedGrams: 100,
     };
-    setIngredients(prev => [...prev, newIngredient]);
+    setIngredients(prev => [newIngredient, ...prev]);
   };
 
   // Update ingredient name
@@ -1157,15 +1157,16 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                   </button>
                 </div>
 
-                {/* Nutrition per 100g (editable for manual entries) */}
-                {ing.caloriesPer100g === 0 && (
+                {/* Nutrition per 100g (editable for manual entries - show when any value is 0) */}
+                {(ing.caloriesPer100g === 0 || ing.proteinPer100g === 0 || ing.carbsPer100g === 0 || ing.fatsPer100g === 0) && (
                   <div className="grid grid-cols-4 gap-2 text-xs">
                     <div>
                       <label className="text-muted-foreground block mb-1">Cal/100g</label>
                       <input
                         type="number"
-                        value={ing.caloriesPer100g}
+                        value={ing.caloriesPer100g || ''}
                         onChange={(e) => handleIngredientNutritionChange(index, 'caloriesPer100g', parseFloat(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
                         className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
@@ -1173,8 +1174,9 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                       <label className="text-muted-foreground block mb-1">P/100g</label>
                       <input
                         type="number"
-                        value={ing.proteinPer100g}
+                        value={ing.proteinPer100g || ''}
                         onChange={(e) => handleIngredientNutritionChange(index, 'proteinPer100g', parseFloat(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
                         className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
@@ -1182,8 +1184,9 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                       <label className="text-muted-foreground block mb-1">C/100g</label>
                       <input
                         type="number"
-                        value={ing.carbsPer100g}
+                        value={ing.carbsPer100g || ''}
                         onChange={(e) => handleIngredientNutritionChange(index, 'carbsPer100g', parseFloat(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
                         className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
@@ -1191,8 +1194,9 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                       <label className="text-muted-foreground block mb-1">F/100g</label>
                       <input
                         type="number"
-                        value={ing.fatsPer100g}
+                        value={ing.fatsPer100g || ''}
                         onChange={(e) => handleIngredientNutritionChange(index, 'fatsPer100g', parseFloat(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
                         className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
