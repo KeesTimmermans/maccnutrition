@@ -19,10 +19,22 @@ interface NutritionData {
   fats: number;
   servingSize?: number;
   servingUnit?: string;
-  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified';
+  nutritionSource: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
   confidence: 'high' | 'medium' | 'low';
+  confidenceScore: number;
   brandName?: string;
   imageUrl?: string;
+  isChainRestaurant?: boolean;
+  requiresConfirmation?: boolean;
+  candidateMatches?: Array<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+    source: string;
+  }>;
 }
 
 interface NutritionPer100g {
@@ -32,8 +44,37 @@ interface NutritionPer100g {
   carbsPer100g: number;
   fatsPer100g: number;
   defaultServingSize: number;
-  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified';
+  nutritionSource?: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
+  confidenceScore?: number;
   brandName?: string;
+}
+
+// ============================================
+// BRAND/CHAIN DETECTION
+// ============================================
+
+const RESTAURANT_CHAINS = [
+  'joe & the juice', 'joe and the juice', 'starbucks', 'costa', 'pret', 'pret a manger',
+  'dunkin', 'dunkin donuts', 'tim hortons', 'caribou coffee', 'dutch bros',
+  'jamba', 'jamba juice', 'smoothie king', 'tropical smoothie',
+  'mcdonalds', "mcdonald's", 'burger king', 'wendys', "wendy's", 'five guys',
+  'shake shack', 'in-n-out', 'in n out', 'whataburger', 'carls jr', "carl's jr",
+  'chipotle', 'qdoba', 'taco bell', 'del taco', 'subway', 'jersey mikes',
+  'panera', 'panera bread', 'dominos', "domino's", 'pizza hut', 'papa johns',
+  'chick-fil-a', 'chick fil a', 'popeyes', 'kfc', 'raising canes', 'wingstop',
+  'nandos', "nando's", 'greggs', 'leon', 'wagamama', 'itsu', 'wasabi',
+  'sweetgreen', 'cava', 'dig inn', 'chopt', 'just salad',
+];
+
+function detectChainRestaurant(input: string): { isChain: boolean; chainName?: string } {
+  const normalized = input.toLowerCase().trim();
+  for (const chain of RESTAURANT_CHAINS) {
+    if (normalized.includes(chain)) {
+      return { isChain: true, chainName: chain };
+    }
+  }
+  return { isChain: false };
 }
 
 // UK Food Composition Database (CoFID - McCance & Widdowson)
@@ -119,7 +160,9 @@ async function lookupUKFood(query: string): Promise<NutritionData | null> {
     servingSize: 100,
     servingUnit: 'g',
     source: 'uk_cofid',
+    nutritionSource: 'database_generic' as const,
     confidence: 'high',
+    confidenceScore: 0.85,
     brandName: food.brandName
   };
 }
@@ -179,7 +222,9 @@ async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
       servingSize,
       servingUnit: 'g',
       source: 'open_food_facts',
+      nutritionSource: brandName ? 'barcode_verified' as const : 'database_generic' as const,
       confidence: 'high',
+      confidenceScore: brandName ? 0.95 : 0.85,
       brandName,
       imageUrl: product.image_url || undefined
     };
@@ -272,7 +317,9 @@ async function lookupUSDA(query: string): Promise<NutritionData | null> {
     servingSize: 100,
     servingUnit: 'g',
     source: 'usda',
-    confidence: 'high'
+    nutritionSource: 'database_generic' as const,
+    confidence: 'high',
+    confidenceScore: 0.85,
   };
 }
 
@@ -381,7 +428,10 @@ serve(async (req) => {
             fatsPer100g: offResult.fats,
             defaultServingSize: offResult.servingSize || 100,
             confidence: 'high',
+            confidenceScore: offResult.confidenceScore,
             source: 'open_food_facts',
+            nutritionSource: offResult.nutritionSource,
+            requiresConfirmation: false,
             notes: `Data from Open Food Facts database${offResult.brandName ? ` (${offResult.brandName})` : ''}`
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -517,13 +567,26 @@ serve(async (req) => {
               carbs: result.carbs,
               fats: result.fats,
               confidence: 'high',
+              confidenceScore: result.confidenceScore,
               source: result.source,
+              nutritionSource: result.nutritionSource,
+              requiresConfirmation: false,
               notes: `Data from ${sourceLabel} (per 100g serving)`
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       }
+    }
+
+    // ============================================
+    // CHAIN RESTAURANT DETECTION - Try branded lookup first
+    // ============================================
+    const chainDetection = detectChainRestaurant(searchQuery || '');
+    if (chainDetection.isChain) {
+      console.log(`[Chain Detection] Detected chain restaurant: ${chainDetection.chainName}`);
+      // For chain restaurants, we'll use AI but mark as requiring confirmation
+      // since we can't verify against official nutrition data
     }
 
     // ============================================
@@ -841,9 +904,30 @@ Do not include any other text, only the JSON object.`
           carbs: 20,
           fats: 8,
           confidence: "low",
+          confidenceScore: 0.3,
           source: "ai_estimation",
+          nutritionSource: "estimate",
+          requiresConfirmation: true,
           notes: "Could not analyze accurately. These are estimated values."
         };
+      }
+    }
+
+    // Add provenance tracking to AI responses
+    const chainDetectionResult = detectChainRestaurant(searchQuery || '');
+    const isEstimate = !nutritionData.source || nutritionData.source === 'ai_estimation';
+    
+    if (isEstimate && !nutritionData.nutritionSource) {
+      nutritionData.nutritionSource = 'estimate';
+      nutritionData.confidenceScore = nutritionData.confidenceScore ?? 0.5;
+      nutritionData.requiresConfirmation = nutritionData.confidenceScore < 0.7;
+      
+      // Mark chain restaurant items specially
+      if (chainDetectionResult.isChain) {
+        nutritionData.isChainRestaurant = true;
+        nutritionData.brandName = chainDetectionResult.chainName;
+        nutritionData.notes = `⚠️ This is a ${chainDetectionResult.chainName} item. Nutrition values are estimates - actual values may vary. ${nutritionData.notes || ''}`.trim();
+        nutritionData.requiresConfirmation = true; // Always require confirmation for chain items
       }
     }
 
