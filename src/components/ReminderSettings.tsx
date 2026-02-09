@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, Clock, Mail, Smartphone, Send } from "lucide-react";
+import { Bell, Mail, Smartphone, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -12,34 +12,13 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface ReminderPreferences {
   reminders_enabled: boolean;
-  reminder_meal_logging: boolean;
-  reminder_water_logging: boolean;
-  reminder_weekly_summary: boolean;
   reminder_frequency: string;
-  reminder_time: string;
   reminder_timezone: string;
 }
 
-const FREQUENCIES = [
-  { value: "smart", label: "When targets missed" },
-  { value: "daily", label: "Once a day" },
-  { value: "twice_daily", label: "2x per day" },
-  { value: "three_daily", label: "3x per day" },
-  { value: "four_daily", label: "4x per day" },
-  { value: "weekly", label: "Once a week" },
-];
-
-const TIMES = [
-  { value: "07:00", label: "7:00 AM" },
-  { value: "08:00", label: "8:00 AM" },
-  { value: "09:00", label: "9:00 AM" },
-  { value: "10:00", label: "10:00 AM" },
-  { value: "12:00", label: "12:00 PM" },
-  { value: "14:00", label: "2:00 PM" },
-  { value: "17:00", label: "5:00 PM" },
-  { value: "18:00", label: "6:00 PM" },
-  { value: "19:00", label: "7:00 PM" },
-  { value: "20:00", label: "8:00 PM" },
+const FREQUENCY_OPTIONS = [
+  { value: "light", label: "Light", description: "Morning check-in only" },
+  { value: "standard", label: "Standard", description: "Morning + daytime follow-ups" },
 ];
 
 export const ReminderSettings = () => {
@@ -49,11 +28,7 @@ export const ReminderSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [preferences, setPreferences] = useState<ReminderPreferences>({
     reminders_enabled: false,
-    reminder_meal_logging: true,
-    reminder_water_logging: true,
-    reminder_weekly_summary: true,
-    reminder_frequency: "daily",
-    reminder_time: "09:00",
+    reminder_frequency: "standard",
     reminder_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 
@@ -68,7 +43,7 @@ export const ReminderSettings = () => {
 
       const { data, error } = await supabase
         .from("user_baselines")
-        .select("reminders_enabled, reminder_meal_logging, reminder_water_logging, reminder_weekly_summary, reminder_frequency, reminder_time, reminder_timezone")
+        .select("reminders_enabled, reminder_frequency, reminder_timezone")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -77,11 +52,7 @@ export const ReminderSettings = () => {
       if (data) {
         setPreferences({
           reminders_enabled: data.reminders_enabled ?? false,
-          reminder_meal_logging: data.reminder_meal_logging ?? true,
-          reminder_water_logging: data.reminder_water_logging ?? true,
-          reminder_weekly_summary: data.reminder_weekly_summary ?? true,
-          reminder_frequency: data.reminder_frequency ?? "daily",
-          reminder_time: data.reminder_time ?? "09:00",
+          reminder_frequency: data.reminder_frequency === "light" ? "light" : "standard",
           reminder_timezone: data.reminder_timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
       }
@@ -103,7 +74,7 @@ export const ReminderSettings = () => {
 
       const { error } = await supabase
         .from("user_baselines")
-        .update({ 
+        .update({
           [key]: value,
           reminder_timezone: newPreferences.reminder_timezone,
         })
@@ -139,7 +110,7 @@ export const ReminderSettings = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 pt-0 space-y-4">
-        {/* Master Toggle */}
+        {/* Email Reminders Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Mail className="w-4 h-4 text-muted-foreground" />
@@ -209,100 +180,37 @@ export const ReminderSettings = () => {
           </Button>
         )}
 
+        {/* Frequency selector – only shown when email reminders are ON */}
         {preferences.reminders_enabled && (
-          <div className="border-t border-border pt-4 space-y-4">
-            {/* Global Frequency & Time */}
-            <div className="space-y-3 pb-3 border-b border-border">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <Label className="text-sm">
-                    {t('how_often') || "How often"}
-                  </Label>
-                </div>
-                <Select
-                  value={preferences.reminder_frequency}
-                  onValueChange={(value) => updatePreference("reminder_frequency", value)}
-                  disabled={isSaving}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FREQUENCIES.map((freq) => (
-                      <SelectItem key={freq.value} value={freq.value}>
-                        {freq.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between gap-4">
-                <Label className="text-sm text-muted-foreground">
-                  {t('preferred_time') || "Preferred time"}
-                </Label>
-                <Select
-                  value={preferences.reminder_time}
-                  onValueChange={(value) => updatePreference("reminder_time", value)}
-                  disabled={isSaving}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIMES.map((time) => (
-                      <SelectItem key={time.value} value={time.value}>
-                        {time.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Reminder Types */}
-            <div className="space-y-3">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                {t('reminder_types') || "Reminder Types"}
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <Label className="text-sm">
+                {t('how_often') || "Frequency"}
               </Label>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="meal-reminder" className="text-sm">
-                  🍽️ {t('meal_logging') || "Meal logging"}
-                </Label>
-                <Switch
-                  id="meal-reminder"
-                  checked={preferences.reminder_meal_logging}
-                  onCheckedChange={(checked) => updatePreference("reminder_meal_logging", checked)}
-                  disabled={isSaving}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="water-reminder" className="text-sm">
-                  💧 {t('water_tracking') || "Water tracking"}
-                </Label>
-                <Switch
-                  id="water-reminder"
-                  checked={preferences.reminder_water_logging}
-                  onCheckedChange={(checked) => updatePreference("reminder_water_logging", checked)}
-                  disabled={isSaving}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="weekly-summary" className="text-sm">
-                  📊 {t('weekly_summary') || "Weekly summary"}
-                </Label>
-                <Switch
-                  id="weekly-summary"
-                  checked={preferences.reminder_weekly_summary}
-                  onCheckedChange={(checked) => updatePreference("reminder_weekly_summary", checked)}
-                  disabled={isSaving}
-                />
-              </div>
+              <Select
+                value={preferences.reminder_frequency}
+                onValueChange={(value) => updatePreference("reminder_frequency", value)}
+                disabled={isSaving}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREQUENCY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
-            <p className="text-xs text-muted-foreground pt-2">
-              {t('reminder_timezone_note') || `Sent in your timezone (${preferences.reminder_timezone.split('/').pop()?.replace('_', ' ')})`}
+            <p className="text-xs text-muted-foreground">
+              {preferences.reminder_frequency === "light"
+                ? "You'll get a morning check-in email at 7 AM."
+                : "Morning check-in at 7 AM + up to 2 follow-ups if you haven't logged yet."}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Timezone: {preferences.reminder_timezone.split('/').pop()?.replace('_', ' ')}
             </p>
           </div>
         )}
