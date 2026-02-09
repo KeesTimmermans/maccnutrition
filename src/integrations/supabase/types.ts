@@ -317,6 +317,39 @@ export type Database = {
         }
         Relationships: []
       }
+      push_daily_log: {
+        Row: {
+          created_at: string
+          followup_count: number
+          id: string
+          last_followup_at: string | null
+          log_date: string
+          morning_sent: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          followup_count?: number
+          id?: string
+          last_followup_at?: string | null
+          log_date?: string
+          morning_sent?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          followup_count?: number
+          id?: string
+          last_followup_at?: string | null
+          log_date?: string
+          morning_sent?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           created_at: string
