@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.push-vapid-key]
 verify_jwt = false
+
+[functions.push-notify-scheduled]
+verify_jwt = false
