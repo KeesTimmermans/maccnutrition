@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { Bell, Clock, Mail } from "lucide-react";
+import { Bell, Clock, Mail, Smartphone, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface ReminderPreferences {
   reminders_enabled: boolean;
@@ -42,6 +44,7 @@ const TIMES = [
 
 export const ReminderSettings = () => {
   const { t } = useLanguage();
+  const push = usePushNotifications();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [preferences, setPreferences] = useState<ReminderPreferences>({
@@ -151,6 +154,60 @@ export const ReminderSettings = () => {
             disabled={isSaving}
           />
         </div>
+
+        {/* Push Notifications */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Smartphone className="w-4 h-4 text-muted-foreground" />
+            <Label htmlFor="push-enabled" className="text-sm">
+              Push Notifications
+            </Label>
+          </div>
+          {push.canEnable ? (
+            <Switch
+              id="push-enabled"
+              checked={push.isSubscribed}
+              onCheckedChange={async (checked) => {
+                if (checked) {
+                  const ok = await push.subscribe();
+                  if (ok) toast.success("Push notifications enabled");
+                  else if (push.permission === "denied") toast.error("Notifications blocked in browser settings");
+                  else toast.error("Could not enable push notifications");
+                } else {
+                  const ok = await push.unsubscribe();
+                  if (ok) toast.success("Push notifications disabled");
+                }
+              }}
+              disabled={push.isLoading}
+            />
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              {!push.isSupported ? "Not supported" : ""}
+            </span>
+          )}
+        </div>
+
+        {push.showIOSGuidance && (
+          <p className="text-xs text-primary bg-primary/10 rounded-lg p-3">
+            📱 To enable push notifications on iOS, first add this app to your Home Screen: tap the <strong>Share</strong> button → <strong>Add to Home Screen</strong>, then open it from there.
+          </p>
+        )}
+
+        {push.isSubscribed && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={async () => {
+              const ok = await push.sendTest();
+              if (ok) toast.success("Test notification sent!");
+              else toast.error("Failed to send test notification");
+            }}
+          >
+            <Send className="w-3 h-3 mr-1.5" />
+            Send Test Notification
+          </Button>
+        )}
 
         {preferences.reminders_enabled && (
           <div className="border-t border-border pt-4 space-y-4">
