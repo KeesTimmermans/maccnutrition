@@ -6,142 +6,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface UserReminder {
-  user_id: string;
-  email: string;
-  name: string | null;
-  reminders_enabled: boolean;
-  reminder_meal_logging: boolean;
-  reminder_water_logging: boolean;
-  reminder_weekly_summary: boolean;
-  reminder_frequency: string;
-  reminder_time: string;
-  reminder_timezone: string;
-  reminder_quiet_start: string;
-  reminder_quiet_end: string;
-  last_meal_reminder_sent: string | null;
-  last_water_reminder_sent: string | null;
-  last_weekly_summary_sent: string | null;
-}
-
-const isWithinQuietHours = (
-  timezone: string, 
-  quietStart: string, 
-  quietEnd: string
-): boolean => {
+/** Return the current hour (0-23) in the user's timezone */
+const getUserLocalHour = (timezone: string): number => {
   try {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    const fmt = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: "2-digit",
       hour12: false,
     });
-    const currentTime = formatter.format(now);
-    const [currentHour, currentMinute] = currentTime.split(':').map(Number);
-    const currentMinutes = currentHour * 60 + currentMinute;
-
-    const [quietStartHour, quietStartMinute] = quietStart.split(':').map(Number);
-    const [quietEndHour, quietEndMinute] = quietEnd.split(':').map(Number);
-    const quietStartMinutes = quietStartHour * 60 + quietStartMinute;
-    const quietEndMinutes = quietEndHour * 60 + quietEndMinute;
-
-    // Handle overnight quiet hours (e.g., 21:00 - 07:00)
-    if (quietStartMinutes > quietEndMinutes) {
-      return currentMinutes >= quietStartMinutes || currentMinutes < quietEndMinutes;
-    }
-    return currentMinutes >= quietStartMinutes && currentMinutes < quietEndMinutes;
-  } catch (error) {
-    console.error("Error checking quiet hours:", error);
-    return false;
+    return Number(fmt.format(new Date()));
+  } catch {
+    return -1;
   }
 };
 
-const isTimeToSend = (
-  timezone: string,
-  preferredTime: string
-): boolean => {
+/** Return today's date string (YYYY-MM-DD) in the user's timezone */
+const getUserLocalDate = (timezone: string): string => {
   try {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    const currentTime = formatter.format(now);
-    const [currentHour] = currentTime.split(':').map(Number);
-    const [preferredHour] = preferredTime.split(':').map(Number);
-    
-    // Allow a 1-hour window for the reminder
-    return currentHour === preferredHour;
-  } catch (error) {
-    console.error("Error checking time:", error);
-    return false;
-  }
-};
-
-const shouldSendReminder = (
-  frequency: string,
-  lastSent: string | null,
-  isWeekly: boolean = false
-): boolean => {
-  if (!lastSent) return true;
-
-  const lastSentDate = new Date(lastSent);
-  const now = new Date();
-  const hoursDiff = (now.getTime() - lastSentDate.getTime()) / (1000 * 60 * 60);
-
-  if (isWeekly) {
-    return hoursDiff >= 24 * 7; // 7 days
-  }
-
-  switch (frequency) {
-    case "smart":
-      return hoursDiff >= 4; // Check every 4 hours for smart reminders
-    case "daily":
-      return hoursDiff >= 20; // At least 20 hours apart
-    case "twice_daily":
-      return hoursDiff >= 10; // At least 10 hours apart
-    case "three_daily":
-      return hoursDiff >= 6; // At least 6 hours apart
-    case "four_daily":
-      return hoursDiff >= 4; // At least 4 hours apart
-    case "weekly":
-      return hoursDiff >= 24 * 7;
-    default:
-      return hoursDiff >= 20;
-  }
-};
-
-// Check if user has logged meals/water today
-const checkUserActivity = async (
-  supabase: any,
-  userId: string,
-  type: "meal" | "water"
-): Promise<boolean> => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString();
-
-  if (type === "meal") {
-    const { data, error } = await supabase
-      .from("meals")
-      .select("id")
-      .eq("user_id", userId)
-      .gte("logged_at", todayStr)
-      .limit(1);
-    
-    return !error && data && data.length > 0;
-  } else {
-    const { data, error } = await supabase
-      .from("water_intake")
-      .select("id")
-      .eq("user_id", userId)
-      .gte("logged_at", todayStr)
-      .limit(1);
-    
-    return !error && data && data.length > 0;
+    const d = new Date();
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
+    return parts; // en-CA gives YYYY-MM-DD
+  } catch {
+    return new Date().toISOString().slice(0, 10);
   }
 };
 
@@ -150,254 +36,164 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("[PROCESS-REMINDERS] Starting reminder processing...");
+  console.log("[PROCESS-REMINDERS] Starting...");
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get all users with reminders enabled
-    const { data: users, error: fetchError } = await supabase
+    // Fetch users with email reminders enabled
+    const { data: users, error: fetchErr } = await supabase
       .from("user_baselines")
-      .select(`
-        user_id,
-        name,
-        reminders_enabled,
-        reminder_meal_logging,
-        reminder_water_logging,
-        reminder_weekly_summary,
-        reminder_frequency,
-        reminder_time,
-        reminder_timezone,
-        reminder_quiet_start,
-        reminder_quiet_end,
-        last_meal_reminder_sent,
-        last_water_reminder_sent,
-        last_weekly_summary_sent
-      `)
+      .select("user_id, name, reminders_enabled, reminder_frequency, reminder_timezone")
       .eq("reminders_enabled", true);
 
-    if (fetchError) {
-      console.error("[PROCESS-REMINDERS] Error fetching users:", fetchError);
-      throw fetchError;
-    }
-
-    console.log(`[PROCESS-REMINDERS] Found ${users?.length || 0} users with reminders enabled`);
+    if (fetchErr) throw fetchErr;
+    console.log(`[PROCESS-REMINDERS] ${users?.length ?? 0} users with reminders enabled`);
 
     if (!users || users.length === 0) {
-      return new Response(
-        JSON.stringify({ processed: 0, sent: 0 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ processed: 0, sent: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let sentCount = 0;
 
     for (const user of users) {
-      const timezone = user.reminder_timezone || "America/New_York";
-      const quietStart = user.reminder_quiet_start || "21:00";
-      const quietEnd = user.reminder_quiet_end || "07:00";
-      const preferredTime = user.reminder_time || "09:00";
-      const frequency = user.reminder_frequency || "daily";
+      const tz = user.reminder_timezone || "America/New_York";
+      const freq = user.reminder_frequency || "standard"; // "light" or "standard"
+      const localHour = getUserLocalHour(tz);
+      const localDate = getUserLocalDate(tz);
 
-      // Skip if in quiet hours
-      if (isWithinQuietHours(timezone, quietStart, quietEnd)) {
-        console.log(`[PROCESS-REMINDERS] Skipping ${user.user_id} - quiet hours`);
-        continue;
+      // Quiet hours: only send 7-20 (7AM-8:59PM)
+      if (localHour < 7 || localHour >= 21) continue;
+
+      // Get or create today's email log
+      let { data: logRow } = await supabase
+        .from("email_daily_log")
+        .select("*")
+        .eq("user_id", user.user_id)
+        .eq("log_date", localDate)
+        .maybeSingle();
+
+      if (!logRow) {
+        const { data: created } = await supabase
+          .from("email_daily_log")
+          .insert({ user_id: user.user_id, log_date: localDate })
+          .select()
+          .single();
+        logRow = created;
       }
+      if (!logRow) continue;
 
-      // Skip if not the right time (unless using smart mode which checks more frequently)
-      if (frequency !== "smart" && !isTimeToSend(timezone, preferredTime)) {
-        console.log(`[PROCESS-REMINDERS] Skipping ${user.user_id} - not preferred time`);
-        continue;
-      }
-
-      // Get user email from auth
-      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user.user_id);
-      if (authError || !authUser?.user?.email) {
-        console.error(`[PROCESS-REMINDERS] Could not get email for user ${user.user_id}`);
-        continue;
-      }
-
+      // Get user email
+      const { data: authUser } = await supabase.auth.admin.getUserById(user.user_id);
+      if (!authUser?.user?.email) continue;
       const email = authUser.user.email;
+      const displayName = user.name || "there";
 
-      // Process meal reminder
-      if (user.reminder_meal_logging && shouldSendReminder(frequency, user.last_meal_reminder_sent)) {
-        // For smart mode, only send if user hasn't logged any meals today
-        if (frequency === "smart") {
-          const hasLoggedMeal = await checkUserActivity(supabase, user.user_id, "meal");
-          if (hasLoggedMeal) {
-            console.log(`[PROCESS-REMINDERS] Skipping meal reminder for ${user.user_id} - already logged today`);
-          } else {
-            try {
-              const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${supabaseServiceKey}`,
-                },
-                body: JSON.stringify({
-                  type: "meal",
-                  userId: user.user_id,
-                  email,
-                  userName: user.name,
-                }),
-              });
+      // --- MORNING CHECK-IN (7 AM hour) ---
+      if (localHour === 7 && !logRow.morning_sent) {
+        // Check if daily check-in exists for today
+        const { data: checkins } = await supabase
+          .from("daily_checkins")
+          .select("id")
+          .eq("user_id", user.user_id)
+          .eq("check_in_date", localDate)
+          .limit(1);
 
-              if (response.ok) {
-                await supabase
-                  .from("user_baselines")
-                  .update({ last_meal_reminder_sent: new Date().toISOString() })
-                  .eq("user_id", user.user_id);
-                sentCount++;
-                console.log(`[PROCESS-REMINDERS] Sent meal reminder to ${email}`);
-              }
-            } catch (error) {
-              console.error(`[PROCESS-REMINDERS] Failed to send meal reminder:`, error);
-            }
-          }
-        } else {
-          // Regular scheduled reminder
-          try {
-            const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${supabaseServiceKey}`,
-              },
-              body: JSON.stringify({
-                type: "meal",
-                userId: user.user_id,
-                email,
-                userName: user.name,
-              }),
-            });
-
-            if (response.ok) {
-              await supabase
-                .from("user_baselines")
-                .update({ last_meal_reminder_sent: new Date().toISOString() })
-                .eq("user_id", user.user_id);
-              sentCount++;
-              console.log(`[PROCESS-REMINDERS] Sent meal reminder to ${email}`);
-            }
-          } catch (error) {
-            console.error(`[PROCESS-REMINDERS] Failed to send meal reminder:`, error);
-          }
-        }
-      }
-
-      // Process water reminder
-      if (user.reminder_water_logging && shouldSendReminder(frequency, user.last_water_reminder_sent)) {
-        // For smart mode, only send if user hasn't logged any water today
-        if (frequency === "smart") {
-          const hasLoggedWater = await checkUserActivity(supabase, user.user_id, "water");
-          if (hasLoggedWater) {
-            console.log(`[PROCESS-REMINDERS] Skipping water reminder for ${user.user_id} - already logged today`);
-          } else {
-            try {
-              const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${supabaseServiceKey}`,
-                },
-                body: JSON.stringify({
-                  type: "water",
-                  userId: user.user_id,
-                  email,
-                  userName: user.name,
-                }),
-              });
-
-              if (response.ok) {
-                await supabase
-                  .from("user_baselines")
-                  .update({ last_water_reminder_sent: new Date().toISOString() })
-                  .eq("user_id", user.user_id);
-                sentCount++;
-                console.log(`[PROCESS-REMINDERS] Sent water reminder to ${email}`);
-              }
-            } catch (error) {
-              console.error(`[PROCESS-REMINDERS] Failed to send water reminder:`, error);
-            }
-          }
-        } else {
-          // Regular scheduled reminder
-          try {
-            const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${supabaseServiceKey}`,
-              },
-              body: JSON.stringify({
-                type: "water",
-                userId: user.user_id,
-                email,
-                userName: user.name,
-              }),
-            });
-
-            if (response.ok) {
-              await supabase
-                .from("user_baselines")
-                .update({ last_water_reminder_sent: new Date().toISOString() })
-                .eq("user_id", user.user_id);
-              sentCount++;
-              console.log(`[PROCESS-REMINDERS] Sent water reminder to ${email}`);
-            }
-          } catch (error) {
-            console.error(`[PROCESS-REMINDERS] Failed to send water reminder:`, error);
-          }
-        }
-      }
-
-      // Process weekly summary (always weekly regardless of frequency setting)
-      if (user.reminder_weekly_summary && shouldSendReminder("weekly", user.last_weekly_summary_sent, true)) {
-        try {
-          const response = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify({
-              type: "weekly_summary",
-              userId: user.user_id,
-              email,
-              userName: user.name,
-            }),
+        if (!checkins || checkins.length === 0) {
+          const ok = await sendEmail(supabaseUrl, serviceKey, {
+            type: "meal",
+            userId: user.user_id,
+            email,
+            userName: displayName,
           });
-
-          if (response.ok) {
+          if (ok) {
             await supabase
-              .from("user_baselines")
-              .update({ last_weekly_summary_sent: new Date().toISOString() })
-              .eq("user_id", user.user_id);
+              .from("email_daily_log")
+              .update({ morning_sent: true, updated_at: new Date().toISOString() })
+              .eq("id", logRow.id);
             sentCount++;
-            console.log(`[PROCESS-REMINDERS] Sent weekly summary to ${email}`);
+            console.log(`[PROCESS-REMINDERS] Morning email sent to ${email}`);
           }
-        } catch (error) {
-          console.error(`[PROCESS-REMINDERS] Failed to send weekly summary:`, error);
         }
+      }
+
+      // --- DAYTIME FOLLOW-UPS (11AM+, standard mode only) ---
+      if (freq === "light") continue; // Light = morning only
+      if (localHour < 11) continue;
+      if (logRow.followup_count >= 2) continue;
+
+      // Check activity: has user logged a meal or water today?
+      const todayStart = `${localDate}T00:00:00`;
+      const [{ data: meals }, { data: water }] = await Promise.all([
+        supabase.from("meals").select("id").eq("user_id", user.user_id).gte("logged_at", todayStart).limit(1),
+        supabase.from("water_intake").select("id").eq("user_id", user.user_id).gte("logged_at", todayStart).limit(1),
+      ]);
+
+      const hasLogged = (meals && meals.length > 0) || (water && water.length > 0);
+      if (hasLogged) continue;
+
+      // Check 3-hour gap
+      if (logRow.last_followup_at) {
+        const hoursSince = (Date.now() - new Date(logRow.last_followup_at).getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 3) continue;
+      }
+
+      const ok = await sendEmail(supabaseUrl, serviceKey, {
+        type: "water", // "keep tracking" email
+        userId: user.user_id,
+        email,
+        userName: displayName,
+      });
+      if (ok) {
+        await supabase
+          .from("email_daily_log")
+          .update({
+            followup_count: logRow.followup_count + 1,
+            last_followup_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", logRow.id);
+        sentCount++;
+        console.log(`[PROCESS-REMINDERS] Follow-up #${logRow.followup_count + 1} sent to ${email}`);
       }
     }
 
-    console.log(`[PROCESS-REMINDERS] Completed. Processed ${users.length} users, sent ${sentCount} reminders`);
-
-    return new Response(
-      JSON.stringify({ processed: users.length, sent: sentCount }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.log(`[PROCESS-REMINDERS] Done. Sent ${sentCount} emails.`);
+    return new Response(JSON.stringify({ processed: users.length, sent: sentCount }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error: any) {
     console.error("[PROCESS-REMINDERS] Error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 };
+
+async function sendEmail(
+  supabaseUrl: string,
+  serviceKey: string,
+  body: { type: string; userId: string; email: string; userName: string }
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-reminder-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("[PROCESS-REMINDERS] sendEmail failed:", e);
+    return false;
+  }
+}
 
 serve(handler);
