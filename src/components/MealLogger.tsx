@@ -21,6 +21,7 @@ import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { QuickMeals } from "./QuickMeals";
+import { IngredientSearchDialog, type IngredientSearchResult } from "./IngredientSearchDialog";
 
 interface DailyTotals {
   calories: number;
@@ -102,6 +103,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const [mealName, setMealName] = useState("");
   const [confidence, setConfidence] = useState("");
   const [notes, setNotes] = useState("");
+  const [ingredientSearchOpen, setIngredientSearchOpen] = useState(false);
+  const [editingIngredientIndex, setEditingIngredientIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -894,18 +897,40 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
     }
   };
 
-  // Add a new empty ingredient (prepend to show at top)
+  // Open search dialog to add a new ingredient
   const handleAddIngredient = () => {
+    setEditingIngredientIndex(null);
+    setIngredientSearchOpen(true);
+  };
+
+  // Open search dialog to edit an existing ingredient
+  const handleEditIngredientSearch = (index: number) => {
+    setEditingIngredientIndex(index);
+    setIngredientSearchOpen(true);
+  };
+
+  // Handle result from ingredient search dialog
+  const handleIngredientSearchResult = (result: IngredientSearchResult) => {
     const newIngredient: AdjustableIngredient = {
-      name: "New ingredient",
-      estimatedGrams: 100,
-      caloriesPer100g: 0,
-      proteinPer100g: 0,
-      carbsPer100g: 0,
-      fatsPer100g: 0,
-      adjustedGrams: 100,
+      name: result.name,
+      estimatedGrams: result.servingGrams,
+      caloriesPer100g: result.caloriesPer100g,
+      proteinPer100g: result.proteinPer100g,
+      carbsPer100g: result.carbsPer100g,
+      fatsPer100g: result.fatsPer100g,
+      adjustedGrams: result.servingGrams,
     };
-    setIngredients(prev => [newIngredient, ...prev]);
+
+    if (editingIngredientIndex !== null) {
+      // Replace existing ingredient
+      setIngredients(prev =>
+        prev.map((ing, i) => i === editingIngredientIndex ? newIngredient : ing)
+      );
+    } else {
+      // Prepend new ingredient to top
+      setIngredients(prev => [newIngredient, ...prev]);
+    }
+    setEditingIngredientIndex(null);
   };
 
   // Update ingredient name
@@ -1176,13 +1201,13 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
               <div key={index} className="bg-card border border-border rounded-xl p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <input
-                      type="text"
-                      value={ing.name}
-                      onChange={(e) => handleIngredientNameChange(index, e.target.value)}
-                      className="font-medium text-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none w-full"
-                      placeholder="Ingredient name"
-                    />
+                    <button
+                      onClick={() => handleEditIngredientSearch(index)}
+                      className="font-medium text-foreground text-left w-full hover:text-primary transition-colors flex items-center gap-1"
+                    >
+                      {ing.name}
+                      <Search className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                    </button>
                     <p className="text-xs text-muted-foreground mt-1">
                       {ingCalories} cal • P:{ingProtein}g • C:{ingCarbs}g • F:{ingFats}g
                     </p>
@@ -1196,7 +1221,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                 </div>
                 
                 {/* Quantity adjuster */}
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => handleIngredientQuantityChange(index, ing.adjustedGrams - 10)}
                     className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
@@ -1223,52 +1248,6 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-
-                {/* Nutrition per 100g (editable for manual entries - show when any value is 0) */}
-                {(ing.caloriesPer100g === 0 || ing.proteinPer100g === 0 || ing.carbsPer100g === 0 || ing.fatsPer100g === 0) && (
-                  <div className="grid grid-cols-4 gap-2 text-xs">
-                    <div>
-                      <label className="text-muted-foreground block mb-1">Cal/100g</label>
-                      <input
-                        type="number"
-                        value={ing.caloriesPer100g || ''}
-                        onChange={(e) => handleIngredientNutritionChange(index, 'caloriesPer100g', parseFloat(e.target.value) || 0)}
-                        onFocus={(e) => e.target.select()}
-                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-muted-foreground block mb-1">P/100g</label>
-                      <input
-                        type="number"
-                        value={ing.proteinPer100g || ''}
-                        onChange={(e) => handleIngredientNutritionChange(index, 'proteinPer100g', parseFloat(e.target.value) || 0)}
-                        onFocus={(e) => e.target.select()}
-                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-muted-foreground block mb-1">C/100g</label>
-                      <input
-                        type="number"
-                        value={ing.carbsPer100g || ''}
-                        onChange={(e) => handleIngredientNutritionChange(index, 'carbsPer100g', parseFloat(e.target.value) || 0)}
-                        onFocus={(e) => e.target.select()}
-                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-muted-foreground block mb-1">F/100g</label>
-                      <input
-                        type="number"
-                        value={ing.fatsPer100g || ''}
-                        onChange={(e) => handleIngredientNutritionChange(index, 'fatsPer100g', parseFloat(e.target.value) || 0)}
-                        onFocus={(e) => e.target.select()}
-                        className="w-full px-2 py-1 bg-muted rounded text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -1563,6 +1542,17 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
           </Button>
         )}
       </div>
+
+      {/* Ingredient search dialog */}
+      <IngredientSearchDialog
+        open={ingredientSearchOpen}
+        onClose={() => {
+          setIngredientSearchOpen(false);
+          setEditingIngredientIndex(null);
+        }}
+        onSelect={handleIngredientSearchResult}
+        initialQuery={editingIngredientIndex !== null ? ingredients[editingIngredientIndex]?.name || "" : ""}
+      />
     </SafeAreaContainer>
   );
 };
