@@ -157,10 +157,13 @@ export function getNutritionSourceLabel(source: string): string {
       return 'USDA';
     case 'uk_cofid':
       return 'UK Database';
+    case 'fatsecret':
+      return '✓ FatSecret';
     case 'ai_estimation':
       return '⚡ Estimate';
     default:
       if (source?.includes('verified')) return '✓ Verified';
+      if (source?.includes('fatsecret')) return '✓ FatSecret';
       if (source?.includes('estimate')) return '⚡ Estimate';
       return source || 'Unknown';
   }

@@ -19,7 +19,7 @@ interface NutritionData {
   fats: number;
   servingSize?: number;
   servingUnit?: string;
-  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret';
   nutritionSource: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
   confidence: 'high' | 'medium' | 'low';
   confidenceScore: number;
@@ -27,6 +27,7 @@ interface NutritionData {
   imageUrl?: string;
   isChainRestaurant?: boolean;
   requiresConfirmation?: boolean;
+  sourceMetadata?: Record<string, unknown>;
   candidateMatches?: Array<{
     name: string;
     calories: number;
@@ -44,7 +45,7 @@ interface NutritionPer100g {
   carbsPer100g: number;
   fatsPer100g: number;
   defaultServingSize: number;
-  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret';
   nutritionSource?: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
   confidenceScore?: number;
   brandName?: string;
@@ -323,6 +324,117 @@ async function lookupUSDA(query: string): Promise<NutritionData | null> {
   };
 }
 
+// ============================================
+// FATSECRET LOOKUP (via edge function proxy)
+// ============================================
+
+async function lookupFatSecret(query: string): Promise<NutritionData | null> {
+  try {
+    console.log(`[FatSecret] Looking up: ${query}`);
+    const clientId = Deno.env.get('FATSECRET_CLIENT_ID');
+    const clientSecret = Deno.env.get('FATSECRET_CLIENT_SECRET');
+    if (!clientId || !clientSecret) {
+      console.log('[FatSecret] Credentials not configured, skipping');
+      return null;
+    }
+
+    // Inline token fetch to avoid cross-function calls
+    const tokenResponse = await fetch('https://oauth.fatsecret.com/connect/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      },
+      body: 'grant_type=client_credentials',
+    });
+
+    if (!tokenResponse.ok) {
+      console.error('[FatSecret] Token error:', tokenResponse.status);
+      return null;
+    }
+
+    const tokenData = await tokenResponse.json();
+    const token = tokenData.access_token;
+
+    // Search foods
+    const params = new URLSearchParams({
+      method: 'foods.search',
+      search_expression: query,
+      format: 'json',
+      max_results: '3',
+    });
+
+    const searchResponse = await fetch(`https://platform.fatsecret.com/rest/server.api?${params}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!searchResponse.ok) {
+      console.error('[FatSecret] Search error:', searchResponse.status);
+      return null;
+    }
+
+    const searchData = await searchResponse.json();
+    const foods = searchData?.foods?.food;
+    if (!foods) {
+      console.log('[FatSecret] No results for:', query);
+      return null;
+    }
+
+    const foodList = Array.isArray(foods) ? foods : [foods];
+    const topFood = foodList[0];
+    if (!topFood) return null;
+
+    // Parse description: "Per 100g - Calories: 250kcal | Fat: 10.00g | Carbs: 30.00g | Protein: 8.00g"
+    const desc = topFood.food_description || '';
+    const calMatch = desc.match(/Calories:\s*([\d.]+)/);
+    const fatMatch = desc.match(/Fat:\s*([\d.]+)/);
+    const carbMatch = desc.match(/Carbs:\s*([\d.]+)/);
+    const protMatch = desc.match(/Protein:\s*([\d.]+)/);
+    const servingMatch = desc.match(/^Per\s+(.+?)\s*-/);
+
+    const calories = parseFloat(calMatch?.[1] || '0');
+    const protein = parseFloat(protMatch?.[1] || '0');
+    const carbs = parseFloat(carbMatch?.[1] || '0');
+    const fats = parseFloat(fatMatch?.[1] || '0');
+
+    if (calories === 0 && protein === 0 && carbs === 0 && fats === 0) {
+      return null;
+    }
+
+    const foodName = topFood.brand_name
+      ? `${topFood.brand_name} ${topFood.food_name}`
+      : topFood.food_name;
+
+    console.log(`[FatSecret] Found: ${foodName} (${calories} kcal)`);
+
+    return {
+      name: foodName,
+      calories: Math.round(calories),
+      protein: Math.round(protein),
+      carbs: Math.round(carbs),
+      fats: Math.round(fats),
+      servingSize: 100,
+      servingUnit: 'g',
+      source: 'fatsecret',
+      nutritionSource: topFood.brand_name ? 'branded_verified' : 'database_generic',
+      confidence: 'high',
+      confidenceScore: 0.9,
+      brandName: topFood.brand_name || undefined,
+      sourceMetadata: {
+        fatsecret_food_id: topFood.food_id,
+        serving_description: servingMatch?.[1] || 'per serving',
+        food_type: topFood.food_type,
+      },
+    };
+  } catch (error) {
+    console.error('[FatSecret] Error:', error);
+    return null;
+  }
+}
+
 // Input validation schema
 const userDietContextSchema = z.object({
   dietType: z.string().max(50).optional(),
@@ -443,20 +555,41 @@ serve(async (req) => {
     }
 
     // ============================================
-    // SUGGESTIONS MODE - Search USDA and UK databases in parallel
+    // SUGGESTIONS MODE - Search FatSecret first, then USDA and UK databases
     // ============================================
     if (mode === 'suggestions' && searchQuery) {
-      console.log(`[Suggestions Mode] Searching USDA and UK databases for: ${searchQuery}`);
+      console.log(`[Suggestions Mode] Searching FatSecret, USDA and UK databases for: ${searchQuery}`);
       
-      // Search both databases in parallel
+      // Try FatSecret first
+      const fsResult = await lookupFatSecret(searchQuery);
+      
+      // Search other databases in parallel
       const [usdaResults, ukResults] = await Promise.all([
         searchUSDA(searchQuery, 3),
         searchUKFoods(searchQuery, 3)
       ]);
       
-      // Merge and deduplicate results, prioritizing by source diversity
+      // Merge and deduplicate results, FatSecret first
       const allResults: NutritionPer100g[] = [];
       const seenNames = new Set<string>();
+      
+      // Add FatSecret result first if available
+      if (fsResult) {
+        const lowerName = fsResult.name.toLowerCase();
+        seenNames.add(lowerName);
+        allResults.push({
+          name: fsResult.name,
+          caloriesPer100g: fsResult.calories,
+          proteinPer100g: fsResult.protein,
+          carbsPer100g: fsResult.carbs,
+          fatsPer100g: fsResult.fats,
+          defaultServingSize: fsResult.servingSize || 100,
+          source: 'fatsecret',
+          nutritionSource: fsResult.nutritionSource,
+          confidenceScore: 0.9,
+          brandName: fsResult.brandName,
+        });
+      }
       
       // Interleave results from both sources for variety
       const maxLen = Math.max(usdaResults.length, ukResults.length);
@@ -478,7 +611,7 @@ serve(async (req) => {
       }
       
       if (allResults.length > 0) {
-        console.log(`[Suggestions Mode] Found ${allResults.length} total results (USDA: ${usdaResults.length}, UK: ${ukResults.length})`);
+        console.log(`[Suggestions Mode] Found ${allResults.length} total results (FatSecret: ${fsResult ? 1 : 0}, USDA: ${usdaResults.length}, UK: ${ukResults.length})`);
         return new Response(
           JSON.stringify({ 
             suggestions: allResults.slice(0, 5)
@@ -492,7 +625,7 @@ serve(async (req) => {
     }
 
     // ============================================
-    // CALCULATE MODE - Try USDA and UK databases
+    // CALCULATE MODE - Try FatSecret, then USDA and UK databases
     // ============================================
     if (mode === 'calculate' && searchQuery) {
       // Parse weight from query like "150g of chicken breast"
@@ -504,9 +637,15 @@ serve(async (req) => {
         
         console.log(`[Calculate Mode] Looking up ${grams}g of ${foodName}`);
         
-        // Try USDA first (better for raw ingredients)
-        let result = await lookupUSDA(foodName);
-        let sourceLabel = 'USDA FoodData Central';
+        // Try FatSecret first
+        let result = await lookupFatSecret(foodName);
+        let sourceLabel = 'FatSecret';
+        
+        // Try USDA if FatSecret fails
+        if (!result) {
+          result = await lookupUSDA(foodName);
+          sourceLabel = 'USDA FoodData Central';
+        }
         
         // If not found in USDA, try UK database
         if (!result) {
@@ -545,13 +684,19 @@ serve(async (req) => {
       const isSimpleQuery = searchQuery.split(/\s+/).length <= 4 && !searchQuery.includes(',');
       
       if (isSimpleQuery) {
-        console.log(`[Analyze Mode] Simple query, trying databases: ${searchQuery}`);
+        console.log(`[Analyze Mode] Simple query, trying FatSecret first: ${searchQuery}`);
         
-        // Try USDA first (better for raw ingredients)
-        let result = await lookupUSDA(searchQuery);
-        let sourceLabel = 'USDA FoodData Central';
+        // Try FatSecret first
+        let result = await lookupFatSecret(searchQuery);
+        let sourceLabel = 'FatSecret';
         
-        // If not found in USDA, try UK database (good for UK brands/products)
+        // Fall back to USDA
+        if (!result) {
+          result = await lookupUSDA(searchQuery);
+          sourceLabel = 'USDA FoodData Central';
+        }
+        
+        // Fall back to UK database
         if (!result) {
           result = await lookupUKFood(searchQuery);
           sourceLabel = 'UK Food Database';
