@@ -38,7 +38,7 @@ export const SOURCE_RANK = {
 export type NutritionSourceType = 
   | 'branded_verified'    // Official brand nutrition data (e.g., Joe & The Juice official)
   | 'barcode_verified'    // Verified barcode scan from database
-  | 'database_generic'    // Generic food database (USDA, UK CoFID)
+  | 'database_generic'    // Generic food database (USDA, UK CoFID, OpenFoodFacts, FoodRepo)
   | 'estimate';           // AI estimation or user guess
 
 export interface SourceMetadata {
@@ -354,8 +354,8 @@ function determineNutritionSource(mealEntry: MealEntry): NutritionSourceType {
     return method === 'verified' ? 'branded_verified' : 'estimate';
   }
   
-  // Generic database
-  if (source.includes('usda') || source.includes('uk_cofid') || source.includes('openfoodfacts')) {
+  // Generic database (includes UK/EU sources)
+  if (source.includes('usda') || source.includes('uk_cofid') || source.includes('openfoodfacts') || source.includes('foodrepo')) {
     return 'database_generic';
   }
   

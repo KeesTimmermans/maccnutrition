@@ -19,7 +19,7 @@ interface NutritionData {
   fats: number;
   servingSize?: number;
   servingUnit?: string;
-  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret' | 'openfoodfacts' | 'foodrepo';
   nutritionSource: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
   confidence: 'high' | 'medium' | 'low';
   confidenceScore: number;
@@ -45,7 +45,7 @@ interface NutritionPer100g {
   carbsPer100g: number;
   fatsPer100g: number;
   defaultServingSize: number;
-  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret';
+  source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret' | 'openfoodfacts' | 'foodrepo';
   nutritionSource?: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
   confidenceScore?: number;
   brandName?: string;
@@ -78,42 +78,27 @@ function detectChainRestaurant(input: string): { isChain: boolean; chainName?: s
   return { isChain: false };
 }
 
-// UK Food Composition Database (CoFID - McCance & Widdowson)
-// Uses the UK Government's open data API
-async function searchUKFoods(query: string, limit: number = 5): Promise<NutritionPer100g[]> {
+// ============================================
+// OPEN FOOD FACTS - UK/EU prioritized search
+// ============================================
+
+async function searchOpenFoodFactsUK(query: string, limit: number = 5): Promise<NutritionPer100g[]> {
   try {
-    console.log(`[UK CoFID] Searching for: ${query}`);
-    
-    // Use Open Food Facts UK-specific search as a proxy for UK foods
-    // This gives us UK products and brands
+    console.log(`[OFF-UK] Searching for: ${query}`);
     const encodedQuery = encodeURIComponent(query);
     const response = await fetch(
       `https://uk.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=${limit}`,
-      {
-        headers: {
-          'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com'
-        }
-      }
+      { headers: { 'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com' } }
     );
 
-    if (!response.ok) {
-      console.log(`[UK CoFID] HTTP error: ${response.status}`);
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
-    
-    if (!data.products || data.products.length === 0) {
-      console.log(`[UK CoFID] No results for: ${query}`);
-      return [];
-    }
+    if (!data.products || data.products.length === 0) return [];
 
     const results: NutritionPer100g[] = [];
-
     for (const product of data.products.slice(0, limit)) {
       const nutriments = product.nutriments || {};
-      
-      // Get nutrition per 100g
       const calories = nutriments['energy-kcal_100g'] ?? nutriments['energy-kcal'] ?? 0;
       const protein = nutriments.proteins_100g ?? nutriments.proteins ?? 0;
       const carbs = nutriments.carbohydrates_100g ?? nutriments.carbohydrates ?? 0;
@@ -122,34 +107,111 @@ async function searchUKFoods(query: string, limit: number = 5): Promise<Nutritio
       if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
         const productName = product.product_name || product.product_name_en || query;
         const brandName = product.brands || undefined;
-        
         results.push({
           name: brandName ? `${brandName} ${productName}` : productName,
           caloriesPer100g: Math.round(calories),
           proteinPer100g: Math.round(protein * 10) / 10,
           carbsPer100g: Math.round(carbs * 10) / 10,
           fatsPer100g: Math.round(fats * 10) / 10,
-          defaultServingSize: 100,
-          source: 'uk_cofid',
-          brandName
+          defaultServingSize: parseFloat(product.serving_quantity) || 100,
+          source: 'openfoodfacts' as const,
+          nutritionSource: brandName ? 'branded_verified' : 'database_generic',
+          confidenceScore: brandName ? 0.92 : 0.82,
+          brandName,
         });
       }
     }
 
-    console.log(`[UK CoFID] Found ${results.length} UK results for: ${query}`);
+    console.log(`[OFF-UK] Found ${results.length} UK results for: ${query}`);
     return results;
   } catch (error) {
-    console.error('[UK CoFID] Error:', error);
+    console.error('[OFF-UK] Error:', error);
     return [];
   }
 }
 
-async function lookupUKFood(query: string): Promise<NutritionData | null> {
-  const results = await searchUKFoods(query, 1);
-  
-  if (results.length === 0) {
-    return null;
+async function lookupOpenFoodFactsUK(query: string): Promise<NutritionData | null> {
+  const results = await searchOpenFoodFactsUK(query, 1);
+  if (results.length === 0) return null;
+
+  const food = results[0];
+  return {
+    name: food.name,
+    calories: food.caloriesPer100g,
+    protein: Math.round(food.proteinPer100g),
+    carbs: Math.round(food.carbsPer100g),
+    fats: Math.round(food.fatsPer100g),
+    servingSize: food.defaultServingSize || 100,
+    servingUnit: 'g',
+    source: 'openfoodfacts',
+    nutritionSource: (food.nutritionSource || 'database_generic') as 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate',
+    confidence: 'high',
+    confidenceScore: food.confidenceScore || 0.85,
+    brandName: food.brandName,
+  };
+}
+
+// ============================================
+// FOODREPO - Swiss/EU database for packaged products
+// ============================================
+
+async function searchFoodRepo(query: string, limit: number = 3): Promise<NutritionPer100g[]> {
+  try {
+    console.log(`[FoodRepo] Searching for: ${query}`);
+    const encodedQuery = encodeURIComponent(query);
+    const response = await fetch(
+      `https://www.foodrepo.org/api/v3/products?q=${encodedQuery}&page_size=${limit}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Token token=""',
+        },
+      }
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const products = data?.data || [];
+    if (products.length === 0) return [];
+
+    const results: NutritionPer100g[] = [];
+    for (const product of products.slice(0, limit)) {
+      const nutrients = product.attributes?.nutrients || {};
+      const nameData = product.attributes?.display_name_translations;
+      const productName = nameData?.en || nameData?.de || nameData?.fr || query;
+
+      const calories = nutrients?.['energy-kcal']?.per_hundred || nutrients?.energy?.per_hundred || 0;
+      const protein = nutrients?.protein?.per_hundred || 0;
+      const carbs = nutrients?.carbohydrates?.per_hundred || 0;
+      const fats = nutrients?.fat?.per_hundred || 0;
+
+      if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
+        results.push({
+          name: productName,
+          caloriesPer100g: Math.round(calories),
+          proteinPer100g: Math.round(protein * 10) / 10,
+          carbsPer100g: Math.round(carbs * 10) / 10,
+          fatsPer100g: Math.round(fats * 10) / 10,
+          defaultServingSize: 100,
+          source: 'foodrepo' as const,
+          nutritionSource: 'database_generic',
+          confidenceScore: 0.85,
+        });
+      }
+    }
+
+    console.log(`[FoodRepo] Found ${results.length} results for: ${query}`);
+    return results;
+  } catch (error) {
+    console.error('[FoodRepo] Error:', error);
+    return [];
   }
+}
+
+async function lookupFoodRepo(query: string): Promise<NutritionData | null> {
+  const results = await searchFoodRepo(query, 1);
+  if (results.length === 0) return null;
 
   const food = results[0];
   return {
@@ -160,15 +222,16 @@ async function lookupUKFood(query: string): Promise<NutritionData | null> {
     fats: Math.round(food.fatsPer100g),
     servingSize: 100,
     servingUnit: 'g',
-    source: 'uk_cofid',
-    nutritionSource: 'database_generic' as const,
+    source: 'foodrepo',
+    nutritionSource: 'database_generic',
     confidence: 'high',
     confidenceScore: 0.85,
-    brandName: food.brandName
   };
 }
 
-// Open Food Facts - For barcode lookups
+// ============================================
+// Open Food Facts Barcode Lookup (for barcode flow)
+// ============================================
 async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
   try {
     console.log(`[OpenFoodFacts] Looking up barcode: ${barcode}`);
@@ -513,16 +576,15 @@ serve(async (req) => {
     }
 
     // ============================================
-    // BARCODE MODE - Use Open Food Facts first
+    // BARCODE MODE - OFF (world) → FoodRepo → AI fallback
     // ============================================
     if (mode === 'barcode' && searchQuery) {
-      // Extract barcode from the query (handles "barcode product: 123456789")
       const barcodeMatch = searchQuery.match(/\d{8,14}/);
       const barcode = barcodeMatch ? barcodeMatch[0] : searchQuery.trim();
       
       console.log(`[Barcode Mode] Looking up: ${barcode}`);
       
-      // Try Open Food Facts first
+      // Try Open Food Facts first (world database for barcodes)
       const offResult = await lookupBarcode(barcode);
       
       if (offResult) {
@@ -541,94 +603,127 @@ serve(async (req) => {
             defaultServingSize: offResult.servingSize || 100,
             confidence: 'high',
             confidenceScore: offResult.confidenceScore,
-            source: 'open_food_facts',
+            source: 'openfoodfacts',
             nutritionSource: offResult.nutritionSource,
             requiresConfirmation: false,
-            notes: `Data from Open Food Facts database${offResult.brandName ? ` (${offResult.brandName})` : ''}`
+            notes: `Source: OpenFoodFacts${offResult.brandName ? ` (${offResult.brandName})` : ''}`
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
-      // Fallback to AI for unknown barcodes
-      console.log(`[Barcode Mode] Not found in database, falling back to AI`);
+      // Fallback to FoodRepo for barcode
+      const frResult = await lookupFoodRepo(barcode);
+      if (frResult) {
+        console.log(`[Barcode Mode] Found in FoodRepo: ${frResult.name}`);
+        return new Response(
+          JSON.stringify({
+            name: frResult.name,
+            calories: frResult.calories,
+            protein: frResult.protein,
+            carbs: frResult.carbs,
+            fats: frResult.fats,
+            caloriesPer100g: frResult.calories,
+            proteinPer100g: frResult.protein,
+            carbsPer100g: frResult.carbs,
+            fatsPer100g: frResult.fats,
+            defaultServingSize: 100,
+            confidence: 'high',
+            confidenceScore: frResult.confidenceScore,
+            source: 'foodrepo',
+            nutritionSource: frResult.nutritionSource,
+            requiresConfirmation: false,
+            notes: `Source: FoodRepo`
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log(`[Barcode Mode] Not found in OFF or FoodRepo, falling back to AI`);
     }
 
     // ============================================
-    // SUGGESTIONS MODE - Search FatSecret first, then USDA and UK databases
+    // SUGGESTIONS MODE - OFF (UK) → FoodRepo → FatSecret → USDA → AI
     // ============================================
     if (mode === 'suggestions' && searchQuery) {
-      console.log(`[Suggestions Mode] Searching FatSecret, USDA and UK databases for: ${searchQuery}`);
+      console.log(`[Suggestions Mode] UK-first search for: ${searchQuery}`);
       
-      // Try FatSecret first
-      const fsResult = await lookupFatSecret(searchQuery);
-      
-      // Search other databases in parallel
-      const [usdaResults, ukResults] = await Promise.all([
+      // Search UK OFF, FoodRepo, FatSecret, and USDA in parallel
+      const [offUKResults, frResults, fsResult, usdaResults] = await Promise.all([
+        searchOpenFoodFactsUK(searchQuery, 4),
+        searchFoodRepo(searchQuery, 3),
+        lookupFatSecret(searchQuery),
         searchUSDA(searchQuery, 3),
-        searchUKFoods(searchQuery, 3)
       ]);
       
-      // Merge and deduplicate results, FatSecret first
+      // Merge: OFF (UK) → FoodRepo → FatSecret → USDA (deduplicated)
       const allResults: NutritionPer100g[] = [];
       const seenNames = new Set<string>();
       
-      // Add FatSecret result first if available
-      if (fsResult) {
-        const lowerName = fsResult.name.toLowerCase();
-        seenNames.add(lowerName);
-        allResults.push({
-          name: fsResult.name,
-          caloriesPer100g: fsResult.calories,
-          proteinPer100g: fsResult.protein,
-          carbsPer100g: fsResult.carbs,
-          fatsPer100g: fsResult.fats,
-          defaultServingSize: fsResult.servingSize || 100,
-          source: 'fatsecret',
-          nutritionSource: fsResult.nutritionSource,
-          confidenceScore: 0.9,
-          brandName: fsResult.brandName,
-        });
+      // OFF UK results first (highest UK relevance)
+      for (const r of offUKResults) {
+        const key = r.name.toLowerCase().trim();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          allResults.push(r);
+        }
       }
       
-      // Interleave results from both sources for variety
-      const maxLen = Math.max(usdaResults.length, ukResults.length);
-      for (let i = 0; i < maxLen; i++) {
-        if (i < usdaResults.length) {
-          const lowerName = usdaResults[i].name.toLowerCase();
-          if (!seenNames.has(lowerName)) {
-            seenNames.add(lowerName);
-            allResults.push(usdaResults[i]);
-          }
+      // FoodRepo results
+      for (const r of frResults) {
+        const key = r.name.toLowerCase().trim();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          allResults.push(r);
         }
-        if (i < ukResults.length) {
-          const lowerName = ukResults[i].name.toLowerCase();
-          if (!seenNames.has(lowerName)) {
-            seenNames.add(lowerName);
-            allResults.push(ukResults[i]);
-          }
+      }
+      
+      // Add FatSecret result
+      if (fsResult) {
+        const key = fsResult.name.toLowerCase().trim();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          allResults.push({
+            name: fsResult.name,
+            caloriesPer100g: fsResult.calories,
+            proteinPer100g: fsResult.protein,
+            carbsPer100g: fsResult.carbs,
+            fatsPer100g: fsResult.fats,
+            defaultServingSize: fsResult.servingSize || 100,
+            source: 'fatsecret',
+            nutritionSource: fsResult.nutritionSource,
+            confidenceScore: 0.9,
+            brandName: fsResult.brandName,
+          });
+        }
+      }
+      
+      // USDA results last
+      for (const r of usdaResults) {
+        const key = r.name.toLowerCase().trim();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          allResults.push(r);
         }
       }
       
       if (allResults.length > 0) {
-        console.log(`[Suggestions Mode] Found ${allResults.length} total results (FatSecret: ${fsResult ? 1 : 0}, USDA: ${usdaResults.length}, UK: ${ukResults.length})`);
+        console.log(`[Suggestions Mode] Found ${allResults.length} total (OFF-UK: ${offUKResults.length}, FoodRepo: ${frResults.length}, FatSecret: ${fsResult ? 1 : 0}, USDA: ${usdaResults.length})`);
         return new Response(
           JSON.stringify({ 
-            suggestions: allResults.slice(0, 5)
+            suggestions: allResults.slice(0, 6)
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
-      // Fallback to AI for suggestions
       console.log(`[Suggestions Mode] No database results, falling back to AI`);
     }
 
     // ============================================
-    // CALCULATE MODE - Try FatSecret, then USDA and UK databases
+    // CALCULATE MODE - OFF (UK) → FoodRepo → FatSecret → USDA → AI
     // ============================================
     if (mode === 'calculate' && searchQuery) {
-      // Parse weight from query like "150g of chicken breast"
       const weightMatch = searchQuery.match(/(\d+(?:\.\d+)?)\s*g(?:rams?)?\s+(?:of\s+)?(.+)/i);
       
       if (weightMatch) {
@@ -637,20 +732,23 @@ serve(async (req) => {
         
         console.log(`[Calculate Mode] Looking up ${grams}g of ${foodName}`);
         
-        // Try FatSecret first
-        let result = await lookupFatSecret(foodName);
-        let sourceLabel = 'FatSecret';
+        // UK-first cascade: OFF (UK) → FoodRepo → FatSecret → USDA
+        let result = await lookupOpenFoodFactsUK(foodName);
+        let sourceLabel = 'OpenFoodFacts (UK)';
         
-        // Try USDA if FatSecret fails
+        if (!result) {
+          result = await lookupFoodRepo(foodName);
+          sourceLabel = 'FoodRepo';
+        }
+        
+        if (!result) {
+          result = await lookupFatSecret(foodName);
+          sourceLabel = 'FatSecret';
+        }
+        
         if (!result) {
           result = await lookupUSDA(foodName);
           sourceLabel = 'USDA FoodData Central';
-        }
-        
-        // If not found in USDA, try UK database
-        if (!result) {
-          result = await lookupUKFood(foodName);
-          sourceLabel = 'UK Food Database';
         }
         
         if (result) {
@@ -677,29 +775,31 @@ serve(async (req) => {
     }
 
     // ============================================
-    // DEFAULT/ANALYZE MODE - Try databases first for simple queries
+    // DEFAULT/ANALYZE MODE - OFF (UK) → FoodRepo → FatSecret → USDA → AI
     // ============================================
     if (searchQuery && !imageBase64 && !mode) {
-      // Check if it's a simple food query (not a complex meal description)
       const isSimpleQuery = searchQuery.split(/\s+/).length <= 4 && !searchQuery.includes(',');
       
       if (isSimpleQuery) {
-        console.log(`[Analyze Mode] Simple query, trying FatSecret first: ${searchQuery}`);
+        console.log(`[Analyze Mode] UK-first lookup for: ${searchQuery}`);
         
-        // Try FatSecret first
-        let result = await lookupFatSecret(searchQuery);
-        let sourceLabel = 'FatSecret';
+        // UK-first cascade
+        let result = await lookupOpenFoodFactsUK(searchQuery);
+        let sourceLabel = 'OpenFoodFacts (UK)';
         
-        // Fall back to USDA
+        if (!result) {
+          result = await lookupFoodRepo(searchQuery);
+          sourceLabel = 'FoodRepo';
+        }
+        
+        if (!result) {
+          result = await lookupFatSecret(searchQuery);
+          sourceLabel = 'FatSecret';
+        }
+        
         if (!result) {
           result = await lookupUSDA(searchQuery);
           sourceLabel = 'USDA FoodData Central';
-        }
-        
-        // Fall back to UK database
-        if (!result) {
-          result = await lookupUKFood(searchQuery);
-          sourceLabel = 'UK Food Database';
         }
         
         if (result) {
@@ -716,7 +816,7 @@ serve(async (req) => {
               source: result.source,
               nutritionSource: result.nutritionSource,
               requiresConfirmation: false,
-              notes: `Data from ${sourceLabel} (per 100g serving)`
+              notes: `Source: ${sourceLabel} (per 100g serving)`
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

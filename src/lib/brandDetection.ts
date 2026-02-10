@@ -151,17 +151,24 @@ export function getNutritionSourceLabel(source: string): string {
       return 'Database';
     case 'estimate':
       return '⚡ Estimate';
+    case 'openfoodfacts':
     case 'open_food_facts':
-      return '✓ Verified';
+      return '✓ OpenFoodFacts';
+    case 'foodrepo':
+      return '✓ FoodRepo';
     case 'usda':
       return 'USDA';
     case 'uk_cofid':
       return 'UK Database';
     case 'fatsecret':
       return '✓ FatSecret';
+    case 'fatsecret_uk':
+      return '✓ FatSecret (UK)';
     case 'ai_estimation':
       return '⚡ Estimate';
     default:
+      if (source?.includes('openfoodfacts')) return '✓ OpenFoodFacts';
+      if (source?.includes('foodrepo')) return '✓ FoodRepo';
       if (source?.includes('verified')) return '✓ Verified';
       if (source?.includes('fatsecret')) return '✓ FatSecret';
       if (source?.includes('estimate')) return '⚡ Estimate';
