@@ -63,7 +63,7 @@ export const ProgressUpdateDialog = ({
     },
   });
 
-  const unitSystem = baseline?.unit_system === "metric" ? "metric" : "imperial";
+  const unitSystem = baseline?.unit_system === "imperial" ? "imperial" : "metric";
 
   const updateMeasurementsData = <K extends keyof MeasurementsData>(
     key: K,

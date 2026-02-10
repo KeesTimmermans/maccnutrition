@@ -38,7 +38,7 @@ export const SettingsSheet = ({
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
   const [isMetric, setIsMetric] = useState(baseline?.unit_system === "metric");
-  const [currency, setCurrency] = useState(baseline?.preferred_currency || "USD");
+  const [currency, setCurrency] = useState(baseline?.preferred_currency || "GBP");
   const [coachingTone, setCoachingTone] = useState(baseline?.coaching_tone || "supportive");
   const [isUpdating, setIsUpdating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -88,7 +88,7 @@ export const SettingsSheet = ({
     } catch (error) {
       console.error("Error updating currency:", error);
       toast.error(t('error'));
-      setCurrency(baseline?.preferred_currency || "USD");
+      setCurrency(baseline?.preferred_currency || "GBP");
     } finally {
       setIsUpdating(false);
     }

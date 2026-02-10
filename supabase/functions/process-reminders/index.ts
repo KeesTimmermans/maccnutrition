@@ -61,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
     let sentCount = 0;
 
     for (const user of users) {
-      const tz = user.reminder_timezone || "America/New_York";
+      const tz = user.reminder_timezone || "Europe/London";
       const freq = user.reminder_frequency || "standard"; // "light" or "standard"
       const localHour = getUserLocalHour(tz);
       const localDate = getUserLocalDate(tz);

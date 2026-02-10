@@ -21,7 +21,7 @@ const Settings = () => {
   
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [isMetric, setIsMetric] = useState(false);
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("GBP");
   const [coachingTone, setCoachingTone] = useState("supportive");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +61,7 @@ const Settings = () => {
       if (baselineData) {
         setBaseline(baselineData);
         setIsMetric(baselineData.unit_system === "metric");
-        setCurrency(baselineData.preferred_currency || "USD");
+        setCurrency(baselineData.preferred_currency || "GBP");
         setCoachingTone(baselineData.coaching_tone || "supportive");
       }
     } catch (error) {
@@ -113,7 +113,7 @@ const Settings = () => {
     } catch (error) {
       console.error("Error updating currency:", error);
       toast.error(t('error'));
-      setCurrency(baseline?.preferred_currency || "USD");
+      setCurrency(baseline?.preferred_currency || "GBP");
     } finally {
       setIsUpdating(false);
     }
