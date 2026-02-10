@@ -121,7 +121,7 @@ export const saveUserBaseline = async (
       name: userName,
       age: onboardingData.age ? parseInt(onboardingData.age) : null,
       sex: onboardingData.sex || null,
-      unit_system: onboardingData.unitSystem || "imperial",
+      unit_system: onboardingData.unitSystem || "metric",
       height_feet: onboardingData.heightFeet ? parseInt(onboardingData.heightFeet) : null,
       height_inches: onboardingData.heightInches ? parseInt(onboardingData.heightInches) : null,
       height_cm: onboardingData.heightCm ? parseFloat(onboardingData.heightCm) : null,

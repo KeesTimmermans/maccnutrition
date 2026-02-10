@@ -61,7 +61,7 @@ export const MeasurementsSettings = ({ baseline, onUpdate }: MeasurementsSetting
     }
   };
 
-  const unitSystem = baseline?.unit_system === "metric" ? "metric" : "imperial";
+  const unitSystem = baseline?.unit_system === "imperial" ? "imperial" : "metric";
 
   return (
     <div className="space-y-6">

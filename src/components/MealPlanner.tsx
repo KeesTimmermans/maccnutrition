@@ -248,7 +248,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       const { data, error } = await supabase.functions.invoke('generate-grocery-list', {
         body: { 
           mealPlan,
-          currency: baseline?.preferred_currency || 'USD'
+          currency: baseline?.preferred_currency || 'GBP'
         }
       });
 

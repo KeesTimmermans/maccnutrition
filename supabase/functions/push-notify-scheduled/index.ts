@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     const tzMap = new Map<string, { tz: string; name: string | null }>();
     for (const b of baselines || []) {
       tzMap.set(b.user_id, {
-        tz: b.reminder_timezone || "America/New_York",
+        tz: b.reminder_timezone || "Europe/London",
         name: b.name,
       });
     }
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     let followupSent = 0;
 
     for (const userId of userIds) {
-      const { tz: timezone } = tzMap.get(userId) || { tz: "America/New_York" };
+      const { tz: timezone } = tzMap.get(userId) || { tz: "Europe/London" };
       const localHour = getLocalHour(timezone);
       if (localHour < 0) continue; // bad tz
 
