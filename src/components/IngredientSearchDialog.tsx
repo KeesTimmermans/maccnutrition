@@ -181,6 +181,21 @@ export const IngredientSearchDialog = ({
                 )}
               </div>
 
+              {/* Skeleton loading state */}
+              {!selectedFood && isSearching && suggestions.length === 0 && (
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="px-4 py-3 flex items-center justify-between border-b border-border last:border-b-0 animate-pulse">
+                      <div className="flex-1">
+                        <div className="h-4 w-32 bg-muted rounded mb-1.5" />
+                        <div className="h-3 w-48 bg-muted rounded" />
+                      </div>
+                      <div className="h-4 w-4 bg-muted rounded flex-shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Results */}
               {!selectedFood && suggestions.length > 0 && (
                 <div className="bg-card border border-border rounded-xl max-h-48 overflow-auto">
