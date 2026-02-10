@@ -121,7 +121,7 @@ export async function getTodaysWearableData(): Promise<WearableSummary | null> {
 
   const { data, error } = await supabase
     .from('wearable_data')
-    .select('*')
+    .select('id, user_id, provider, data_date, sleep_duration_minutes, sleep_quality_score, deep_sleep_minutes, rem_sleep_minutes, light_sleep_minutes, awake_minutes, hrv_average, hrv_rmssd, resting_heart_rate, steps, active_calories, total_calories, active_minutes, recovery_score, strain_score, stress_score, body_battery, created_at')
     .eq('user_id', user.id)
     .eq('data_date', today)
     .order('created_at', { ascending: false })
@@ -166,7 +166,7 @@ export async function getRecentWearableData(days: number = 7): Promise<WearableD
 
   const { data, error } = await supabase
     .from('wearable_data')
-    .select('*')
+    .select('id, user_id, provider, data_date, sleep_duration_minutes, sleep_quality_score, deep_sleep_minutes, rem_sleep_minutes, light_sleep_minutes, awake_minutes, hrv_average, hrv_rmssd, resting_heart_rate, steps, active_calories, total_calories, active_minutes, recovery_score, strain_score, stress_score, body_battery, created_at')
     .eq('user_id', user.id)
     .gte('data_date', startDate.toISOString().split('T')[0])
     .order('data_date', { ascending: false });
