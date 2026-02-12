@@ -16,12 +16,9 @@ import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { TrialBanner } from "@/components/TrialBanner";
 import { RecalibrationNotification } from "@/components/RecalibrationNotification";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
-import { InstagramRecipeImport } from "@/components/InstagramRecipeImport";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
-import { useShareHandler } from "@/hooks/useShareHandler";
 
-
-import { Flame, TrendingUp, Sun, Instagram } from "lucide-react";
+import { Flame, TrendingUp, Sun } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
@@ -81,17 +78,6 @@ export const Dashboard = () => {
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
   const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
   const [dailyCheckInFocusPoints, setDailyCheckInFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
-  const [showInstagramImport, setShowInstagramImport] = useState(false);
-  
-  // Share handler for receiving Instagram URLs from native share
-  const { sharedUrl, clearSharedUrl, isReady: shareHandlerReady } = useShareHandler();
-
-  // Auto-open Instagram import dialog when a shared URL is received
-  useEffect(() => {
-    if (shareHandlerReady && sharedUrl && !isLoading) {
-      setShowInstagramImport(true);
-    }
-  }, [sharedUrl, shareHandlerReady, isLoading]);
 
   // Check if monthly progress update is needed
   const checkProgressUpdateNeeded = (userBaseline: UserBaseline | null) => {
@@ -663,15 +649,6 @@ export const Dashboard = () => {
           ))
         )}
         
-        {/* Import Instagram Recipe Button */}
-        <button
-          onClick={() => setShowInstagramImport(true)}
-          className="w-full p-3 rounded-xl border border-dashed border-pink-500/30 bg-gradient-to-r from-pink-500/5 to-purple-500/5 flex items-center justify-center gap-2 hover:border-pink-500/50 hover:from-pink-500/10 hover:to-purple-500/10 transition-all"
-        >
-          <Instagram className="w-4 h-4 text-pink-500" />
-          <span className="text-sm font-medium text-pink-500">Import Instagram Recipe</span>
-        </button>
-        
         <AddMealCard onClick={() => setShowMealLogger(true)} />
       </div>
     </section>
@@ -921,15 +898,6 @@ export const Dashboard = () => {
         onOpenChange={setShowProgressUpdate}
         baseline={baseline}
         onComplete={loadData}
-      />
-
-      {/* Instagram Recipe Import Dialog */}
-      <InstagramRecipeImport
-        open={showInstagramImport}
-        onOpenChange={setShowInstagramImport}
-        onMealLogged={loadData}
-        initialUrl={sharedUrl}
-        onInitialUrlProcessed={clearSharedUrl}
       />
     </div>
   );

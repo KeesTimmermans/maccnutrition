@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Plus, Instagram } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MealCard } from "@/components/MealCard";
 import { getMealsByDateRange, updateMeal, deleteMeal, saveMeal, Meal, MealInput } from "@/lib/mealService";
@@ -8,8 +8,6 @@ import { format, startOfDay, endOfDay, subDays, addDays, isToday } from "date-fn
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { MealLogger } from "@/components/MealLogger";
-import { InstagramRecipeImport } from "@/components/InstagramRecipeImport";
-import { useShareHandler } from "@/hooks/useShareHandler";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 interface DayData {
@@ -31,18 +29,6 @@ const MealHistory = () => {
   const [startDate, setStartDate] = useState(() => subDays(new Date(), 6));
   const [loggerOpen, setLoggerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [showInstagramImport, setShowInstagramImport] = useState(false);
-  
-  // Share handler for receiving Instagram URLs from native share
-  const { sharedUrl, clearSharedUrl, isReady: shareHandlerReady } = useShareHandler();
-
-  // Auto-open Instagram import dialog when a shared URL is received
-  useEffect(() => {
-    if (shareHandlerReady && sharedUrl && !isLoading) {
-      setShowInstagramImport(true);
-    }
-  }, [sharedUrl, shareHandlerReady, isLoading]);
-
   useEffect(() => {
     loadMeals();
   }, [startDate]);
@@ -179,14 +165,6 @@ const MealHistory = () => {
       </header>
 
       <main className="container py-6 space-y-6">
-        {/* Import Recipe Button */}
-        <button
-          onClick={() => setShowInstagramImport(true)}
-          className="w-full p-3 rounded-xl border border-dashed border-pink-500/30 bg-gradient-to-r from-pink-500/5 to-purple-500/5 flex items-center justify-center gap-2 hover:border-pink-500/50 hover:from-pink-500/10 hover:to-purple-500/10 transition-all"
-        >
-          <Instagram className="w-5 h-5 text-pink-500" />
-          <span className="text-sm font-medium text-foreground">Import Recipe from Caption</span>
-        </button>
 
         {/* Week Navigation */}
         <div className="flex items-center justify-between bg-card rounded-2xl p-4 shadow-soft">
@@ -300,15 +278,6 @@ const MealHistory = () => {
             })()}
           />
         )}
-
-        {/* Instagram Recipe Import Dialog */}
-        <InstagramRecipeImport
-          open={showInstagramImport}
-          onOpenChange={setShowInstagramImport}
-          onMealLogged={loadMeals}
-          initialUrl={sharedUrl}
-          onInitialUrlProcessed={clearSharedUrl}
-        />
       </main>
     </AppLayout>
   );
