@@ -36,7 +36,7 @@ export const BaselineSummary = ({ userData, onContinue }: BaselineSummaryProps) 
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="p-6 text-center border-b border-border">
-        <img src={macLogo} alt="MAC Nutrition" className="h-10 mx-auto mb-4" />
+        <img src={macLogo} alt="MAC Nutrition" className="h-12 mx-auto mb-4" style={{ mixBlendMode: 'multiply' }} />
         <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-4">
           <Sparkles className="w-4 h-4" />
           <span className="text-sm font-semibold">{t('your_personalized_plan')}</span>
