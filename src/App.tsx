@@ -15,7 +15,7 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Privacy from "./pages/Privacy";
 import Diagnostics from "./pages/Diagnostics";
-import WhoopDemo from "./pages/WhoopDemo";
+
 import NotFound from "./pages/NotFound";
 // Legacy pages (kept temporarily for backwards compatibility)
 import MealHistory from "./pages/MealHistory";
@@ -43,7 +43,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/diagnostics" element={<Diagnostics />} />
-            <Route path="/whoop-demo" element={<WhoopDemo />} />
+            
             
             {/* Legacy routes (to be removed in future commits) */}
             <Route path="/history" element={<MealHistory />} />

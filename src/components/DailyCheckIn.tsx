@@ -14,11 +14,9 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Watch,
   Sparkles
 } from "lucide-react";
 import { getTodaysCheckIn, saveCheckIn, getRecentCheckIns, analyzeCheckIns, type DailyCheckIn as DailyCheckInData, type CheckInAnalysis } from "@/lib/checkinService";
-import { getTodaysWearableData, suggestCheckInFromWearable, type WearableSummary } from "@/lib/wearableService";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -49,8 +47,6 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
   const [saving, setSaving] = useState(false);
   const [existingCheckIn, setExistingCheckIn] = useState<DailyCheckInData | null>(null);
   const [analysis, setAnalysis] = useState<CheckInAnalysis | null>(null);
-  const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
-  const [usedWearableSuggestion, setUsedWearableSuggestion] = useState(false);
   
   const [formData, setFormData] = useState({
     mood: 3,
@@ -108,13 +104,10 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
   const loadData = async () => {
     setLoading(true);
     try {
-      const [todaysData, recentData, wearable] = await Promise.all([
+      const [todaysData, recentData] = await Promise.all([
         getTodaysCheckIn(),
         getRecentCheckIns(7),
-        getTodaysWearableData()
       ]);
-
-      setWearableData(wearable);
 
       if (todaysData) {
         setExistingCheckIn(todaysData);
@@ -126,17 +119,6 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
           sleepHours: todaysData.sleep_hours?.toString() || '',
           notes: todaysData.notes || '',
         });
-      } else if (wearable) {
-        // Auto-fill from wearable data if no existing check-in
-        const suggestions = suggestCheckInFromWearable(wearable);
-        setFormData(prev => ({
-          ...prev,
-          sleep: suggestions.sleep,
-          energy: suggestions.energy,
-          stress: suggestions.stress,
-          sleepHours: wearable.sleepHours?.toString() || '',
-        }));
-        setUsedWearableSuggestion(true);
       }
 
       if (recentData.length > 0) {
@@ -229,18 +211,6 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
 
       {/* Progress */}
       <div className="px-6 pt-4">
-        {/* Wearable Data Banner */}
-        {usedWearableSuggestion && wearableData && step === 0 && (
-          <div className="mb-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl p-3 flex items-center gap-3">
-            <Watch className="w-5 h-5 text-blue-500" />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-foreground">{t('wearable_detected')}</p>
-              <p className="text-xs text-muted-foreground">{t('prefilled_from')} {wearableData.provider}</p>
-            </div>
-            <Sparkles className="w-4 h-4 text-purple-500" />
-          </div>
-        )}
-        
         <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div 
             className="h-full bg-primary transition-all duration-300"

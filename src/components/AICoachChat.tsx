@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
-import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, Watch, RotateCcw } from "lucide-react";
+import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, buildTemporalCheckInContext, saveDailyFocusPoints, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
-import { getTodaysWearableData, getRecentWearableData, formatWearableDataForAI, type WearableSummary } from "@/lib/wearableService";
+
 import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation, type ChatMessage } from "@/lib/coachConversationService";
 import { parseDailyFocusPoints, type CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage, Language } from "@/lib/i18n";
@@ -35,8 +35,6 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
   const [todaysMeals, setTodaysMeals] = useState<Meal[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
-  const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
-  const [wearableContext, setWearableContext] = useState<string>("");
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -72,22 +70,15 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
 
   const initializeChat = async () => {
     try {
-      const [userBaseline, meals, recentCheckIns, wearableSummary, recentWearable, savedConversation] = await Promise.all([
+      const [userBaseline, meals, recentCheckIns, savedConversation] = await Promise.all([
         getUserBaseline(),
         getTodaysMeals(),
         getRecentCheckIns(7),
-        getTodaysWearableData(),
-        getRecentWearableData(7),
         loadWeeklyConversation(),
       ]);
 
       setBaseline(userBaseline);
       setTodaysMeals(meals);
-      setWearableData(wearableSummary);
-
-      // Build wearable context for AI
-      const wearableCtx = formatWearableDataForAI(wearableSummary, recentWearable);
-      setWearableContext(wearableCtx);
 
       const today = new Date().toISOString().split('T')[0];
       // Prefer freshCheckIn if provided (just completed), otherwise find from recent
@@ -180,7 +171,6 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 cycleRegularity: userBaseline.cycle_regularity,
                 cycleSymptoms: userBaseline.cycle_symptoms,
                 checkInContext: checkInContext,
-                wearableContext: wearableCtx,
                 preferredLanguage: language as Language,
               } : {},
               todaysMeals: meals.map(m => ({
@@ -231,15 +221,6 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
         const greetParts: string[] = [];
         
         greetParts.push(`Hey${firstName ? ` ${firstName}` : ''}!`);
-        
-        // Reference wearable data naturally if available
-        if (wearableSummary) {
-          if (wearableSummary.sleepHours && wearableSummary.sleepHours < 6) {
-            greetParts.push(`Your ${wearableSummary.provider} says only ${wearableSummary.sleepHours}h of sleep — that's rough.`);
-          } else if (wearableSummary.recoveryScore && wearableSummary.recoveryScore <= 2) {
-            greetParts.push(`Recovery looks low today according to your ${wearableSummary.provider} — might want to take it easy.`);
-          }
-        }
         
         // Meal progress mention
         if (meals.length > 0) {
@@ -345,8 +326,6 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             // Check-in data
             checkInContext: checkInContext,
             checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
-            // Wearable data
-            wearableContext: wearableContext,
             // Language preference
             preferredLanguage: language as Language,
           } : {},

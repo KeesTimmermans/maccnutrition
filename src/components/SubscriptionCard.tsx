@@ -28,7 +28,7 @@ const features = [
   "AI Nutrition Coach with personalized advice",
   "Custom meal plans tailored to your goals",
   "Detailed progress tracking & analytics",
-  "Wearable device integration",
+  
   "Unlimited meal logging & history",
   "Priority support",
 ];

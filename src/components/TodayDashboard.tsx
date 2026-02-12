@@ -11,7 +11,6 @@ import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 
 import { DailyCheckIn } from "@/components/DailyCheckIn";
-import { WearableSettings } from "@/components/WearableSettings";
 import { TrialBanner } from "@/components/TrialBanner";
 import { RecalibrationNotification } from "@/components/RecalibrationNotification";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
@@ -19,12 +18,12 @@ import { InstagramRecipeImport } from "@/components/InstagramRecipeImport";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 import { useShareHandler } from "@/hooks/useShareHandler";
 
-import { Flame, TrendingUp, Sun, Watch, Instagram } from "lucide-react";
+import { Flame, TrendingUp, Sun, Instagram } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, getTodaysDailyFocusPoints, CheckInAnalysis, UserTargets, DailyCheckIn as DailyCheckInType } from "@/lib/checkinService";
-import { getTodaysWearableData, getWearableConnections, type WearableSummary } from "@/lib/wearableService";
+
 import { getTodaysWaterIntake } from "@/lib/waterService";
 import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
 import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/lib/coachingAnalytics";
@@ -70,9 +69,6 @@ export const TodayDashboard = () => {
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
   const [todaysCheckIn, setTodaysCheckIn] = useState<DailyCheckInType | null>(null);
-  const [showWearableSettings, setShowWearableSettings] = useState(false);
-  const [wearableData, setWearableData] = useState<WearableSummary | null>(null);
-  const [hasWearableConnections, setHasWearableConnections] = useState(false);
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
   const [recalibrationResult, setRecalibrationResult] = useState<RecalibrationResult | null>(null);
   const [showRecalibration, setShowRecalibration] = useState(false);
@@ -321,13 +317,11 @@ export const TodayDashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks, checkInData, wearable, wearableConns, recentCheckIns, waterData, monthlyFocusPoints, dailyFocusPoints] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, checkInData, recentCheckIns, waterData, monthlyFocusPoints, dailyFocusPoints] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
         getTodaysCheckIn(),
-        getTodaysWearableData(),
-        getWearableConnections(),
         getRecentCheckIns(7),
         getTodaysWaterIntake(),
         getActiveCoachingFocusPoints(),
@@ -342,8 +336,6 @@ export const TodayDashboard = () => {
       
       setHasCheckedInToday(!!checkInData);
       setTodaysCheckIn(checkInData);
-      setWearableData(wearable);
-      setHasWearableConnections(wearableConns.length > 0);
       setTotalWaterMl(waterData.reduce((sum, w) => sum + w.amount_ml, 0));
       
       setBaseline(userBaseline);
@@ -646,40 +638,11 @@ export const TodayDashboard = () => {
     </section>
   );
 
-  const renderWearablesSection = () => (
-    <section key="wearables" className="mb-2">
-      <button
-        onClick={() => setShowWearableSettings(true)}
-        className="w-full p-4 glass rounded-2xl border border-border/50 flex items-center gap-4 hover:bg-accent/10 transition-colors"
-      >
-        <div className="text-2xl">⌚</div>
-        <div className="text-left flex-1">
-          <h4 className="font-semibold text-foreground">{t('wearables')}</h4>
-          {wearableData ? (
-            <p className="text-sm text-muted-foreground">
-              {wearableData.sleepHours && `${wearableData.sleepHours}h ${t('sleep')}`}
-              {wearableData.hrv && ` • HRV ${wearableData.hrv}ms`}
-              {wearableData.steps && ` • ${wearableData.steps.toLocaleString()} steps`}
-            </p>
-          ) : hasWearableConnections ? (
-            <p className="text-sm text-muted-foreground">{t('waiting_sync')}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t('connect_wearables')}</p>
-          )}
-        </div>
-        {wearableData && (
-          <span className="text-xs text-green-500 font-medium">{t('synced')}</span>
-        )}
-      </button>
-    </section>
-  );
-
   const sectionRenderers: Record<string, () => JSX.Element> = {
     progress: renderProgressSection,
     meals: renderMealsSection,
     coach: renderCoachSection,
     water: renderWaterSection,
-    wearables: renderWearablesSection,
   };
 
   return (
@@ -844,11 +807,6 @@ export const TodayDashboard = () => {
             });
           }}
         />
-      )}
-
-      {/* Wearable Settings Modal */}
-      {showWearableSettings && (
-        <WearableSettings onClose={() => setShowWearableSettings(false)} />
       )}
 
       {/* Progress Update Dialog */}
