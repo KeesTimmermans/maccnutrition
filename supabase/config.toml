@@ -36,9 +36,6 @@ verify_jwt = false
 [functions.resend-webhook]
 verify_jwt = false
 
-[functions.import-instagram-recipe]
-verify_jwt = false
-
 [functions.send-reminder-email]
 verify_jwt = false
 

@@ -63,15 +63,15 @@ export function usePushNotifications() {
         setPermission(Notification.permission);
       }
 
-      if (supported && Notification.permission === "granted") {
-        try {
-          const reg = await navigator.serviceWorker.ready;
-          const sub = await reg.pushManager.getSubscription();
-          setIsSubscribed(!!sub);
-        } catch (e) {
-          console.error("Error checking push subscription:", e);
-        }
-      }
+       if (supported && Notification.permission === "granted") {
+         try {
+           const reg = await navigator.serviceWorker.ready;
+           const sub = await (reg as any).pushManager.getSubscription();
+           setIsSubscribed(!!sub);
+         } catch (e) {
+           console.error("Error checking push subscription:", e);
+         }
+       }
 
       setIsLoading(false);
     };
@@ -91,11 +91,11 @@ export function usePushNotifications() {
       setPermission(perm);
       if (perm !== "granted") return false;
 
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
+       const reg = await navigator.serviceWorker.ready;
+       let sub = await (reg as any).pushManager.getSubscription();
 
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
+       if (!sub) {
+         sub = await (reg as any).pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
         });
@@ -127,8 +127,8 @@ export function usePushNotifications() {
 
   const unsubscribe = useCallback(async (): Promise<boolean> => {
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
+       const reg = await navigator.serviceWorker.ready;
+       const sub = await (reg as any).pushManager.getSubscription();
 
       if (sub) {
         const endpoint = sub.endpoint;
