@@ -262,7 +262,7 @@ const Index = () => {
         <div className="min-h-screen bg-background flex items-center justify-center p-6">
           <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-medium space-y-4">
             <div className="flex items-center gap-3">
-              <img src={macLogo} alt="MAC Nutrition" className="w-12 h-auto" />
+              <img src={macLogo} alt="MAC Nutrition" className="w-12 h-auto" style={{ mixBlendMode: 'multiply' }} />
               <div>
                 <h1 className="text-lg font-bold text-foreground">Still loading…</h1>
                 <p className="text-sm text-muted-foreground">
@@ -322,7 +322,7 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <img src={macLogo} alt="MAC Nutrition" className="w-32 h-auto opacity-50" />
+          <img src={macLogo} alt="MAC Nutrition" className="w-32 h-auto opacity-50" style={{ mixBlendMode: 'multiply' }} />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -435,7 +435,7 @@ const Index = () => {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center safe-pt-4">
         {/* Logo */}
         <div className="relative mb-8 animate-float">
-          <img src={macLogo} alt="MAC Nutrition" className="w-40 sm:w-48 h-auto" />
+          <img src={macLogo} alt="MAC Nutrition" className="w-52 sm:w-60 h-auto" style={{ mixBlendMode: 'multiply' }} />
         </div>
 
         {/* Headline - benefit-driven */}

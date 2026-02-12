@@ -220,7 +220,7 @@ const Auth = () => {
       <div className="w-full max-w-sm">
         {/* Logo & Header */}
         <div className="text-center mb-6">
-          <img src={macLogo} alt="MAC Nutrition" className="h-14 mx-auto" />
+          <img src={macLogo} alt="MAC Nutrition" className="h-16 mx-auto" style={{ mixBlendMode: 'multiply' }} />
           <h1 className="text-2xl font-bold text-foreground mt-3">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h1>
