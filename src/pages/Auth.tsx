@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react";
-import cjtLogo from "@/assets/cjt-logo.png";
+import macLogo from "@/assets/mac-nutrition-logo.png";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -220,7 +220,7 @@ const Auth = () => {
       <div className="w-full max-w-sm">
         {/* Logo & Header */}
         <div className="text-center mb-6">
-          <img src={cjtLogo} alt="CJT Nutrition" className="h-14 mx-auto" />
+          <img src={macLogo} alt="MAC Nutrition" className="h-14 mx-auto" />
           <h1 className="text-2xl font-bold text-foreground mt-3">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h1>

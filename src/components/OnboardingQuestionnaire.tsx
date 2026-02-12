@@ -20,7 +20,7 @@ import {
   Flame,
   Coffee
 } from "lucide-react";
-import cjtLogo from "@/assets/cjt-logo.png";
+import macLogo from "@/assets/mac-nutrition-logo.png";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
@@ -336,7 +336,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header with Logo */}
       <div className="p-4 flex flex-col items-center safe-pt-4">
-        <img src={cjtLogo} alt="CJT Nutrition" className="h-10 sm:h-12 mb-3" />
+        <img src={macLogo} alt="MAC Nutrition" className="h-10 sm:h-12 mb-3" />
         
         {/* Progress bar */}
         <div className="w-full max-w-md">

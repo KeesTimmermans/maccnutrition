@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateBaseline } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
-import cjtLogo from "@/assets/cjt-logo.png";
+import macLogo from "@/assets/mac-nutrition-logo.png";
 
 type AppState = "welcome" | "questionnaire" | "baseline" | "dashboard";
 
@@ -225,7 +225,7 @@ const Today = () => {
         <div className="min-h-screen bg-background flex items-center justify-center p-6">
           <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-medium space-y-4">
             <div className="flex items-center gap-3">
-              <img src={cjtLogo} alt="CJT Nutrition" className="w-12 h-auto" />
+              <img src={macLogo} alt="MAC Nutrition" className="w-12 h-auto" />
               <div>
                 <h1 className="text-lg font-bold text-foreground">Still loading…</h1>
                 <p className="text-sm text-muted-foreground">
@@ -272,7 +272,7 @@ const Today = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <img src={cjtLogo} alt="CJT Nutrition" className="w-32 h-auto opacity-50" />
+          <img src={macLogo} alt="MAC Nutrition" className="w-32 h-auto opacity-50" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -391,7 +391,7 @@ const Today = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
         <div className="relative mb-10 animate-float">
-          <img src={cjtLogo} alt="CJT Nutrition" className="w-48 h-auto" />
+          <img src={macLogo} alt="MAC Nutrition" className="w-48 h-auto" />
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 max-w-md leading-tight animate-slide-up delay-100">
