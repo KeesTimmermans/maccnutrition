@@ -122,7 +122,7 @@ serve(async (req) => {
       ],
       mode: "subscription",
       subscription_data: {
-        trial_period_days: 14,
+        trial_period_days: 7,
       },
       allow_promotion_codes: true,
       success_url: withCheckoutParam(baseReturnUrl, "success"),
