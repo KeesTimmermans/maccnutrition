@@ -1,6 +1,6 @@
 {
-  "name": "MAC Nutrition",
-  "short_name": "MAC Nutrition",
+  "name": "MacNutrition",
+  "short_name": "MacNutrition",
   "description": "Nutrition with intention. Your personal AI-powered nutrition coach.",
   "start_url": "/",
   "display": "standalone",
