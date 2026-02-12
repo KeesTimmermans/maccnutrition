@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { WearableConnection } from "@/components/WearableConnection";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
@@ -13,7 +12,7 @@ import { calculateBaseline } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import cjtLogo from "@/assets/cjt-logo.png";
 
-type AppState = "welcome" | "connection" | "questionnaire" | "baseline" | "dashboard";
+type AppState = "welcome" | "questionnaire" | "baseline" | "dashboard";
 
 const getCheckoutReturnUrl = () => {
   const basePath = window.location.pathname.endsWith("/") ? window.location.pathname : `${window.location.pathname}/`;
@@ -141,10 +140,10 @@ const Index = () => {
           const baseline = await getUserBaseline(user.id);
           if (baseline) {
             // User has completed onboarding
-            setAppState("dashboard");
+          setAppState("dashboard");
           } else {
             // User is authenticated but hasn't completed onboarding
-            setAppState("connection");
+            setAppState("questionnaire");
           }
           baselineCheckedRef.current = user.id;
         } catch (error) {
@@ -178,17 +177,9 @@ const Index = () => {
 
   const handleGetStarted = () => {
     if (user) {
-      setAppState("connection");
-    } else {
-      navigate("/auth");
-    }
-  };
-
-  const handleConnectionChoice = (type: "wearable" | "questionnaire") => {
-    if (type === "questionnaire") {
       setAppState("questionnaire");
     } else {
-      setAppState("dashboard");
+      navigate("/auth");
     }
   };
 
@@ -431,10 +422,6 @@ const Index = () => {
 
   if (appState === "baseline" && userData) {
     return <BaselineSummary userData={userData} onContinue={handleBaselineContinue} />;
-  }
-
-  if (appState === "connection") {
-    return <WearableConnection onConnect={handleConnectionChoice} />;
   }
 
   if (appState === "questionnaire") {

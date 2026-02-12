@@ -52,29 +52,6 @@ const Metrics = () => {
           </CardContent>
         </Card>
 
-        {/* Wearable Devices - Hidden for now, can be restored later
-        <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              <Watch className="w-5 h-5 text-primary" />
-              {t('wearable_devices') || 'Wearable Devices'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              {t('wearable_description') || 'Connect your fitness trackers to auto-fill check-in data and get personalized insights.'}
-            </p>
-            <Button
-              variant="outline"
-              className="w-full rounded-xl"
-              onClick={() => setShowWearableSettings(true)}
-            >
-              <Watch className="w-4 h-4 mr-2" />
-              {t('manage_wearables') || 'Manage Wearable Connections'}
-            </Button>
-          </CardContent>
-        </Card>
-        */}
       </div>
     </AppLayout>
   );
