@@ -137,7 +137,18 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Store the confirmation record
+    // Store the confirmation record (sanitize raw_event to remove PII)
+      const sanitizedEvent = {
+        type: event.type,
+        created_at: event.created_at,
+        data: {
+          email_id: event.data.email_id,
+          subject: event.data.subject,
+          created_at: event.data.created_at,
+          // Omit 'from' and 'to' fields to minimize stored PII
+        },
+      };
+
       const { error: insertError } = await supabase
         .from("email_confirmations")
         .insert({
@@ -145,7 +156,7 @@ Deno.serve(async (req) => {
           email: recipientEmail,
           event_type: event.type,
           confirmed_at: new Date().toISOString(),
-          raw_event: event,
+          raw_event: sanitizedEvent,
         });
 
       if (insertError) {
@@ -165,7 +176,17 @@ Deno.serve(async (req) => {
     if (event.type === "email.bounced" || event.type === "email.complained") {
       logStep("Email bounce/complaint", { type: event.type, email: recipientEmail });
 
-      // Store the event for monitoring
+      // Store the event for monitoring (sanitize raw_event to remove PII)
+      const sanitizedBounceEvent = {
+        type: event.type,
+        created_at: event.created_at,
+        data: {
+          email_id: event.data.email_id,
+          subject: event.data.subject,
+          created_at: event.data.created_at,
+        },
+      };
+
       await supabase
         .from("email_confirmations")
         .insert({
@@ -173,7 +194,7 @@ Deno.serve(async (req) => {
           email: recipientEmail,
           event_type: event.type,
           confirmed_at: new Date().toISOString(),
-          raw_event: event,
+          raw_event: sanitizedBounceEvent,
         });
     }
 
