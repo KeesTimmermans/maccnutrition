@@ -9,8 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { z } from "zod";
-
-const PRIVACY_POLICY_VERSION = "1.0";
+import { PRIVACY_POLICY_VERSION } from "@/lib/consentConstants";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
