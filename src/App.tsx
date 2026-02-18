@@ -6,7 +6,7 @@ import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
 import { LanguageProvider } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { PRIVACY_POLICY_VERSION } from "@/lib/consentConstants";
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/consentConstants";
 import { ReConsentModal } from "@/components/ReConsentModal";
 import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
 // New page structure
@@ -55,12 +55,14 @@ const ConsentGate = ({ children }: { children: React.ReactNode }) => {
 
       const { data } = await supabase
         .from("user_baselines")
-        .select("privacy_policy_version, analytics_consent")
+        .select("privacy_policy_version, terms_version, health_data_consent, analytics_consent")
         .eq("user_id", uid)
         .maybeSingle();
 
-      const storedVersion = data?.privacy_policy_version ?? null;
-      setNeedsConsent(!storedVersion || storedVersion !== PRIVACY_POLICY_VERSION);
+      const privacyOk = data?.privacy_policy_version === PRIVACY_POLICY_VERSION;
+      const termsOk   = data?.terms_version === TERMS_VERSION;
+      const healthOk  = !!data?.health_data_consent;
+      setNeedsConsent(!privacyOk || !termsOk || !healthOk);
       setChecked(true);
 
       // Initialise PostHog if user has given analytics consent
@@ -68,6 +70,7 @@ const ConsentGate = ({ children }: { children: React.ReactNode }) => {
         initAnalytics();
         identifyUser(uid);
       }
+
     };
 
     check();
