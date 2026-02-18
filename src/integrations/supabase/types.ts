@@ -446,6 +446,7 @@ export type Database = {
           activity_level: string | null
           age: number | null
           allergies: string[] | null
+          analytics_consent: boolean
           arm_cm: number | null
           biggest_challenge: string | null
           body_fat_percentage: number | null
@@ -541,6 +542,7 @@ export type Database = {
           activity_level?: string | null
           age?: number | null
           allergies?: string[] | null
+          analytics_consent?: boolean
           arm_cm?: number | null
           biggest_challenge?: string | null
           body_fat_percentage?: number | null
@@ -636,6 +638,7 @@ export type Database = {
           activity_level?: string | null
           age?: number | null
           allergies?: string[] | null
+          analytics_consent?: boolean
           arm_cm?: number | null
           biggest_challenge?: string | null
           body_fat_percentage?: number | null

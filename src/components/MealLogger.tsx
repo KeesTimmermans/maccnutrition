@@ -19,6 +19,7 @@ import { getFavoriteMeals, deleteFavoriteMeal, FavoriteMeal } from "@/lib/favori
 import { getNutritionSourceLabel } from "@/lib/brandDetection";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { trackMealLogged } from "@/lib/analytics";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { QuickMeals } from "./QuickMeals";
 import { IngredientSearchDialog, type IngredientSearchResult } from "./IngredientSearchDialog";
@@ -390,7 +391,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         fats: analysisResult.fats,
       });
     }
-    // Reinforcement toast is now triggered by mealService.saveMeal after successful DB save
+    // Track meal_logged with source (no food names/macros sent)
+    trackMealLogged(trackingMethod === 'select' ? 'search' : trackingMethod);
     onClose();
   };
 
@@ -402,7 +404,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       carbs: fav.carbs,
       fats: fav.fats,
     });
-    // Reinforcement toast is now triggered by mealService.saveMeal after successful DB save
+    trackMealLogged('favorite');
     onClose();
   };
 

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PRIVACY_POLICY_VERSION } from "@/lib/consentConstants";
 import { ReConsentModal } from "@/components/ReConsentModal";
+import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
 // New page structure
 import Today from "./pages/Today";
 import Progress from "./pages/Progress";
@@ -54,13 +55,19 @@ const ConsentGate = ({ children }: { children: React.ReactNode }) => {
 
       const { data } = await supabase
         .from("user_baselines")
-        .select("privacy_policy_version")
+        .select("privacy_policy_version, analytics_consent")
         .eq("user_id", uid)
         .maybeSingle();
 
       const storedVersion = data?.privacy_policy_version ?? null;
       setNeedsConsent(!storedVersion || storedVersion !== PRIVACY_POLICY_VERSION);
       setChecked(true);
+
+      // Initialise PostHog if user has given analytics consent
+      if (data?.analytics_consent) {
+        initAnalytics();
+        identifyUser(uid);
+      }
     };
 
     check();
@@ -69,7 +76,11 @@ const ConsentGate = ({ children }: { children: React.ReactNode }) => {
   // Also re-check when auth changes
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) { setNeedsConsent(false); setUserId(null); }
+      if (!session) {
+        setNeedsConsent(false);
+        setUserId(null);
+        resetAnalytics();
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
