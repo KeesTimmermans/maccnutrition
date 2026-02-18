@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare, Trash2 } from "lucide-react";
+import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare, Trash2, BarChart2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { supabase } from "@/integrations/supabase/client";
+import { initAnalytics, identifyUser, shutdownAnalytics } from "@/lib/analytics";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,10 +38,10 @@ const Settings = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Subscription state
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [analyticsConsent, setAnalyticsConsent] = useState(false);
 
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -93,11 +94,36 @@ const Settings = () => {
         setIsMetric(baselineData.unit_system === "metric");
         setCurrency(baselineData.preferred_currency || "GBP");
         setCoachingTone(baselineData.coaching_tone || "supportive");
+        setAnalyticsConsent((baselineData as any).analytics_consent ?? false);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAnalyticsConsentChange = async (enabled: boolean) => {
+    setAnalyticsConsent(enabled);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase
+        .from("user_baselines")
+        .update({ analytics_consent: enabled })
+        .eq("user_id", session.user.id);
+      if (enabled) {
+        initAnalytics();
+        identifyUser(session.user.id);
+        toast.success("Analytics sharing enabled");
+      } else {
+        shutdownAnalytics();
+        toast.success("Analytics sharing disabled");
+      }
+    } catch (err) {
+      console.error("Error updating analytics consent:", err);
+      toast.error("Failed to update analytics preference");
+      setAnalyticsConsent(!enabled);
     }
   };
 
@@ -342,6 +368,36 @@ const Settings = () => {
             onRefresh={checkSubscription}
           />
         </div>
+
+        {/* Analytics Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-primary" />
+              Analytics Sharing
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Help improve MacNutrition by sharing anonymous usage events (no food names, macros, or health data). Default off for UK users (GDPR).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="analytics-toggle" className="text-sm font-medium">
+                  Analytics sharing
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {analyticsConsent ? "Enabled — anonymous usage events are sent" : "Disabled — no data is sent"}
+                </p>
+              </div>
+              <Switch
+                id="analytics-toggle"
+                checked={analyticsConsent}
+                onCheckedChange={handleAnalyticsConsentChange}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Danger Zone */}
         <Card className="border-destructive/40">

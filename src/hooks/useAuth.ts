@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { trackSubscribed } from "@/lib/analytics";
 
 interface SubscriptionStatus {
   subscribed: boolean;
@@ -67,13 +68,19 @@ export const useAuth = () => {
         ]);
         if (error) throw error;
 
+        const wasSubscribed = subscription.subscribed;
+        const nowSubscribed = data?.subscribed ?? false;
         setSubscription({
-          subscribed: data?.subscribed ?? false,
+          subscribed: nowSubscribed,
           subscriptionEnd: data?.subscription_end ?? null,
           isTrialing: data?.is_trialing ?? false,
           trialEnd: data?.trial_end ?? null,
           trialDaysRemaining: data?.trial_days_remaining ?? null,
         });
+        // Track first time a subscription becomes active
+        if (!wasSubscribed && nowSubscribed) {
+          trackSubscribed();
+        }
         setSubscriptionError(null);
         setSubscriptionChecked(true);
       } catch (error) {

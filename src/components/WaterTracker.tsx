@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { getTodaysWaterIntake, addWaterIntake, removeLastWaterIntake, WaterIntake } from "@/lib/waterService";
+import { trackWaterLogged } from "@/lib/analytics";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 
@@ -72,7 +73,7 @@ export const WaterTracker = ({ dailyGoalLiters, onWaterLogged }: WaterTrackerPro
     });
     if (newIntake) {
       setIntakes(prev => [...prev, newIntake]);
-      // Reinforcement toast is now triggered by waterService.addWaterIntake after successful DB save
+      trackWaterLogged();
       // Notify parent to refresh coaching points
       onWaterLogged?.();
     }

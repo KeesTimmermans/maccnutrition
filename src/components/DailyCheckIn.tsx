@@ -17,6 +17,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { getTodaysCheckIn, saveCheckIn, getRecentCheckIns, analyzeCheckIns, type DailyCheckIn as DailyCheckInData, type CheckInAnalysis } from "@/lib/checkinService";
+import { trackCheckinCompleted } from "@/lib/analytics";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -170,6 +171,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
         sleep_hours: checkInData.sleep_hours,
         notes: checkInData.notes,
       });
+      trackCheckinCompleted();
       toast.success(t('checkin_saved'));
       onComplete(checkInData);
     } catch (error) {

@@ -10,6 +10,7 @@ import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { z } from "zod";
 import { PRIVACY_POLICY_VERSION } from "@/lib/consentConstants";
+import { trackSignedUp, trackTrialStarted } from "@/lib/analytics";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
@@ -192,6 +193,9 @@ const Auth = () => {
       }
       await supabase.from("consent_log").insert(consentRows);
 
+      // Track sign-up event (no PII)
+      trackSignedUp();
+
       try {
         const { data: checkoutData, error: checkoutError } = await Promise.race([
           supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
@@ -202,6 +206,8 @@ const Auth = () => {
 
         const url = checkoutData?.url as string | undefined;
         if (url) {
+          // Track that a trial was initiated
+          trackTrialStarted();
           const inIframe = (() => {
             try { return window.self !== window.top; } catch { return true; }
           })();
