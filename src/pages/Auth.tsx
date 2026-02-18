@@ -177,6 +177,22 @@ const Auth = () => {
         { onConflict: "user_id" }
       );
 
+      // Insert consent audit log rows
+      const consentRows: Array<{
+        user_id: string;
+        consent_type: string;
+        policy_version: string;
+        accepted: boolean;
+        accepted_at: string;
+      }> = [
+        { user_id: signUpData.session.user.id, consent_type: "privacy",  policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
+        { user_id: signUpData.session.user.id, consent_type: "health",   policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
+      ];
+      if (acceptedMarketing) {
+        consentRows.push({ user_id: signUpData.session.user.id, consent_type: "marketing", policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now });
+      }
+      await supabase.from("consent_log").insert(consentRows);
+
       try {
         const { data: checkoutData, error: checkoutError } = await Promise.race([
           supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),

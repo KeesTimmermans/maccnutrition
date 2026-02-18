@@ -41,6 +41,33 @@ export type Database = {
         }
         Relationships: []
       }
+      consent_log: {
+        Row: {
+          accepted: boolean
+          accepted_at: string
+          consent_type: string
+          id: string
+          policy_version: string | null
+          user_id: string
+        }
+        Insert: {
+          accepted: boolean
+          accepted_at?: string
+          consent_type: string
+          id?: string
+          policy_version?: string | null
+          user_id: string
+        }
+        Update: {
+          accepted?: boolean
+          accepted_at?: string
+          consent_type?: string
+          id?: string
+          policy_version?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_checkins: {
         Row: {
           check_in_date: string
