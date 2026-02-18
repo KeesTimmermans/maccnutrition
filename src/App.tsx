@@ -14,6 +14,8 @@ import Settings from "./pages/Settings";
 // Supporting pages
 import Auth from "./pages/Auth";
 import Privacy from "./pages/Privacy";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import Diagnostics from "./pages/Diagnostics";
 
 import NotFound from "./pages/NotFound";
@@ -42,6 +44,8 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
             <Route path="/diagnostics" element={<Diagnostics />} />
             
             
