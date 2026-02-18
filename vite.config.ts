@@ -27,5 +27,12 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    // Inject PostHog publishable keys from build environment.
+    // Set VITE_POSTHOG_API_KEY and VITE_POSTHOG_HOST in your .env or CI secrets.
+    define: {
+      "import.meta.env.VITE_POSTHOG_API_KEY": JSON.stringify(process.env.VITE_POSTHOG_API_KEY ?? process.env.POSTHOG_API_KEY ?? ""),
+      "import.meta.env.VITE_POSTHOG_HOST": JSON.stringify(process.env.VITE_POSTHOG_HOST ?? process.env.POSTHOG_HOST ?? "https://app.posthog.com"),
+    },
   };
 });
+
