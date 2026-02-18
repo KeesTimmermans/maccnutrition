@@ -124,6 +124,7 @@ serve(async (req) => {
       subscription_data: {
         trial_period_days: 7,
       },
+      payment_intent_data: undefined,
       allow_promotion_codes: true,
       success_url: withCheckoutParam(baseReturnUrl, "success"),
       cancel_url: withCheckoutParam(baseReturnUrl, "cancel"),
