@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react";
 import macLogo from "@/assets/mac-nutrition-logo.png";
@@ -20,7 +21,8 @@ const Auth = () => {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string }>({});
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string; terms?: string }>({});
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   const navigate = useNavigate();
@@ -55,7 +57,7 @@ const Auth = () => {
   }, [navigate, isLogin]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string; name?: string } = {};
+    const newErrors: { email?: string; password?: string; name?: string; terms?: string } = {};
 
     try {
       emailSchema.parse(email);
@@ -73,7 +75,7 @@ const Auth = () => {
       }
     }
 
-    // Only validate name for signup
+    // Only validate name and terms for signup
     if (!isLogin) {
       try {
         nameSchema.parse(name);
@@ -81,6 +83,10 @@ const Auth = () => {
         if (e instanceof z.ZodError) {
           newErrors.name = e.errors[0].message;
         }
+      }
+
+      if (!acceptedTerms) {
+        newErrors.terms = "You must accept the Terms & Conditions and Privacy Policy to continue.";
       }
     }
 
@@ -329,6 +335,47 @@ const Auth = () => {
             {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
           </div>
 
+          {/* Consent checkbox — signup only */}
+          {!isLogin && (
+            <div className="space-y-1">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(v) => {
+                    setAcceptedTerms(!!v);
+                    if (v) setErrors((prev) => ({ ...prev, terms: undefined }));
+                  }}
+                  className="mt-0.5"
+                />
+                <label htmlFor="terms" className="text-sm text-muted-foreground leading-snug cursor-pointer">
+                  I agree to the{" "}
+                  <a
+                    href="#/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Terms &amp; Conditions
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="#/privacy-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Privacy Policy
+                  </a>
+                  , including the processing of my health data.
+                </label>
+              </div>
+              {errors.terms && (
+                <p className="text-sm text-destructive pl-7">{errors.terms}</p>
+              )}
+            </div>
+          )}
+
           <Button
             type="submit"
             variant="hero"
@@ -349,6 +396,7 @@ const Auth = () => {
               "Sign Up & Subscribe"
             )}
           </Button>
+
         </form>
 
         {/* Toggle */}
@@ -360,6 +408,7 @@ const Auth = () => {
                 setIsLogin(!isLogin);
                 setCheckoutUrl(null);
                 setErrors({});
+                setAcceptedTerms(false);
               }}
               className="ml-2 text-primary font-semibold hover:underline"
             >
@@ -385,7 +434,7 @@ const Auth = () => {
             rel="noopener noreferrer"
             className="hover:text-foreground hover:underline"
           >
-            Terms of Service
+            Terms &amp; Conditions
           </a>
         </div>
       </div>
