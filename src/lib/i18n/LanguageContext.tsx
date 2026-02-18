@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { translations, Language } from "./translations";
+import { toDisplayLabel } from "./displayLabel";
 
 type TranslationKey = keyof typeof translations.en;
 
@@ -58,7 +59,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const t = (key: TranslationKey): string => {
-    return translations[language]?.[key] || translations.en[key] || key;
+    return translations[language]?.[key] || translations.en[key] || toDisplayLabel(key);
   };
 
   const contextValue: LanguageContextType = {
