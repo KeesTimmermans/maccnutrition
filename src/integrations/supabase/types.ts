@@ -470,6 +470,7 @@ export type Database = {
           focus_points: string[] | null
           food_dislikes: string | null
           health_data_consent: boolean
+          health_data_consent_at: string | null
           height_cm: number | null
           height_feet: number | null
           height_inches: number | null
@@ -524,6 +525,9 @@ export type Database = {
           stress_level: string | null
           target_calories: number | null
           tdee: number | null
+          terms_accepted: boolean
+          terms_accepted_at: string | null
+          terms_version: string | null
           thigh_cm: number | null
           training_days: string | null
           training_intensity: string | null
@@ -566,6 +570,7 @@ export type Database = {
           focus_points?: string[] | null
           food_dislikes?: string | null
           health_data_consent?: boolean
+          health_data_consent_at?: string | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
@@ -620,6 +625,9 @@ export type Database = {
           stress_level?: string | null
           target_calories?: number | null
           tdee?: number | null
+          terms_accepted?: boolean
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           thigh_cm?: number | null
           training_days?: string | null
           training_intensity?: string | null
@@ -662,6 +670,7 @@ export type Database = {
           focus_points?: string[] | null
           food_dislikes?: string | null
           health_data_consent?: boolean
+          health_data_consent_at?: string | null
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
@@ -716,6 +725,9 @@ export type Database = {
           stress_level?: string | null
           target_calories?: number | null
           tdee?: number | null
+          terms_accepted?: boolean
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           thigh_cm?: number | null
           training_days?: string | null
           training_intensity?: string | null
