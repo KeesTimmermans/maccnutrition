@@ -10,6 +10,8 @@ import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { z } from "zod";
 
+const PRIVACY_POLICY_VERSION = "1.0";
+
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 const nameSchema = z.string().min(2, "First name must be at least 2 characters");
@@ -159,6 +161,21 @@ const Auth = () => {
         setIsLogin(true);
         return;
       }
+
+      // Upsert consent record into user_baselines
+      const now = new Date().toISOString();
+      await supabase.from("user_baselines").upsert(
+        {
+          user_id: signUpData.session.user.id,
+          privacy_policy_accepted: true,
+          privacy_policy_version: PRIVACY_POLICY_VERSION,
+          privacy_policy_accepted_at: now,
+          health_data_consent: true,
+          marketing_opt_in: acceptedMarketing,
+          marketing_opt_in_at: acceptedMarketing ? now : null,
+        },
+        { onConflict: "user_id" }
+      );
 
       try {
         const { data: checkoutData, error: checkoutError } = await Promise.race([

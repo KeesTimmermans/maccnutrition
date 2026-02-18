@@ -441,6 +441,7 @@ export type Database = {
           fats_grams: number | null
           focus_points: string[] | null
           food_dislikes: string | null
+          health_data_consent: boolean
           height_cm: number | null
           height_feet: number | null
           height_inches: number | null
@@ -454,6 +455,8 @@ export type Database = {
           last_water_reminder_sent: string | null
           last_weekly_summary_sent: string | null
           magnesium_mg: number | null
+          marketing_opt_in: boolean
+          marketing_opt_in_at: string | null
           meal_prep_time: string | null
           meals_per_day: string | null
           measurements_updated_at: string | null
@@ -466,6 +469,9 @@ export type Database = {
           preferred_currency: string | null
           preferred_language: string | null
           primary_goal: string | null
+          privacy_policy_accepted: boolean
+          privacy_policy_accepted_at: string | null
+          privacy_policy_version: string | null
           progress_photo_back: string | null
           progress_photo_front: string | null
           progress_photo_left: string | null
@@ -530,6 +536,7 @@ export type Database = {
           fats_grams?: number | null
           focus_points?: string[] | null
           food_dislikes?: string | null
+          health_data_consent?: boolean
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
@@ -543,6 +550,8 @@ export type Database = {
           last_water_reminder_sent?: string | null
           last_weekly_summary_sent?: string | null
           magnesium_mg?: number | null
+          marketing_opt_in?: boolean
+          marketing_opt_in_at?: string | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
           measurements_updated_at?: string | null
@@ -555,6 +564,9 @@ export type Database = {
           preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
+          privacy_policy_accepted?: boolean
+          privacy_policy_accepted_at?: string | null
+          privacy_policy_version?: string | null
           progress_photo_back?: string | null
           progress_photo_front?: string | null
           progress_photo_left?: string | null
@@ -619,6 +631,7 @@ export type Database = {
           fats_grams?: number | null
           focus_points?: string[] | null
           food_dislikes?: string | null
+          health_data_consent?: boolean
           height_cm?: number | null
           height_feet?: number | null
           height_inches?: number | null
@@ -632,6 +645,8 @@ export type Database = {
           last_water_reminder_sent?: string | null
           last_weekly_summary_sent?: string | null
           magnesium_mg?: number | null
+          marketing_opt_in?: boolean
+          marketing_opt_in_at?: string | null
           meal_prep_time?: string | null
           meals_per_day?: string | null
           measurements_updated_at?: string | null
@@ -644,6 +659,9 @@ export type Database = {
           preferred_currency?: string | null
           preferred_language?: string | null
           primary_goal?: string | null
+          privacy_policy_accepted?: boolean
+          privacy_policy_accepted_at?: string | null
+          privacy_policy_version?: string | null
           progress_photo_back?: string | null
           progress_photo_front?: string | null
           progress_photo_left?: string | null
