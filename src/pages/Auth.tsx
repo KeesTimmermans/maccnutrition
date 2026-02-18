@@ -367,6 +367,27 @@ const Auth = () => {
             </button>
           </p>
         </div>
+
+        {/* Legal footer */}
+        <div className="mt-8 text-center text-xs text-muted-foreground space-x-3">
+          <a
+            href="#/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground hover:underline"
+          >
+            Privacy Policy
+          </a>
+          <span>·</span>
+          <a
+            href="#/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground hover:underline"
+          >
+            Terms of Service
+          </a>
+        </div>
       </div>
     </div>
   );
