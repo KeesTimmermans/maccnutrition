@@ -22,7 +22,15 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string; terms?: string }>({});
+  const [acceptedHealthConsent, setAcceptedHealthConsent] = useState(false);
+  const [acceptedMarketing, setAcceptedMarketing] = useState(false);
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    name?: string;
+    terms?: string;
+    health?: string;
+  }>({});
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   const navigate = useNavigate();
@@ -39,9 +47,6 @@ const Auth = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      // For logins we can go straight to the app.
-      // For signups we must not auto-navigate, because in embedded/preview contexts
-      // checkout redirects can be blocked and the user would end up stuck on the home screen.
       if (session && isLogin) {
         navigate("/");
       }
@@ -57,36 +62,38 @@ const Auth = () => {
   }, [navigate, isLogin]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string; name?: string; terms?: string } = {};
+    const newErrors: {
+      email?: string;
+      password?: string;
+      name?: string;
+      terms?: string;
+      health?: string;
+    } = {};
 
     try {
       emailSchema.parse(email);
     } catch (e) {
-      if (e instanceof z.ZodError) {
-        newErrors.email = e.errors[0].message;
-      }
+      if (e instanceof z.ZodError) newErrors.email = e.errors[0].message;
     }
 
     try {
       passwordSchema.parse(password);
     } catch (e) {
-      if (e instanceof z.ZodError) {
-        newErrors.password = e.errors[0].message;
-      }
+      if (e instanceof z.ZodError) newErrors.password = e.errors[0].message;
     }
 
-    // Only validate name and terms for signup
     if (!isLogin) {
       try {
         nameSchema.parse(name);
       } catch (e) {
-        if (e instanceof z.ZodError) {
-          newErrors.name = e.errors[0].message;
-        }
+        if (e instanceof z.ZodError) newErrors.name = e.errors[0].message;
       }
 
       if (!acceptedTerms) {
-        newErrors.terms = "You must accept the Terms & Conditions and Privacy Policy to continue.";
+        newErrors.terms = "You must accept the Privacy Policy and Terms & Conditions to continue.";
+      }
+      if (!acceptedHealthConsent) {
+        newErrors.health = "You must consent to health data processing to continue.";
       }
     }
 
@@ -103,38 +110,26 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            toast({
-              title: "Login failed",
-              description: "Invalid email or password. Please try again.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Login failed",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
+          toast({
+            title: "Login failed",
+            description: error.message.includes("Invalid login credentials")
+              ? "Invalid email or password. Please try again."
+              : error.message,
+            variant: "destructive",
+          });
         }
         return;
       }
 
-      // Sign up - store name in user metadata
       const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            first_name: name,
-          },
+          data: { first_name: name },
         },
       });
 
@@ -157,8 +152,6 @@ const Auth = () => {
       }
 
       if (!signUpData.session) {
-        // If email confirmations are enabled (or we otherwise didn't get a session),
-        // we can't start checkout yet because we have no auth token.
         toast({
           title: "Check your email",
           description: "Please confirm your email, then log in to start your 14-day trial.",
@@ -167,7 +160,6 @@ const Auth = () => {
         return;
       }
 
-      // Redirect to checkout for payment
       try {
         const { data: checkoutData, error: checkoutError } = await Promise.race([
           supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
@@ -179,36 +171,21 @@ const Auth = () => {
         const url = checkoutData?.url as string | undefined;
         if (url) {
           const inIframe = (() => {
-            try {
-              return window.self !== window.top;
-            } catch {
-              return true;
-            }
+            try { return window.self !== window.top; } catch { return true; }
           })();
 
           if (inIframe) {
-            // In embedded previews, top-level navigation to Stripe can be blocked.
-            // Show a clear "Open checkout" CTA instead.
             setCheckoutUrl(url);
-            toast({
-              title: "Almost there",
-              description: "Open checkout in a new tab to start your 14-day trial.",
-            });
+            toast({ title: "Almost there", description: "Open checkout in a new tab to start your 14-day trial." });
           } else {
             window.location.assign(url);
           }
         } else {
-          toast({
-            title: "Account created!",
-            description: "Please complete your subscription to continue.",
-          });
+          toast({ title: "Account created!", description: "Please complete your subscription to continue." });
         }
       } catch (checkoutErr) {
         console.error("Checkout error:", checkoutErr);
-        toast({
-          title: "Account created!",
-          description: "You can now continue with setup.",
-        });
+        toast({ title: "Account created!", description: "You can now continue with setup." });
       }
     } catch (_error) {
       toast({
@@ -220,6 +197,8 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  const requiredConsentsChecked = acceptedTerms && acceptedHealthConsent;
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
@@ -237,16 +216,15 @@ const Auth = () => {
           </p>
         </div>
 
-        {/* Checkout helper (mainly for embedded previews) */}
+        {/* Checkout helper */}
         {checkoutUrl && !isLogin && (
           <div className="mb-6 bg-card rounded-2xl p-4 shadow-soft space-y-3">
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">Complete your trial signup</p>
               <p className="text-sm text-muted-foreground">
-                If checkout didn’t open automatically, use the button below to open it in a new tab.
+                If checkout didn't open automatically, use the button below to open it in a new tab.
               </p>
             </div>
-
             <Button
               variant="hero"
               className="w-full"
@@ -257,14 +235,10 @@ const Auth = () => {
             >
               Open Checkout
             </Button>
-
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => {
-                setCheckoutUrl(null);
-                setIsLogin(true);
-              }}
+              onClick={() => { setCheckoutUrl(null); setIsLogin(true); }}
             >
               I already subscribed — Log in
             </Button>
@@ -273,7 +247,7 @@ const Auth = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name field - only show for signup */}
+          {/* Name field - signup only */}
           {!isLogin && (
             <div className="space-y-2">
               <Label htmlFor="name">First Name</Label>
@@ -325,54 +299,100 @@ const Auth = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
             {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
           </div>
 
-          {/* Consent checkbox — signup only */}
+          {/* Consent checkboxes — signup only */}
           {!isLogin && (
-            <div className="space-y-1">
+            <div className="space-y-3 pt-1">
+              {/* Required: Terms & Privacy */}
+              <div className="space-y-1">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="terms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(v) => {
+                      setAcceptedTerms(!!v);
+                      if (v) setErrors((prev) => ({ ...prev, terms: undefined }));
+                    }}
+                    className="mt-0.5"
+                  />
+                  <label htmlFor="terms" className="text-sm text-muted-foreground leading-snug cursor-pointer">
+                    I agree to the{" "}
+                    <a
+                      href="#/privacy-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Privacy Policy
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="#/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Terms &amp; Conditions
+                    </a>
+                    {" "}<span className="text-destructive">*</span>
+                  </label>
+                </div>
+                {errors.terms && (
+                  <p className="text-sm text-destructive pl-7">{errors.terms}</p>
+                )}
+              </div>
+
+              {/* Required: Health data consent */}
+              <div className="space-y-1">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="health-consent"
+                    checked={acceptedHealthConsent}
+                    onCheckedChange={(v) => {
+                      setAcceptedHealthConsent(!!v);
+                      if (v) setErrors((prev) => ({ ...prev, health: undefined }));
+                    }}
+                    className="mt-0.5"
+                  />
+                  <label htmlFor="health-consent" className="text-sm text-muted-foreground leading-snug cursor-pointer">
+                    I consent to the processing of my health-related data as described in the{" "}
+                    <a
+                      href="#/privacy-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Privacy Policy
+                    </a>
+                    {" "}<span className="text-destructive">*</span>
+                  </label>
+                </div>
+                {errors.health && (
+                  <p className="text-sm text-destructive pl-7">{errors.health}</p>
+                )}
+              </div>
+
+              {/* Optional: Marketing emails */}
               <div className="flex items-start gap-3">
                 <Checkbox
-                  id="terms"
-                  checked={acceptedTerms}
-                  onCheckedChange={(v) => {
-                    setAcceptedTerms(!!v);
-                    if (v) setErrors((prev) => ({ ...prev, terms: undefined }));
-                  }}
+                  id="marketing"
+                  checked={acceptedMarketing}
+                  onCheckedChange={(v) => setAcceptedMarketing(!!v)}
                   className="mt-0.5"
                 />
-                <label htmlFor="terms" className="text-sm text-muted-foreground leading-snug cursor-pointer">
-                  I agree to the{" "}
-                  <a
-                    href="#/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Terms &amp; Conditions
-                  </a>{" "}
-                  and{" "}
-                  <a
-                    href="#/privacy-policy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Privacy Policy
-                  </a>
-                  , including the processing of my health data.
+                <label htmlFor="marketing" className="text-sm text-muted-foreground leading-snug cursor-pointer">
+                  I want to receive marketing emails and product updates. (Optional)
                 </label>
               </div>
-              {errors.terms && (
-                <p className="text-sm text-destructive pl-7">{errors.terms}</p>
-              )}
+
+              <p className="text-xs text-muted-foreground pl-0">
+                <span className="text-destructive">*</span> Required
+              </p>
             </div>
           )}
 
@@ -381,7 +401,7 @@ const Auth = () => {
             variant="hero"
             size="lg"
             className="w-full"
-            disabled={loading || (!!checkoutUrl && !isLogin)}
+            disabled={loading || (!!checkoutUrl && !isLogin) || (!isLogin && !requiredConsentsChecked)}
           >
             {loading ? (
               <>
@@ -396,7 +416,6 @@ const Auth = () => {
               "Sign Up & Subscribe"
             )}
           </Button>
-
         </form>
 
         {/* Toggle */}
@@ -409,6 +428,8 @@ const Auth = () => {
                 setCheckoutUrl(null);
                 setErrors({});
                 setAcceptedTerms(false);
+                setAcceptedHealthConsent(false);
+                setAcceptedMarketing(false);
               }}
               className="ml-2 text-primary font-semibold hover:underline"
             >
