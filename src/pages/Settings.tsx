@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare } from "lucide-react";
+import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,17 @@ import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -30,6 +41,8 @@ const Settings = () => {
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const coachingTones = [
     { value: "direct", label: "Direct", description: "Concise and action-focused" },
@@ -49,6 +62,23 @@ const Settings = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke("delete-account");
+      if (error) throw error;
+      toast.success("Your account has been deleted.");
+      await supabase.auth.signOut();
+      localStorage.clear();
+      navigate("/auth");
+    } catch (err) {
+      console.error("Delete account error:", err);
+      toast.error("Failed to delete account. Please contact support@macnutrition.co.uk");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -312,6 +342,45 @@ const Settings = () => {
             onRefresh={checkSubscription}
           />
         </div>
+
+        {/* Danger Zone */}
+        <Card className="border-destructive/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Permanently delete your account and all associated data. This cannot be undone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="w-full" disabled={isDeleting}>
+                  {isDeleting ? "Deleting…" : "Delete my account"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete your account, cancel any active subscription, and erase all your data — meals, metrics, progress photos, reminders, and preferences. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Yes, delete my account
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );

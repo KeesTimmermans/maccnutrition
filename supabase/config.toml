@@ -57,6 +57,9 @@ verify_jwt = false
 [functions.push-notify-scheduled]
 verify_jwt = false
 
+[functions.delete-account]
+verify_jwt = false
+
 [functions.fatsecret]
 verify_jwt = false
 
