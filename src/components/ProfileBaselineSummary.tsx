@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserBaseline } from "@/lib/userService";
 import { Flame, Droplets, Target, Dumbbell } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { toDisplayLabel } from "@/lib/i18n/displayLabel";
 
 interface ProfileBaselineSummaryProps {
   baseline: UserBaseline | null;
@@ -40,7 +41,7 @@ export const ProfileBaselineSummary = ({ baseline }: ProfileBaselineSummaryProps
               <span className="text-sm font-medium text-muted-foreground">{t('primary_goal') || 'Primary Goal'}</span>
             </div>
             <p className="text-lg font-bold text-primary">
-              {goalLabels[baseline.primary_goal] || baseline.primary_goal}
+              {goalLabels[baseline.primary_goal] || toDisplayLabel(baseline.primary_goal)}
             </p>
           </div>
         )}
