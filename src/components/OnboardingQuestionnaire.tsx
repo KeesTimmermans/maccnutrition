@@ -53,6 +53,8 @@ export interface OnboardingData {
   stressLevel: string;
   jobActivityLevel: string;  // NEW: How active is their job
   workoutTypes: string[];    // NEW: Types of workouts they do
+  climate: string;           // NEW: Climate environment
+  trainingDuration: string;  // NEW: Avg session duration in minutes
   
   // Eating Behavior
   eatingSpeed: string;
@@ -131,6 +133,8 @@ const initialData: OnboardingData = {
   stressLevel: "",
   jobActivityLevel: "",     // NEW
   workoutTypes: [],         // NEW
+  climate: "",              // NEW
+  trainingDuration: "",     // NEW
   // Eating behavior fields
   eatingSpeed: "",
   hungerPatterns: "",
@@ -655,6 +659,19 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
     { label: "6+", value: "6+" },
   ];
 
+  const trainingDurationOptions = [
+    { label: "< 30 min", value: "under_30", icon: "⏱️" },
+    { label: "30–60 min", value: "30_60", icon: "⏱️" },
+    { label: "60–90 min", value: "60_90", icon: "⏱️" },
+    { label: "90+ min", value: "over_90", icon: "⏱️" },
+  ];
+
+  const climateOptions = [
+    { label: "Cool", desc: "Cold / temperate climate", value: "cool", icon: "❄️" },
+    { label: "Moderate", desc: "Mild, comfortable temperatures", value: "moderate", icon: "🌤️" },
+    { label: "Hot", desc: "Warm / humid, heavy sweating likely", value: "hot", icon: "🔥" },
+  ];
+
   const sleepOptions = [
     { label: t('less_than_5'), value: "<5" },
     { label: t('5_6_hours'), value: "5-6" },
@@ -762,7 +779,55 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
         </div>
       </div>
 
-      {/* Sleep Hours */}
+      {/* Training Duration per Session */}
+      {data.trainingDays && data.trainingDays !== "0-1" && (
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold">Average session duration?</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {trainingDurationOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => updateData("trainingDuration", option.value)}
+                className={`p-3 rounded-xl text-sm text-center transition-all flex items-center justify-center gap-2 ${
+                  data.trainingDuration === option.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card shadow-soft hover:shadow-medium"
+                }`}
+              >
+                <span>{option.icon}</span>
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Climate */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What's your typical climate?</Label>
+        <div className="space-y-2">
+          {climateOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("climate", option.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
+                data.climate === option.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-xl">{option.icon}</span>
+              <div>
+                <span className="font-semibold block">{option.label}</span>
+                <span className={`text-sm ${data.climate === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  {option.desc}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('avg_sleep_night')}</Label>
         <div className="grid grid-cols-2 gap-2">

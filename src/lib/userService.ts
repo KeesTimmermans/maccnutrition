@@ -69,6 +69,8 @@ export interface UserBaseline {
   // New fields
   job_activity_level: string | null;
   workout_types: string[] | null;
+  climate: string | null;
+  training_duration: string | null;
   body_fat_percentage: number | null;
   waist_cm: number | null;
   hip_cm: number | null;
@@ -175,6 +177,8 @@ export const saveUserBaseline = async (
       // New fields
       job_activity_level: onboardingData.jobActivityLevel || null,
       workout_types: onboardingData.workoutTypes,
+      climate: onboardingData.climate || null,
+      training_duration: onboardingData.trainingDuration || null,
       // Measurements (optional during onboarding)
       body_fat_percentage: onboardingData.bodyFatPercentage ? parseFloat(onboardingData.bodyFatPercentage) : null,
       waist_cm: onboardingData.waist ? parseFloat(onboardingData.waist) : null,

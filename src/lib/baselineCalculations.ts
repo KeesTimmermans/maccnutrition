@@ -256,6 +256,8 @@ function calculateHydration(data: OnboardingData): BaselineResults["hydration"] 
   const workoutTypes = data.workoutTypes || [];
   const age = parseInt(data.age) || 30;
   const sex = data.sex || "male";
+  const climate = data.climate || "moderate";
+  const trainingDuration = data.trainingDuration || "30_60";
 
   // ── 1. Base hydration rate (ml/kg) ──────────────────────────
   const isHighIntensity = workoutTypes.some(t =>
@@ -275,19 +277,29 @@ function calculateHydration(data: OnboardingData): BaselineResults["hydration"] 
     mlPerKg = 30;
   }
 
-  let baseMl = weightKg * mlPerKg;
+  const baseMl = weightKg * mlPerKg;
 
-  // ── 2. Training addition (per training day, assume ~1 hr session) ─
-  let trainingAddMl = 0;
+  // ── 2. Training addition (scaled by session duration) ──────
+  // Base add per hour: 500 ml high-intensity, 400 ml moderate
+  let addPerHour = 0;
   if (!workoutTypes.includes("none") && workoutTypes.length > 0) {
     if (workoutTypes.some(t => ["crossfit", "hiit", "martial_arts", "sports"].includes(t))) {
-      trainingAddMl = 500;
+      addPerHour = 500;
     } else if (workoutTypes.some(t => ["weightlifting", "swimming", "cycling", "cardio", "dance"].includes(t))) {
-      trainingAddMl = 400;
+      addPerHour = 400;
     }
   }
 
-  // Scale training add by approximate sessions per day ratio
+  // Convert training duration to hours
+  let sessionHours = 1.0;
+  if (trainingDuration === "under_30") sessionHours = 0.4;
+  else if (trainingDuration === "30_60") sessionHours = 0.75;
+  else if (trainingDuration === "60_90") sessionHours = 1.25;
+  else if (trainingDuration === "over_90") sessionHours = 1.75;
+
+  const trainingAddMl = Math.round(addPerHour * sessionHours);
+
+  // Scale by training frequency for avg daily target
   let dailyTrainingFraction = 0;
   if (trainingDays === "0-1") dailyTrainingFraction = 0.14;
   else if (trainingDays === "2-3") dailyTrainingFraction = 0.36;
@@ -295,21 +307,22 @@ function calculateHydration(data: OnboardingData): BaselineResults["hydration"] 
   else if (trainingDays === "6+") dailyTrainingFraction = 0.86;
 
   const avgDailyTrainingAdd = trainingAddMl * dailyTrainingFraction;
-  const totalDailyMl = baseMl + avgDailyTrainingAdd;
+  let totalDailyMl = baseMl + avgDailyTrainingAdd;
 
-  // Training-day target (base + full session add)
-  const trainingDayMl = baseMl + trainingAddMl;
-
-  // ── 3. Female cycle adjustment (+15% luteal/menstrual) ─────
-  let adjustedDailyMl = totalDailyMl;
-  if (sex === "female" && (data.currentPhase === "luteal" || data.currentPhase === "menstrual")) {
-    adjustedDailyMl *= 1.15;
+  // ── 3. Climate adjustment ──────────────────────────────────
+  // Hot climate: +500 ml per hour of heavy sweating (approximate 1 hr outdoor)
+  if (climate === "hot") {
+    totalDailyMl += 500;
   }
 
-  // ── 4. Electrolytes ────────────────────────────────────────
-  // Recommend ≥3 g sodium when >3 L, intense training, or whole-food diet
+  // ── 4. Female cycle adjustment (+15% luteal/menstrual) ─────
+  if (sex === "female" && (data.currentPhase === "luteal" || data.currentPhase === "menstrual")) {
+    totalDailyMl *= 1.15;
+  }
+
+  // ── 5. Electrolytes ────────────────────────────────────────
   const needsElectrolyteFocus =
-    adjustedDailyMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
+    totalDailyMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
 
   let sodiumMg = needsElectrolyteFocus ? 3000 : 2500;
   let magnesiumMg = 350;
@@ -320,13 +333,13 @@ function calculateHydration(data: OnboardingData): BaselineResults["hydration"] 
     magnesiumMg += 75;
   }
 
-  // Heavy training: bump sodium further
-  if (trainingDays === "6+") {
+  // Heavy training or hot climate: bump sodium
+  if (trainingDays === "6+" || climate === "hot") {
     sodiumMg += 500;
   }
 
   return {
-    waterLiters: Math.round((adjustedDailyMl / 1000) * 10) / 10,
+    waterLiters: Math.round((totalDailyMl / 1000) * 10) / 10,
     sodiumMg: Math.round(sodiumMg),
     magnesiumMg: Math.round(magnesiumMg),
     potassiumMg: Math.round(potassiumMg),
