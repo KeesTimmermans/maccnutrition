@@ -89,13 +89,11 @@ export function initPostHog(): void {
       if (!name || !ALLOWED_EVENTS.has(name)) return null;
 
       // Sanitise properties
-      if (event.properties) {
-        event.properties = sanitiseProperties(event.properties);
-      }
+      event.properties = sanitiseProperties(event.properties ?? {});
 
       // Clear any $set / $set_once to prevent PII leaking
-      if ("$set" in event) (event as unknown as Record<string, unknown>)["$set"] = undefined;
-      if ("$set_once" in event) (event as unknown as Record<string, unknown>)["$set_once"] = undefined;
+      (event as unknown as Record<string, unknown>)["$set"] = {};
+      (event as unknown as Record<string, unknown>)["$set_once"] = {};
 
       return event;
     },
