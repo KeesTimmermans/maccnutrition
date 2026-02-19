@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/consentConstants";
 import { ReConsentModal } from "@/components/ReConsentModal";
+import { AnalyticsConsentBanner } from "@/components/AnalyticsConsentBanner";
 import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
 // New page structure
 import Today from "./pages/Today";
@@ -103,6 +104,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <AnalyticsConsentBanner />
         <HashRouter>
           <ConsentGate>
             <Routes>
