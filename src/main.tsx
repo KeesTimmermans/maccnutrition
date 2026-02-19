@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { initPostHog } from "@/analytics/posthog";
 
 // HashRouter requires a hash in the URL. When returning from external redirects (like Stripe),
 // the hash is often lost. Detect this and redirect to ensure the router works.
@@ -34,6 +35,8 @@ if ("serviceWorker" in navigator) {
     console.warn("SW registration failed:", err);
   });
 }
+
+initPostHog();
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
