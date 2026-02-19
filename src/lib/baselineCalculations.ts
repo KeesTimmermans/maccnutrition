@@ -235,18 +235,14 @@ function calculateMacros(
 /**
  * Step 3: Calculate Hydration & Electrolyte Baseline
  *
- * Rules (conservative lower-end):
- *   Base:  30 ml/kg  sedentary / minimal
- *          35 ml/kg  average active
- *          40 ml/kg  high intensity, fat-loss, or manual / outdoor work
+ * Master Hydration System — Lower-End Targets with Safeguards
  *
- *   Training add-on (per session, scaled by estimated ~1 hr):
- *     CrossFit / HIIT / conditioning  → +500 ml
- *     Strength / moderate              → +400 ml
- *     Endurance >90 min               → note to weigh pre/post
- *
- *   Electrolytes: ≥3 g sodium if >3 L daily, intense training, or whole-food diet.
- *   Age 50+: structured drinking reminder (thirst sensitivity declines).
+ * Safeguard 1: Climate defaults to "moderate" (no addition) if empty.
+ * Safeguard 2: ONE base multiplier only (highest applicable, max 40).
+ * Safeguard 3: Training fluid only on training days (not baked into baseline).
+ * Safeguard 4: Climate addition only when explicitly "hot".
+ * Safeguard 5: Missing data → conservative 35 ml/kg max default.
+ * Safeguard 6: Recalculation triggered by weight/training/job/climate/phase changes.
  */
 export function calculateHydration(data: OnboardingData): BaselineResults["hydration"] {
   const { weightKg } = getWeightFromData(data);
@@ -254,20 +250,34 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
   const jobActivity = data.jobActivityLevel || "light";
   const trainingDays = data.trainingDays || "2-3";
   const workoutTypes = data.workoutTypes || [];
-  const age = parseInt(data.age) || 30;
   const sex = data.sex || "male";
-  const climate = data.climate || "moderate";
   const trainingDuration = data.trainingDuration || "30_60";
 
-  // ── 1. Base hydration rate (ml/kg) ──────────────────────────
+  // ── Safeguard 1: Climate defaults to "moderate" ────────────
+  const climate = data.climate || "moderate";
+
+  // ── Safeguard 5: Check data completeness ───────────────────
+  const hasCompleteData = !!(
+    data.weight &&
+    data.jobActivityLevel &&
+    data.workoutTypes?.length &&
+    data.climate &&
+    data.trainingDays
+  );
+
+  // ── Safeguard 2: Select ONE base multiplier (no stacking) ──
   const isHighIntensity = workoutTypes.some(t =>
     ["crossfit", "hiit", "martial_arts"].includes(t)
   );
   const isManualOrOutdoor = jobActivity === "active";
   const isFatLoss = goal === "fat_loss";
 
-  let mlPerKg = 35; // default: average active
-  if (isHighIntensity || isFatLoss || isManualOrOutdoor) {
+  let mlPerKg: number;
+  if (!hasCompleteData) {
+    // Safeguard 5: conservative default when data is incomplete
+    mlPerKg = 35;
+  } else if (isManualOrOutdoor || isHighIntensity || isFatLoss) {
+    // Highest applicable single category — pick ONE, max 40
     mlPerKg = 40;
   } else if (
     (data.activityLevel === "not_active" || data.activityLevel === "semi_active") &&
@@ -275,12 +285,14 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
     (workoutTypes.length === 0 || workoutTypes.includes("none"))
   ) {
     mlPerKg = 30;
+  } else {
+    mlPerKg = 35;
   }
 
   const baseMl = weightKg * mlPerKg;
 
-  // ── 2. Training addition (scaled by session duration) ──────
-  // Base add per hour: 500 ml high-intensity, 400 ml moderate
+  // ── Safeguard 3: Training fluid – per-session, NOT baked in ─
+  // Calculate per-session addition (only applies on training days)
   let addPerHour = 0;
   if (!workoutTypes.includes("none") && workoutTypes.length > 0) {
     if (workoutTypes.some(t => ["crossfit", "hiit", "martial_arts", "sports"].includes(t))) {
@@ -290,7 +302,6 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
     }
   }
 
-  // Convert training duration to hours
   let sessionHours = 1.0;
   if (trainingDuration === "under_30") sessionHours = 0.4;
   else if (trainingDuration === "30_60") sessionHours = 0.75;
@@ -299,28 +310,28 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
 
   const trainingAddMl = Math.round(addPerHour * sessionHours);
 
-  // Scale by training frequency for avg daily target
+  // Scale by training frequency for average daily target
+  // This represents the statistical daily average across the week
   let dailyTrainingFraction = 0;
   if (trainingDays === "0-1") dailyTrainingFraction = 0.14;
   else if (trainingDays === "2-3") dailyTrainingFraction = 0.36;
   else if (trainingDays === "4-5") dailyTrainingFraction = 0.64;
   else if (trainingDays === "6+") dailyTrainingFraction = 0.86;
 
-  const avgDailyTrainingAdd = trainingAddMl * dailyTrainingFraction;
-  let totalDailyMl = baseMl + avgDailyTrainingAdd;
+  let totalDailyMl = baseMl + trainingAddMl * dailyTrainingFraction;
 
-  // ── 3. Climate adjustment ──────────────────────────────────
-  // Hot climate: +500 ml per hour of heavy sweating (approximate 1 hr outdoor)
+  // ── Safeguard 4: Climate addition ONLY when "hot" ──────────
   if (climate === "hot") {
     totalDailyMl += 500;
   }
+  // "moderate", "cold", or empty → no climate addition
 
-  // ── 4. Female cycle adjustment (+15% luteal/menstrual) ─────
+  // ── Female cycle adjustment (+15% luteal/menstrual) ────────
   if (sex === "female" && (data.currentPhase === "luteal" || data.currentPhase === "menstrual")) {
     totalDailyMl *= 1.15;
   }
 
-  // ── 5. Electrolytes ────────────────────────────────────────
+  // ── Electrolytes ───────────────────────────────────────────
   const needsElectrolyteFocus =
     totalDailyMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
 
@@ -328,12 +339,10 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
   let magnesiumMg = 350;
   const potassiumMg = 2750;
 
-  // Extra magnesium for stress / poor sleep
   if (data.stressLevel === "high" || data.sleepHours === "<5" || data.sleepHours === "5-6") {
     magnesiumMg += 75;
   }
 
-  // Heavy training or hot climate: bump sodium
   if (trainingDays === "6+" || climate === "hot") {
     sodiumMg += 500;
   }
