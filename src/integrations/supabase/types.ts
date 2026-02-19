@@ -452,6 +452,7 @@ export type Database = {
           body_fat_percentage: number | null
           carbs_grams: number | null
           chest_cm: number | null
+          climate: string | null
           coaching_tone: string | null
           conditions: string[] | null
           cooking_skill: string | null
@@ -530,6 +531,7 @@ export type Database = {
           terms_version: string | null
           thigh_cm: number | null
           training_days: string | null
+          training_duration: string | null
           training_intensity: string | null
           unit_system: string | null
           updated_at: string
@@ -552,6 +554,7 @@ export type Database = {
           body_fat_percentage?: number | null
           carbs_grams?: number | null
           chest_cm?: number | null
+          climate?: string | null
           coaching_tone?: string | null
           conditions?: string[] | null
           cooking_skill?: string | null
@@ -630,6 +633,7 @@ export type Database = {
           terms_version?: string | null
           thigh_cm?: number | null
           training_days?: string | null
+          training_duration?: string | null
           training_intensity?: string | null
           unit_system?: string | null
           updated_at?: string
@@ -652,6 +656,7 @@ export type Database = {
           body_fat_percentage?: number | null
           carbs_grams?: number | null
           chest_cm?: number | null
+          climate?: string | null
           coaching_tone?: string | null
           conditions?: string[] | null
           cooking_skill?: string | null
@@ -730,6 +735,7 @@ export type Database = {
           terms_version?: string | null
           thigh_cm?: number | null
           training_days?: string | null
+          training_duration?: string | null
           training_intensity?: string | null
           unit_system?: string | null
           updated_at?: string
