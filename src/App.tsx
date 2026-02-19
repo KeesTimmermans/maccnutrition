@@ -11,7 +11,7 @@ import { ReConsentModal } from "@/components/ReConsentModal";
 import { AnalyticsConsentBanner } from "@/components/AnalyticsConsentBanner";
 import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useAuthAnalytics } from "@/analytics/useAuthAnalytics";
-import { events } from "@/analytics/events";
+
 // New page structure
 import Today from "./pages/Today";
 import Progress from "./pages/Progress";
@@ -110,14 +110,6 @@ const App = () => {
         <Toaster />
         <Sonner />
         <AnalyticsConsentBanner />
-        {import.meta.env.DEV && (
-          <button
-            onClick={() => events.mealLogged("text")}
-            className="fixed top-2 right-2 z-[999] bg-red-600 text-white text-xs px-2 py-1 rounded opacity-80"
-          >
-            🔥 Test event
-          </button>
-        )}
         <HashRouter>
           <ConsentGate>
             <Routes>
