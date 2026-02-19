@@ -80,7 +80,6 @@ export function initPostHog(): void {
     capture_pageview: false,
     capture_pageleave: false,
     disable_session_recording: true,
-    persistence: "localStorage",
     ip: false, // GDPR — do not resolve IP
     before_send: (event) => {
       if (!event) return null;
