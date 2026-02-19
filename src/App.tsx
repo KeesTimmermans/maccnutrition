@@ -10,6 +10,7 @@ import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/consentConstants";
 import { ReConsentModal } from "@/components/ReConsentModal";
 import { AnalyticsConsentBanner } from "@/components/AnalyticsConsentBanner";
 import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
+import { useAuthAnalytics } from "@/analytics/useAuthAnalytics";
 // New page structure
 import Today from "./pages/Today";
 import Progress from "./pages/Progress";
@@ -98,7 +99,10 @@ const ConsentGate = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
+const App = () => {
+  useAuthAnalytics();
+
+  return (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
       <TooltipProvider>
@@ -135,6 +139,7 @@ const App = () => (
       </TooltipProvider>
     </LanguageProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
