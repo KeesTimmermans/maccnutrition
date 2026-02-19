@@ -234,44 +234,99 @@ function calculateMacros(
 
 /**
  * Step 3: Calculate Hydration & Electrolyte Baseline
+ *
+ * Rules (conservative lower-end):
+ *   Base:  30 ml/kg  sedentary / minimal
+ *          35 ml/kg  average active
+ *          40 ml/kg  high intensity, fat-loss, or manual / outdoor work
+ *
+ *   Training add-on (per session, scaled by estimated ~1 hr):
+ *     CrossFit / HIIT / conditioning  → +500 ml
+ *     Strength / moderate              → +400 ml
+ *     Endurance >90 min               → note to weigh pre/post
+ *
+ *   Electrolytes: ≥3 g sodium if >3 L daily, intense training, or whole-food diet.
+ *   Age 50+: structured drinking reminder (thirst sensitivity declines).
  */
 function calculateHydration(data: OnboardingData): BaselineResults["hydration"] {
   const { weightKg } = getWeightFromData(data);
-  const sex = data.sex || "male";
+  const goal = data.primaryGoal || "general_health";
+  const jobActivity = data.jobActivityLevel || "light";
   const trainingDays = data.trainingDays || "2-3";
+  const workoutTypes = data.workoutTypes || [];
+  const age = parseInt(data.age) || 30;
+  const sex = data.sex || "male";
 
-  // Base: 35 ml/kg body weight
-  let waterMl = weightKg * 35;
+  // ── 1. Base hydration rate (ml/kg) ──────────────────────────
+  const isHighIntensity = workoutTypes.some(t =>
+    ["crossfit", "hiit", "martial_arts"].includes(t)
+  );
+  const isManualOrOutdoor = jobActivity === "active";
+  const isFatLoss = goal === "fat_loss";
 
-  // +10% if training ≥1 hr/day (approximated by 4+ training days)
-  if (trainingDays === "4-5" || trainingDays === "6+") {
-    waterMl *= 1.10;
+  let mlPerKg = 35; // default: average active
+  if (isHighIntensity || isFatLoss || isManualOrOutdoor) {
+    mlPerKg = 40;
+  } else if (
+    (data.activityLevel === "not_active" || data.activityLevel === "semi_active") &&
+    (jobActivity === "sedentary" || jobActivity === "light") &&
+    (workoutTypes.length === 0 || workoutTypes.includes("none"))
+  ) {
+    mlPerKg = 30;
   }
 
-  // +15% during luteal or menstrual phase
+  let baseMl = weightKg * mlPerKg;
+
+  // ── 2. Training addition (per training day, assume ~1 hr session) ─
+  let trainingAddMl = 0;
+  if (!workoutTypes.includes("none") && workoutTypes.length > 0) {
+    if (workoutTypes.some(t => ["crossfit", "hiit", "martial_arts", "sports"].includes(t))) {
+      trainingAddMl = 500;
+    } else if (workoutTypes.some(t => ["weightlifting", "swimming", "cycling", "cardio", "dance"].includes(t))) {
+      trainingAddMl = 400;
+    }
+  }
+
+  // Scale training add by approximate sessions per day ratio
+  let dailyTrainingFraction = 0;
+  if (trainingDays === "0-1") dailyTrainingFraction = 0.14;
+  else if (trainingDays === "2-3") dailyTrainingFraction = 0.36;
+  else if (trainingDays === "4-5") dailyTrainingFraction = 0.64;
+  else if (trainingDays === "6+") dailyTrainingFraction = 0.86;
+
+  const avgDailyTrainingAdd = trainingAddMl * dailyTrainingFraction;
+  const totalDailyMl = baseMl + avgDailyTrainingAdd;
+
+  // Training-day target (base + full session add)
+  const trainingDayMl = baseMl + trainingAddMl;
+
+  // ── 3. Female cycle adjustment (+15% luteal/menstrual) ─────
+  let adjustedDailyMl = totalDailyMl;
   if (sex === "female" && (data.currentPhase === "luteal" || data.currentPhase === "menstrual")) {
-    waterMl *= 1.15;
+    adjustedDailyMl *= 1.15;
   }
 
-  // Base electrolytes
-  let sodiumMg = 2500; // 2-3g baseline
-  let magnesiumMg = 350; // 300-400mg baseline
-  const potassiumMg = 2750; // 2.5-3g baseline
+  // ── 4. Electrolytes ────────────────────────────────────────
+  // Recommend ≥3 g sodium when >3 L, intense training, or whole-food diet
+  const needsElectrolyteFocus =
+    adjustedDailyMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
 
-  // Heavy training: +1-2g sodium
-  if (trainingDays === "6+") {
-    sodiumMg += 1500;
-  } else if (trainingDays === "4-5") {
-    sodiumMg += 1000;
-  }
+  let sodiumMg = needsElectrolyteFocus ? 3000 : 2500;
+  let magnesiumMg = 350;
+  const potassiumMg = 2750;
 
-  // Stress or poor sleep: +50-100mg magnesium
+  // Extra magnesium for stress / poor sleep
   if (data.stressLevel === "high" || data.sleepHours === "<5" || data.sleepHours === "5-6") {
     magnesiumMg += 75;
   }
 
+  // Heavy training: bump sodium further
+  if (trainingDays === "6+") {
+    sodiumMg += 500;
+  }
+
   return {
-    waterLiters: Math.round((waterMl / 1000) * 10) / 10,
+    waterLiters: Math.round((adjustedDailyMl / 1000) * 10) / 10,
     sodiumMg: Math.round(sodiumMg),
     magnesiumMg: Math.round(magnesiumMg),
     potassiumMg: Math.round(potassiumMg),
