@@ -7,9 +7,7 @@ const corsHeaders = {
 
 /**
  * Retroactive hydration recalculation for all existing users.
- * Applies the Master Hydration System logic server-side.
- *
- * Protected: requires service-role or admin auth.
+ * Master Hydration System — Lower-End Targets with all 6 safeguards.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,7 +19,6 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch all user baselines
     const { data: baselines, error: fetchError } = await supabase
       .from("user_baselines")
       .select("user_id, weight, unit_system, age, sex, activity_level, job_activity_level, workout_types, training_days, training_duration, climate, primary_goal, stress_level, sleep_hours, current_phase");
@@ -35,14 +32,13 @@ Deno.serve(async (req) => {
     const missingData: string[] = [];
 
     for (const b of baselines || []) {
-      // Check for required weight
+      // Safeguard 5: require weight
       if (!b.weight) {
         missingData.push(b.user_id);
         skipped++;
         continue;
       }
 
-      // Convert weight to kg
       const unitSystem = b.unit_system || "metric";
       const rawWeight = Number(b.weight);
       const weightKg = unitSystem === "metric" ? rawWeight : rawWeight / 2.205;
@@ -52,34 +48,49 @@ Deno.serve(async (req) => {
       const goal = b.primary_goal || "general_health";
       const trainingDays = b.training_days || "2-3";
       const trainingDuration = b.training_duration || "30_60";
-      const climate = b.climate || "moderate";
       const sex = b.sex || "male";
       const currentPhase = b.current_phase || "";
       const stressLevel = b.stress_level || "moderate";
       const sleepHours = b.sleep_hours || "7-8";
       const activityLevel = b.activity_level || "semi_active";
 
-      // ── 1. Base hydration rate ──
+      // ── Safeguard 1: Climate defaults to "moderate" ──
+      const climate = b.climate || "moderate";
+
+      // ── Safeguard 5: Check data completeness ──
+      const hasCompleteData = !!(
+        b.weight &&
+        b.job_activity_level &&
+        b.workout_types?.length &&
+        b.climate &&
+        b.training_days
+      );
+
+      // ── Safeguard 2: ONE base multiplier, no stacking ──
       const isHighIntensity = workoutTypes.some((t: string) =>
         ["crossfit", "hiit", "martial_arts"].includes(t)
       );
       const isManualOrOutdoor = jobActivity === "active";
       const isFatLoss = goal === "fat_loss";
 
-      let mlPerKg = 35;
-      if (isHighIntensity || isFatLoss || isManualOrOutdoor) {
-        mlPerKg = 40;
+      let mlPerKg: number;
+      if (!hasCompleteData) {
+        mlPerKg = 35; // Safeguard 5: conservative default
+      } else if (isManualOrOutdoor || isHighIntensity || isFatLoss) {
+        mlPerKg = 40; // Highest single category, max 40
       } else if (
         (activityLevel === "not_active" || activityLevel === "semi_active") &&
         (jobActivity === "sedentary" || jobActivity === "light") &&
         (workoutTypes.length === 0 || workoutTypes.includes("none"))
       ) {
         mlPerKg = 30;
+      } else {
+        mlPerKg = 35;
       }
 
       const baseMl = weightKg * mlPerKg;
 
-      // ── 2. Training addition ──
+      // ── Safeguard 3: Training fluid per-session ──
       let addPerHour = 0;
       if (!workoutTypes.includes("none") && workoutTypes.length > 0) {
         if (workoutTypes.some((t: string) => ["crossfit", "hiit", "martial_arts", "sports"].includes(t))) {
@@ -105,15 +116,17 @@ Deno.serve(async (req) => {
 
       let totalDailyMl = baseMl + trainingAddMl * dailyTrainingFraction;
 
-      // ── 3. Climate ──
-      if (climate === "hot") totalDailyMl += 500;
+      // ── Safeguard 4: Climate addition ONLY when "hot" ──
+      if (climate === "hot") {
+        totalDailyMl += 500;
+      }
 
-      // ── 4. Female cycle ──
+      // Female cycle adjustment
       if (sex === "female" && (currentPhase === "luteal" || currentPhase === "menstrual")) {
         totalDailyMl *= 1.15;
       }
 
-      // ── 5. Electrolytes ──
+      // Electrolytes
       const needsElectrolyteFocus =
         totalDailyMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
 
@@ -130,7 +143,7 @@ Deno.serve(async (req) => {
 
       const waterLiters = Math.round((totalDailyMl / 1000) * 10) / 10;
 
-      // Update
+      // Safeguard 6: Overwrite previous target completely
       const { error: updateError } = await supabase
         .from("user_baselines")
         .update({
