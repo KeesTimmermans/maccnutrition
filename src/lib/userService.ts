@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingData } from "@/components/OnboardingQuestionnaire";
-import { BaselineResults } from "@/lib/baselineCalculations";
+import { BaselineResults, calculateHydration } from "@/lib/baselineCalculations";
 
 export interface UserBaseline {
   id: string;
@@ -323,7 +323,14 @@ export const updateUserMeasurements = async (measurements: {
     throw error;
   }
 
-  return data as unknown as UserBaseline;
+  const baseline = data as unknown as UserBaseline;
+
+  // Auto-recalculate hydration when weight changes
+  if (measurements.weight != null) {
+    await recalculateHydrationFromBaseline(baseline);
+  }
+
+  return baseline;
 };
 
 /**
@@ -368,4 +375,116 @@ export const sendBaselineEmail = async (
     console.error("Error invoking send-baseline-email:", error);
     return { success: false, error };
   }
+};
+
+/**
+ * Convert a UserBaseline record into the shape calculateHydration expects,
+ * then persist the recalculated hydration targets.
+ */
+export const recalculateHydrationFromBaseline = async (
+  baseline: UserBaseline
+): Promise<UserBaseline | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Build a minimal OnboardingData from stored baseline fields
+  const pseudo: OnboardingData = {
+    name: baseline.name || "",
+    age: baseline.age?.toString() || "",
+    sex: (baseline.sex as "male" | "female" | "") || "",
+    unitSystem: (baseline.unit_system as "imperial" | "metric") || "metric",
+    heightFeet: baseline.height_feet?.toString() || "",
+    heightInches: baseline.height_inches?.toString() || "",
+    heightCm: baseline.height_cm?.toString() || "",
+    weight: baseline.weight?.toString() || "70",
+    conditions: baseline.conditions || [],
+    allergies: baseline.allergies || [],
+    occupation: baseline.occupation || "",
+    workHours: baseline.work_hours || "",
+    trainingDays: baseline.training_days || "2-3",
+    trainingIntensity: baseline.training_intensity || "",
+    sleepHours: baseline.sleep_hours || "7-8",
+    activityLevel: baseline.activity_level || "semi_active",
+    stressLevel: baseline.stress_level || "moderate",
+    jobActivityLevel: baseline.job_activity_level || "light",
+    workoutTypes: baseline.workout_types || [],
+    climate: baseline.climate || "moderate",
+    trainingDuration: baseline.training_duration || "30_60",
+    primaryGoal: baseline.primary_goal || "general_health",
+    currentPhase: baseline.current_phase || "",
+    // Remaining fields with safe defaults (not used by hydration calc)
+    eatingSpeed: "", hungerPatterns: "", cravingsTriggers: [],
+    emotionalEating: "", snackingHabits: "", hydrationHabits: "",
+    biggestChallenge: "", pastDiets: [], weekendHabits: "",
+    eatingOutFrequency: "", mealPrepTime: "", cookingSkill: "",
+    energyPatterns: "", motivationStyle: "", accountabilityPreference: "",
+    secondaryGoals: [], dietType: "", foodDislikes: "",
+    coachingTone: "", mealsPerDay: "", proteinShakesPreference: "",
+    cycleRegularity: "", cycleSymptoms: [],
+    bodyFatPercentage: "", waist: "", hip: "", chest: "",
+    arm: "", thigh: "", neck: "",
+    hasProgressPhoto: false, progressPhotoUrl: null,
+    progressPhotos: { front: null, back: null, left: null, right: null },
+  };
+
+  const hydration = calculateHydration(pseudo);
+
+  const { data, error } = await supabase
+    .from("user_baselines")
+    .update({
+      water_liters: hydration.waterLiters,
+      sodium_mg: hydration.sodiumMg,
+      magnesium_mg: hydration.magnesiumMg,
+      potassium_mg: hydration.potassiumMg,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error recalculating hydration:", error);
+    return null;
+  }
+
+  console.log("Hydration recalculated:", hydration);
+  return data as unknown as UserBaseline;
+};
+
+/**
+ * Update hydration-relevant profile fields and recalculate targets.
+ * Call this when the user changes training type, duration, job type,
+ * climate, or fat-loss phase toggle.
+ */
+export const updateHydrationInputs = async (fields: {
+  primary_goal?: string;
+  job_activity_level?: string;
+  workout_types?: string[];
+  training_days?: string;
+  training_duration?: string;
+  climate?: string;
+  activity_level?: string;
+  current_phase?: string;
+  weight?: number;
+}): Promise<UserBaseline | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // 1. Persist the changed fields
+  const { data, error } = await supabase
+    .from("user_baselines")
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating hydration inputs:", error);
+    throw error;
+  }
+
+  const updated = data as unknown as UserBaseline;
+
+  // 2. Recalculate hydration from the now-updated baseline
+  return recalculateHydrationFromBaseline(updated);
 };

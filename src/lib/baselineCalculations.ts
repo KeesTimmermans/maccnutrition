@@ -248,7 +248,7 @@ function calculateMacros(
  *   Electrolytes: ≥3 g sodium if >3 L daily, intense training, or whole-food diet.
  *   Age 50+: structured drinking reminder (thirst sensitivity declines).
  */
-function calculateHydration(data: OnboardingData): BaselineResults["hydration"] {
+export function calculateHydration(data: OnboardingData): BaselineResults["hydration"] {
   const { weightKg } = getWeightFromData(data);
   const goal = data.primaryGoal || "general_health";
   const jobActivity = data.jobActivityLevel || "light";
