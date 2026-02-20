@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useCommunityRealtime } from "@/hooks/useCommunityRealtime";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -95,9 +97,20 @@ const Community = () => {
   const [commentsMap, setCommentsMap] = useState<Record<string, CommunityComment[]>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [loadingComments, setLoadingComments] = useState<Set<string>>(new Set());
+  const [communityAnonymous, setCommunityAnonymous] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id ?? null));
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+      if (user) {
+        supabase
+          .from("profiles")
+          .select("community_anonymous")
+          .eq("user_id", user.id)
+          .maybeSingle()
+          .then(({ data }) => setCommunityAnonymous(data?.community_anonymous ?? false));
+      }
+    });
     checkIsAdmin().then(setIsAdmin);
   }, []);
 
@@ -361,6 +374,34 @@ const Community = () => {
             <li>No medical advice</li>
             <li>Report anything concerning</li>
           </ul>
+        </div>
+
+        {/* Anonymity toggle */}
+        <div className="flex items-center justify-between rounded-lg border bg-muted/50 px-4 py-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="community-anon" className="text-sm font-medium">Post anonymously</Label>
+            <p className="text-xs text-muted-foreground">
+              {communityAnonymous ? "Your identity is hidden" : "Your name is visible"}
+            </p>
+          </div>
+          <Switch
+            id="community-anon"
+            checked={communityAnonymous}
+            onCheckedChange={async (enabled) => {
+              setCommunityAnonymous(enabled);
+              try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) return;
+                const { error } = await supabase
+                  .from("profiles")
+                  .update({ community_anonymous: enabled } as any)
+                  .eq("user_id", session.user.id);
+                if (error) throw error;
+              } catch {
+                setCommunityAnonymous(!enabled);
+              }
+            }}
+          />
         </div>
 
         {/* Composer */}
