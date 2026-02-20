@@ -203,6 +203,7 @@ export type Database = {
           check_in_date: string
           coach_response: string | null
           created_at: string
+          cycle_phase_today: string | null
           daily_focus_points: Json | null
           energy_level: number | null
           hunger_level: number | null
@@ -220,6 +221,7 @@ export type Database = {
           check_in_date?: string
           coach_response?: string | null
           created_at?: string
+          cycle_phase_today?: string | null
           daily_focus_points?: Json | null
           energy_level?: number | null
           hunger_level?: number | null
@@ -237,6 +239,7 @@ export type Database = {
           check_in_date?: string
           coach_response?: string | null
           created_at?: string
+          cycle_phase_today?: string | null
           daily_focus_points?: Json | null
           energy_level?: number | null
           hunger_level?: number | null
@@ -598,6 +601,7 @@ export type Database = {
           cravings_triggers: string[] | null
           created_at: string
           current_phase: string | null
+          cycle_phase_updated_at: string | null
           cycle_regularity: string | null
           cycle_symptoms: string[] | null
           dashboard_layout: Json | null
@@ -701,6 +705,7 @@ export type Database = {
           cravings_triggers?: string[] | null
           created_at?: string
           current_phase?: string | null
+          cycle_phase_updated_at?: string | null
           cycle_regularity?: string | null
           cycle_symptoms?: string[] | null
           dashboard_layout?: Json | null
@@ -804,6 +809,7 @@ export type Database = {
           cravings_triggers?: string[] | null
           created_at?: string
           current_phase?: string | null
+          cycle_phase_updated_at?: string | null
           cycle_regularity?: string | null
           cycle_symptoms?: string[] | null
           dashboard_layout?: Json | null

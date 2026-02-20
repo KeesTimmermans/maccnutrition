@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
@@ -30,18 +31,28 @@ interface CheckInData {
   hunger_level?: number;
   notes?: string;
   check_in_date: string;
+  cycle_phase_today?: string;
 }
 
 interface DailyCheckInComponentProps {
   onClose: () => void;
   onComplete: (data: CheckInData) => void;
+  userSex?: string | null;
 }
 
 type MetricKey = 'mood' | 'energy' | 'sleep' | 'stress';
 
+const CYCLE_PHASES = [
+  { value: 'menstrual', label: '🩸 Menstrual', emoji: '🩸' },
+  { value: 'follicular', label: '🌱 Follicular', emoji: '🌱' },
+  { value: 'ovulation', label: '🌟 Ovulation', emoji: '🌟' },
+  { value: 'luteal', label: '🌙 Luteal', emoji: '🌙' },
+  { value: 'unsure', label: '❓ Unsure', emoji: '❓' },
+];
+
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
 
-export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps) => {
+export const DailyCheckIn = ({ onClose, onComplete, userSex }: DailyCheckInComponentProps) => {
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -56,7 +67,11 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
     stress: 3,
     sleepHours: '',
     notes: '',
+    cyclePhase: 'unsure',
   });
+
+  const isFemale = userSex === 'female';
+  const showCycleStep = isFemale;
 
   const METRIC_CONFIG: Record<MetricKey, { 
     label: string; 
@@ -96,7 +111,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
   };
 
   const steps: MetricKey[] = ['mood', 'energy', 'sleep', 'stress'];
-  const totalSteps = steps.length + 1; // metrics + notes
+  const totalSteps = steps.length + (showCycleStep ? 1 : 0) + 1; // metrics + cycle (female) + notes
 
   useEffect(() => {
     loadData();
@@ -119,6 +134,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
           stress: todaysData.stress_level || 3,
           sleepHours: todaysData.sleep_hours?.toString() || '',
           notes: todaysData.notes || '',
+          cyclePhase: (todaysData as any).cycle_phase_today || 'unsure',
         });
       }
 
@@ -160,6 +176,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
         stress_level: formData.stress,
         sleep_hours: formData.sleepHours ? parseFloat(formData.sleepHours) : undefined,
         notes: formData.notes || undefined,
+        cycle_phase_today: isFemale ? formData.cyclePhase : undefined,
       };
       
       await saveCheckIn({
@@ -170,7 +187,21 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
         stress_level: checkInData.stress_level,
         sleep_hours: checkInData.sleep_hours,
         notes: checkInData.notes,
+        cycle_phase_today: checkInData.cycle_phase_today,
       });
+      // Update user_baselines.current_phase if female and not unsure
+      if (isFemale && formData.cyclePhase && formData.cyclePhase !== 'unsure') {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('user_baselines')
+            .update({ 
+              current_phase: formData.cyclePhase,
+              cycle_phase_updated_at: new Date().toISOString(),
+            } as any)
+            .eq('user_id', user.id);
+        }
+      }
       trackCheckinCompleted();
       toast.success(t('checkin_saved'));
       onComplete(checkInData);
@@ -195,8 +226,9 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
     );
   }
 
-  const currentMetric = steps[step] as MetricKey | undefined;
-  const isNotesStep = step === steps.length;
+  const currentMetric = step < steps.length ? steps[step] as MetricKey : undefined;
+  const isCycleStep = showCycleStep && step === steps.length;
+  const isNotesStep = showCycleStep ? step === steps.length + 1 : step === steps.length;
 
   return (
     <SafeAreaContainer overlay className="bg-background/95 backdrop-blur-sm">
@@ -226,7 +258,7 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
 
       {/* Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-        {currentMetric && !isNotesStep && (
+        {currentMetric && !isNotesStep && !isCycleStep && (
           <div className="w-full max-w-sm animate-slide-up">
             <div className="text-center mb-8">
               <div className={`w-16 h-16 rounded-2xl bg-card shadow-soft flex items-center justify-center mx-auto mb-4 ${METRIC_CONFIG[currentMetric].color}`}>
@@ -295,6 +327,42 @@ export const DailyCheckIn = ({ onClose, onComplete }: DailyCheckInComponentProps
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {isCycleStep && (
+          <div className="w-full max-w-sm animate-slide-up">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 rounded-2xl bg-card shadow-soft flex items-center justify-center mx-auto mb-4 text-pink-500">
+                <Moon className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground mb-2">
+                {t('cycle_phase_question') || "Where are you in your cycle today?"}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t('cycle_phase_subtitle') || "This helps Coach Mac tailor today's advice"}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {CYCLE_PHASES.map((phase) => {
+                const isSelected = formData.cyclePhase === phase.value;
+                return (
+                  <button
+                    key={phase.value}
+                    onClick={() => setFormData(prev => ({ ...prev, cyclePhase: phase.value }))}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground shadow-medium scale-[1.02]'
+                        : 'bg-card shadow-soft hover:scale-[1.01]'
+                    }`}
+                  >
+                    <span className="text-xl">{phase.emoji}</span>
+                    <span className="font-medium capitalize">{phase.value === 'unsure' ? (t('unsure') || 'Unsure') : phase.value}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
