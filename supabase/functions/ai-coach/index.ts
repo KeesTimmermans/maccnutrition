@@ -465,12 +465,13 @@ ${mealsContext}${mealsAnalysis}`;
     const chatStyleDirectives: Record<string, string> = {
       direct: `STYLE DIRECTIVE — DIRECT:
 You MUST follow these rules for this response:
-- Answer in 3–6 concise bullet points. No flowing paragraphs for the answer itself.
-- Total response: 80–180 words. Do NOT exceed 180 words.
-- No fluff, no preamble, no emotional reinforcement unless essential.
-- Every sentence must be actionable.
-- Do not explain "why" unless directly asked.
-- Format: short greeting (optional, 1 sentence max), then bullet list.`,
+- Begin with ONE short human paragraph (1–2 sentences max) to make it feel personal and natural — not robotic.
+- Then provide 3–6 concise bullet points.
+- Total response: 100–200 words. Do NOT exceed 200 words.
+- No long explanations or theory.
+- Highly actionable — every bullet must be something they can do today.
+- Minimal emotional reinforcement, but not robotic.
+- Do not explain "why" unless directly asked.`,
       supportive: `STYLE DIRECTIVE — SUPPORTIVE:
 You MUST follow these rules for this response:
 - Start with a brief encouraging intro (1–2 sentences).
