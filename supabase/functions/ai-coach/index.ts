@@ -164,11 +164,7 @@ When they're just asking questions or chatting:
 - Always metric units (kg, cm, liters, grams)
 
 💬 COACHING TONE ADAPTATION:
-
-Supportive → Extra warm, celebrate effort, lots of encouragement
-Direct → Blunt but kind, get to the point, less fluff
-Educational → Explain the reasoning, but conversationally
-Motivational → Energizing language, focus on what's possible`;
+(See STYLE DIRECTIVE section below for detailed per-style rules.)`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -464,10 +460,66 @@ ${mealsContext}${mealsAnalysis}`;
     const preferredLanguage = userContext?.preferredLanguage || 'en';
     const languageInstruction = languageInstructions[preferredLanguage] || languageInstructions['en'];
 
+    // Build chat style directive based on coaching tone (applies to chat & focus_tip only)
+    const coachingTone = userContext?.coachingTone || 'supportive';
+    const chatStyleDirectives: Record<string, string> = {
+      direct: `STYLE DIRECTIVE — DIRECT:
+You MUST follow these rules for this response:
+- Answer in 3–6 concise bullet points. No flowing paragraphs for the answer itself.
+- Total response: 80–180 words. Do NOT exceed 180 words.
+- No fluff, no preamble, no emotional reinforcement unless essential.
+- Every sentence must be actionable.
+- Do not explain "why" unless directly asked.
+- Format: short greeting (optional, 1 sentence max), then bullet list.`,
+      supportive: `STYLE DIRECTIVE — SUPPORTIVE:
+You MUST follow these rules for this response:
+- Start with a brief encouraging intro (1–2 sentences).
+- Follow with practical advice woven with reassurance.
+- Total response: 150–300 words.
+- Tone: calm, warm, supportive — like a trusted friend.
+- Use flowing paragraphs, not bullet points.
+- Acknowledge effort before giving guidance.`,
+      educational: `STYLE DIRECTIVE — EDUCATIONAL:
+You MUST follow these rules for this response:
+- Provide a clear explanation of the reasoning behind your advice.
+- Use a structured breakdown with short headings or bold sections.
+- Total response: 300–600 words.
+- Explain the "why" behind every recommendation.
+- End with a concise actionable summary (2–4 bullet points).
+- Tone: informative but conversational, like a knowledgeable coach explaining the science.`,
+      motivational: `STYLE DIRECTIVE — MOTIVATIONAL:
+You MUST follow these rules for this response:
+- Use high-energy, action-focused tone.
+- Reinforce belief, momentum, and what's possible.
+- Total response: 150–300 words.
+- Use flowing paragraphs, not bullet points.
+- Avoid exaggerated or cringe phrasing — keep it authentic and empowering.
+- End with a punchy call-to-action or affirmation.`
+    };
+
+    // Only inject style directive for chat and focus_tip types (not check-ins or progress updates)
+    const effectiveType = type || 'chat';
+    const chatStyleBlock = (effectiveType === 'chat' || effectiveType === 'focus_tip')
+      ? chatStyleDirectives[coachingTone] || chatStyleDirectives['supportive']
+      : '';
+
+    // max_tokens caps per style
+    const maxTokensByStyle: Record<string, number> = {
+      direct: 300,
+      supportive: 600,
+      educational: 1200,
+      motivational: 600,
+    };
+    const maxTokens = (effectiveType === 'chat' || effectiveType === 'focus_tip')
+      ? (maxTokensByStyle[coachingTone] || 600)
+      : 2000; // generous for check-ins and progress updates
+
     const systemPrompt = `${CJT_CORE_SYSTEM}
 
 ${userProfile}
 ${progressUpdateContext}
+
+${chatStyleBlock}
 
 LANGUAGE INSTRUCTION:
 ${languageInstruction}
@@ -487,7 +539,6 @@ RESPONSE GUIDELINES:
 - Reference their context naturally, not as data dumps
 - ONE clear action item is better than five generic ones
 - If check-in shows changes from yesterday, acknowledge the trajectory
-- Adapt tone based on their preference: ${userContext?.coachingTone || 'supportive'}
 - Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step`;
 
     // Build messages array for chat
@@ -515,6 +566,7 @@ RESPONSE GUIDELINES:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: apiMessages,
+        max_tokens: maxTokens,
       }),
     });
 
