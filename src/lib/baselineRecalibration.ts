@@ -39,7 +39,7 @@ export function getLastRecalibrationInfo(baseline: UserBaseline): {
   const now = new Date();
   const daysSince = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
   const nextRecalibration = new Date(lastUpdate);
-  nextRecalibration.setDate(nextRecalibration.getDate() + 14);
+  nextRecalibration.setDate(nextRecalibration.getDate() + 14); // bi-weekly check-in cycle
 
   return { lastUpdate, daysSince, nextRecalibration };
 }

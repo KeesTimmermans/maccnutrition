@@ -76,6 +76,7 @@ export const TodayDashboard = () => {
   const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
   const [dailyCheckInFocusPoints, setDailyCheckInFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
 
+  // Check if bi-weekly progress update is needed (every 14 days)
   const checkProgressUpdateNeeded = (userBaseline: UserBaseline | null) => {
     if (!userBaseline) return false;
     
@@ -83,12 +84,12 @@ export const TodayDashboard = () => {
     if (!lastUpdate) {
       const createdAt = new Date(userBaseline.created_at);
       const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-      return daysSinceCreation >= 30;
+      return daysSinceCreation >= 14;
     }
     
     const lastUpdateDate = new Date(lastUpdate);
     const daysSinceUpdate = Math.floor((Date.now() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysSinceUpdate >= 30;
+    return daysSinceUpdate >= 14;
   };
 
   const getGreeting = () => {

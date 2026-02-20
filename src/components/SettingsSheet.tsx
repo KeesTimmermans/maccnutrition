@@ -405,11 +405,11 @@ export const SettingsSheet = ({
                   </div>
                 </div>
 
-                {/* Monthly Progress Check-in Button */}
+                {/* Bi-Weekly Progress Check-in Button */}
                 <div className="p-4 bg-muted rounded-xl space-y-3">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium">Monthly Progress Check-in</span>
+                    <span className="text-sm font-medium">Bi-Weekly Progress Check-in</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Update your measurements, share how you're feeling about your progress, or let Coach Mac know you want to push harder.

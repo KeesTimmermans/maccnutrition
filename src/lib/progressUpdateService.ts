@@ -277,11 +277,11 @@ export const getActiveCoachingFocusPoints = async (): Promise<CoachingFocusPoint
   const latest = await getLatestProgressUpdate();
   if (!latest || !latest.coaching_focus_points) return null;
   
-  // Check if the progress update is within the last 30 days
+  // Check if the progress update is within the last 14 days (bi-weekly cycle)
   const updateDate = new Date(latest.created_at);
   const daysSinceUpdate = Math.floor((Date.now() - updateDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  if (daysSinceUpdate > 30) return null;
+  if (daysSinceUpdate > 14) return null;
   
   return latest.coaching_focus_points;
 };

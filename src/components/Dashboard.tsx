@@ -78,21 +78,20 @@ export const Dashboard = () => {
   const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
   const [dailyCheckInFocusPoints, setDailyCheckInFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
 
-  // Check if monthly progress update is needed
+  // Check if bi-weekly progress update is needed (every 14 days)
   const checkProgressUpdateNeeded = (userBaseline: UserBaseline | null) => {
     if (!userBaseline) return false;
     
     const lastUpdate = userBaseline.last_progress_update;
     if (!lastUpdate) {
-      // If no progress update ever done, check if account is older than 30 days
       const createdAt = new Date(userBaseline.created_at);
       const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-      return daysSinceCreation >= 30;
+      return daysSinceCreation >= 14;
     }
     
     const lastUpdateDate = new Date(lastUpdate);
     const daysSinceUpdate = Math.floor((Date.now() - lastUpdateDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysSinceUpdate >= 30;
+    return daysSinceUpdate >= 14;
   };
 
   const getGreeting = () => {
@@ -415,7 +414,7 @@ export const Dashboard = () => {
       
       // Incremental recalibration removed — targets auto-recalculate on profile changes
 
-      // Check for monthly progress update (once per session per day)
+      // Check for bi-weekly progress update (once per session per day)
       if (userBaseline) {
         const progressToday = new Date().toDateString();
         const progressUpdateCheck = localStorage.getItem('cjt_progress_update_check');
