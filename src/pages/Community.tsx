@@ -21,9 +21,11 @@ import {
   HelpCircle,
   AlertTriangle,
   Pin,
+  PinOff,
   Trash2,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,12 +33,14 @@ import {
   fetchPosts,
   createPost,
   softDeletePost,
+  togglePinPost,
   likePost,
   unlikePost,
   fetchComments,
   createComment,
   softDeleteComment,
   reportTarget,
+  checkIsAdmin,
   type CommunityPost,
   type CommunityComment,
   type PostType,
@@ -44,6 +48,7 @@ import {
 } from "@/lib/community/communityService";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 const POST_TYPE_CONFIG: Record<PostType, { label: string; icon: typeof Trophy; color: string }> = {
   win: { label: "Win", icon: Trophy, color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
@@ -67,12 +72,14 @@ const FILTERS: { value: PostType | "all"; label: string }[] = [
 ];
 
 const Community = () => {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<PostType | "all">("all");
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Composer state
   const [composerType, setComposerType] = useState<PostType>("win");
@@ -90,6 +97,7 @@ const Community = () => {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id ?? null));
+    checkIsAdmin().then(setIsAdmin);
   }, []);
 
   const loadPosts = useCallback(async (cursor?: string) => {
@@ -134,13 +142,23 @@ const Community = () => {
     }
   };
 
-  const handleDelete = async (postId: string) => {
+  const handleDelete = async (postId: string, reason?: string) => {
     try {
-      await softDeletePost(postId);
+      await softDeletePost(postId, reason);
       setPosts((prev) => prev.filter((p) => p.id !== postId));
       toast.success("Post deleted");
     } catch {
       toast.error("Failed to delete post");
+    }
+  };
+
+  const handlePin = async (postId: string, currentlyPinned: boolean) => {
+    try {
+      await togglePinPost(postId, !currentlyPinned);
+      setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, is_pinned: !currentlyPinned } : p));
+      toast.success(currentlyPinned ? "Post unpinned" : "Post pinned");
+    } catch {
+      toast.error("Failed to update pin");
     }
   };
 
@@ -241,7 +259,14 @@ const Community = () => {
   return (
     <AppLayout>
       <div className="p-4 space-y-4 pb-24 max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold">Community</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Community</h1>
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => navigate("/community/reports")} className="gap-1">
+              <ShieldCheck className="w-4 h-4" /> Reports
+            </Button>
+          )}
+        </div>
 
         {/* Filters */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -318,9 +343,11 @@ const Community = () => {
                 key={post.id}
                 post={post}
                 currentUserId={currentUserId}
+                isAdmin={isAdmin}
                 isLiked={likedPosts.has(post.id)}
                 onLike={() => handleLike(post.id)}
-                onDelete={() => handleDelete(post.id)}
+                onDelete={(reason) => handleDelete(post.id, reason)}
+                onPin={() => handlePin(post.id, post.is_pinned)}
                 onReport={(reason) => handleReport("post", post.id, reason)}
                 commentsExpanded={expandedComments.has(post.id)}
                 onToggleComments={() => toggleComments(post.id)}
@@ -350,9 +377,11 @@ const Community = () => {
 interface PostCardProps {
   post: CommunityPost;
   currentUserId: string | null;
+  isAdmin: boolean;
   isLiked: boolean;
   onLike: () => void;
-  onDelete: () => void;
+  onDelete: (reason?: string) => void;
+  onPin: () => void;
   onReport: (reason: ReportReason) => void;
   commentsExpanded: boolean;
   onToggleComments: () => void;
@@ -368,9 +397,11 @@ interface PostCardProps {
 const PostCard = ({
   post,
   currentUserId,
+  isAdmin,
   isLiked,
   onLike,
   onDelete,
+  onPin,
   onReport,
   commentsExpanded,
   onToggleComments,
@@ -385,6 +416,7 @@ const PostCard = ({
   const cfg = POST_TYPE_CONFIG[post.type];
   const TypeIcon = cfg.icon;
   const isOwn = currentUserId === post.user_id;
+  const canDelete = isOwn || isAdmin;
   const initials = (post.display_name ?? "?").slice(0, 2).toUpperCase();
 
   return (
@@ -435,8 +467,26 @@ const PostCard = ({
 
           <div className="flex-1" />
 
-          {isOwn && (
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-destructive" onClick={onDelete}>
+          {isAdmin && (
+            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={onPin} title={post.is_pinned ? "Unpin" : "Pin"}>
+              {post.is_pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            </Button>
+          )}
+
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-destructive"
+              onClick={() => {
+                if (isAdmin && !isOwn) {
+                  const reason = window.prompt("Reason for deletion (optional):");
+                  onDelete(reason || undefined);
+                } else {
+                  onDelete();
+                }
+              }}
+            >
               <Trash2 className="w-4 h-4" />
             </Button>
           )}
@@ -469,7 +519,7 @@ const PostCard = ({
                       <p className="text-sm break-words">{c.content}</p>
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
-                      {currentUserId === c.user_id && (
+                      {(currentUserId === c.user_id || isAdmin) && (
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => onDeleteComment(c.id)}>
                           <Trash2 className="w-3 h-3" />
                         </Button>
