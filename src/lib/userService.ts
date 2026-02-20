@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingData } from "@/components/OnboardingQuestionnaire";
-import { BaselineResults, calculateHydration } from "@/lib/baselineCalculations";
+import { BaselineResults, calculateHydration, calculateNutritionTargets } from "@/lib/baselineCalculations";
 
 export interface UserBaseline {
   id: string;
@@ -327,9 +327,9 @@ export const updateUserMeasurements = async (measurements: {
 
   const baseline = data as unknown as UserBaseline;
 
-  // Auto-recalculate hydration when weight changes
+  // Auto-recalculate all targets when weight changes
   if (measurements.weight != null) {
-    await recalculateHydrationFromBaseline(baseline);
+    await recalculateNutritionFromBaseline(baseline);
   }
 
   return baseline;
@@ -381,17 +381,11 @@ export const sendBaselineEmail = async (
 };
 
 /**
- * Convert a UserBaseline record into the shape calculateHydration expects,
- * then persist the recalculated hydration targets.
+ * Build a pseudo-OnboardingData object from stored baseline fields.
+ * Reused by both nutrition and hydration recalculation.
  */
-export const recalculateHydrationFromBaseline = async (
-  baseline: UserBaseline
-): Promise<UserBaseline | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  // Build a minimal OnboardingData from stored baseline fields
-  const pseudo: OnboardingData = {
+function baselineToOnboardingData(baseline: UserBaseline): import("@/components/OnboardingQuestionnaire").OnboardingData {
+  return {
     name: baseline.name || "",
     age: baseline.age?.toString() || "",
     sex: (baseline.sex as "male" | "female" | "") || "",
@@ -415,31 +409,52 @@ export const recalculateHydrationFromBaseline = async (
     trainingDuration: baseline.training_duration || "30_60",
     primaryGoal: baseline.primary_goal || "general_health",
     currentPhase: baseline.current_phase || "",
-    // Remaining fields with safe defaults (not used by hydration calc)
+    mealsPerDay: baseline.meals_per_day || "3",
+    // Remaining fields with safe defaults
     eatingSpeed: "", hungerPatterns: "", cravingsTriggers: [],
     emotionalEating: "", snackingHabits: "", hydrationHabits: "",
     biggestChallenge: "", pastDiets: [], weekendHabits: "",
     eatingOutFrequency: "", mealPrepTime: "", cookingSkill: "",
     energyPatterns: "", motivationStyle: "", accountabilityPreference: "",
-    secondaryGoals: [], dietType: "", foodDislikes: "",
-    coachingTone: "", mealsPerDay: "", proteinShakesPreference: "",
-    cycleRegularity: "", cycleSymptoms: [],
+    secondaryGoals: baseline.secondary_goals || [], dietType: baseline.diet_type || "",
+    foodDislikes: baseline.food_dislikes || "",
+    coachingTone: baseline.coaching_tone || "",
+    proteinShakesPreference: "",
+    cycleRegularity: baseline.cycle_regularity || "", cycleSymptoms: baseline.cycle_symptoms || [],
     bodyFatPercentage: "", waist: "", hip: "", chest: "",
     arm: "", thigh: "", neck: "",
     hasProgressPhoto: false, progressPhotoUrl: null,
     progressPhotos: { front: null, back: null, left: null, right: null },
   };
+}
 
-  const hydration = calculateHydration(pseudo);
+/**
+ * Full recalculation of calorie, macro AND hydration targets from stored profile fields.
+ * This is the ONLY function that should be used to recompute nutrition targets after onboarding.
+ */
+export const recalculateNutritionFromBaseline = async (
+  baseline: UserBaseline
+): Promise<UserBaseline | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const pseudo = baselineToOnboardingData(baseline);
+  const results = calculateNutritionTargets(pseudo);
 
   const { data, error } = await supabase
     .from("user_baselines")
     .update({
-      water_liters: hydration.restDayLiters,
-      water_liters_training: hydration.hasTraining ? hydration.trainingDayLiters : null,
-      sodium_mg: hydration.sodiumMg,
-      magnesium_mg: hydration.magnesiumMg,
-      potassium_mg: hydration.potassiumMg,
+      tdee: results.calories.tdee,
+      target_calories: results.calories.target,
+      protein_grams: results.macros.protein.grams,
+      carbs_grams: results.macros.carbs.grams,
+      fats_grams: results.macros.fats.grams,
+      water_liters: results.hydration.restDayLiters,
+      water_liters_training: results.hydration.hasTraining ? results.hydration.trainingDayLiters : null,
+      sodium_mg: results.hydration.sodiumMg,
+      magnesium_mg: results.hydration.magnesiumMg,
+      potassium_mg: results.hydration.potassiumMg,
+      focus_points: results.focusPoints,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", user.id)
@@ -447,20 +462,26 @@ export const recalculateHydrationFromBaseline = async (
     .single();
 
   if (error) {
-    console.error("Error recalculating hydration:", error);
+    console.error("Error recalculating nutrition targets:", error);
     return null;
   }
 
-  console.log("Hydration recalculated:", hydration);
+  console.log("Nutrition targets recalculated:", {
+    tdee: results.calories.tdee,
+    target: results.calories.target,
+    protein: results.macros.protein.grams,
+    carbs: results.macros.carbs.grams,
+    fats: results.macros.fats.grams,
+  });
   return data as unknown as UserBaseline;
 };
 
 /**
- * Update hydration-relevant profile fields and recalculate targets.
- * Call this when the user changes training type, duration, job type,
- * climate, or fat-loss phase toggle.
+ * Update hydration-relevant profile fields and recalculate ALL targets
+ * (calories, macros, hydration). Call this when the user changes any
+ * profile field that affects targets: goal, activity, weight, training, climate, etc.
  */
-export const updateHydrationInputs = async (fields: {
+export const updateProfileAndRecalculate = async (fields: {
   primary_goal?: string;
   job_activity_level?: string;
   workout_types?: string[];
@@ -470,6 +491,14 @@ export const updateHydrationInputs = async (fields: {
   activity_level?: string;
   current_phase?: string;
   weight?: number;
+  age?: number;
+  sex?: string;
+  height_feet?: number;
+  height_inches?: number;
+  height_cm?: number;
+  sleep_hours?: string;
+  stress_level?: string;
+  meals_per_day?: string;
 }): Promise<UserBaseline | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -483,12 +512,15 @@ export const updateHydrationInputs = async (fields: {
     .single();
 
   if (error) {
-    console.error("Error updating hydration inputs:", error);
+    console.error("Error updating profile fields:", error);
     throw error;
   }
 
   const updated = data as unknown as UserBaseline;
 
-  // 2. Recalculate hydration from the now-updated baseline
-  return recalculateHydrationFromBaseline(updated);
+  // 2. Full recalculation of all targets from the now-updated baseline
+  return recalculateNutritionFromBaseline(updated);
 };
+
+/** @deprecated Use updateProfileAndRecalculate instead */
+export const updateHydrationInputs = updateProfileAndRecalculate;

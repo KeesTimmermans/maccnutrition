@@ -473,9 +473,10 @@ function generateFocusPoints(data: OnboardingData): string[] {
 }
 
 /**
- * Main calculation function - combines all steps
+ * Single source-of-truth function for all nutrition targets.
+ * Used at onboarding AND whenever profile fields change.
  */
-export function calculateBaseline(data: OnboardingData): BaselineResults {
+export function calculateNutritionTargets(data: OnboardingData): BaselineResults {
   const calories = calculateTDEE(data);
   const macros = calculateMacros(data, calories.target);
   const hydration = calculateHydration(data);
@@ -490,6 +491,9 @@ export function calculateBaseline(data: OnboardingData): BaselineResults {
     focusPoints,
   };
 }
+
+/** @deprecated Use calculateNutritionTargets instead. Kept for backward compat. */
+export const calculateBaseline = calculateNutritionTargets;
 
 /**
  * Get a summary message for the user
