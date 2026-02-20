@@ -2,6 +2,30 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type PostType = "win" | "struggle" | "question";
 export type ReportReason = "spam" | "harassment" | "medical_misinformation" | "eating_disorder" | "other";
+export type ReportStatus = "open" | "reviewed" | "actioned";
+
+export interface CommunityReport {
+  id: string;
+  reporter_user_id: string;
+  target_type: "post" | "comment";
+  target_id: string;
+  reason: ReportReason;
+  details: string | null;
+  status: ReportStatus;
+  created_at: string;
+}
+
+export async function checkIsAdmin(): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+  return !!data;
+}
 
 export interface CommunityPost {
   id: string;
@@ -102,10 +126,12 @@ export async function createPost({ type, content }: { type: PostType; content: s
   return data;
 }
 
-export async function softDeletePost(postId: string) {
+export async function softDeletePost(postId: string, deletedReason?: string) {
+  const update: Record<string, unknown> = { is_deleted: true };
+  if (deletedReason) update.deleted_reason = deletedReason;
   const { error } = await supabase
     .from("community_posts")
-    .update({ is_deleted: true })
+    .update(update)
     .eq("id", postId);
   if (error) throw new Error(`Failed to delete post: ${error.message}`);
 }
@@ -193,4 +219,24 @@ export async function reportTarget({ targetType, targetId, reason, details }: { 
     .from("community_reports")
     .insert({ reporter_user_id: user.id, target_type: targetType, target_id: targetId, reason, details: details ?? null });
   if (error) throw new Error(`Failed to submit report: ${error.message}`);
+}
+
+export async function fetchReports(status?: ReportStatus): Promise<CommunityReport[]> {
+  let query = supabase
+    .from("community_reports")
+    .select("id, reporter_user_id, target_type, target_id, reason, details, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (status) query = query.eq("status", status);
+  const { data, error } = await query;
+  if (error) throw new Error(`Failed to fetch reports: ${error.message}`);
+  return (data ?? []) as CommunityReport[];
+}
+
+export async function updateReportStatus(reportId: string, status: ReportStatus) {
+  const { error } = await supabase
+    .from("community_reports")
+    .update({ status })
+    .eq("id", reportId);
+  if (error) throw new Error(`Failed to update report: ${error.message}`);
 }
