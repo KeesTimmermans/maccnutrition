@@ -13,10 +13,14 @@ export interface BaselineResults {
     fats: { grams: number; calories: number; percentage: number };
   };
   hydration: {
+    restDayLiters: number;
+    trainingDayLiters: number;
+    /** @deprecated Use restDayLiters instead. Kept for backward compat. */
     waterLiters: number;
     sodiumMg: number;
     magnesiumMg: number;
     potassiumMg: number;
+    hasTraining: boolean;
   };
   mealPattern: MealTiming[];
   focusPoints: string[];
@@ -274,10 +278,8 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
 
   let mlPerKg: number;
   if (!hasCompleteData) {
-    // Safeguard 5: conservative default when data is incomplete
     mlPerKg = 35;
   } else if (isManualOrOutdoor || isHighIntensity || isFatLoss) {
-    // Highest applicable single category — pick ONE, max 40
     mlPerKg = 40;
   } else if (
     (data.activityLevel === "not_active" || data.activityLevel === "semi_active") &&
@@ -289,10 +291,23 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
     mlPerKg = 35;
   }
 
-  const baseMl = weightKg * mlPerKg;
+  let baseMl = weightKg * mlPerKg;
 
-  // ── Safeguard 3: Training fluid – per-session, NOT baked in ─
-  // Calculate per-session addition (only applies on training days)
+  // ── Female cycle adjustment (+15% luteal/menstrual) ────────
+  if (sex === "female" && (data.currentPhase === "luteal" || data.currentPhase === "menstrual")) {
+    baseMl *= 1.15;
+  }
+
+  // ── Safeguard 4: Climate addition ONLY when "hot" ──────────
+  let climateAddMl = 0;
+  if (climate === "hot") {
+    climateAddMl = 500;
+  }
+
+  // ── Rest Day Target = base + climate only ──────────────────
+  const restDayMl = baseMl + climateAddMl;
+
+  // ── Training fluid – per-session, ONLY on training days ────
   let addPerHour = 0;
   if (!workoutTypes.includes("none") && workoutTypes.length > 0) {
     if (workoutTypes.some(t => ["crossfit", "hiit", "martial_arts", "sports"].includes(t))) {
@@ -310,30 +325,18 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
 
   const trainingAddMl = Math.round(addPerHour * sessionHours);
 
-  // Scale by training frequency for average daily target
-  // This represents the statistical daily average across the week
-  let dailyTrainingFraction = 0;
-  if (trainingDays === "0-1") dailyTrainingFraction = 0.14;
-  else if (trainingDays === "2-3") dailyTrainingFraction = 0.36;
-  else if (trainingDays === "4-5") dailyTrainingFraction = 0.64;
-  else if (trainingDays === "6+") dailyTrainingFraction = 0.86;
+  // ── Training Day Target = base + climate + session addition ─
+  const trainingDayMl = restDayMl + trainingAddMl;
 
-  let totalDailyMl = baseMl + trainingAddMl * dailyTrainingFraction;
-
-  // ── Safeguard 4: Climate addition ONLY when "hot" ──────────
-  if (climate === "hot") {
-    totalDailyMl += 500;
-  }
-  // "moderate", "cold", or empty → no climate addition
-
-  // ── Female cycle adjustment (+15% luteal/menstrual) ────────
-  if (sex === "female" && (data.currentPhase === "luteal" || data.currentPhase === "menstrual")) {
-    totalDailyMl *= 1.15;
-  }
+  // Determine if user trains at all
+  const hasTraining = trainingDays !== "0-1" &&
+    workoutTypes.length > 0 &&
+    !workoutTypes.includes("none");
 
   // ── Electrolytes ───────────────────────────────────────────
+  const peakMl = hasTraining ? trainingDayMl : restDayMl;
   const needsElectrolyteFocus =
-    totalDailyMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
+    peakMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
 
   let sodiumMg = needsElectrolyteFocus ? 3000 : 2500;
   let magnesiumMg = 350;
@@ -347,8 +350,14 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
     sodiumMg += 500;
   }
 
+  const restDayLiters = Math.round((restDayMl / 1000) * 10) / 10;
+  const trainingDayLiters = Math.round((trainingDayMl / 1000) * 10) / 10;
+
   return {
-    waterLiters: Math.round((totalDailyMl / 1000) * 10) / 10,
+    restDayLiters,
+    trainingDayLiters,
+    waterLiters: restDayLiters, // backward compat — rest day is the base target
+    hasTraining,
     sodiumMg: Math.round(sodiumMg),
     magnesiumMg: Math.round(magnesiumMg),
     potassiumMg: Math.round(potassiumMg),
