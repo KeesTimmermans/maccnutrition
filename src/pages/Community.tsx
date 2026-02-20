@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useCommunityRealtime } from "@/hooks/useCommunityRealtime";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -119,6 +120,74 @@ const Community = () => {
     setLoading(true);
     loadPosts().finally(() => setLoading(false));
   }, [loadPosts]);
+
+  // Realtime subscriptions
+  const handleRealtimeNewPost = useCallback(
+    (post: { id: string; user_id: string; type: string; content: string; created_at: string; is_pinned: boolean }) => {
+      // Skip if we already have this post (e.g. we just created it)
+      setPosts((prev) => {
+        if (prev.some((p) => p.id === post.id)) return prev;
+        const newPost: CommunityPost = {
+          ...post,
+          type: post.type as PostType,
+          updated_at: post.created_at,
+          display_name: null,
+          avatar_url: null,
+          like_count: 0,
+          comment_count: 0,
+        };
+        return [newPost, ...prev];
+      });
+    },
+    []
+  );
+
+  const handleRealtimePostUpdated = useCallback(
+    (post: { id: string; is_pinned?: boolean; is_deleted?: boolean }) => {
+      if (post.is_deleted) {
+        setPosts((prev) => prev.filter((p) => p.id !== post.id));
+      } else if (post.is_pinned !== undefined) {
+        setPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, is_pinned: post.is_pinned! } : p));
+      }
+    },
+    []
+  );
+
+  const handleRealtimeLikeChange = useCallback(
+    (postId: string, delta: number) => {
+      setPosts((prev) =>
+        prev.map((p) => p.id === postId ? { ...p, like_count: Math.max(0, p.like_count + delta) } : p)
+      );
+    },
+    []
+  );
+
+  const handleRealtimeCommentChange = useCallback(
+    (postId: string) => {
+      // Bump comment count; refresh comments if expanded
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p.id !== postId) return p;
+          return { ...p, comment_count: p.comment_count + 1 };
+        })
+      );
+      // Re-fetch comments if this post's comments are expanded
+      if (expandedComments.has(postId)) {
+        fetchComments(postId).then((comments) => {
+          setCommentsMap((prev) => ({ ...prev, [postId]: comments }));
+          setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, comment_count: comments.length } : p));
+        });
+      }
+    },
+    [expandedComments]
+  );
+
+  useCommunityRealtime({
+    onNewPost: handleRealtimeNewPost,
+    onPostUpdated: handleRealtimePostUpdated,
+    onLikeChange: handleRealtimeLikeChange,
+    onCommentChange: handleRealtimeCommentChange,
+  });
 
   const handleLoadMore = async () => {
     if (!nextCursor || loadingMore) return;
