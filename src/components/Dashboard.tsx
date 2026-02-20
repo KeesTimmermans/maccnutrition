@@ -14,7 +14,7 @@ import { MealPlanner } from "@/components/MealPlanner";
 import { DailyCheckIn } from "@/components/DailyCheckIn";
 
 import { TrialBanner } from "@/components/TrialBanner";
-import { RecalibrationNotification } from "@/components/RecalibrationNotification";
+// RecalibrationNotification removed — targets now auto-recalculate on profile changes
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
@@ -25,7 +25,7 @@ import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, getTodaysDailyFocusPoints, CheckInAnalysis, UserTargets, DailyCheckIn as DailyCheckInType } from "@/lib/checkinService";
 
 import { getTodaysWaterIntake } from "@/lib/waterService";
-import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
+// Incremental recalibration removed — single source-of-truth recalculation used instead
 import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/lib/coachingAnalytics";
 import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage } from "@/lib/i18n";
@@ -70,8 +70,7 @@ export const Dashboard = () => {
   const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
   const [todaysCheckIn, setTodaysCheckIn] = useState<DailyCheckInType | null>(null);
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
-  const [recalibrationResult, setRecalibrationResult] = useState<RecalibrationResult | null>(null);
-  const [showRecalibration, setShowRecalibration] = useState(false);
+  // recalibration state removed
   const [totalWaterMl, setTotalWaterMl] = useState(0);
   const [mealPatterns, setMealPatterns] = useState<MealPatternAnalysis | null>(null);
   const [accountAgeDays, setAccountAgeDays] = useState(0);
@@ -414,25 +413,14 @@ export const Dashboard = () => {
       
       setMeals(formattedMeals);
       
-      // Check for baseline recalibration (every 2 weeks)
+      // Incremental recalibration removed — targets auto-recalculate on profile changes
+
+      // Check for monthly progress update (once per session per day)
       if (userBaseline) {
-        const lastCheck = localStorage.getItem('cjt_recalibration_check');
-        const today = new Date().toDateString();
-        if (lastCheck !== today) {
-          localStorage.setItem('cjt_recalibration_check', today);
-          checkRecalibrationNeeded(userBaseline).then(result => {
-            if (result.shouldRecalibrate) {
-              setRecalibrationResult(result);
-              setShowRecalibration(true);
-            }
-          });
-        }
-        
-        // Check for monthly progress update (once per session per day)
+        const progressToday = new Date().toDateString();
         const progressUpdateCheck = localStorage.getItem('cjt_progress_update_check');
-        if (progressUpdateCheck !== today && checkProgressUpdateNeeded(userBaseline)) {
-          localStorage.setItem('cjt_progress_update_check', today);
-          // Delay slightly so other modals can show first
+        if (progressUpdateCheck !== progressToday && checkProgressUpdateNeeded(userBaseline)) {
+          localStorage.setItem('cjt_progress_update_check', progressToday);
           setTimeout(() => {
             setShowProgressUpdate(true);
           }, 2000);
@@ -758,20 +746,7 @@ export const Dashboard = () => {
           </section>
         )}
 
-        {/* Recalibration Notification */}
-        {showRecalibration && recalibrationResult && baseline && (
-          <section>
-            <RecalibrationNotification
-              result={recalibrationResult}
-              currentCalories={baseline.target_calories || 2000}
-              onApply={() => {
-                setShowRecalibration(false);
-                loadData(); // Reload with new baseline
-              }}
-              onDismiss={() => setShowRecalibration(false)}
-            />
-          </section>
-        )}
+        {/* Recalibration notification removed — targets auto-recalculate */}
 
         {/* Dynamic Dashboard Sections */}
         {visibleSections.map(sectionId => {

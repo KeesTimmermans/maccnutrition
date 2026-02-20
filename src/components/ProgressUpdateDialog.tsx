@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
 import { updateUserMeasurements, UserBaseline } from "@/lib/userService";
-import { applyProgressBoost } from "@/lib/baselineRecalibration";
+import { applyFullRecalculation } from "@/lib/baselineRecalibration";
 import { saveProgressUpdate, parseFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -194,14 +194,17 @@ export const ProgressUpdateDialog = ({
         toast.success("Measurements updated successfully!");
       }
 
-      // If user wants more progress, apply baseline recalibration
+      // If user wants more progress, do a full recalculation from current profile
       let adjustmentsInfo: { calorieChange: number; proteinChange: number; reason: string } | undefined;
-      if (choice === "more_progress") {
-        const boostResult = await applyProgressBoost(baseline);
-        if (boostResult.success && boostResult.adjustments) {
-          setRecalibrationInfo(boostResult.adjustments);
-          adjustmentsInfo = boostResult.adjustments;
-          toast.success("Your targets have been adjusted to push you further! 💪");
+      if (choice === "more_progress" && baseline) {
+        const recalcResult = await applyFullRecalculation(baseline);
+        if (recalcResult.success && recalcResult.updatedBaseline) {
+          const calorieChange = (recalcResult.updatedBaseline.target_calories || 0) - (baseline.target_calories || 0);
+          const proteinChange = (recalcResult.updatedBaseline.protein_grams || 0) - (baseline.protein_grams || 0);
+          const info = { calorieChange, proteinChange, reason: recalcResult.reason };
+          setRecalibrationInfo(info);
+          adjustmentsInfo = info;
+          toast.success("Your targets have been recalculated from your current profile! 💪");
         }
       }
 

@@ -12,7 +12,7 @@ import { WaterTracker } from "@/components/WaterTracker";
 
 import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { TrialBanner } from "@/components/TrialBanner";
-import { RecalibrationNotification } from "@/components/RecalibrationNotification";
+// RecalibrationNotification removed — targets now auto-recalculate on profile changes
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
@@ -23,7 +23,7 @@ import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, getTodaysDailyFocusPoints, CheckInAnalysis, UserTargets, DailyCheckIn as DailyCheckInType } from "@/lib/checkinService";
 
 import { getTodaysWaterIntake } from "@/lib/waterService";
-import { checkRecalibrationNeeded, RecalibrationResult } from "@/lib/baselineRecalibration";
+// Incremental recalibration removed — single source-of-truth recalculation used instead
 import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/lib/coachingAnalytics";
 import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage } from "@/lib/i18n";
@@ -68,8 +68,7 @@ export const TodayDashboard = () => {
   const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
   const [todaysCheckIn, setTodaysCheckIn] = useState<DailyCheckInType | null>(null);
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
-  const [recalibrationResult, setRecalibrationResult] = useState<RecalibrationResult | null>(null);
-  const [showRecalibration, setShowRecalibration] = useState(false);
+  // recalibration state removed
   const [totalWaterMl, setTotalWaterMl] = useState(0);
   const [mealPatterns, setMealPatterns] = useState<MealPatternAnalysis | null>(null);
   const [accountAgeDays, setAccountAgeDays] = useState(0);
@@ -374,16 +373,10 @@ export const TodayDashboard = () => {
         }
       }
       
-      if (userBaseline) {
-        const recalResult = await checkRecalibrationNeeded(userBaseline);
-        if (recalResult.shouldRecalibrate) {
-          setRecalibrationResult(recalResult);
-          setShowRecalibration(true);
-        }
-        
-        if (checkProgressUpdateNeeded(userBaseline)) {
-          setTimeout(() => setShowProgressUpdate(true), 2000);
-        }
+      // Incremental recalibration removed — targets auto-recalculate on profile changes
+
+      if (userBaseline && checkProgressUpdateNeeded(userBaseline)) {
+        setTimeout(() => setShowProgressUpdate(true), 2000);
       }
       
     } catch (error) {
@@ -683,20 +676,7 @@ export const TodayDashboard = () => {
           </section>
         )}
 
-        {/* Recalibration Notification */}
-        {showRecalibration && recalibrationResult && baseline && (
-          <section>
-            <RecalibrationNotification
-              result={recalibrationResult}
-              currentCalories={baseline.target_calories || 2000}
-              onApply={() => {
-                setShowRecalibration(false);
-                loadData();
-              }}
-              onDismiss={() => setShowRecalibration(false)}
-            />
-          </section>
-        )}
+        {/* Recalibration notification removed — targets auto-recalculate */}
 
         {/* Dynamic Dashboard Sections */}
         {visibleSections.map(sectionId => {
