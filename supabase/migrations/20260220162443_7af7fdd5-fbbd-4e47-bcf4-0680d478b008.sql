@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN community_anonymous boolean NOT NULL DEFAULT false;

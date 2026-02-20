@@ -37,6 +37,7 @@ export interface CommunityPost {
   is_pinned: boolean;
   display_name: string | null;
   avatar_url: string | null;
+  community_anonymous: boolean;
   like_count: number;
   comment_count: number;
 }
@@ -49,6 +50,7 @@ export interface CommunityComment {
   created_at: string;
   display_name: string | null;
   avatar_url: string | null;
+  community_anonymous: boolean;
 }
 
 interface FetchPostsParams {
@@ -81,7 +83,7 @@ export async function fetchPosts({ type, limit = 20, cursor }: FetchPostsParams 
   const postIds = sliced.map((p) => p.id);
 
   const [profilesRes, likesRes, commentsRes] = await Promise.all([
-    supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds),
+    supabase.from("profiles").select("user_id, display_name, avatar_url, community_anonymous").in("user_id", userIds),
     supabase.from("community_likes").select("post_id").in("post_id", postIds),
     supabase.from("community_comments").select("post_id").eq("is_deleted", false).in("post_id", postIds),
   ]);
@@ -100,11 +102,13 @@ export async function fetchPosts({ type, limit = 20, cursor }: FetchPostsParams 
 
   const enriched: CommunityPost[] = sliced.map((p) => {
     const profile = profileMap.get(p.user_id);
+    const isAnon = profile?.community_anonymous ?? false;
     return {
       ...p,
       type: p.type as PostType,
-      display_name: profile?.display_name ?? null,
-      avatar_url: profile?.avatar_url ?? null,
+      display_name: isAnon ? null : (profile?.display_name ?? null),
+      avatar_url: isAnon ? null : (profile?.avatar_url ?? null),
+      community_anonymous: isAnon,
       like_count: likeCounts.get(p.id) ?? 0,
       comment_count: commentCounts.get(p.id) ?? 0,
     };
@@ -157,14 +161,20 @@ export async function fetchComments(postId: string): Promise<CommunityComment[]>
   const userIds = [...new Set(comments.map((c) => c.user_id))];
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("user_id, display_name, avatar_url")
+    .select("user_id, display_name, avatar_url, community_anonymous")
     .in("user_id", userIds);
 
   const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
 
   return comments.map((c) => {
     const profile = profileMap.get(c.user_id);
-    return { ...c, display_name: profile?.display_name ?? null, avatar_url: profile?.avatar_url ?? null };
+    const isAnon = profile?.community_anonymous ?? false;
+    return {
+      ...c,
+      display_name: isAnon ? null : (profile?.display_name ?? null),
+      avatar_url: isAnon ? null : (profile?.avatar_url ?? null),
+      community_anonymous: isAnon,
+    };
   });
 }
 

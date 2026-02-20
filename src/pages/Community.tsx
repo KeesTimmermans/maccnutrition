@@ -133,6 +133,7 @@ const Community = () => {
           updated_at: post.created_at,
           display_name: null,
           avatar_url: null,
+          community_anonymous: false,
           like_count: 0,
           comment_count: 0,
         };
@@ -496,7 +497,8 @@ const PostCard = ({
   const TypeIcon = cfg.icon;
   const isOwn = currentUserId === post.user_id;
   const canDelete = isOwn || isAdmin;
-  const initials = (post.display_name ?? "?").slice(0, 2).toUpperCase();
+  const displayName = post.community_anonymous ? "Anonymous" : (post.display_name ?? "Anonymous");
+  const initials = post.community_anonymous ? "?" : (post.display_name ?? "?").slice(0, 2).toUpperCase();
 
   return (
     <Card className={cn(post.is_pinned && "ring-1 ring-primary/30")}>
@@ -508,7 +510,7 @@ const PostCard = ({
               <AvatarFallback className="text-xs bg-primary/10 text-primary">{initials}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{post.display_name ?? "Anonymous"}</p>
+              <p className="text-sm font-semibold truncate">{displayName}</p>
               <p className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </p>
@@ -585,14 +587,17 @@ const PostCard = ({
               <p className="text-xs text-muted-foreground text-center py-2">No comments yet</p>
             ) : (
               <div className="space-y-2">
-                {comments.map((c) => (
+                {comments.map((c) => {
+                  const cDisplayName = c.community_anonymous ? "Anonymous" : (c.display_name ?? "Anonymous");
+                  const cInitials = c.community_anonymous ? "?" : (c.display_name ?? "?").slice(0, 2).toUpperCase();
+                  return (
                   <div key={c.id} className="flex gap-2 items-start">
                     <Avatar className="h-6 w-6 shrink-0">
-                      <AvatarFallback className="text-[10px] bg-muted">{(c.display_name ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="text-[10px] bg-muted">{cInitials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs">
-                        <span className="font-semibold">{c.display_name ?? "Anonymous"}</span>{" "}
+                        <span className="font-semibold">{cDisplayName}</span>{" "}
                         <span className="text-muted-foreground">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
                       </p>
                       <p className="text-sm break-words">{c.content}</p>
@@ -606,7 +611,8 @@ const PostCard = ({
                       <ReportMenu onReport={(reason) => onReportComment(c.id, reason)} small />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
