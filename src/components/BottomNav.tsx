@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Home, TrendingUp, UtensilsCrossed, Activity, Users } from "lucide-react";
+import { Home, TrendingUp, UtensilsCrossed, Activity, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/meals", icon: UtensilsCrossed, label: "Meals" },
   { to: "/metrics", icon: Activity, label: "Metrics" },
   { to: "/community", icon: Users, label: "Community" },
+  { to: "/profile", icon: User, label: "Profile" },
 ];
 
 export const BottomNav = () => {
