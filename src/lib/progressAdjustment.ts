@@ -14,6 +14,12 @@ export interface CheckinInputs {
   hunger: HungerLevel;
   actionIntent: ActionIntent;
   feedback?: string;
+  /** Optional: adherence score 0–100 from the user or estimated */
+  adherence?: number;
+  /** Optional: weekly weight-loss rate as fraction of bodyweight (e.g. 0.008 = 0.8%) */
+  weeklyLossRate?: number;
+  /** Optional: weekly weight-gain rate as fraction of bodyweight */
+  weeklyGainRate?: number;
 }
 
 export interface AdjustmentResult {
@@ -26,19 +32,30 @@ export interface AdjustmentResult {
   reason: string;
 }
 
-// ── Safety floors ───────────────────────────────────────────
+// ── Safety helpers ──────────────────────────────────────────
 
+/** Minimum protein: 1.6 g per kg bodyweight */
+function getMinProteinGrams(weightKg: number | null): number {
+  if (!weightKg || weightKg <= 0) return 80; // safe fallback
+  return Math.round(weightKg * 1.6);
+}
+
+/** Minimum fat: 0.6 g per kg bodyweight */
+function getMinFatGrams(weightKg: number | null): number {
+  if (!weightKg || weightKg <= 0) return 40; // safe fallback
+  return Math.round(weightKg * 0.6);
+}
+
+/** Calorie floor that can support minimum protein + fat + 50g carbs */
 function getCalorieFloor(sex: string | null, weightKg: number | null): number {
-  // Dynamic floor: ~22 kcal per kg of estimated lean mass
-  // Rough lean-mass estimate: males ~80%, females ~75% of total weight
-  if (weightKg && weightKg > 0) {
-    const leanFactor = sex === "female" ? 0.75 : 0.80;
-    const dynamicFloor = Math.round(weightKg * leanFactor * 22);
-    // Never below absolute minimums
-    const absoluteMin = sex === "female" ? 1200 : 1500;
-    return Math.max(dynamicFloor, absoluteMin);
-  }
-  return sex === "female" ? 1200 : 1500;
+  const minProtein = getMinProteinGrams(weightKg);
+  const minFat = getMinFatGrams(weightKg);
+  const minCarbs = 50; // absolute minimum carbs
+  const macroFloor = minProtein * 4 + minFat * 9 + minCarbs * 4;
+
+  // Also enforce absolute minimums
+  const absoluteMin = sex === "female" ? 1200 : 1500;
+  return Math.max(macroFloor, absoluteMin);
 }
 
 // ── Core adjustment logic ───────────────────────────────────
@@ -47,25 +64,27 @@ function getCalorieFloor(sex: string | null, weightKg: number | null): number {
  * Applies coaching-based adjustments RELATIVE to current targets.
  * Does NOT recompute from scratch — modifies existing calories/macros.
  *
- * Rules:
- *  Fat Loss:
- *    slower + increase_rate → -3..5% (max -200)
- *    faster → +3..5%
- *    energy=low OR hunger=high → +3..5%
- *    diet_break → set to TDEE (maintenance)
- *    on_track → no change
- *    Calories NEVER increase unless faster/low-energy/high-hunger/diet-break
+ * === Safeguards ===
  *
- *  Muscle Gain:
- *    slower → +3..5%
- *    faster → -3%
- *    on_track → no change
+ * Fat Loss:
+ *   - -5% only if adherence ≥ 80% AND energy ≠ low AND hunger ≠ high
+ *   - Otherwise cap at -3%
+ *   - Max single cut: -200 kcal
+ *   - Total deficit cannot exceed 25% below TDEE
+ *   - Rate-of-progress guard: >1% BW/week loss → force increase; <0.25% → allow decrease
+ *   - Calories NEVER increase unless faster/low-energy/high-hunger/diet-break
  *
- *  Maintenance / other:
- *    ±100 kcal max
+ * Muscle Gain:
+ *   - Cap surplus at 15% above TDEE
+ *   - Max +300 kcal per adjustment
  *
- *  Macros: protein stays stable (slight bump for fat-loss deficit),
- *          adjust carbs first, protect fats.
+ * Maintenance:
+ *   - ±100 kcal max
+ *
+ * Macros:
+ *   - Protein minimum: 1.6 g/kg BW
+ *   - Fat minimum: 0.6 g/kg BW
+ *   - Adjust carbs first, protect fats
  */
 export function applyProgressAdjustment(
   currentTargets: { calories: number; protein: number; carbs: number; fats: number },
@@ -74,55 +93,108 @@ export function applyProgressAdjustment(
 ): AdjustmentResult {
   const { calories, protein, carbs, fats } = currentTargets;
   const goal = profile.primaryGoal || "general_health";
-  const floor = getCalorieFloor(profile.sex, profile.weight);
-  const tdee = profile.tdee || calories; // fallback if TDEE not stored
+  const tdee = profile.tdee || calories;
+  const weightKg = profile.weight;
 
   let delta = 0;
   let reason = "";
 
+  const adherence = inputs.adherence ?? 100; // default to high if not provided
+  const hasBiofeedbackStress = inputs.energy === "low" || inputs.hunger === "high";
+
   // ── Goal: Fat Loss ──────────────────────────────────────
   if (goal === "fat_loss") {
-    if (inputs.actionIntent === "diet_break") {
-      delta = tdee - calories;
-      reason = "Diet break: calories set to maintenance (TDEE).";
-    } else if (inputs.energy === "low" || inputs.hunger === "high") {
-      // Biofeedback override — allow increase
-      const bump = Math.round(calories * 0.04); // ~4%
-      delta = bump;
-      reason = inputs.energy === "low"
-        ? "Low energy reported — small calorie increase to support recovery."
-        : "High hunger reported — small calorie increase to improve adherence.";
-    } else if (inputs.progressStatus === "faster_than_expected") {
-      const bump = Math.round(calories * 0.04);
-      delta = bump;
-      reason = "Progressing faster than expected — slight calorie increase to sustain muscle.";
-    } else if (inputs.progressStatus === "slower_than_expected" && inputs.actionIntent === "increase_rate") {
-      const cut = Math.round(calories * 0.04);
-      delta = -Math.min(cut, 200);
-      reason = "Slower progress + wants to push harder — moderate calorie reduction.";
-    } else if (inputs.actionIntent === "reduce_fatigue") {
-      const bump = Math.round(calories * 0.03);
-      delta = bump;
-      reason = "Fatigue reported — small calorie increase for recovery.";
-    } else {
-      reason = "On track — no calorie adjustment needed.";
+
+    // Rate-of-progress guard (overrides other logic when triggered)
+    if (inputs.weeklyLossRate !== undefined && weightKg && weightKg > 0) {
+      if (inputs.weeklyLossRate > 0.01) {
+        // Losing >1% BW/week → dangerously fast, force increase
+        const bump = Math.round(calories * 0.05);
+        delta = bump;
+        reason = "Losing weight too fast (>1% BW/week) — increasing calories to protect muscle and health.";
+      } else if (inputs.weeklyLossRate < 0.0025 && inputs.actionIntent === "increase_rate") {
+        // Losing <0.25% BW/week and wants to push → allow decrease
+        const maxCutPct = (adherence >= 80 && !hasBiofeedbackStress) ? 0.05 : 0.03;
+        const cut = Math.round(calories * maxCutPct);
+        delta = -Math.min(cut, 200);
+        reason = `Very slow progress (<0.25% BW/week) — moderate calorie reduction (${Math.round(maxCutPct * 100)}%).`;
+      }
+    }
+
+    // Standard rules (only if rate guard didn't trigger)
+    if (delta === 0) {
+      if (inputs.actionIntent === "diet_break") {
+        delta = tdee - calories;
+        reason = "Diet break: calories set to maintenance (TDEE).";
+      } else if (hasBiofeedbackStress) {
+        const bump = Math.round(calories * 0.04);
+        delta = bump;
+        reason = inputs.energy === "low"
+          ? "Low energy reported — small calorie increase to support recovery."
+          : "High hunger reported — small calorie increase to improve adherence.";
+      } else if (inputs.progressStatus === "faster_than_expected") {
+        const bump = Math.round(calories * 0.04);
+        delta = bump;
+        reason = "Progressing faster than expected — slight calorie increase to sustain muscle.";
+      } else if (inputs.progressStatus === "slower_than_expected" && inputs.actionIntent === "increase_rate") {
+        // Adherence-gated cut: -5% only if adherence ≥ 80% and no biofeedback stress
+        const maxCutPct = (adherence >= 80 && !hasBiofeedbackStress) ? 0.05 : 0.03;
+        const cut = Math.round(calories * maxCutPct);
+        delta = -Math.min(cut, 200);
+        reason = adherence >= 80
+          ? `Slower progress + good adherence — ${Math.round(maxCutPct * 100)}% calorie reduction.`
+          : "Slower progress but adherence needs work — conservative 3% reduction. Focus on consistency first.";
+      } else if (inputs.actionIntent === "reduce_fatigue") {
+        const bump = Math.round(calories * 0.03);
+        delta = bump;
+        reason = "Fatigue reported — small calorie increase for recovery.";
+      } else {
+        reason = "On track — no calorie adjustment needed.";
+      }
+    }
+
+    // Fat-loss ceiling: never exceed TDEE (unless diet break sets it exactly)
+    if (inputs.actionIntent !== "diet_break") {
+      const projected = calories + delta;
+      if (projected > tdee) {
+        delta = tdee - calories;
+        reason += " (capped at maintenance TDEE)";
+      }
+    }
+
+    // Fat-loss max-deficit guard: cannot go below 75% of TDEE
+    const minDeficitCals = Math.round(tdee * 0.75);
+    if (calories + delta < minDeficitCals) {
+      delta = minDeficitCals - calories;
+      reason += ` (clamped: deficit cannot exceed 25% below maintenance, floor ${minDeficitCals} kcal)`;
     }
   }
+
   // ── Goal: Muscle Gain ───────────────────────────────────
   else if (goal === "muscle_gain") {
     if (inputs.progressStatus === "slower_than_expected") {
-      delta = Math.round(calories * 0.04);
-      reason = "Slower gains — increasing surplus slightly.";
+      const bump = Math.round(calories * 0.04);
+      delta = Math.min(bump, 300); // cap at +300 kcal
+      reason = "Slower gains — increasing surplus slightly (max +300 kcal).";
     } else if (inputs.progressStatus === "faster_than_expected") {
       delta = -Math.round(calories * 0.03);
       reason = "Gaining too fast — slight surplus reduction to limit fat gain.";
     } else if (inputs.actionIntent === "reduce_fatigue") {
-      delta = Math.round(calories * 0.03);
+      const bump = Math.round(calories * 0.03);
+      delta = Math.min(bump, 300);
       reason = "Fatigue reported — small calorie increase for recovery.";
     } else {
       reason = "On track — no calorie adjustment needed.";
     }
+
+    // Muscle-gain surplus cap: never exceed 115% of TDEE
+    const maxSurplusCals = Math.round(tdee * 1.15);
+    if (calories + delta > maxSurplusCals) {
+      delta = maxSurplusCals - calories;
+      reason += ` (capped at 15% surplus above maintenance, ceiling ${maxSurplusCals} kcal)`;
+    }
   }
+
   // ── Goal: Maintenance / other ───────────────────────────
   else {
     if (inputs.progressStatus === "slower_than_expected" || inputs.progressStatus === "faster_than_expected") {
@@ -134,35 +206,42 @@ export function applyProgressAdjustment(
     }
   }
 
-  // ── Apply floor ─────────────────────────────────────────
+  // ── Apply calorie floor ────────────────────────────────
+  const floor = getCalorieFloor(profile.sex, weightKg);
   let newCalories = Math.round(calories + delta);
   if (newCalories < floor) {
     newCalories = floor;
     reason += ` (clamped to safety floor of ${floor} kcal)`;
   }
 
-  // ── Macro redistribution ────────────────────────────────
-  // Protein: keep stable. If fat-loss deficit deepening, bump protein ~2%
+  // ── Macro redistribution with body-weight-based minimums ─
+  const minProtein = getMinProteinGrams(weightKg);
+  const minFat = getMinFatGrams(weightKg);
+
+  // Protein: keep stable, bump for fat-loss deficit, enforce minimum
   let newProtein = protein;
   if (goal === "fat_loss" && delta < 0) {
     newProtein = Math.round(protein * 1.02);
   }
-  const proteinCals = newProtein * 4;
+  newProtein = Math.max(newProtein, minProtein);
 
-  // Fats: keep stable unless we absolutely must cut
-  let newFats = fats;
+  // Fats: keep stable, enforce minimum
+  let newFats = Math.max(fats, minFat);
+
+  const proteinCals = newProtein * 4;
   const fatCals = newFats * 9;
 
   // Carbs: absorb the calorie change
-  const remainingCals = newCalories - proteinCals - fatCals;
-  let newCarbs = Math.round(remainingCals / 4);
+  let newCarbs = Math.round((newCalories - proteinCals - fatCals) / 4);
 
-  // If carbs go negative, reduce fats proportionally (last resort)
+  // If carbs too low, bump calories to support macro minimums
   if (newCarbs < 50) {
-    const neededFromFats = (50 - newCarbs) * 4; // extra cals needed for minimum carbs
-    newFats = Math.max(Math.round((fatCals - neededFromFats) / 9), 30);
-    newCarbs = Math.round((newCalories - newProtein * 4 - newFats * 9) / 4);
-    newCarbs = Math.max(newCarbs, 50);
+    newCarbs = 50;
+    const requiredCals = proteinCals + fatCals + newCarbs * 4;
+    if (requiredCals > newCalories) {
+      newCalories = requiredCals;
+      reason += ` (calories raised to ${newCalories} to support minimum macros)`;
+    }
   }
 
   return {
@@ -203,7 +282,6 @@ export async function persistProgressAdjustment(
       })
       .eq("user_id", user.id);
   } else {
-    // Even if no adjustment, mark the check-in timestamp
     await supabase
       .from("user_baselines")
       .update({ last_progress_update: new Date().toISOString() })
@@ -226,13 +304,14 @@ export async function persistProgressAdjustment(
       energy: inputs.energy,
       hunger: inputs.hunger,
       actionIntent: inputs.actionIntent,
+      adherence: inputs.adherence,
+      weeklyLossRate: inputs.weeklyLossRate,
+      weeklyGainRate: inputs.weeklyGainRate,
     },
-    // Snapshot of NEW targets
     target_calories: adjustment.newCalories,
     protein_grams: adjustment.newProtein,
     carbs_grams: adjustment.newCarbs,
     fats_grams: adjustment.newFats,
-    // Measurement snapshot
     weight: measurements?.weight ?? baseline.weight,
     body_fat_percentage: measurements?.bodyFatPercentage ?? baseline.body_fat_percentage,
     waist_cm: measurements?.waistCm ?? baseline.waist_cm,
