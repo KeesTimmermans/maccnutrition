@@ -12,6 +12,7 @@ export interface DailyCheckIn {
   hydration_feeling?: number;
   hunger_level?: number;
   notes?: string;
+  cycle_phase_today?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -74,7 +75,8 @@ export async function saveCheckIn(checkIn: Omit<DailyCheckIn, 'id' | 'user_id' |
       hydration_feeling: checkIn.hydration_feeling,
       hunger_level: checkIn.hunger_level,
       notes: checkIn.notes,
-    }, {
+      ...(checkIn.cycle_phase_today ? { cycle_phase_today: checkIn.cycle_phase_today } : {}),
+    } as any, {
       onConflict: 'user_id,check_in_date',
     })
     .select()

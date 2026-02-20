@@ -68,6 +68,7 @@ const userContextSchema = z.object({
   currentPhase: z.string().max(50).nullish(),
   cycleRegularity: z.string().max(50).nullish(),
   cycleSymptoms: z.array(z.string().max(100)).max(20).nullish(),
+  cyclePhaseTodayCheckin: z.string().max(50).nullish(),
   // Context
   checkInContext: z.string().max(2000).nullish(),
   wearableContext: z.string().max(2000).nullish(),
@@ -387,6 +388,63 @@ ${dislikesGuideline}
 
 IMPORTANT: When suggesting any food, meal, snack, or recipe, you MUST respect these restrictions. Double-check that your suggestions do not violate the user's dietary preferences.` : '';
     
+    // Build cycle phase coaching directive (before template literal to avoid nesting issues)
+    let cycleInfoSection = '';
+    let cycleCoachingDirective = '';
+    if (userContext?.sex === 'female') {
+      const todayPhase = (userContext as any)?.cyclePhaseTodayCheckin || userContext?.currentPhase || '';
+      cycleInfoSection = `CYCLE INFORMATION:
+- Today's Phase (from check-in): ${todayPhase || 'not tracked'}
+- Stored Phase: ${userContext?.currentPhase || 'not tracked'}
+- Cycle Regularity: ${userContext?.cycleRegularity || 'not specified'}
+- Symptoms: ${userContext?.cycleSymptoms?.join(', ') || 'none reported'}`;
+
+      if (todayPhase && todayPhase !== 'unsure') {
+        const goal = userContext?.primaryGoal?.replace(/_/g, ' ') || 'general health';
+        const goalContext = goal.includes('fat loss')
+          ? '- Since goal is fat loss: frame any calorie increase as an optional adherence/support strategy, not automatic.'
+          : goal.includes('muscle')
+          ? '- Since goal is muscle gain: frame as performance/recovery support.'
+          : '';
+
+        const phaseDirectives: Record<string, string> = {
+          menstrual: `CYCLE PHASE COACHING — MENSTRUAL:
+- Macro emphasis today: Protein ~30%, Carbs 20-30%, Fat 40-50%
+- Recommend electrolytes 2x today
+- Tone: supportive and practical. Prioritize comfort, hydration, and consistency.
+- Do NOT push intensity. Gentle movement is fine.`,
+          follicular: `CYCLE PHASE COACHING — FOLLICULAR:
+- Macro emphasis today: Protein 28-30%, Carbs 35-40%, Fat 30-35%
+- Focus on fueling for performance — training readiness, structured meals.
+- Energy is typically rising — encourage productive training.`,
+          ovulation: `CYCLE PHASE COACHING — OVULATION:
+- Suggest ~5% higher calorie intake today as optional performance support (NOT a forced target change).
+- Macro emphasis: Protein 30%+, Carbs 40%+, Fat 30%+
+- Encourage high-intensity training if they are up for it.
+- Encourage electrolyte usage.
+${goalContext}`,
+          luteal: `CYCLE PHASE COACHING — LUTEAL:
+- Suggest 5-10% higher calorie intake today as optional support (NOT a forced target change).
+- Macro emphasis: Protein 30-35%, Carbs ~25%, Fat 40-45%
+- Encourage prepared snacks to avoid unplanned snacking.
+- Encourage electrolytes and magnesium intake.
+${goalContext}`,
+        };
+
+        const directive = phaseDirectives[todayPhase] || '';
+        if (directive) {
+          cycleCoachingDirective = `${directive}
+
+IMPORTANT CYCLE COACHING RULES:
+- Present phase-specific macro guidance as RECOMMENDED EMPHASIS RANGES for today, not hard targets.
+- Do NOT change their stored calorie/macro targets.
+- Do NOT present cycle advice as medical advice or claim cycle tracking is diagnostic.
+- Keep advice practical and food-agnostic (no sensitive inference).
+- Respect the user's primary goal when suggesting calorie adjustments.`;
+        }
+      }
+    }
+
     const userProfile = `
 USER PROFILE:
 - Name: ${userName || 'not provided'}
@@ -440,10 +498,8 @@ COACHING PREFERENCES:
 - Preferred Tone: ${userContext?.coachingTone || 'supportive'}
 - Focus Points: ${userContext?.focusPoints?.join(', ') || 'general guidance'}
 
-${userContext?.sex === 'female' ? `CYCLE INFORMATION:
-- Current Phase: ${userContext?.currentPhase || 'not tracked'}
-- Cycle Regularity: ${userContext?.cycleRegularity || 'not specified'}
-- Symptoms: ${userContext?.cycleSymptoms?.join(', ') || 'none reported'}` : ''}
+${cycleInfoSection}
+${cycleCoachingDirective}
 ${userContext?.checkInContext || ''}
 ${userContext?.wearableContext || ''}
 ${mealsContext}${mealsAnalysis}`;

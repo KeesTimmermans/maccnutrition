@@ -737,6 +737,7 @@ export const TodayDashboard = () => {
       {showCheckIn && (
         <DailyCheckIn 
           onClose={() => setShowCheckIn(false)}
+          userSex={baseline?.sex}
           onComplete={(checkInData) => {
             setShowCheckIn(false);
             setHasCheckedInToday(true);
