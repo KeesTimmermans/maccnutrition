@@ -538,6 +538,7 @@ export type Database = {
           user_id: string
           waist_cm: number | null
           water_liters: number | null
+          water_liters_training: number | null
           weekend_habits: string | null
           weight: number | null
           work_hours: string | null
@@ -640,6 +641,7 @@ export type Database = {
           user_id: string
           waist_cm?: number | null
           water_liters?: number | null
+          water_liters_training?: number | null
           weekend_habits?: string | null
           weight?: number | null
           work_hours?: string | null
@@ -742,6 +744,7 @@ export type Database = {
           user_id?: string
           waist_cm?: number | null
           water_liters?: number | null
+          water_liters_training?: number | null
           weekend_habits?: string | null
           weight?: number | null
           work_hours?: string | null

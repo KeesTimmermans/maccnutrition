@@ -39,6 +39,7 @@ export interface UserBaseline {
   carbs_grams: number | null;
   fats_grams: number | null;
   water_liters: number | null;
+  water_liters_training: number | null;
   sodium_mg: number | null;
   magnesium_mg: number | null;
   potassium_mg: number | null;
@@ -152,7 +153,8 @@ export const saveUserBaseline = async (
       protein_grams: baseline.macros.protein.grams,
       carbs_grams: baseline.macros.carbs.grams,
       fats_grams: baseline.macros.fats.grams,
-      water_liters: baseline.hydration.waterLiters,
+      water_liters: baseline.hydration.restDayLiters,
+      water_liters_training: baseline.hydration.hasTraining ? baseline.hydration.trainingDayLiters : null,
       sodium_mg: baseline.hydration.sodiumMg,
       magnesium_mg: baseline.hydration.magnesiumMg,
       potassium_mg: baseline.hydration.potassiumMg,
@@ -353,7 +355,8 @@ export const sendBaselineEmail = async (
           proteinGrams: baseline.macros.protein.grams,
           carbsGrams: baseline.macros.carbs.grams,
           fatsGrams: baseline.macros.fats.grams,
-          waterLiters: baseline.hydration.waterLiters,
+          waterLiters: baseline.hydration.restDayLiters,
+          waterLitersTraining: baseline.hydration.hasTraining ? baseline.hydration.trainingDayLiters : null,
           sodiumMg: baseline.hydration.sodiumMg,
           magnesiumMg: baseline.hydration.magnesiumMg,
           potassiumMg: baseline.hydration.potassiumMg,
@@ -432,7 +435,8 @@ export const recalculateHydrationFromBaseline = async (
   const { data, error } = await supabase
     .from("user_baselines")
     .update({
-      water_liters: hydration.waterLiters,
+      water_liters: hydration.restDayLiters,
+      water_liters_training: hydration.hasTraining ? hydration.trainingDayLiters : null,
       sodium_mg: hydration.sodiumMg,
       magnesium_mg: hydration.magnesiumMg,
       potassium_mg: hydration.potassiumMg,

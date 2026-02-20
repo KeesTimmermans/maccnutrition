@@ -191,11 +191,39 @@ const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; use
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-blue-500/5 rounded-xl p-3 text-center">
             <div className="text-2xl font-bold text-blue-500">
-              {baseline.hydration.waterLiters.toFixed(1)}L
+              {baseline.hydration.restDayLiters.toFixed(1)}L
             </div>
-            <p className="text-xs text-muted-foreground">{t('water')}</p>
+            <p className="text-xs text-muted-foreground">
+              {baseline.hydration.hasTraining ? 'Rest day' : t('water')}
+            </p>
           </div>
-          <div className="space-y-2">
+          {baseline.hydration.hasTraining && (
+            <div className="bg-blue-500/5 rounded-xl p-3 text-center">
+              <div className="text-2xl font-bold text-blue-500">
+                {baseline.hydration.trainingDayLiters.toFixed(1)}L
+              </div>
+              <p className="text-xs text-muted-foreground">Training day</p>
+            </div>
+          )}
+          {!baseline.hydration.hasTraining && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('sodium')}</span>
+                <span className="font-semibold text-foreground">{baseline.hydration.sodiumMg}mg</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('magnesium')}</span>
+                <span className="font-semibold text-foreground">{baseline.hydration.magnesiumMg}mg</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('potassium')}</span>
+                <span className="font-semibold text-foreground">{baseline.hydration.potassiumMg}mg</span>
+              </div>
+            </div>
+          )}
+        </div>
+        {baseline.hydration.hasTraining && (
+          <div className="space-y-2 mt-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('sodium')}</span>
               <span className="font-semibold text-foreground">{baseline.hydration.sodiumMg}mg</span>
@@ -209,7 +237,7 @@ const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; use
               <span className="font-semibold text-foreground">{baseline.hydration.potassiumMg}mg</span>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

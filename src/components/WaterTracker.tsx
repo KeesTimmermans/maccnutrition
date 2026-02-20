@@ -10,6 +10,7 @@ import { useLanguage } from "@/lib/i18n";
 
 interface WaterTrackerProps {
   dailyGoalLiters: number;
+  trainingDayGoalLiters?: number | null;
   onWaterLogged?: () => void;
 }
 
@@ -19,13 +20,16 @@ const GLASS_SIZES = [
   { label: "Large", ml: 500, icon: "🍶" },
 ];
 
-export const WaterTracker = ({ dailyGoalLiters, onWaterLogged }: WaterTrackerProps) => {
+export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLogged }: WaterTrackerProps) => {
   const { t } = useLanguage();
   const [intakes, setIntakes] = useState<WaterIntake[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [isTrainingDay, setIsTrainingDay] = useState(false);
 
-  const dailyGoalMl = dailyGoalLiters * 1000;
+  const hasTrainingTarget = trainingDayGoalLiters != null && trainingDayGoalLiters > dailyGoalLiters;
+  const activeGoalLiters = isTrainingDay && hasTrainingTarget ? trainingDayGoalLiters : dailyGoalLiters;
+  const dailyGoalMl = activeGoalLiters * 1000;
   const totalMl = intakes.reduce((sum, i) => sum + i.amount_ml, 0);
   const progress = Math.min((totalMl / dailyGoalMl) * 100, 100);
   const remaining = Math.max(dailyGoalMl - totalMl, 0);
@@ -138,6 +142,28 @@ export const WaterTracker = ({ dailyGoalLiters, onWaterLogged }: WaterTrackerPro
           </Button>
         </div>
 
+        {/* Day type toggle for training users */}
+        {hasTrainingTarget && (
+          <div className="flex items-center gap-2 mb-3 bg-muted/50 rounded-xl p-1">
+            <button
+              onClick={() => setIsTrainingDay(false)}
+              className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition-colors ${
+                !isTrainingDay ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+              }`}
+            >
+              Rest day ({dailyGoalLiters.toFixed(1)}L)
+            </button>
+            <button
+              onClick={() => setIsTrainingDay(true)}
+              className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition-colors ${
+                isTrainingDay ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+              }`}
+            >
+              Training day ({trainingDayGoalLiters!.toFixed(1)}L)
+            </button>
+          </div>
+        )}
+
         {/* Progress visualization */}
         <div className="relative mb-4">
           <div className="flex items-end justify-center gap-1 mb-2">
@@ -145,7 +171,7 @@ export const WaterTracker = ({ dailyGoalLiters, onWaterLogged }: WaterTrackerPro
               {(totalMl / 1000).toFixed(1)}
             </span>
             <span className="text-lg text-muted-foreground mb-1">
-              / {dailyGoalLiters.toFixed(1)}L
+              / {activeGoalLiters.toFixed(1)}L
             </span>
           </div>
           <Progress value={progress} className="h-3 bg-blue-100" />
