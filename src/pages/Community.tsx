@@ -283,6 +283,16 @@ const Community = () => {
           ))}
         </div>
 
+        {/* Guidelines */}
+        <div className="rounded-lg border bg-muted/50 px-4 py-3 text-xs text-muted-foreground space-y-1">
+          <p className="font-semibold text-foreground text-sm">Community guidelines</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            <li>Be kind and respectful</li>
+            <li>No medical advice</li>
+            <li>Report anything concerning</li>
+          </ul>
+        </div>
+
         {/* Composer */}
         <Card>
           <CardContent className="p-4 space-y-3">
