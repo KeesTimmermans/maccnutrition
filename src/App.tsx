@@ -25,6 +25,7 @@ import Privacy from "./pages/Privacy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import Diagnostics from "./pages/Diagnostics";
+import Community from "./pages/Community";
 
 import NotFound from "./pages/NotFound";
 // Legacy pages (kept temporarily for backwards compatibility)
@@ -121,6 +122,7 @@ const App = () => {
               <Route path="/profile" element={<Profile />} />
               
               {/* Secondary routes */}
+              <Route path="/community" element={<Community />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/privacy" element={<Privacy />} />
