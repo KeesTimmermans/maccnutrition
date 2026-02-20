@@ -31,12 +31,19 @@ export const ProgressHistory = ({ unitSystem = "metric" }: ProgressHistoryProps)
   }, []);
 
   const getChoiceIcon = (choice: string) => {
-    switch (choice) {
+    // Support new composite format: "status__intent"
+    const status = choice.split("__")[0];
+    switch (status) {
       case "happy":
+      case "on_track":
         return <ThumbsUp className="w-4 h-4 text-accent" />;
       case "more_progress":
+      case "slower_than_expected":
         return <Target className="w-4 h-4 text-primary" />;
       case "update_measurements":
+      case "faster_than_expected":
+        return <TrendingUp className="w-4 h-4 text-accent" />;
+      case "no_change":
         return <Ruler className="w-4 h-4 text-secondary" />;
       default:
         return null;
@@ -44,16 +51,27 @@ export const ProgressHistory = ({ unitSystem = "metric" }: ProgressHistoryProps)
   };
 
   const getChoiceLabel = (choice: string) => {
-    switch (choice) {
-      case "happy":
-        return "Happy with progress";
-      case "more_progress":
-        return "Wanted more progress";
-      case "update_measurements":
-        return "Updated measurements";
-      default:
-        return choice;
-    }
+    const parts = choice.split("__");
+    const status = parts[0];
+    const intent = parts[1];
+    const labels: Record<string, string> = {
+      happy: "Happy with progress",
+      more_progress: "Wanted more progress",
+      update_measurements: "Updated measurements",
+      on_track: "On track",
+      slower_than_expected: "Slower than expected",
+      faster_than_expected: "Faster than expected",
+      no_change: "No change",
+    };
+    const intentLabels: Record<string, string> = {
+      keep_plan: "Keeping plan",
+      increase_rate: "Pushing harder",
+      reduce_fatigue: "Reducing fatigue",
+      diet_break: "Diet break",
+    };
+    let label = labels[status] || status;
+    if (intent && intentLabels[intent]) label += ` · ${intentLabels[intent]}`;
+    return label;
   };
 
   const formatWeight = (weight: number | null) => {
@@ -77,7 +95,7 @@ export const ProgressHistory = ({ unitSystem = "metric" }: ProgressHistoryProps)
       <div className="text-center py-8 text-muted-foreground">
         <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
         <p className="text-sm">No progress check-ins yet.</p>
-        <p className="text-xs mt-1">Complete your first monthly check-in to see your history here.</p>
+        <p className="text-xs mt-1">Complete your first bi-weekly check-in to see your history here.</p>
       </div>
     );
   }
