@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare, Trash2, BarChart2 } from "lucide-react";
+import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare, Trash2, BarChart2, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,7 @@ const Settings = () => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [analyticsConsent, setAnalyticsConsent] = useState(false);
+  const [communityAnonymous, setCommunityAnonymous] = useState(false);
 
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -95,6 +96,17 @@ const Settings = () => {
         setCurrency(baselineData.preferred_currency || "GBP");
         setCoachingTone(baselineData.coaching_tone || "supportive");
         setAnalyticsConsent((baselineData as any).analytics_consent ?? false);
+      }
+
+      // Load community anonymity from profiles
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("community_anonymous")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        setCommunityAnonymous(profile?.community_anonymous ?? false);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -394,6 +406,52 @@ const Settings = () => {
                 id="analytics-toggle"
                 checked={analyticsConsent}
                 onCheckedChange={handleAnalyticsConsentChange}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Community Anonymity */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              Community Privacy
+            </CardTitle>
+            <CardDescription className="text-xs">
+              When enabled, all your posts and comments appear as "Anonymous" to other users. Admins can still see your identity for moderation.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="anon-toggle" className="text-sm font-medium">
+                  Post anonymously
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {communityAnonymous ? "Your identity is hidden in the community" : "Your display name is visible"}
+                </p>
+              </div>
+              <Switch
+                id="anon-toggle"
+                checked={communityAnonymous}
+                onCheckedChange={async (enabled) => {
+                  setCommunityAnonymous(enabled);
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) return;
+                    const { error } = await supabase
+                      .from("profiles")
+                      .update({ community_anonymous: enabled } as any)
+                      .eq("user_id", session.user.id);
+                    if (error) throw error;
+                    toast.success(enabled ? "You'll now post anonymously" : "Your display name is now visible");
+                  } catch (err) {
+                    console.error("Error updating anonymity:", err);
+                    toast.error("Failed to update setting");
+                    setCommunityAnonymous(!enabled);
+                  }
+                }}
               />
             </div>
           </CardContent>
