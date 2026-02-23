@@ -29,6 +29,7 @@ import Community from "./pages/Community";
 import CommunityReports from "./pages/CommunityReports";
 
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/AdminDashboard";
 // Legacy pages (kept temporarily for backwards compatibility)
 import MealHistory from "./pages/MealHistory";
 import QuickAddMeals from "./pages/QuickAddMeals";
@@ -131,6 +132,7 @@ const App = () => {
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/diagnostics" element={<Diagnostics />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               
               
               {/* Legacy routes (to be removed in future commits) */}
