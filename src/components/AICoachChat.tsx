@@ -11,6 +11,7 @@ import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation
 import { parseDailyFocusPoints, type CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage, Language } from "@/lib/i18n";
 import { toast } from "sonner";
+import { CoachMealSuggestionCard, parseMealSuggestion, stripMealSuggestionJson } from "@/components/CoachMealSuggestionCard";
 
 interface Message {
   role: "user" | "assistant";
@@ -494,16 +495,23 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       {/* Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {messages.map((msg, index) => {
-          // Keep the full response but strip marker tags for display
-          const displayContent = msg.role === "assistant" 
+          // Parse meal suggestion from assistant messages
+          const mealSuggestion = msg.role === "assistant" ? parseMealSuggestion(msg.content) : null;
+
+          // Keep the full response but strip marker tags and meal JSON for display
+          let displayContent = msg.role === "assistant" 
             ? msg.content
                 .replace(/---DAILY_FOCUS---/g, '')
                 .replace(/---END_DAILY_FOCUS---/g, '')
                 .trim()
             : msg.content;
 
+          if (mealSuggestion) {
+            displayContent = stripMealSuggestionJson(displayContent);
+          }
+
           return (
-            <div key={index} className="space-y-3">
+            <div key={index} className="space-y-1">
               <div className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                   msg.role === "user" 
@@ -524,6 +532,18 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 </div>
               </div>
 
+              {mealSuggestion && (
+                <div className="ml-11 max-w-[80%]">
+                  <CoachMealSuggestionCard
+                    suggestion={mealSuggestion}
+                    onLogged={async () => {
+                      // Refresh today's meals after logging
+                      const refreshed = await getTodaysMeals();
+                      setTodaysMeals(refreshed);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}

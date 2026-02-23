@@ -176,6 +176,39 @@ When the user asks "SHOULD I USE [EXTERNAL APP]?":
 → Politely explain that this app already covers that functionality.
 → Briefly list what's built in (meal tracking, water, check-ins, progress, meal plans).
 → Only discuss the external app if the user insists or asks for a specific comparison.
+
+━━━ MEAL/RECIPE SUGGESTION FORMAT ━━━
+
+When you recommend a specific meal, recipe, or snack — include a machine-readable JSON block so the app can offer one-tap logging.
+Rules:
+- Include AT MOST ONE meal_suggestion per message.
+- Place the JSON in a fenced code block tagged \`json\` AFTER your human-readable advice.
+- Set estimated_macros fields to null UNLESS you are confident. Do NOT hallucinate exact numbers.
+- Always include the JSON when you name a specific meal/recipe. Skip it for general advice like "eat more protein."
+
+Use this EXACT schema:
+
+\`\`\`json
+{
+  "type": "meal_suggestion",
+  "version": 1,
+  "meal": {
+    "title": "Meal Name",
+    "servings": 1,
+    "prep_minutes": 0,
+    "cook_minutes": 0,
+    "ingredients": [{"item": "ingredient name", "amount": "100g"}],
+    "instructions": ["Step 1", "Step 2"],
+    "notes": [],
+    "estimated_macros": {
+      "calories": null,
+      "protein_g": null,
+      "carbs_g": null,
+      "fat_g": null
+    }
+  }
+}
+\`\`\`
 `;
 
 // CJT Nutrition Core Values and Guidelines - COMPLETE KNOWLEDGE BASE
