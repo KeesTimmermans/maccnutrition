@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, User, Mail, LogOut, Loader2, Lock } from "lucide-react";
+import { Settings, Mail, LogOut, Loader2, Lock, ChevronRight, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProfileBaselineSummary } from "@/components/ProfileBaselineSummary";
 import { PersonalityProfileCard } from "@/components/PersonalityProfileCard";
@@ -25,6 +26,7 @@ const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -76,9 +78,11 @@ const Profile = () => {
       }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      toast.success("Password updated");
+      toast.success("Password updated successfully");
       setNewPassword("");
       setConfirmPassword("");
+      setPasswordError(null);
+      setPasswordModalOpen(false);
     } catch (error: any) {
       toast.error(error?.message || "Failed to update password");
     } finally {
@@ -146,50 +150,78 @@ const Profile = () => {
         {/* Reminder Settings */}
         <ReminderSettings />
 
-        {/* Change Password */}
+        {/* Security */}
         <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Lock className="w-4 h-4" />
-              Change password
+              <Shield className="w-4 h-4" />
+              Security
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="new-password">New password</Label>
-              <Input
-                id="new-password"
-                type="password"
-                placeholder="Min 10 characters"
-                value={newPassword}
-                onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
-                autoComplete="new-password"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="confirm-password">Confirm new password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                placeholder="Re-enter password"
-                value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
-                autoComplete="new-password"
-              />
-            </div>
-            {passwordError && (
-              <p className="text-sm text-destructive">{passwordError}</p>
-            )}
-            <Button
-              className="w-full"
-              disabled={passwordSaving || !newPassword || !confirmPassword}
-              onClick={handleChangePassword}
+          <CardContent className="p-0">
+            <button
+              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-accent/50 transition-colors"
+              onClick={() => { setPasswordError(null); setNewPassword(""); setConfirmPassword(""); setPasswordModalOpen(true); }}
             >
-              {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Update password
-            </Button>
+              <div className="flex items-center gap-3">
+                <Lock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Change password</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
           </CardContent>
         </Card>
+
+        {/* Change Password Modal */}
+        <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Change password
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1">
+                <Label htmlFor="new-password">New password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Min 10 characters"
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="confirm-password">Confirm new password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="Re-enter password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+                  autoComplete="new-password"
+                />
+              </div>
+              {passwordError && (
+                <p className="text-sm text-destructive">{passwordError}</p>
+              )}
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setPasswordModalOpen(false)} disabled={passwordSaving}>
+                Cancel
+              </Button>
+              <Button
+                disabled={passwordSaving || !newPassword || !confirmPassword}
+                onClick={handleChangePassword}
+              >
+                {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Update password
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Sign Out */}
         <Button
