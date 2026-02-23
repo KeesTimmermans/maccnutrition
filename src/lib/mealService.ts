@@ -21,6 +21,7 @@ export interface MealInput {
   protein: number;
   carbs: number;
   fats: number;
+  notes?: string;
 }
 
 export const saveMeal = async (meal: MealInput, loggedAt?: Date): Promise<Meal | null> => {
@@ -40,8 +41,9 @@ export const saveMeal = async (meal: MealInput, loggedAt?: Date): Promise<Meal |
       protein: meal.protein,
       carbs: meal.carbs,
       fats: meal.fats,
+      notes: meal.notes || null,
       logged_at: loggedAt ? loggedAt.toISOString() : new Date().toISOString(),
-    })
+    } as any)
     .select()
     .single();
 

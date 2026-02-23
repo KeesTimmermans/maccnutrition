@@ -391,6 +391,7 @@ export type Database = {
           image_url: string | null
           logged_at: string
           name: string
+          notes: string | null
           protein: number
           user_id: string
         }
@@ -403,6 +404,7 @@ export type Database = {
           image_url?: string | null
           logged_at?: string
           name: string
+          notes?: string | null
           protein?: number
           user_id: string
         }
@@ -415,6 +417,7 @@ export type Database = {
           image_url?: string | null
           logged_at?: string
           name?: string
+          notes?: string | null
           protein?: number
           user_id?: string
         }
