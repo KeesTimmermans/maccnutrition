@@ -13,14 +13,13 @@ export interface ExtractedMealSuggestions {
 export function extractMealSuggestions(message: string): ExtractedMealSuggestions {
   const suggestions: MealSuggestion[] = [];
   let cleanText = message;
-
-  // Tolerant regex: matches ```json ... ``` across newlines, case-insensitive
-  const jsonBlockRegex = /```json\s*([\s\S]*?)```/gi;
-  // Collect all matches first (to avoid mutating while iterating)
   const blocksToStrip: string[] = [];
+
+  // 1) Closed blocks: ```json ... ```
+  const closedBlockRegex = /```json\s*([\s\S]*?)```/gi;
   let match: RegExpExecArray | null;
 
-  while ((match = jsonBlockRegex.exec(message)) !== null) {
+  while ((match = closedBlockRegex.exec(message)) !== null) {
     const fullMatch = match[0];
     const jsonString = match[1].trim();
 
@@ -38,16 +37,47 @@ export function extractMealSuggestions(message: string): ExtractedMealSuggestion
     } catch (e) {
       if (import.meta.env.DEV) {
         console.warn(
-          "[extractMealSuggestions] Failed to parse JSON block:",
+          "[extractMealSuggestions] Failed to parse closed JSON block:",
           e instanceof Error ? e.message : e,
           "\nContent:",
           jsonString.slice(0, 200)
         );
       }
-      // Still strip blocks that look like meal_suggestion attempts to avoid raw JSON in UI
+      // Still strip blocks that look like meal_suggestion attempts
       if (jsonString.includes('"meal_suggestion"')) {
         blocksToStrip.push(fullMatch);
       }
+    }
+  }
+
+  // 2) Unclosed / truncated blocks: ```json ... (no closing ```)
+  //    This happens when AI response is cut off by token limits.
+  const unclosedBlockRegex = /```json\s*([\s\S]*?)$/gi;
+  while ((match = unclosedBlockRegex.exec(message)) !== null) {
+    const fullMatch = match[0];
+    // Skip if this was already handled as a closed block
+    if (blocksToStrip.includes(fullMatch)) continue;
+    // Check if this region was already captured by a closed match
+    const alreadyCaptured = blocksToStrip.some(b => message.indexOf(b) === message.indexOf(fullMatch));
+    if (alreadyCaptured) continue;
+
+    const jsonString = match[1].trim();
+
+    // Try to parse (unlikely for truncated, but possible)
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (parsed?.type === "meal_suggestion" && parsed?.version === 1 && parsed?.meal?.title) {
+        suggestions.push(parsed as MealSuggestion);
+        blocksToStrip.push(fullMatch);
+        continue;
+      }
+    } catch {
+      // Expected for truncated blocks
+    }
+
+    // Strip if it looks like a truncated meal_suggestion block
+    if (jsonString.includes('"meal_suggestion"')) {
+      blocksToStrip.push(fullMatch);
     }
   }
 
