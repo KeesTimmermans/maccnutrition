@@ -173,6 +173,8 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 cyclePhaseTodayCheckin: (todaysCheckIn as any)?.cycle_phase_today || undefined,
                 checkInContext: checkInContext,
                 preferredLanguage: language as Language,
+                lastProgressUpdate: userBaseline.last_progress_update || undefined,
+                lastDailyCheckin: freshCheckIn?.check_in_date || undefined,
               } : {},
               todaysMeals: meals.map(m => ({
                 name: m.name,
@@ -330,6 +332,9 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
             // Language preference
             preferredLanguage: language as Language,
+            // App state
+            lastProgressUpdate: baseline.last_progress_update || undefined,
+            lastDailyCheckin: todaysCheckIn?.check_in_date || undefined,
           } : {},
           todaysMeals: todaysMeals.map(m => ({
             name: m.name,
