@@ -50,40 +50,39 @@ export function extractMealSuggestions(message: string): ExtractedMealSuggestion
     }
   }
 
-  // 2) Unclosed / truncated blocks: ```json ... (no closing ```)
-  //    This happens when AI response is cut off by token limits.
-  const unclosedBlockRegex = /```json\s*([\s\S]*?)$/gi;
-  while ((match = unclosedBlockRegex.exec(message)) !== null) {
-    const fullMatch = match[0];
-    // Skip if this was already handled as a closed block
-    if (blocksToStrip.includes(fullMatch)) continue;
-    // Check if this region was already captured by a closed match
-    const alreadyCaptured = blocksToStrip.some(b => message.indexOf(b) === message.indexOf(fullMatch));
-    if (alreadyCaptured) continue;
-
-    const jsonString = match[1].trim();
-
-    // Try to parse (unlikely for truncated, but possible)
-    try {
-      const parsed = JSON.parse(jsonString);
-      if (parsed?.type === "meal_suggestion" && parsed?.version === 1 && parsed?.meal?.title) {
-        suggestions.push(parsed as MealSuggestion);
-        blocksToStrip.push(fullMatch);
-        continue;
-      }
-    } catch {
-      // Expected for truncated blocks
-    }
-
-    // Strip if it looks like a truncated meal_suggestion block
-    if (jsonString.includes('"meal_suggestion"')) {
-      blocksToStrip.push(fullMatch);
-    }
-  }
-
-  // Strip matched blocks from display text
+  // Strip closed blocks from display text first
   for (const block of blocksToStrip) {
     cleanText = cleanText.replace(block, "");
+  }
+
+  // 2) Unclosed / truncated blocks: ```json ... (no closing ```)
+  //    Check AFTER stripping closed blocks so we don't false-positive.
+  const unclosedIdx = cleanText.search(/```json\s/i);
+  if (unclosedIdx !== -1) {
+    const remainingBlock = cleanText.slice(unclosedIdx);
+    // Only strip if it looks like a meal_suggestion attempt
+    if (remainingBlock.includes('"meal_suggestion"')) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[extractMealSuggestions] Stripping unclosed/truncated meal_suggestion block (" +
+          remainingBlock.length + " chars)"
+        );
+      }
+      // Try to parse (unlikely for truncated, but possible)
+      const innerMatch = /```json\s*([\s\S]*)$/i.exec(remainingBlock);
+      if (innerMatch) {
+        const jsonString = innerMatch[1].trim();
+        try {
+          const parsed = JSON.parse(jsonString);
+          if (parsed?.type === "meal_suggestion" && parsed?.version === 1 && parsed?.meal?.title) {
+            suggestions.push(parsed as MealSuggestion);
+          }
+        } catch {
+          // Expected for truncated
+        }
+      }
+      cleanText = cleanText.slice(0, unclosedIdx);
+    }
   }
 
   // Collapse excessive whitespace left behind

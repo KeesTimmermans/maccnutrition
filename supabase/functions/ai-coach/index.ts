@@ -180,11 +180,15 @@ When the user asks "SHOULD I USE [EXTERNAL APP]?":
 ━━━ MEAL/RECIPE SUGGESTION FORMAT ━━━
 
 When you recommend a specific meal, recipe, or snack — include a machine-readable JSON block so the app can offer one-tap logging.
-Rules:
-- Include AT MOST ONE meal_suggestion per message.
-- Place the JSON in a fenced code block tagged \`json\` AFTER your human-readable advice.
-- Set estimated_macros fields to null UNLESS you are confident. Do NOT hallucinate exact numbers.
-- Always include the JSON when you name a specific meal/recipe. Skip it for general advice like "eat more protein."
+
+CRITICAL RULES:
+1. Include AT MOST ONE meal_suggestion per message.
+2. Place the JSON block FIRST — at the very top of your message, BEFORE any human-readable text.
+3. The fenced code block MUST open with \`\`\`json and close with \`\`\` on its own line. ALWAYS close the block.
+4. The JSON inside MUST be valid and complete. If you cannot produce a complete, valid JSON block, do NOT output any JSON at all.
+5. Set estimated_macros fields to null UNLESS you are confident. Do NOT hallucinate exact numbers.
+6. When including a meal_suggestion, keep the human-readable explanation SHORT — under 150 words maximum. This prevents the response from being cut off.
+7. Skip the JSON block entirely for general advice like "eat more protein" — only include it when naming a specific meal or recipe.
 
 Use this EXACT schema:
 
@@ -699,9 +703,20 @@ You MUST follow these rules for this response:
       educational: 1200,
       motivational: 600,
     };
-    const maxTokens = (effectiveType === 'chat' || effectiveType === 'focus_tip')
-      ? (maxTokensByStyle[coachingTone] || 600)
-      : 2000; // generous for check-ins and progress updates
+
+    // Detect meal/recipe intent to bump token budget
+    const lastUserMsg = (messages && messages.length > 0)
+      ? messages[messages.length - 1]?.content?.toLowerCase() || ''
+      : (message || '').toLowerCase();
+    const isMealIntent = /\b(recipe|meal idea|what should i eat|suggest a meal|what can i eat|give me a meal|lunch|dinner|breakfast|snack idea)\b/i.test(lastUserMsg);
+    
+    let maxTokens: number;
+    if (effectiveType === 'chat' || effectiveType === 'focus_tip') {
+      const baseTokens = maxTokensByStyle[coachingTone] || 600;
+      maxTokens = isMealIntent ? Math.max(baseTokens, 900) : baseTokens;
+    } else {
+      maxTokens = 2000; // generous for check-ins and progress updates
+    }
 
     const systemPrompt = `${CJT_CORE_SYSTEM}
 
