@@ -502,6 +502,14 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             ? extractMealSuggestions(msg.content)
             : { cleanText: msg.content, suggestions: [] };
 
+          if (import.meta.env.DEV && isAssistant) {
+            console.log('[AICoachChat] Message render stats:', {
+              originalLength: msg.content.length,
+              cleanLength: extractedClean.length,
+              suggestionsCount: mealSuggestions.length,
+            });
+          }
+
           // Strip daily focus markers for display
           const displayContent = isAssistant
             ? extractedClean

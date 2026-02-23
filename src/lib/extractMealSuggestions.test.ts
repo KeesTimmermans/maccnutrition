@@ -75,4 +75,12 @@ describe("extractMealSuggestions", () => {
     expect(suggestions).toHaveLength(0);
     expect(cleanText).not.toContain("meal_suggestion");
   });
+
+  it("strips truncated/unclosed meal_suggestion blocks (no closing ```)", () => {
+    const message = 'Here is a meal:\n\n```json\n{\n  "type": "meal_suggestion",\n  "version": 1,\n  "meal": {\n    "title": "Truncated Meal",\n    "servings": 1,\n    "ingredients": [\n      {"item": "chicken", "amount": "100g"}\n    ]';
+    const { cleanText, suggestions } = extractMealSuggestions(message);
+    // Truncated JSON can't be parsed, but the block should be stripped
+    expect(cleanText).not.toContain("meal_suggestion");
+    expect(cleanText).toContain("Here is a meal:");
+  });
 });
