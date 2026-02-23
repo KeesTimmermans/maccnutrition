@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, User, Mail, LogOut, Loader2 } from "lucide-react";
+import { Settings, User, Mail, LogOut, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProfileBaselineSummary } from "@/components/ProfileBaselineSummary";
 import { PersonalityProfileCard } from "@/components/PersonalityProfileCard";
@@ -19,6 +21,10 @@ const Profile = () => {
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     loadUserData();
@@ -47,6 +53,36 @@ const Profile = () => {
     } catch (error) {
       console.error("Error signing out:", error);
       toast.error(t('sign_out_error') || 'Failed to sign out');
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    if (newPassword.length < 10) {
+      setPasswordError("Password must be at least 10 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Please log in again to update your password.");
+        setPasswordSaving(false);
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success("Password updated");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to update password");
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -109,6 +145,51 @@ const Profile = () => {
 
         {/* Reminder Settings */}
         <ReminderSettings />
+
+        {/* Change Password */}
+        <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              Change password
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="new-password">New password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Min 10 characters"
+                value={newPassword}
+                onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="confirm-password">Confirm new password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+                autoComplete="new-password"
+              />
+            </div>
+            {passwordError && (
+              <p className="text-sm text-destructive">{passwordError}</p>
+            )}
+            <Button
+              className="w-full"
+              disabled={passwordSaving || !newPassword || !confirmPassword}
+              onClick={handleChangePassword}
+            >
+              {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Update password
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Sign Out */}
         <Button
