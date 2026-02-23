@@ -11,7 +11,8 @@ import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation
 import { parseDailyFocusPoints, type CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage, Language } from "@/lib/i18n";
 import { toast } from "sonner";
-import { CoachMealSuggestionCard, parseMealSuggestion, stripMealSuggestionJson } from "@/components/CoachMealSuggestionCard";
+import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
+import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 
 interface Message {
   role: "user" | "assistant";
@@ -495,20 +496,19 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       {/* Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {messages.map((msg, index) => {
-          // Parse meal suggestion from assistant messages
-          const mealSuggestion = msg.role === "assistant" ? parseMealSuggestion(msg.content) : null;
+          // Extract meal suggestions and clean text for assistant messages
+          const isAssistant = msg.role === "assistant";
+          const { cleanText: extractedClean, suggestions: mealSuggestions } = isAssistant
+            ? extractMealSuggestions(msg.content)
+            : { cleanText: msg.content, suggestions: [] };
 
-          // Keep the full response but strip marker tags and meal JSON for display
-          let displayContent = msg.role === "assistant" 
-            ? msg.content
+          // Strip daily focus markers for display
+          const displayContent = isAssistant
+            ? extractedClean
                 .replace(/---DAILY_FOCUS---/g, '')
                 .replace(/---END_DAILY_FOCUS---/g, '')
                 .trim()
-            : msg.content;
-
-          if (mealSuggestion) {
-            displayContent = stripMealSuggestionJson(displayContent);
-          }
+            : extractedClean;
 
           return (
             <div key={index} className="space-y-1">
@@ -532,18 +532,17 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 </div>
               </div>
 
-              {mealSuggestion && (
-                <div className="ml-11 max-w-[80%]">
+              {mealSuggestions.map((suggestion, si) => (
+                <div key={si} className="ml-11 max-w-[80%]">
                   <CoachMealSuggestionCard
-                    suggestion={mealSuggestion}
+                    suggestion={suggestion}
                     onLogged={async () => {
-                      // Refresh today's meals after logging
                       const refreshed = await getTodaysMeals();
                       setTodaysMeals(refreshed);
                     }}
                   />
                 </div>
-              )}
+              ))}
             </div>
           );
         })}
