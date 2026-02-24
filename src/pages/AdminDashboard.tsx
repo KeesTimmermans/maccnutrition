@@ -37,12 +37,15 @@ interface AdminUser {
   };
 }
 
+// Cache admin users in memory across navigations
+let cachedUsers: AdminUser[] | null = null;
+
 const AdminDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<AdminUser[]>(cachedUsers ?? []);
+  const [loading, setLoading] = useState(!cachedUsers);
   const [isAdmin, setIsAdmin] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -66,7 +69,7 @@ const AdminDashboard = () => {
         return;
       }
       setIsAdmin(true);
-      fetchUsers();
+      if (!cachedUsers) fetchUsers();
     };
 
     checkAdmin();
@@ -77,7 +80,9 @@ const AdminDashboard = () => {
     try {
       const { data, error } = await supabase.functions.invoke("admin-users");
       if (error) throw error;
-      setUsers(data.users ?? []);
+      const fetched = data.users ?? [];
+      cachedUsers = fetched;
+      setUsers(fetched);
     } catch (err: any) {
       toast({
         title: "Error loading users",
@@ -99,7 +104,11 @@ const AdminDashboard = () => {
       });
       if (error) throw error;
       toast({ title: "Account deleted", description: `${email} has been permanently deleted.` });
-      setUsers((prev) => prev.filter((u) => u.id !== targetUserId));
+      setUsers((prev) => {
+        const updated = prev.filter((u) => u.id !== targetUserId);
+        cachedUsers = updated;
+        return updated;
+      });
     } catch (err: any) {
       toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     } finally {
