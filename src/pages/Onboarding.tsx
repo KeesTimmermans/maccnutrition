@@ -5,11 +5,12 @@ import { BaselineSummary } from "@/components/BaselineSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboarding } from "@/App";
 import { saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
-import { calculateBaseline } from "@/lib/baselineCalculations";
+import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
   const [userData, setUserData] = useState<OnboardingData | null>(null);
+  const [savedBaseline, setSavedBaseline] = useState<BaselineResults | null>(null);
   const [showBaseline, setShowBaseline] = useState(false);
   const { user } = useAuth();
   const { markOnboardingCompleted } = useOnboarding();
@@ -19,9 +20,11 @@ const Onboarding = () => {
   const handleQuestionnaireComplete = async (data: OnboardingData) => {
     setUserData(data);
 
+    // Calculate baseline ONCE — this same object is saved to DB and shown in summary
+    const baseline = calculateNutritionTargets(data);
+
     if (user) {
       try {
-        const baseline = calculateBaseline(data);
         await saveUserBaseline(user.id, data, baseline);
 
         if (user.email) {
@@ -49,6 +52,7 @@ const Onboarding = () => {
     }
 
     localStorage.setItem("cjt_user_data", JSON.stringify(data));
+    setSavedBaseline(baseline);
     setShowBaseline(true);
   };
 
@@ -58,8 +62,8 @@ const Onboarding = () => {
     navigate("/");
   };
 
-  if (showBaseline && userData) {
-    return <BaselineSummary userData={userData} onContinue={handleBaselineContinue} />;
+  if (showBaseline && userData && savedBaseline) {
+    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} />;
   }
 
   return <OnboardingQuestionnaire onComplete={handleQuestionnaireComplete} />;
