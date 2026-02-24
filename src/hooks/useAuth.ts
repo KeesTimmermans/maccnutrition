@@ -32,6 +32,7 @@ export const useAuth = () => {
   const checkSubscription = useCallback(
     async (opts?: { force?: boolean }) => {
       if (!session) {
+        console.log("[useAuth] No session — skipping check-subscription");
         setSubscription({
           subscribed: false,
           subscriptionEnd: null,
@@ -40,7 +41,7 @@ export const useAuth = () => {
           trialDaysRemaining: null,
         });
         setSubscriptionError(null);
-        setSubscriptionChecked(false);
+        setSubscriptionChecked(true);
         setSubscriptionLoading(false);
         return;
       }
@@ -51,22 +52,28 @@ export const useAuth = () => {
 
       // De-dupe to avoid multiple simultaneous or back-to-back checks
       if (inFlightRef.current) return;
-      // Extend de-dupe window to 30s for background refreshes (was 15s)
       if (!force && lastCheckRef.current.token === token && now - lastCheckRef.current.at < 30000) return;
 
       inFlightRef.current = true;
-      // Only show loading spinner on initial check or forced refresh, not background polling
       const isInitialCheck = !subscriptionChecked;
       if (force || isInitialCheck) {
         setSubscriptionLoading(true);
       }
 
+      console.log("[useAuth] got session, calling check-subscription");
+
       try {
         const { data, error } = await Promise.race([
           supabase.functions.invoke("check-subscription"),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Subscription check timed out")), 8000)),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Subscription check timed out (10s)")), 10000)),
         ]);
-        if (error) throw error;
+
+        if (error) {
+          console.error("[useAuth] check-subscription error:", error);
+          throw error;
+        }
+
+        console.log("[useAuth] check-subscription response:", data);
 
         const wasSubscribed = subscription.subscribed;
         const nowSubscribed = data?.subscribed ?? false;
@@ -77,21 +84,25 @@ export const useAuth = () => {
           trialEnd: data?.trial_end ?? null,
           trialDaysRemaining: data?.trial_days_remaining ?? null,
         });
-        // Track first time a subscription becomes active
         if (!wasSubscribed && nowSubscribed) {
           trackSubscribed();
         }
         setSubscriptionError(null);
-        setSubscriptionChecked(true);
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        console.error("Error checking subscription:", error);
+        console.error("[useAuth] check-subscription failed:", msg);
         setSubscriptionError(msg);
-        // Mark as checked even on error to prevent UI from getting stuck
-        if (!subscriptionChecked) {
-          setSubscriptionChecked(true);
-        }
+        // Treat errors as unsubscribed so the gate doesn't hang
+        setSubscription({
+          subscribed: false,
+          subscriptionEnd: null,
+          isTrialing: false,
+          trialEnd: null,
+          trialDaysRemaining: null,
+        });
       } finally {
+        // ALWAYS mark as checked & stop loading to prevent infinite spinner
+        setSubscriptionChecked(true);
         lastCheckRef.current = { token, at: Date.now() };
         setSubscriptionLoading(false);
         inFlightRef.current = false;
