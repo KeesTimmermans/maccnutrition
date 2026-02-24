@@ -13,9 +13,13 @@ interface ProfileBaselineSummaryProps {
 }
 
 const GOAL_OPTIONS = [
-  { value: "fat_loss", labelKey: "fat_loss", fallback: "Fat Loss" },
-  { value: "muscle_gain", labelKey: "muscle_gain", fallback: "Muscle Gain" },
-  { value: "general_health", labelKey: "general_health", fallback: "Maintenance" },
+  { value: "fat_loss", labelKey: "fat_loss", fallback: "Fat Loss", icon: "🔥" },
+  { value: "muscle_gain", labelKey: "muscle_gain", fallback: "Muscle Gain", icon: "💪" },
+  { value: "performance", labelKey: "performance_goal", fallback: "Performance", icon: "⚡" },
+  { value: "recovery", labelKey: "recovery_goal", fallback: "Recovery", icon: "🔄" },
+  { value: "energy", labelKey: "energy_goal", fallback: "Energy", icon: "✨" },
+  { value: "health_markers", labelKey: "health_markers", fallback: "Health Markers", icon: "📊" },
+  { value: "general_health", labelKey: "general_health", fallback: "General Health", icon: "🌿" },
 ] as const;
 
 export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileBaselineSummaryProps) => {
@@ -71,7 +75,7 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
             <SelectContent>
               {GOAL_OPTIONS.map(opt => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {t(opt.labelKey) || opt.fallback}
+                  <span className="flex items-center gap-2">{opt.icon} {t(opt.labelKey) || opt.fallback}</span>
                 </SelectItem>
               ))}
             </SelectContent>
