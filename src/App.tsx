@@ -134,7 +134,7 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Subscription gate — redirects unsubscribed users to /pricing ──
-const SUBSCRIPTION_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics"];
+const SUBSCRIPTION_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding"];
 
 const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -145,11 +145,25 @@ const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
   }
 
-  // Not logged in — let other gates handle
-  if (!session) return <>{children}</>;
+  // Still loading auth state — brief spinner with failsafe
+  if (loading) {
+    console.log("[SubscriptionGate] auth still loading");
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
-  // Still loading auth or subscription
-  if (loading || (!subscriptionChecked && subscriptionLoading)) {
+  // Not logged in — redirect to auth immediately
+  if (!session) {
+    console.log("[SubscriptionGate] no session — redirecting to /auth");
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Subscription not yet checked — show spinner only briefly
+  if (!subscriptionChecked) {
+    console.log("[SubscriptionGate] waiting for subscription check");
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
@@ -158,7 +172,8 @@ const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Subscription checked and not active — redirect to pricing
-  if (subscriptionChecked && !subscription) {
+  if (!subscription) {
+    console.log("[SubscriptionGate] not subscribed — redirecting to /pricing");
     return <Navigate to="/pricing" replace />;
   }
 
