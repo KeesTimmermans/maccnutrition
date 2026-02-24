@@ -292,7 +292,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       case "demographics":
         return <DemographicsStep data={data} updateData={updateData} t={t} />;
       case "medical":
-        return <MedicalStep data={data} toggleArrayItem={toggleArrayItem} t={t} />;
+        return <MedicalStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "lifestyle":
         return <LifestyleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "eating_behavior":
@@ -541,8 +541,9 @@ const DemographicsStep = ({ data, updateData, t }: {
   </div>
 );
 
-const MedicalStep = ({ data, toggleArrayItem, t }: { 
+const MedicalStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
+  updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
 }) => {
@@ -560,12 +561,16 @@ const MedicalStep = ({ data, toggleArrayItem, t }: {
   const allergies = [
     { key: "dairy", label: t('dairy') },
     { key: "gluten", label: t('gluten') },
-    { key: "nuts", label: t('nuts') },
-    { key: "shellfish", label: t('shellfish') },
     { key: "eggs", label: t('eggs') },
+    { key: "nuts", label: t('nuts') },
+    { key: "fish", label: "Fish" },
+    { key: "shellfish", label: t('shellfish') },
     { key: "soy", label: t('soy') },
+    { key: "sesame", label: "Sesame" },
     { key: "none", label: t('none') },
   ];
+
+  const [customAllergy, setCustomAllergy] = useState("");
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -597,6 +602,7 @@ const MedicalStep = ({ data, toggleArrayItem, t }: {
 
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('food_allergies')}</Label>
+        <p className="text-xs text-muted-foreground -mt-1">Select all that apply</p>
         <div className="grid grid-cols-2 gap-2">
           {allergies.map((allergy) => (
             <button
@@ -612,6 +618,49 @@ const MedicalStep = ({ data, toggleArrayItem, t }: {
             </button>
           ))}
         </div>
+        {/* Other allergy free-text */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="Other allergy (type and press Add)"
+            value={customAllergy}
+            onChange={(e) => setCustomAllergy(e.target.value)}
+            className="h-10 rounded-xl flex-1"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && customAllergy.trim()) {
+                e.preventDefault();
+                toggleArrayItem("allergies", customAllergy.trim().toLowerCase());
+                setCustomAllergy("");
+              }
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-10"
+            disabled={!customAllergy.trim()}
+            onClick={() => {
+              toggleArrayItem("allergies", customAllergy.trim().toLowerCase());
+              setCustomAllergy("");
+            }}
+          >
+            Add
+          </Button>
+        </div>
+        {/* Show custom allergies (ones not in the predefined list) */}
+        {data.allergies.filter(a => !allergies.some(p => p.key === a)).length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {data.allergies.filter(a => !allergies.some(p => p.key === a)).map(a => (
+              <span
+                key={a}
+                className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full cursor-pointer"
+                onClick={() => toggleArrayItem("allergies", a)}
+              >
+                {a} ✕
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1217,7 +1266,11 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
     { key: "reduce_inflammation", label: t('reduce_inflammation') },
     { key: "hormone_balance", label: t('hormone_balance') },
     { key: "mental_clarity", label: t('mental_clarity') },
+    { key: "stress_management", label: "Stress management" },
+    { key: "gut_health", label: "Gut health" },
   ];
+
+  const [customGoal, setCustomGoal] = useState("");
 
   const motivationStyles = [
     { label: "Data-driven", desc: "I love tracking numbers and progress", value: "data_driven", icon: "📊" },
@@ -1261,6 +1314,7 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
 
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('secondary_goals')}</Label>
+        <p className="text-xs text-muted-foreground -mt-1">Select all that apply</p>
         <div className="grid grid-cols-2 gap-2">
           {secondaryGoals.map((goal) => (
             <button
@@ -1276,6 +1330,48 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
             </button>
           ))}
         </div>
+        {/* Custom goal */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="Other goal (type and press Add)"
+            value={customGoal}
+            onChange={(e) => setCustomGoal(e.target.value)}
+            className="h-10 rounded-xl flex-1"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && customGoal.trim()) {
+                e.preventDefault();
+                toggleArrayItem("secondaryGoals", customGoal.trim().toLowerCase().replace(/\s+/g, "_"));
+                setCustomGoal("");
+              }
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-10"
+            disabled={!customGoal.trim()}
+            onClick={() => {
+              toggleArrayItem("secondaryGoals", customGoal.trim().toLowerCase().replace(/\s+/g, "_"));
+              setCustomGoal("");
+            }}
+          >
+            Add
+          </Button>
+        </div>
+        {data.secondaryGoals.filter(g => !secondaryGoals.some(p => p.key === g)).length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {data.secondaryGoals.filter(g => !secondaryGoals.some(p => p.key === g)).map(g => (
+              <span
+                key={g}
+                className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs px-2 py-1 rounded-full cursor-pointer"
+                onClick={() => toggleArrayItem("secondaryGoals", g)}
+              >
+                {g.replace(/_/g, " ")} ✕
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -1345,9 +1441,12 @@ const PreferencesStep = ({ data, updateData, t }: {
   ];
 
   const mealOptions = [
-    { label: t('2_meals'), value: "2" },
-    { label: t('3_meals'), value: "3" },
-    { label: t('4_plus_meals'), value: "4+" },
+    { label: "1", value: "1" },
+    { label: "2", value: "2" },
+    { label: "3", value: "3" },
+    { label: "4", value: "4" },
+    { label: "5", value: "5" },
+    { label: "6", value: "6" },
     { label: t('flexible'), value: "flexible" },
   ];
 
@@ -1403,7 +1502,7 @@ const PreferencesStep = ({ data, updateData, t }: {
 
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('meals_per_day')}</Label>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
           {mealOptions.map((option) => (
             <button
               key={option.value}

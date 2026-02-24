@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import { LanguageProvider } from "@/lib/i18n";
 import { useEffect, useState, createContext, useContext, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -232,6 +233,7 @@ const App = () => {
         <AnalyticsConsentBanner />
         <OnboardingProvider>
           <HashRouter>
+            <ScrollToTop />
             <ConsentGate>
               <OnboardingGate>
                 <Routes>

@@ -9,7 +9,7 @@ import { Sparkles, Heart, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
-import { calculateBaseline } from "@/lib/baselineCalculations";
+import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { useOnboarding } from "@/App";
@@ -24,6 +24,7 @@ const getCheckoutReturnUrl = () => {
 const Today = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
   const [userData, setUserData] = useState<OnboardingData | null>(null);
+  const [savedBaseline, setSavedBaseline] = useState<BaselineResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
@@ -157,10 +158,10 @@ const Today = () => {
 
   const handleQuestionnaireComplete = async (data: OnboardingData) => {
     setUserData(data);
+    const baseline = calculateNutritionTargets(data);
 
     if (user) {
       try {
-        const baseline = calculateBaseline(data);
         await saveUserBaseline(user.id, data, baseline);
 
         if (user.email) {
@@ -190,6 +191,7 @@ const Today = () => {
     }
 
     localStorage.setItem("cjt_user_data", JSON.stringify(data));
+    setSavedBaseline(baseline);
     setAppState("baseline");
   };
 
@@ -381,8 +383,8 @@ const Today = () => {
   }
 
   // Baseline summary (after onboarding)
-  if (appState === "baseline" && userData) {
-    return <BaselineSummary userData={userData} onContinue={handleBaselineContinue} />;
+  if (appState === "baseline" && userData && savedBaseline) {
+    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} />;
   }
 
   // Onboarding questionnaire

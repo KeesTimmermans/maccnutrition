@@ -12,19 +12,19 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { OnboardingData } from "./OnboardingQuestionnaire";
-import { calculateBaseline, BaselineResults } from "@/lib/baselineCalculations";
+import { BaselineResults } from "@/lib/baselineCalculations";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { useLanguage } from "@/lib/i18n";
 
 interface BaselineSummaryProps {
   userData: OnboardingData;
+  baseline: BaselineResults;
   onContinue: () => void;
 }
 
-export const BaselineSummary = ({ userData, onContinue }: BaselineSummaryProps) => {
+export const BaselineSummary = ({ userData, baseline, onContinue }: BaselineSummaryProps) => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<"overview" | "meals" | "focus">("overview");
-  const baseline = calculateBaseline(userData);
 
   const tabs = [
     { id: "overview" as const, label: t('overview'), icon: <Target className="w-4 h-4" /> },

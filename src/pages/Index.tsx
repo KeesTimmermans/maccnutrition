@@ -8,7 +8,7 @@ import { Sparkles, Heart, Zap, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
-import { calculateBaseline } from "@/lib/baselineCalculations";
+import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 
@@ -23,6 +23,7 @@ const getCheckoutReturnUrl = () => {
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
   const [userData, setUserData] = useState<OnboardingData | null>(null);
+  const [savedBaseline, setSavedBaseline] = useState<BaselineResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
@@ -186,10 +187,10 @@ const Index = () => {
   const handleQuestionnaireComplete = async (data: OnboardingData) => {
     console.log("Onboarding data:", data);
     setUserData(data);
+    const baseline = calculateNutritionTargets(data);
 
     if (user) {
       try {
-        const baseline = calculateBaseline(data);
         await saveUserBaseline(user.id, data, baseline);
 
         // Send baseline summary email
@@ -225,8 +226,8 @@ const Index = () => {
       }
     }
 
-    // Save to localStorage as backup
     localStorage.setItem("cjt_user_data", JSON.stringify(data));
+    setSavedBaseline(baseline);
     setAppState("baseline");
   };
 
@@ -420,8 +421,8 @@ const Index = () => {
     return <Dashboard />;
   }
 
-  if (appState === "baseline" && userData) {
-    return <BaselineSummary userData={userData} onContinue={handleBaselineContinue} />;
+  if (appState === "baseline" && userData && savedBaseline) {
+    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} />;
   }
 
   if (appState === "questionnaire") {
