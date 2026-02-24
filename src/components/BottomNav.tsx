@@ -2,6 +2,7 @@ import { NavLink } from "@/components/NavLink";
 import { Home, TrendingUp, UtensilsCrossed, Activity, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOnboarding } from "@/App";
+import { useNavigate } from "react-router-dom";
 
 const navItems = [
   { to: "/", icon: Home, label: "Today" },
@@ -14,8 +15,9 @@ const navItems = [
 
 export const BottomNav = () => {
   const { onboardingCompleted } = useOnboarding();
+  const navigate = useNavigate();
 
-  // Hide nav entirely when onboarding is incomplete
+  // Show a clickable CTA when onboarding is incomplete
   if (onboardingCompleted === false) {
     return (
       <nav
@@ -23,7 +25,12 @@ export const BottomNav = () => {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center justify-center h-16 max-w-lg mx-auto px-4">
-          <p className="text-xs text-muted-foreground">Complete onboarding to continue.</p>
+          <button
+            onClick={() => navigate("/")}
+            className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors active:scale-[0.98]"
+          >
+            Finish setup →
+          </button>
         </div>
       </nav>
     );
