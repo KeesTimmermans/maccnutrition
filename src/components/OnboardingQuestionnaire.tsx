@@ -265,7 +265,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
     switch (currentStep.id) {
       case "demographics":
         const hasHeight = data.unitSystem === "imperial" ? data.heightFeet : data.heightCm;
-        return data.age && data.sex && hasHeight && data.weight;
+        return data.name.trim() && data.age && data.sex && hasHeight && data.weight;
       case "medical":
         return true;
       case "lifestyle":
@@ -432,6 +432,19 @@ const DemographicsStep = ({ data, updateData, t }: {
   t: (key: string) => string;
 }) => (
   <div className="space-y-6 animate-slide-up">
+    {/* First Name */}
+    <div className="space-y-2">
+      <Label className="text-sm font-semibold">First Name</Label>
+      <Input
+        type="text"
+        placeholder="Enter your first name"
+        value={data.name}
+        onChange={(e) => updateData("name", e.target.value)}
+        className="h-12 rounded-xl"
+      />
+      <p className="text-xs text-muted-foreground">We'll use this to personalise your experience</p>
+    </div>
+
     {/* Unit System Toggle */}
     <div className="space-y-2">
       <Label className="text-sm font-semibold">{t('measurement_system')}</Label>
