@@ -113,11 +113,21 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const markOnboardingCompleted = useCallback(async () => {
-    if (!userId) return;
-    await supabase
+    if (!userId) throw new Error("No user ID — cannot mark onboarding complete");
+
+    const { error } = await supabase
       .from("profiles")
       .update({ onboarding_completed: true, onboarding_completed_at: new Date().toISOString() })
       .eq("user_id", userId);
+
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error("[OnboardingProvider] profiles update failed:", { code: error.code, message: error.message, hint: error.hint });
+      }
+      throw error;
+    }
+
+    // Only update context state after DB confirms success
     setOnboardingCompleted(true);
   }, [userId]);
 
