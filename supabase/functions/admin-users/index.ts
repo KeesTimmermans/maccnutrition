@@ -64,35 +64,80 @@ serve(async (req) => {
     if (stripeKey) {
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-      // Fetch all active + trialing subscriptions
-      const activeSubs = await stripe.subscriptions.list({ status: "active", limit: 100 });
-      const trialingSubs = await stripe.subscriptions.list({ status: "trialing", limit: 100 });
-      const allSubs = [...activeSubs.data, ...trialingSubs.data];
+      const fetchSubscriptionsByStatus = async (
+        status: "active" | "trialing" | "incomplete" | "past_due"
+      ) => {
+        const results: Stripe.Subscription[] = [];
+        let startingAfter: string | undefined = undefined;
+
+        while (true) {
+          const page = await stripe.subscriptions.list({
+            status,
+            limit: 100,
+            starting_after: startingAfter,
+            expand: ["data.customer", "data.discount.coupon"],
+          });
+
+          results.push(...page.data);
+
+          if (!page.has_more || page.data.length === 0) break;
+          startingAfter = page.data[page.data.length - 1].id;
+        }
+
+        return results;
+      };
+
+      // Include pending states so recent checkouts don't appear as "No Sub"
+      const [activeSubs, trialingSubs, incompleteSubs, pastDueSubs] = await Promise.all([
+        fetchSubscriptionsByStatus("active"),
+        fetchSubscriptionsByStatus("trialing"),
+        fetchSubscriptionsByStatus("incomplete"),
+        fetchSubscriptionsByStatus("past_due"),
+      ]);
+
+      const allSubs = [...activeSubs, ...trialingSubs, ...incompleteSubs, ...pastDueSubs];
 
       for (const sub of allSubs) {
-        const customer = sub.customer as string;
-        try {
-          const cust = await stripe.customers.retrieve(customer);
-          if (!cust.deleted && cust.email) {
-            // Extract discount/coupon info
-            let discountCode: string | null = null;
-            if (sub.discount?.coupon) {
-              discountCode = sub.discount.coupon.name || sub.discount.coupon.id;
-            }
+        const customer = sub.customer;
+        const customerObj = typeof customer === "string" ? null : customer;
+        const email = !customerObj?.deleted && customerObj?.email
+          ? customerObj.email.toLowerCase()
+          : null;
 
-            stripeStatusMap.set(cust.email.toLowerCase(), {
-              status: sub.status,
-              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-              trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-              plan: sub.items.data[0]?.price?.id ?? null,
-              discount_code: discountCode,
-            });
-          }
-        } catch {
-          // skip deleted customers
+        if (!email) {
+          logStep("Skipping subscription with missing customer email", {
+            subscriptionId: sub.id,
+            status: sub.status,
+          });
+          continue;
         }
+
+        // Extract discount/coupon info
+        let discountCode: string | null = null;
+        const coupon = sub.discount?.coupon;
+        if (coupon) {
+          if (typeof coupon === "string") {
+            discountCode = coupon;
+          } else {
+            discountCode = coupon.name || coupon.id;
+          }
+        }
+
+        stripeStatusMap.set(email, {
+          status: sub.status,
+          current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+          trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
+          plan: sub.items.data[0]?.price?.id ?? null,
+          discount_code: discountCode,
+        });
       }
-      logStep("Fetched Stripe subscriptions", { count: allSubs.length });
+      logStep("Fetched Stripe subscriptions", {
+        active: activeSubs.length,
+        trialing: trialingSubs.length,
+        incomplete: incompleteSubs.length,
+        past_due: pastDueSubs.length,
+        total: allSubs.length,
+      });
     }
 
     // Build response
