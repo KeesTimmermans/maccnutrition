@@ -126,8 +126,8 @@ serve(async (req) => {
       },
       payment_intent_data: undefined,
       allow_promotion_codes: true,
-      success_url: withCheckoutParam(baseReturnUrl, "success"),
-      cancel_url: withCheckoutParam(baseReturnUrl, "cancel"),
+      success_url: `${baseReturnUrl.replace(/\/?#?\/?$/, "")}/#/post-checkout?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseReturnUrl.replace(/\/?#?\/?$/, "")}/#/pricing`,
     });
 
     logStep("Checkout session created", { sessionId: session.id });
