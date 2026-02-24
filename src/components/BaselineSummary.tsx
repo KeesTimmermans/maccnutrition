@@ -194,10 +194,10 @@ const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; use
           <div className="text-3xl font-bold text-blue-500">
             {baseline.hydration.lowerLiters.toFixed(1)} – {baseline.hydration.upperLiters.toFixed(1)}L
           </div>
-          {baseline.hydration.highOutputLiters && (
+          {baseline.hydration.isHighOutputDay && (
             <div className="mt-2 inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 px-3 py-1 rounded-full text-xs font-semibold">
               <Zap className="w-3 h-3" />
-              {baseline.hydration.highOutputLabel}: up to {baseline.hydration.highOutputLiters.toFixed(1)}L
+              High Output Day: aim for upper bound
             </div>
           )}
         </div>

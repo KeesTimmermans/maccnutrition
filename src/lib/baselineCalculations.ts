@@ -2,23 +2,20 @@ import type { OnboardingData } from "@/components/OnboardingQuestionnaire";
 
 // Types for calculation results
 export interface HydrationWindow {
-  /** Lower bound of the daily hydration window (30 ml/kg) */
+  /** Lower bound of the daily hydration window (30 ml/kg) — NEVER below this */
   lowerLiters: number;
-  /** Upper bound of the daily hydration window (40 ml/kg) */
+  /** Upper bound of the daily hydration window (40 ml/kg) — NEVER above this */
   upperLiters: number;
-  /** If high-intensity training >60 min, upper + 0.5L */
-  highOutputLiters: number | null;
-  /** Label: "High Output Day" when applicable */
-  highOutputLabel: string | null;
+  /** Guidance: true when high-intensity training >60 min (aim at upper bound) */
+  isHighOutputDay: boolean;
   sodiumMg: number;
   magnesiumMg: number;
   potassiumMg: number;
   hasTraining: boolean;
-  /** Climate is "hot" — guidance: aim toward upper range */
+  /** Guidance only: aim toward upper range */
   isHotClimate: boolean;
-  /** Backward compat: restDayLiters = lowerLiters */
+  /** Backward compat */
   restDayLiters: number;
-  /** Backward compat: trainingDayLiters = upperLiters */
   trainingDayLiters: number;
   /** @deprecated */
   waterLiters: number;
@@ -278,7 +275,7 @@ export function calculateHydration(data: OnboardingData): HydrationWindow {
   const lowerLiters = Math.round((lowerMl / 1000) * 10) / 10;
   const upperLiters = Math.round((upperMl / 1000) * 10) / 10;
 
-  // ── High Output Day: high-intensity training >60 min ──
+  // ── Guidance flags (do NOT change the window) ──
   const isHighIntensity = workoutTypes.some(t =>
     ["crossfit", "hiit", "martial_arts"].includes(t)
   );
@@ -286,20 +283,12 @@ export function calculateHydration(data: OnboardingData): HydrationWindow {
   const hasTraining = trainingDays !== "0-1" &&
     workoutTypes.length > 0 &&
     !workoutTypes.includes("none");
-
-  let highOutputLiters: number | null = null;
-  let highOutputLabel: string | null = null;
-  if (hasTraining && isHighIntensity && isLongSession) {
-    highOutputLiters = Math.round((upperMl + 500) / 1000 * 10) / 10;
-    highOutputLabel = "High Output Day";
-  }
-
+  const isHighOutputDay = hasTraining && isHighIntensity && isLongSession;
   const isHotClimate = climate === "hot";
 
-  // ── Electrolytes ──
-  const peakMl = highOutputLiters ? highOutputLiters * 1000 : upperMl;
+  // ── Electrolytes (based on upper bound, not expanded) ──
   const needsElectrolyteFocus =
-    peakMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
+    upperMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
 
   let sodiumMg = needsElectrolyteFocus ? 3000 : 2500;
   let magnesiumMg = 350;
@@ -315,14 +304,12 @@ export function calculateHydration(data: OnboardingData): HydrationWindow {
   return {
     lowerLiters,
     upperLiters,
-    highOutputLiters,
-    highOutputLabel,
+    isHighOutputDay,
     isHotClimate,
     hasTraining,
     sodiumMg: Math.round(sodiumMg),
     magnesiumMg: Math.round(magnesiumMg),
     potassiumMg: Math.round(potassiumMg),
-    // Backward compat
     restDayLiters: lowerLiters,
     trainingDayLiters: upperLiters,
     waterLiters: lowerLiters,
