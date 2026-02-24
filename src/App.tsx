@@ -33,6 +33,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 // Legacy pages (kept temporarily for backwards compatibility)
 import MealHistory from "./pages/MealHistory";
 import QuickAddMeals from "./pages/QuickAddMeals";
+import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient();
 
@@ -127,7 +128,7 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Onboarding gate — redirects incomplete users to "/" ──────────────
-const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics"];
+const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding"];
 
 const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -246,6 +247,7 @@ const App = () => {
                   <Route path="/community/reports" element={<CommunityReports />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsOfService />} />

@@ -26,7 +26,12 @@ export const BottomNav = () => {
       >
         <div className="flex items-center justify-center h-16 max-w-lg mx-auto px-4">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => {
+              if (process.env.NODE_ENV === 'development') {
+                console.log("CTA clicked, navigating to", "/onboarding", "current path:", location.pathname, location.hash);
+              }
+              navigate("/onboarding");
+            }}
             className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors active:scale-[0.98]"
           >
             Finish setup →
