@@ -70,14 +70,20 @@ const AdminDashboard = () => {
         return;
       }
       setIsAdmin(true);
-      if (!cachedUsers) fetchUsers();
+      if (!cachedUsers) {
+        fetchUsers();
+      } else {
+        // Keep cached list for instant render, then refresh in background
+        fetchUsers({ silent: true });
+      }
     };
 
     checkAdmin();
   }, [user, authLoading]);
 
-  const fetchUsers = async () => {
-    setLoading(true);
+  const fetchUsers = async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("admin-users");
       if (error) throw error;
@@ -91,7 +97,7 @@ const AdminDashboard = () => {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -147,6 +153,10 @@ const AdminDashboard = () => {
             )}
           </div>
         );
+      case "incomplete":
+        return <Badge variant="outline">Checkout Incomplete</Badge>;
+      case "past_due":
+        return <Badge variant="destructive">Payment Issue</Badge>;
       default:
         return <Badge variant="secondary">No Sub</Badge>;
     }
@@ -193,7 +203,7 @@ const AdminDashboard = () => {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
+          <Button variant="outline" size="icon" onClick={() => fetchUsers()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
