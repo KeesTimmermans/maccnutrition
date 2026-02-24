@@ -94,8 +94,8 @@ const Auth = () => {
       if (checkoutError) throw checkoutError;
 
       if (checkoutData?.already_subscribed) {
-        // Already has a subscription — go straight to app
-        navigate("/");
+        // Already has a subscription — skip checkout, go to onboarding
+        navigate("/onboarding");
         return;
       }
 
@@ -104,13 +104,14 @@ const Auth = () => {
         trackTrialStarted();
         window.location.assign(url);
       } else {
-        toast({ title: "Account created!", description: "Please complete your subscription to continue." });
-        navigate("/");
+        // No URL returned — send to pricing page so they can subscribe
+        toast({ title: "Account created!", description: "Please subscribe to continue." });
+        navigate("/pricing");
       }
     } catch (checkoutErr) {
       console.error("Checkout error:", checkoutErr);
-      toast({ title: "Account created!", description: "You can set up your subscription later." });
-      navigate("/");
+      toast({ title: "Account created!", description: "Please subscribe to continue.", variant: "destructive" });
+      navigate("/pricing");
     }
   };
 

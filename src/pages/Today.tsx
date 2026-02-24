@@ -16,18 +16,12 @@ import { useOnboarding } from "@/App";
 
 type AppState = "welcome" | "questionnaire" | "baseline" | "dashboard";
 
-const getCheckoutReturnUrl = () => {
-  const basePath = window.location.pathname.endsWith("/") ? window.location.pathname : `${window.location.pathname}/`;
-  return `${window.location.origin}${basePath}#/`;
-};
 
 const Today = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
   const [userData, setUserData] = useState<OnboardingData | null>(null);
   const [savedBaseline, setSavedBaseline] = useState<BaselineResults | null>(null);
   const [loading, setLoading] = useState(true);
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
   const {
     user,
@@ -88,30 +82,7 @@ const Today = () => {
 
       if (user) {
         if (!subscription && !isTrialing) {
-          if (!subscriptionChecked || subscriptionError) {
-            setLoading(false);
-            return;
-          }
-
-          if (!checkoutUrl) {
-            setCheckoutInitLoading(true);
-            try {
-              const { data: checkoutData, error: checkoutError } = await Promise.race([
-                supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 8000)),
-              ]);
-              if (!checkoutError && checkoutData?.url) {
-                setCheckoutUrl(checkoutData.url);
-              }
-            } catch (err) {
-              console.error("Checkout error:", err);
-            } finally {
-              setCheckoutInitLoading(false);
-              setLoading(false);
-            }
-            return;
-          }
-
+          // No subscription — SubscriptionGate or the render block will redirect to /pricing
           setLoading(false);
           return;
         }
@@ -146,7 +117,7 @@ const Today = () => {
     };
 
     checkUserBaseline();
-  }, [user, authLoading, subscription, subscriptionLoading, isTrialing, checkoutUrl, subscriptionChecked, subscriptionError]);
+  }, [user, authLoading, subscription, subscriptionLoading, isTrialing, subscriptionChecked, subscriptionError]);
 
   const handleGetStarted = () => {
     if (user) {
@@ -224,7 +195,7 @@ const Today = () => {
         subscriptionLoading,
         subscribed: subscription,
         isTrialing,
-        hasCheckoutUrl: !!checkoutUrl,
+        hasSubscription: subscription,
       };
 
       return (
@@ -287,90 +258,8 @@ const Today = () => {
 
   // Subscription required
   if (user && !subscription && !isTrialing) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-medium text-center space-y-4">
-          <h1 className="text-xl font-bold text-foreground">Subscription required</h1>
-          <p className="text-sm text-muted-foreground">
-            Open checkout in a new tab to continue. If nothing opens, allow popups for this site.
-          </p>
-
-          {subscriptionError && (
-            <p className="text-xs text-muted-foreground">
-              We're having trouble verifying your trial right now. Try refreshing access before starting checkout again.
-            </p>
-          )}
-
-          <div className="space-y-2">
-            <Button
-              variant="hero"
-              size="xl"
-              className="w-full"
-              disabled={checkoutInitLoading}
-              onClick={async () => {
-                setCheckoutInitLoading(true);
-                try {
-                  let url = checkoutUrl;
-                  if (!url) {
-                    const { data, error } = await Promise.race([
-                      supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-                      new Promise<never>((_, reject) =>
-                        setTimeout(() => reject(new Error("Checkout timed out")), 8000),
-                      ),
-                    ]);
-                    if (error) throw error;
-                    url = data?.url ?? null;
-                    if (url) setCheckoutUrl(url);
-                  }
-
-                  if (!url) throw new Error("No checkout URL returned");
-
-                  const opened = window.open(url, "_blank", "noopener,noreferrer");
-                  if (!opened) window.location.assign(url);
-                } catch (err) {
-                  console.error("Checkout error:", err);
-                  toast({
-                    title: "Couldn't start checkout",
-                    description: "Please try again.",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setCheckoutInitLoading(false);
-                }
-              }}
-            >
-              {checkoutInitLoading ? "Preparing..." : "Open Checkout"}
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={subscriptionLoading}
-              onClick={() => checkSubscription({ force: true })}
-            >
-              {subscriptionLoading ? "Refreshing…" : "Refresh access"}
-            </Button>
-          </div>
-
-          {checkoutUrl && (
-            <button
-              type="button"
-              className="text-xs text-primary hover:underline break-all"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(checkoutUrl);
-                  toast({ title: "Checkout link copied" });
-                } catch {
-                  // ignore
-                }
-              }}
-            >
-              Copy checkout link
-            </button>
-          )}
-        </div>
-      </div>
-    );
+    navigate("/pricing", { replace: true });
+    return null;
   }
 
   // Dashboard state - wrap in AppLayout with bottom nav
