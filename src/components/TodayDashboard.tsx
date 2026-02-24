@@ -18,7 +18,7 @@ import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
 import { Flame, TrendingUp, Sun } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
-import { getUserBaseline, UserBaseline } from "@/lib/userService";
+import { getUserBaseline, UserBaseline, recalculateNutritionFromBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
 import { getTodaysCheckIn, getRecentCheckIns, analyzeCheckIns, getTodaysDailyFocusPoints, CheckInAnalysis, UserTargets, DailyCheckIn as DailyCheckInType } from "@/lib/checkinService";
 
@@ -327,11 +327,34 @@ export const TodayDashboard = () => {
       setTodaysCheckIn(checkInData);
       setTotalWaterMl(waterData.reduce((sum, w) => sum + w.amount_ml, 0));
       
-      setBaseline(userBaseline);
-      if (userBaseline) {
-        setAccountAgeDays(getAccountAgeDays(userBaseline));
+      let activeBaseline = userBaseline;
+      
+      // One-time migration: recalculate if hydration values don't match 30-40 ml/kg window
+      if (userBaseline?.weight) {
+        const weightKg = userBaseline.unit_system === "metric" 
+          ? Number(userBaseline.weight) 
+          : Number(userBaseline.weight) / 2.205;
+        const expectedLower = Math.round((weightKg * 30 / 1000) * 10) / 10;
+        const expectedUpper = Math.round((weightKg * 40 / 1000) * 10) / 10;
+        const currentLower = userBaseline.water_liters;
+        const currentUpper = userBaseline.water_liters_training;
         
-        analyzeMealPatterns(userBaseline).then(patterns => {
+        if (currentLower !== expectedLower || currentUpper !== expectedUpper) {
+          console.log("Hydration migration: recalculating to 30-40 ml/kg window", {
+            currentLower, currentUpper, expectedLower, expectedUpper
+          });
+          const recalculated = await recalculateNutritionFromBaseline(userBaseline);
+          if (recalculated) {
+            activeBaseline = recalculated;
+          }
+        }
+      }
+      
+      setBaseline(activeBaseline);
+      if (activeBaseline) {
+        setAccountAgeDays(getAccountAgeDays(activeBaseline));
+        
+        analyzeMealPatterns(activeBaseline).then(patterns => {
           setMealPatterns(patterns);
         });
       }
