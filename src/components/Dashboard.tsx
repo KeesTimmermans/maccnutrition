@@ -675,8 +675,8 @@ export const Dashboard = () => {
   const renderWaterSection = () => (
     <section key="water">
       <WaterTracker 
-        dailyGoalLiters={baseline?.water_liters || 2.5} 
-        trainingDayGoalLiters={baseline?.water_liters_training}
+        dailyGoalLiters={baseline?.water_liters || 2.1} 
+        upperGoalLiters={baseline?.water_liters_training}
         onWaterLogged={refreshCoachingFocusPoints}
       />
     </section>

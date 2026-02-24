@@ -61,8 +61,8 @@ export const ProfileBaselineSummary = ({ baseline }: ProfileBaselineSummaryProps
             <div className="flex items-center justify-center gap-1 mb-1">
               <Droplets className="w-4 h-4 text-blue-500" />
             </div>
-            <p className="text-2xl font-bold text-foreground">
-              {baseline.water_liters?.toFixed(1) || '-'}L
+            <p className="text-lg font-bold text-foreground">
+              {baseline.water_liters?.toFixed(1) || '-'} – {baseline.water_liters_training?.toFixed(1) || '-'}L
             </p>
             <p className="text-xs text-muted-foreground">{t('water_day') || 'water/day'}</p>
           </div>

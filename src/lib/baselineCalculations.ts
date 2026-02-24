@@ -1,6 +1,29 @@
 import type { OnboardingData } from "@/components/OnboardingQuestionnaire";
 
 // Types for calculation results
+export interface HydrationWindow {
+  /** Lower bound of the daily hydration window (30 ml/kg) */
+  lowerLiters: number;
+  /** Upper bound of the daily hydration window (40 ml/kg) */
+  upperLiters: number;
+  /** If high-intensity training >60 min, upper + 0.5L */
+  highOutputLiters: number | null;
+  /** Label: "High Output Day" when applicable */
+  highOutputLabel: string | null;
+  sodiumMg: number;
+  magnesiumMg: number;
+  potassiumMg: number;
+  hasTraining: boolean;
+  /** Climate is "hot" — guidance: aim toward upper range */
+  isHotClimate: boolean;
+  /** Backward compat: restDayLiters = lowerLiters */
+  restDayLiters: number;
+  /** Backward compat: trainingDayLiters = upperLiters */
+  trainingDayLiters: number;
+  /** @deprecated */
+  waterLiters: number;
+}
+
 export interface BaselineResults {
   calories: {
     tdee: number;
@@ -12,16 +35,7 @@ export interface BaselineResults {
     carbs: { grams: number; calories: number; percentage: number };
     fats: { grams: number; calories: number; percentage: number };
   };
-  hydration: {
-    restDayLiters: number;
-    trainingDayLiters: number;
-    /** @deprecated Use restDayLiters instead. Kept for backward compat. */
-    waterLiters: number;
-    sodiumMg: number;
-    magnesiumMg: number;
-    potassiumMg: number;
-    hasTraining: boolean;
-  };
+  hydration: HydrationWindow;
   mealPattern: MealTiming[];
   focusPoints: string[];
 }
@@ -248,93 +262,42 @@ function calculateMacros(
  * Safeguard 5: Missing data → conservative 35 ml/kg max default.
  * Safeguard 6: Recalculation triggered by weight/training/job/climate/phase changes.
  */
-export function calculateHydration(data: OnboardingData): BaselineResults["hydration"] {
+export function calculateHydration(data: OnboardingData): HydrationWindow {
   const { weightKg } = getWeightFromData(data);
-  const goal = data.primaryGoal || "general_health";
-  const jobActivity = data.jobActivityLevel || "light";
   const trainingDays = data.trainingDays || "2-3";
   const workoutTypes = data.workoutTypes || [];
-  const sex = data.sex || "male";
   const trainingDuration = data.trainingDuration || "30_60";
-
-  // ── Safeguard 1: Climate defaults to "moderate" ────────────
   const climate = data.climate || "moderate";
+  const stressLevel = data.stressLevel || "moderate";
+  const sleepHours = data.sleepHours || "7-8";
 
-  // ── Safeguard 5: Check data completeness ───────────────────
-  const hasCompleteData = !!(
-    data.weight &&
-    data.jobActivityLevel &&
-    data.workoutTypes?.length &&
-    data.climate &&
-    data.trainingDays
-  );
+  // ── Fixed window: 30–40 ml/kg ──
+  const lowerMl = weightKg * 30;
+  const upperMl = weightKg * 40;
 
-  // ── Safeguard 2: Select ONE base multiplier (no stacking) ──
+  const lowerLiters = Math.round((lowerMl / 1000) * 10) / 10;
+  const upperLiters = Math.round((upperMl / 1000) * 10) / 10;
+
+  // ── High Output Day: high-intensity training >60 min ──
   const isHighIntensity = workoutTypes.some(t =>
     ["crossfit", "hiit", "martial_arts"].includes(t)
   );
-  const isManualOrOutdoor = jobActivity === "active";
-  const isFatLoss = goal === "fat_loss";
-
-  let mlPerKg: number;
-  if (!hasCompleteData) {
-    mlPerKg = 35;
-  } else if (isManualOrOutdoor || isHighIntensity || isFatLoss) {
-    mlPerKg = 40;
-  } else if (
-    (data.activityLevel === "not_active" || data.activityLevel === "semi_active") &&
-    (jobActivity === "sedentary" || jobActivity === "light") &&
-    (workoutTypes.length === 0 || workoutTypes.includes("none"))
-  ) {
-    mlPerKg = 30;
-  } else {
-    mlPerKg = 35;
-  }
-
-  let baseMl = weightKg * mlPerKg;
-
-  // ── Female cycle adjustment (+15% luteal/menstrual) ────────
-  if (sex === "female" && (data.currentPhase === "luteal" || data.currentPhase === "menstrual")) {
-    baseMl *= 1.15;
-  }
-
-  // ── Safeguard 4: Climate addition ONLY when "hot" ──────────
-  let climateAddMl = 0;
-  if (climate === "hot") {
-    climateAddMl = 500;
-  }
-
-  // ── Rest Day Target = base + climate only ──────────────────
-  const restDayMl = baseMl + climateAddMl;
-
-  // ── Training fluid – per-session, ONLY on training days ────
-  let addPerHour = 0;
-  if (!workoutTypes.includes("none") && workoutTypes.length > 0) {
-    if (workoutTypes.some(t => ["crossfit", "hiit", "martial_arts", "sports"].includes(t))) {
-      addPerHour = 500;
-    } else if (workoutTypes.some(t => ["weightlifting", "swimming", "cycling", "cardio", "dance"].includes(t))) {
-      addPerHour = 400;
-    }
-  }
-
-  let sessionHours = 1.0;
-  if (trainingDuration === "under_30") sessionHours = 0.4;
-  else if (trainingDuration === "30_60") sessionHours = 0.75;
-  else if (trainingDuration === "60_90") sessionHours = 1.25;
-  else if (trainingDuration === "over_90") sessionHours = 1.75;
-
-  const trainingAddMl = Math.round(addPerHour * sessionHours);
-
-  // ── Training Day Target = base + climate + session addition ─
-  const trainingDayMl = restDayMl + trainingAddMl;
-
-  // Determine if user trains at all
+  const isLongSession = ["60_90", "over_90"].includes(trainingDuration);
   const hasTraining = trainingDays !== "0-1" &&
     workoutTypes.length > 0 &&
     !workoutTypes.includes("none");
 
-  // ── Electrolytes ───────────────────────────────────────────
-  const peakMl = hasTraining ? trainingDayMl : restDayMl;
+  let highOutputLiters: number | null = null;
+  let highOutputLabel: string | null = null;
+  if (hasTraining && isHighIntensity && isLongSession) {
+    highOutputLiters = Math.round((upperMl + 500) / 1000 * 10) / 10;
+    highOutputLabel = "High Output Day";
+  }
+
+  const isHotClimate = climate === "hot";
+
+  // ── Electrolytes ──
+  const peakMl = highOutputLiters ? highOutputLiters * 1000 : upperMl;
   const needsElectrolyteFocus =
     peakMl > 3000 || isHighIntensity || trainingDays === "6+" || trainingDays === "4-5";
 
@@ -342,25 +305,27 @@ export function calculateHydration(data: OnboardingData): BaselineResults["hydra
   let magnesiumMg = 350;
   const potassiumMg = 2750;
 
-  if (data.stressLevel === "high" || data.sleepHours === "<5" || data.sleepHours === "5-6") {
+  if (stressLevel === "high" || sleepHours === "<5" || sleepHours === "5-6") {
     magnesiumMg += 75;
   }
-
-  if (trainingDays === "6+" || climate === "hot") {
+  if (trainingDays === "6+" || isHotClimate) {
     sodiumMg += 500;
   }
 
-  const restDayLiters = Math.round((restDayMl / 1000) * 10) / 10;
-  const trainingDayLiters = Math.round((trainingDayMl / 1000) * 10) / 10;
-
   return {
-    restDayLiters,
-    trainingDayLiters,
-    waterLiters: restDayLiters, // backward compat — rest day is the base target
+    lowerLiters,
+    upperLiters,
+    highOutputLiters,
+    highOutputLabel,
+    isHotClimate,
     hasTraining,
     sodiumMg: Math.round(sodiumMg),
     magnesiumMg: Math.round(magnesiumMg),
     potassiumMg: Math.round(potassiumMg),
+    // Backward compat
+    restDayLiters: lowerLiters,
+    trainingDayLiters: upperLiters,
+    waterLiters: lowerLiters,
   };
 }
 

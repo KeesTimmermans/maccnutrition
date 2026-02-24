@@ -10,7 +10,7 @@ import { useLanguage } from "@/lib/i18n";
 
 interface WaterTrackerProps {
   dailyGoalLiters: number;
-  trainingDayGoalLiters?: number | null;
+  upperGoalLiters?: number | null;
   onWaterLogged?: () => void;
 }
 
@@ -20,19 +20,18 @@ const GLASS_SIZES = [
   { label: "Large", ml: 500, icon: "🍶" },
 ];
 
-export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLogged }: WaterTrackerProps) => {
+export const WaterTracker = ({ dailyGoalLiters, upperGoalLiters, onWaterLogged }: WaterTrackerProps) => {
   const { t } = useLanguage();
   const [intakes, setIntakes] = useState<WaterIntake[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [isTrainingDay, setIsTrainingDay] = useState(false);
 
-  const hasTrainingTarget = trainingDayGoalLiters != null && trainingDayGoalLiters > dailyGoalLiters;
-  const activeGoalLiters = isTrainingDay && hasTrainingTarget ? trainingDayGoalLiters : dailyGoalLiters;
-  const dailyGoalMl = activeGoalLiters * 1000;
+  const lowerGoalMl = dailyGoalLiters * 1000;
+  const upperGoalMl = (upperGoalLiters || dailyGoalLiters) * 1000;
+  const midGoalMl = (lowerGoalMl + upperGoalMl) / 2;
   const totalMl = intakes.reduce((sum, i) => sum + i.amount_ml, 0);
-  const progress = Math.min((totalMl / dailyGoalMl) * 100, 100);
-  const remaining = Math.max(dailyGoalMl - totalMl, 0);
+  const progress = Math.min((totalMl / upperGoalMl) * 100, 100);
+  const remaining = Math.max(lowerGoalMl - totalMl, 0);
 
   useEffect(() => {
     loadWaterIntake();
@@ -46,7 +45,7 @@ export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLo
       }
 
       const interval = setInterval(() => {
-        if (Notification.permission === "granted" && totalMl < dailyGoalMl) {
+        if (Notification.permission === "granted" && totalMl < lowerGoalMl) {
           new Notification("💧 Water Reminder", {
             body: `You've had ${(totalMl / 1000).toFixed(1)}L today. ${(remaining / 1000).toFixed(1)}L to go!`,
             icon: "/favicon.ico",
@@ -56,7 +55,7 @@ export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLo
 
       return () => clearInterval(interval);
     }
-  }, [reminderEnabled, totalMl, dailyGoalMl, remaining]);
+  }, [reminderEnabled, totalMl, lowerGoalMl, remaining]);
 
   const loadWaterIntake = async () => {
     try {
@@ -73,7 +72,7 @@ export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLo
     // Pass current totals so the service can determine if goal was reached
     const newIntake = await addWaterIntake(amountMl, {
       currentTotalMl: totalMl,
-      dailyGoalMl: dailyGoalMl,
+      dailyGoalMl: upperGoalMl,
     });
     if (newIntake) {
       setIntakes(prev => [...prev, newIntake]);
@@ -142,27 +141,13 @@ export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLo
           </Button>
         </div>
 
-        {/* Day type toggle for training users */}
-        {hasTrainingTarget && (
-          <div className="flex items-center gap-2 mb-3 bg-muted/50 rounded-xl p-1">
-            <button
-              onClick={() => setIsTrainingDay(false)}
-              className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition-colors ${
-                !isTrainingDay ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              Rest day ({dailyGoalLiters.toFixed(1)}L)
-            </button>
-            <button
-              onClick={() => setIsTrainingDay(true)}
-              className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition-colors ${
-                isTrainingDay ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              Training day ({trainingDayGoalLiters!.toFixed(1)}L)
-            </button>
-          </div>
-        )}
+        {/* Hydration window display */}
+        <div className="text-center mb-1">
+          <p className="text-xs text-muted-foreground">Daily Hydration Window</p>
+          <p className="text-sm font-semibold text-foreground">
+            {dailyGoalLiters.toFixed(1)} – {(upperGoalLiters || dailyGoalLiters).toFixed(1)}L
+          </p>
+        </div>
 
         {/* Progress visualization */}
         <div className="relative mb-4">
@@ -170,13 +155,15 @@ export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLo
             <span className="text-4xl font-bold text-foreground">
               {(totalMl / 1000).toFixed(1)}
             </span>
-            <span className="text-lg text-muted-foreground mb-1">
-              / {activeGoalLiters.toFixed(1)}L
-            </span>
+            <span className="text-lg text-muted-foreground mb-1">L</span>
           </div>
           <Progress value={progress} className="h-3 bg-blue-100" />
           <p className="text-xs text-muted-foreground text-center mt-1">
-            {remaining > 0 ? `${(remaining / 1000).toFixed(1)}L ${t('remaining')}` : `${t('goal_reached')} 🎉`}
+            {totalMl < lowerGoalMl
+              ? `${(remaining / 1000).toFixed(1)}L to reach lower target`
+              : totalMl < upperGoalMl
+                ? `${t('goal_reached')} — aim higher! 💪`
+                : `${t('goal_reached')} 🎉`}
           </p>
         </div>
 
@@ -186,7 +173,7 @@ export const WaterTracker = ({ dailyGoalLiters, trainingDayGoalLiters, onWaterLo
             <div
               key={i}
               className={`w-4 h-6 rounded-full transition-all ${
-                i < Math.floor((totalMl / dailyGoalMl) * 8)
+                i < Math.floor((totalMl / upperGoalMl) * 8)
                   ? 'bg-blue-500'
                   : 'bg-blue-100'
               }`}
