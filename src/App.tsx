@@ -12,15 +12,15 @@ import { ReConsentModal } from "@/components/ReConsentModal";
 import { AnalyticsConsentBanner } from "@/components/AnalyticsConsentBanner";
 import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useAuthAnalytics } from "@/analytics/useAuthAnalytics";
+import { useAuth } from "@/hooks/useAuth";
 
-// New page structure
+// Pages
 import Today from "./pages/Today";
 import Progress from "./pages/Progress";
 import Meals from "./pages/Meals";
 import Metrics from "./pages/Metrics";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
-// Supporting pages
 import Auth from "./pages/Auth";
 import Privacy from "./pages/Privacy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -28,23 +28,22 @@ import TermsOfService from "./pages/TermsOfService";
 import Diagnostics from "./pages/Diagnostics";
 import Community from "./pages/Community";
 import CommunityReports from "./pages/CommunityReports";
-
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
-// Legacy pages (kept temporarily for backwards compatibility)
 import MealHistory from "./pages/MealHistory";
 import QuickAddMeals from "./pages/QuickAddMeals";
 import Onboarding from "./pages/Onboarding";
 import PostCheckout from "./pages/PostCheckout";
+import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
-/** Public routes that never show the re-consent overlay */
+/** Public routes that never show the re-consent overlay or subscription gate */
 const PUBLIC_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing"];
 
 // ── Onboarding context ──────────────────────────────────────────────
 export interface OnboardingCtx {
-  onboardingCompleted: boolean | null; // null = still loading
+  onboardingCompleted: boolean | null;
   markOnboardingCompleted: () => void;
 }
 
@@ -59,7 +58,6 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Listen for auth changes and fetch profile flag
   useEffect(() => {
     const fetchFlag = async (uid: string) => {
       const [{ data: profile }, { data: baseline }] = await Promise.all([
@@ -76,8 +74,6 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
       ]);
 
       const flagComplete = profile?.onboarding_completed ?? false;
-
-      // Defensive: even if flag is true, verify critical baseline fields exist
       const baselineValid = !!(
         baseline?.primary_goal &&
         baseline?.activity_level &&
@@ -100,7 +96,6 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    // Also check current session immediately
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUserId(session.user.id);
@@ -128,7 +123,6 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
       throw error;
     }
 
-    // Only update context state after DB confirms success
     setOnboardingCompleted(true);
   }, [userId]);
 
@@ -139,19 +133,49 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// ── Onboarding gate — redirects incomplete users to "/" ──────────────
+// ── Subscription gate — redirects unsubscribed users to /pricing ──
+const SUBSCRIPTION_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics"];
+
+const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const { session, loading, subscription, subscriptionLoading, subscriptionChecked } = useAuth();
+
+  // Don't gate exempt paths
+  if (SUBSCRIPTION_EXEMPT_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(p + "/"))) {
+    return <>{children}</>;
+  }
+
+  // Not logged in — let other gates handle
+  if (!session) return <>{children}</>;
+
+  // Still loading auth or subscription
+  if (loading || (!subscriptionChecked && subscriptionLoading)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Subscription checked and not active — redirect to pricing
+  if (subscriptionChecked && !subscription) {
+    return <Navigate to="/pricing" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// ── Onboarding gate — redirects incomplete users to "/onboarding" ──
 const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing"];
 
 const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const { onboardingCompleted } = useOnboarding();
 
-  // Don't gate exempt paths
   if (ONBOARDING_EXEMPT_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(p + "/"))) {
     return <>{children}</>;
   }
 
-  // Still loading — show a centered spinner to prevent UI flash
   if (onboardingCompleted === null) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -160,7 +184,6 @@ const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Not completed — redirect to "/" which shows the onboarding flow
   if (!onboardingCompleted) {
     return <Navigate to="/" replace />;
   }
@@ -175,7 +198,6 @@ const ConsentGate = ({ children }: { children: React.ReactNode }) => {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    // Don't gate public paths
     if (PUBLIC_PATHS.some((p) => location.pathname.startsWith(p))) {
       setChecked(true);
       return;
@@ -200,18 +222,15 @@ const ConsentGate = ({ children }: { children: React.ReactNode }) => {
       setNeedsConsent(!privacyOk || !termsOk || !healthOk);
       setChecked(true);
 
-      // Initialise PostHog if user has given analytics consent
       if (data?.analytics_consent) {
         initAnalytics();
         identifyUser(uid);
       }
-
     };
 
     check();
   }, [location.pathname]);
 
-  // Also re-check when auth changes
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
@@ -246,36 +265,38 @@ const App = () => {
           <HashRouter>
             <ScrollToTop />
             <ConsentGate>
-              <OnboardingGate>
-                <Routes>
-                  {/* Primary tab routes */}
-                  <Route path="/" element={<Today />} />
-                  <Route path="/progress" element={<Progress />} />
-                  <Route path="/meals" element={<Meals />} />
-                  <Route path="/metrics" element={<Metrics />} />
-                  <Route path="/profile" element={<Profile />} />
-                  
-                  {/* Secondary routes */}
-                  <Route path="/community" element={<Community />} />
-                  <Route path="/community/reports" element={<CommunityReports />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="/terms" element={<TermsOfService />} />
-                  <Route path="/diagnostics" element={<Diagnostics />} />
-                  <Route path="/post-checkout" element={<PostCheckout />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  
-                  
-                  {/* Legacy routes (to be removed in future commits) */}
-                  <Route path="/history" element={<MealHistory />} />
-                  <Route path="/quick-add" element={<QuickAddMeals />} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </OnboardingGate>
+              <SubscriptionGate>
+                <OnboardingGate>
+                  <Routes>
+                    {/* Primary tab routes */}
+                    <Route path="/" element={<Today />} />
+                    <Route path="/progress" element={<Progress />} />
+                    <Route path="/meals" element={<Meals />} />
+                    <Route path="/metrics" element={<Metrics />} />
+                    <Route path="/profile" element={<Profile />} />
+                    
+                    {/* Secondary routes */}
+                    <Route path="/community" element={<Community />} />
+                    <Route path="/community/reports" element={<CommunityReports />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/onboarding" element={<Onboarding />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/diagnostics" element={<Diagnostics />} />
+                    <Route path="/post-checkout" element={<PostCheckout />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    
+                    {/* Legacy routes */}
+                    <Route path="/history" element={<MealHistory />} />
+                    <Route path="/quick-add" element={<QuickAddMeals />} />
+                    
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </OnboardingGate>
+              </SubscriptionGate>
             </ConsentGate>
           </HashRouter>
         </OnboardingProvider>
