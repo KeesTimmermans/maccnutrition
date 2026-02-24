@@ -9,9 +9,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, RefreshCw, Search, Shield } from "lucide-react";
+import { ArrowLeft, RefreshCw, Search, Shield, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface AdminUser {
   id: string;
@@ -81,6 +86,24 @@ const AdminDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const handleDeleteUser = async (targetUserId: string, email: string) => {
+    setDeleting(targetUserId);
+    try {
+      const { error } = await supabase.functions.invoke("delete-account", {
+        body: { target_user_id: targetUserId },
+      });
+      if (error) throw error;
+      toast({ title: "Account deleted", description: `${email} has been permanently deleted.` });
+      setUsers((prev) => prev.filter((u) => u.id !== targetUserId));
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -161,18 +184,19 @@ const AdminDashboard = () => {
                 <TableHead>Calories</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead>Last Sign In</TableHead>
+                <TableHead className="w-[60px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Loading users...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -187,6 +211,32 @@ const AdminDashboard = () => {
                     <TableCell className="text-sm">{format(new Date(u.created_at), "dd MMM yyyy")}</TableCell>
                     <TableCell className="text-sm">
                       {u.last_sign_in_at ? format(new Date(u.last_sign_in_at), "dd MMM yyyy") : "Never"}
+                    </TableCell>
+                    <TableCell>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled={deleting === u.id}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete account permanently?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete <strong>{u.email}</strong>, cancel their Stripe subscriptions, and remove all their data. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => handleDeleteUser(u.id, u.email)}
+                            >
+                              Delete permanently
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))
