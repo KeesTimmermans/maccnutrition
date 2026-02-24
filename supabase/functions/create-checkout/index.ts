@@ -56,7 +56,15 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
-    const { data, error } = await supabaseClient.auth.getUser(token);
+
+    // Create a user-scoped client with the Authorization header for reliable auth
+    const supabaseUserClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data, error } = await supabaseUserClient.auth.getUser(token);
     if (error) throw new Error(`Authentication error: ${error.message}`);
 
     const user = data.user;
