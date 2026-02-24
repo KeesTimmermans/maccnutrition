@@ -155,7 +155,7 @@ serve(async (req: Request) => {
       <div style="background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #fbcfe8;">
         <h3 style="color: #9d174d; margin: 0 0 12px 0; font-size: 18px;">📸 Loving MacNutrition? Share it!</h3>
         <p style="color: #831843; font-size: 13px; line-height: 1.6; margin: 0;">
-          If you're enjoying your experience, we'd love to see it! Share your journey on your Instagram Stories and tag us <strong style="color: #be185d;">@macnutrition</strong> — we'll share our favourites! 💚
+          If you're enjoying your experience, we'd love to see it! Share your journey on your Instagram Stories and tag us <strong style="color: #be185d;">@macnutritionapp</strong> — we'll share our favourites! 💚
         </p>
       </div>
 
@@ -277,7 +277,7 @@ Step 2: Turn on Push Notifications
 Open the app from your Home Screen → Profile tab → Reminders → toggle on Push Notifications.
 
 📸 LOVING MACNUTRITION? SHARE IT!
-Share your journey on Instagram Stories and tag @macnutrition — we'd love to see it!
+Share your journey on Instagram Stories and tag @macnutritionapp — we'd love to see it!
 
 DAILY TARGETS:
 • Calories: ${baseline.targetCalories} kcal
