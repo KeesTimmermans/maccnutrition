@@ -90,7 +90,7 @@ export const SubscriptionCard = ({
         <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <Crown className="h-6 w-6 text-primary" />
         </div>
-        <CardTitle className="text-xl">MACCnutrition Premium</CardTitle>
+        <CardTitle className="text-xl">MacNutrition Premium</CardTitle>
         <CardDescription>
           {subscribed 
             ? "You have full access to all premium features" 

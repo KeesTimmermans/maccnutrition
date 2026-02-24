@@ -22,7 +22,7 @@ function generateConfirmationEmail(
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Confirm your MACCnutrition account</title>
+        <title>Confirm your MacNutrition account</title>
       </head>
       <body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
         <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; background-color: #f6f9fc;">
@@ -35,7 +35,7 @@ function generateConfirmationEmail(
                       ${greeting}
                     </h1>
                     <p style="margin: 0 0 16px; font-size: 16px; line-height: 26px; color: #444444; text-align: center;">
-                      Thanks for signing up for MACCnutrition! Please confirm your email address to get started with your personalized nutrition journey.
+                      Thanks for signing up for MacNutrition! Please confirm your email address to get started with your personalized nutrition journey.
                     </p>
                   </td>
                 </tr>
@@ -55,14 +55,14 @@ function generateConfirmationEmail(
                 <tr>
                   <td style="padding: 20px 40px;">
                     <p style="margin: 0; font-size: 14px; line-height: 22px; color: #666666; text-align: center;">
-                      If you didn't create an account with MACCnutrition, you can safely ignore this email.
+                      If you didn't create an account with MacNutrition, you can safely ignore this email.
                     </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 20px 40px 40px; border-top: 1px solid #eaeaea;">
                     <p style="margin: 0; font-size: 12px; line-height: 22px; color: #898989; text-align: center;">
-                      © MACCnutrition - Your personalized nutrition companion
+                      © MacNutrition - Your personalized nutrition companion
                     </p>
                   </td>
                 </tr>
@@ -115,20 +115,20 @@ Deno.serve(async (req) => {
 
     const firstName = user.user_metadata?.first_name;
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const confirmLink = `${supabaseUrl}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to || "https://maccnutrition.lovable.app"}`;
+    const confirmLink = `${supabaseUrl}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to || "https://macnutrition.lovable.app"}`;
 
     const html = generateConfirmationEmail(confirmLink, firstName);
 
     // Determine email subject based on action type
-    let subject = "Confirm your MACCnutrition account";
+    let subject = "Confirm your MacNutrition account";
     if (email_action_type === "recovery") {
-      subject = "Reset your MACCnutrition password";
+      subject = "Reset your MacNutrition password";
     } else if (email_action_type === "email_change") {
       subject = "Confirm your new email address";
     }
 
     const { data, error } = await resend.emails.send({
-      from: "MACCnutrition <noreply@cjtprogramming.com>",
+      from: "MacNutrition <noreply@cjtprogramming.com>",
       to: [user.email],
       subject,
       html,

@@ -55,7 +55,7 @@ const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstNam
             </p>
             
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px;">
-              Just a friendly reminder that your <strong>MACCnutrition</strong> free trial 
+              Just a friendly reminder that your <strong>MacNutrition</strong> free trial 
               ${isUrgent 
                 ? `<span style="color: #ef4444; font-weight: bold;">expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}!</span>` 
                 : `has <strong>${daysRemaining} days</strong> remaining.`}
@@ -79,7 +79,7 @@ const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstNam
             
             <!-- CTA Button -->
             <div style="text-align: center; margin: 32px 0;">
-              <a href="https://maccnutrition.com" 
+              <a href="https://macnutrition.lovable.app" 
                  style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                 Upgrade Now →
               </a>
@@ -93,7 +93,7 @@ const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstNam
           <!-- Footer -->
           <div style="background: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
             <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-              MACCnutrition • Your Personal Nutrition Coach
+              MacNutrition • Your Personal Nutrition Coach
             </p>
           </div>
         </div>
@@ -121,10 +121,10 @@ serve(async (req) => {
     const isUrgent = daysRemaining <= 3;
     const subject = isUrgent 
       ? `⏰ Your trial expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}!`
-      : `📅 ${daysRemaining} days left in your MACCnutrition trial`;
+      : `📅 ${daysRemaining} days left in your MacNutrition trial`;
 
     const emailResponse = await resend.emails.send({
-      from: "MACCnutrition <onboarding@resend.dev>",
+      from: "MacNutrition <onboarding@resend.dev>",
       to: [email],
       subject,
       html: generateEmailHtml(daysRemaining, trialEndDate, firstName),
