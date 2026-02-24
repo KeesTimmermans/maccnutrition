@@ -26,7 +26,8 @@ const Pricing = () => {
   const handleSubscribe = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Force a session refresh to ensure a valid, non-expired token
+      const { data: { session } } = await supabase.auth.refreshSession();
       if (!session) {
         window.location.hash = "#/auth";
         return;
