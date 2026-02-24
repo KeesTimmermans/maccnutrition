@@ -65,3 +65,18 @@ verify_jwt = false
 
 [functions.openfoodfacts]
 verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false
+
+[functions.recalculate-hydration]
+verify_jwt = false
