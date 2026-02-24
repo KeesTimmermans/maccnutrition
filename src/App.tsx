@@ -35,11 +35,12 @@ import AdminDashboard from "./pages/AdminDashboard";
 import MealHistory from "./pages/MealHistory";
 import QuickAddMeals from "./pages/QuickAddMeals";
 import Onboarding from "./pages/Onboarding";
+import PostCheckout from "./pages/PostCheckout";
 
 const queryClient = new QueryClient();
 
 /** Public routes that never show the re-consent overlay */
-const PUBLIC_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms"];
+const PUBLIC_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing"];
 
 // ── Onboarding context ──────────────────────────────────────────────
 export interface OnboardingCtx {
@@ -139,7 +140,7 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Onboarding gate — redirects incomplete users to "/" ──────────────
-const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding"];
+const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing"];
 
 const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -264,6 +265,7 @@ const App = () => {
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsOfService />} />
                   <Route path="/diagnostics" element={<Diagnostics />} />
+                  <Route path="/post-checkout" element={<PostCheckout />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   
                   
