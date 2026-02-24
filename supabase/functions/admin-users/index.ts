@@ -74,11 +74,18 @@ serve(async (req) => {
         try {
           const cust = await stripe.customers.retrieve(customer);
           if (!cust.deleted && cust.email) {
+            // Extract discount/coupon info
+            let discountCode: string | null = null;
+            if (sub.discount?.coupon) {
+              discountCode = sub.discount.coupon.name || sub.discount.coupon.id;
+            }
+
             stripeStatusMap.set(cust.email.toLowerCase(), {
               status: sub.status,
               current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
               trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
               plan: sub.items.data[0]?.price?.id ?? null,
+              discount_code: discountCode,
             });
           }
         } catch {

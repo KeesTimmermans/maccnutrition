@@ -34,6 +34,7 @@ interface AdminUser {
     current_period_end?: string;
     trial_end?: string | null;
     plan?: string | null;
+    discount_code?: string | null;
   };
 }
 
@@ -124,12 +125,21 @@ const AdminDashboard = () => {
     );
   });
 
-  const subBadge = (status: string) => {
-    switch (status) {
+  const subBadge = (sub: AdminUser["subscription"]) => {
+    switch (sub.status) {
       case "active":
         return <Badge className="bg-primary text-primary-foreground">Active</Badge>;
       case "trialing":
-        return <Badge className="bg-accent text-accent-foreground">Trial</Badge>;
+        return (
+          <div className="flex flex-col gap-0.5">
+            <Badge className="bg-accent text-accent-foreground">Trial</Badge>
+            {sub.trial_end && (
+              <span className="text-[10px] text-muted-foreground">
+                Ends {format(new Date(sub.trial_end), "dd MMM")}
+              </span>
+            )}
+          </div>
+        );
       default:
         return <Badge variant="secondary">Free</Badge>;
     }
@@ -189,6 +199,7 @@ const AdminDashboard = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Subscription</TableHead>
+                <TableHead>Discount</TableHead>
                 <TableHead>Goal</TableHead>
                 <TableHead>Calories</TableHead>
                 <TableHead>Joined</TableHead>
@@ -199,13 +210,13 @@ const AdminDashboard = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Loading users...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -214,7 +225,8 @@ const AdminDashboard = () => {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.name || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
-                    <TableCell>{subBadge(u.subscription.status)}</TableCell>
+                    <TableCell>{subBadge(u.subscription)}</TableCell>
+                    <TableCell className="text-sm">{u.subscription.discount_code || "—"}</TableCell>
                     <TableCell className="text-sm capitalize">{u.primary_goal?.replace(/_/g, " ") || "—"}</TableCell>
                     <TableCell className="text-sm">{u.target_calories ? `${u.target_calories} kcal` : "—"}</TableCell>
                     <TableCell className="text-sm">{format(new Date(u.created_at), "dd MMM yyyy")}</TableCell>
