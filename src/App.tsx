@@ -166,7 +166,7 @@ const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Onboarding gate — redirects incomplete users to "/onboarding" ──
-const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing"];
+const ONBOARDING_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing", "/admin"];
 
 const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -185,7 +185,7 @@ const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!onboardingCompleted) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;

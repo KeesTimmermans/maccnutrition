@@ -48,6 +48,7 @@ const Auth = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Only auto-navigate for login; signup flow handles its own redirect
       if (session && isLogin) {
         navigate("/");
       }
