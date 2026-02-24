@@ -194,7 +194,7 @@ export const saveUserBaseline = async (
       progress_photo_left: onboardingData.progressPhotos?.left || null,
       progress_photo_right: onboardingData.progressPhotos?.right || null,
       measurements_updated_at: (onboardingData.waist || onboardingData.bodyFatPercentage || onboardingData.progressPhotoUrl || Object.values(onboardingData.progressPhotos || {}).some(v => v)) ? new Date().toISOString() : null,
-    })
+    }, { onConflict: 'user_id' })
     .select()
     .single();
 
