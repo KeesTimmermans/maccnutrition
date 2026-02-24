@@ -62,6 +62,18 @@ export const useAuth = () => {
 
       console.log("[useAuth] got session, calling check-subscription");
 
+      // Force a session refresh before calling the edge function to avoid stale tokens
+      const { data: refreshedSession } = await supabase.auth.getSession();
+      if (!refreshedSession.session) {
+        console.warn("[useAuth] Session lost during refresh — marking as unsubscribed");
+        setSubscription({ subscribed: false, subscriptionEnd: null, isTrialing: false, trialEnd: null, trialDaysRemaining: null });
+        setSubscriptionError(null);
+        setSubscriptionChecked(true);
+        setSubscriptionLoading(false);
+        inFlightRef.current = false;
+        return;
+      }
+
       try {
         const { data, error } = await Promise.race([
           supabase.functions.invoke("check-subscription"),
