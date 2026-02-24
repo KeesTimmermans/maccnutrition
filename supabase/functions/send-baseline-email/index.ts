@@ -137,6 +137,28 @@ serve(async (req: Request) => {
         Your personalized nutrition baseline is ready. This is your starting point for <strong>${goalLabel}</strong> — designed specifically for you based on your profile.
       </p>
 
+      <!-- Get Started Instructions -->
+      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #bbf7d0;">
+        <h3 style="color: #166534; margin: 0 0 16px 0; font-size: 18px;">📲 Get the Best Experience</h3>
+        <p style="color: #15803d; font-size: 14px; line-height: 1.6; margin: 0 0 12px 0; font-weight: 600;">Step 1: Add MacNutrition to your Home Screen</p>
+        <ul style="color: #166534; font-size: 13px; line-height: 1.8; margin: 0 0 16px 16px; padding: 0;">
+          <li><strong>iPhone:</strong> Open <a href="https://macnutrition.lovable.app" style="color: #22c55e;">macnutrition.lovable.app</a> in Safari → tap the Share button → "Add to Home Screen"</li>
+          <li><strong>Android:</strong> Open in Chrome → tap the menu (⋮) → "Add to Home Screen" or "Install App"</li>
+        </ul>
+        <p style="color: #15803d; font-size: 14px; line-height: 1.6; margin: 0 0 12px 0; font-weight: 600;">Step 2: Turn on Push Notifications</p>
+        <p style="color: #166534; font-size: 13px; line-height: 1.6; margin: 0;">
+          Open the app from your Home Screen → go to your <strong>Profile</strong> tab → scroll to <strong>Reminders</strong> → toggle on <strong>Push Notifications</strong>. This way you'll get daily reminders to log meals, hydration, and check-ins!
+        </p>
+      </div>
+
+      <!-- Share on Instagram -->
+      <div style="background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #fbcfe8;">
+        <h3 style="color: #9d174d; margin: 0 0 12px 0; font-size: 18px;">📸 Loving MacNutrition? Share it!</h3>
+        <p style="color: #831843; font-size: 13px; line-height: 1.6; margin: 0;">
+          If you're enjoying your experience, we'd love to see it! Share your journey on your Instagram Stories and tag us <strong style="color: #be185d;">@macnutrition</strong> — we'll share our favourites! 💚
+        </p>
+      </div>
+
       <!-- Calorie Target Card -->
       <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
         <p style="color: #92400e; font-size: 14px; margin: 0 0 8px 0; font-weight: 600;">DAILY CALORIE TARGET</p>
@@ -245,6 +267,17 @@ CJT Nutrition - Your Personalized Baseline
 ${userName ? `Hi ${userName}!` : 'Welcome!'}
 
 Your personalized nutrition baseline is ready for ${goalLabel}.
+
+📲 GET THE BEST EXPERIENCE:
+Step 1: Add MacNutrition to your Home Screen
+• iPhone: Open macnutrition.lovable.app in Safari → tap Share → "Add to Home Screen"
+• Android: Open in Chrome → tap menu (⋮) → "Add to Home Screen" or "Install App"
+
+Step 2: Turn on Push Notifications
+Open the app from your Home Screen → Profile tab → Reminders → toggle on Push Notifications.
+
+📸 LOVING MACNUTRITION? SHARE IT!
+Share your journey on Instagram Stories and tag @macnutrition — we'd love to see it!
 
 DAILY TARGETS:
 • Calories: ${baseline.targetCalories} kcal
