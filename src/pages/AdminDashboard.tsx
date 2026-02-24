@@ -125,14 +125,21 @@ const AdminDashboard = () => {
     );
   });
 
+  const isLifetime = (sub: AdminUser["subscription"]) =>
+    sub.discount_code?.toUpperCase().includes("CJTNUTRITIONLIFETIMEACCESS") ||
+    sub.discount_code?.toUpperCase().includes("CJTNUTRITION");
+
   const subBadge = (sub: AdminUser["subscription"]) => {
+    if (isLifetime(sub)) {
+      return <Badge className="bg-yellow-600 text-white">Lifetime (Free)</Badge>;
+    }
     switch (sub.status) {
       case "active":
-        return <Badge className="bg-primary text-primary-foreground">Active</Badge>;
+        return <Badge className="bg-primary text-primary-foreground">Paid</Badge>;
       case "trialing":
         return (
           <div className="flex flex-col gap-0.5">
-            <Badge className="bg-accent text-accent-foreground">Trial</Badge>
+            <Badge className="bg-accent text-accent-foreground">7-Day Trial</Badge>
             {sub.trial_end && (
               <span className="text-[10px] text-muted-foreground">
                 Ends {format(new Date(sub.trial_end), "dd MMM")}
@@ -141,7 +148,7 @@ const AdminDashboard = () => {
           </div>
         );
       default:
-        return <Badge variant="secondary">Free</Badge>;
+        return <Badge variant="secondary">No Sub</Badge>;
     }
   };
 
