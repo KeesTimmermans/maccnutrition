@@ -176,7 +176,7 @@ const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; use
         </div>
       </div>
 
-      {/* Hydration */}
+      {/* Hydration Window */}
       <div className="bg-card rounded-2xl p-5 shadow-soft">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
@@ -188,56 +188,55 @@ const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; use
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-blue-500/5 rounded-xl p-3 text-center">
-            <div className="text-2xl font-bold text-blue-500">
-              {baseline.hydration.restDayLiters.toFixed(1)}L
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {baseline.hydration.hasTraining ? 'Rest day' : t('water')}
-            </p>
+        {/* Hydration Window Display */}
+        <div className="bg-blue-500/5 rounded-xl p-4 text-center mb-3">
+          <p className="text-xs text-muted-foreground mb-1">Daily Hydration Window</p>
+          <div className="text-3xl font-bold text-blue-500">
+            {baseline.hydration.lowerLiters.toFixed(1)} – {baseline.hydration.upperLiters.toFixed(1)}L
           </div>
-          {baseline.hydration.hasTraining && (
-            <div className="bg-blue-500/5 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-blue-500">
-                {baseline.hydration.trainingDayLiters.toFixed(1)}L
-              </div>
-              <p className="text-xs text-muted-foreground">Training day</p>
-            </div>
-          )}
-          {!baseline.hydration.hasTraining && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('sodium')}</span>
-                <span className="font-semibold text-foreground">{baseline.hydration.sodiumMg}mg</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('magnesium')}</span>
-                <span className="font-semibold text-foreground">{baseline.hydration.magnesiumMg}mg</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('potassium')}</span>
-                <span className="font-semibold text-foreground">{baseline.hydration.potassiumMg}mg</span>
-              </div>
+          {baseline.hydration.highOutputLiters && (
+            <div className="mt-2 inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 px-3 py-1 rounded-full text-xs font-semibold">
+              <Zap className="w-3 h-3" />
+              {baseline.hydration.highOutputLabel}: up to {baseline.hydration.highOutputLiters.toFixed(1)}L
             </div>
           )}
         </div>
-        {baseline.hydration.hasTraining && (
-          <div className="space-y-2 mt-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('sodium')}</span>
-              <span className="font-semibold text-foreground">{baseline.hydration.sodiumMg}mg</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('magnesium')}</span>
-              <span className="font-semibold text-foreground">{baseline.hydration.magnesiumMg}mg</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('potassium')}</span>
-              <span className="font-semibold text-foreground">{baseline.hydration.potassiumMg}mg</span>
-            </div>
+
+        {/* Day type guidance */}
+        <div className="space-y-1.5 mb-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="w-2 h-2 rounded-full bg-blue-300" />
+            <span className="text-muted-foreground">Rest days: aim for lower–mid range</span>
           </div>
-        )}
+          {baseline.hydration.hasTraining && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+              <span className="text-muted-foreground">Training days: aim toward upper range</span>
+            </div>
+          )}
+          {baseline.hydration.isHotClimate && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-muted-foreground">Hot climate: aim toward upper range</span>
+            </div>
+          )}
+        </div>
+
+        {/* Electrolytes */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t('sodium')}</span>
+            <span className="font-semibold text-foreground">{baseline.hydration.sodiumMg}mg</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t('magnesium')}</span>
+            <span className="font-semibold text-foreground">{baseline.hydration.magnesiumMg}mg</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t('potassium')}</span>
+            <span className="font-semibold text-foreground">{baseline.hydration.potassiumMg}mg</span>
+          </div>
+        </div>
       </div>
     </div>
   );
