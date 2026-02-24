@@ -142,7 +142,7 @@ const Profile = () => {
         </Card>
 
         {/* Baseline Summary */}
-        <ProfileBaselineSummary baseline={baseline} />
+        <ProfileBaselineSummary baseline={baseline} onBaselineUpdated={(updated) => setBaseline(updated)} />
 
         {/* Personality Profile */}
         <PersonalityProfileCard baseline={baseline} />
