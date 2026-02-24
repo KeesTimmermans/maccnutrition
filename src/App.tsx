@@ -59,12 +59,32 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
   // Listen for auth changes and fetch profile flag
   useEffect(() => {
     const fetchFlag = async (uid: string) => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("user_id", uid)
-        .maybeSingle();
-      setOnboardingCompleted(data?.onboarding_completed ?? false);
+      const [{ data: profile }, { data: baseline }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("user_id", uid)
+          .maybeSingle(),
+        supabase
+          .from("user_baselines")
+          .select("primary_goal, activity_level, target_calories, protein_grams, carbs_grams, fats_grams")
+          .eq("user_id", uid)
+          .maybeSingle(),
+      ]);
+
+      const flagComplete = profile?.onboarding_completed ?? false;
+
+      // Defensive: even if flag is true, verify critical baseline fields exist
+      const baselineValid = !!(
+        baseline?.primary_goal &&
+        baseline?.activity_level &&
+        baseline?.target_calories &&
+        baseline?.protein_grams &&
+        baseline?.carbs_grams &&
+        baseline?.fats_grams
+      );
+
+      setOnboardingCompleted(flagComplete && baselineValid);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
