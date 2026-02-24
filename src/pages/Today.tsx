@@ -12,6 +12,7 @@ import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/user
 import { calculateBaseline } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import macLogo from "@/assets/mac-nutrition-logo.png";
+import { useOnboarding } from "@/App";
 
 type AppState = "welcome" | "questionnaire" | "baseline" | "dashboard";
 
@@ -192,8 +193,11 @@ const Today = () => {
     setAppState("baseline");
   };
 
-  const handleBaselineContinue = () => {
+  const { markOnboardingCompleted } = useOnboarding();
+
+  const handleBaselineContinue = async () => {
     localStorage.setItem("cjt_onboarded", "true");
+    await markOnboardingCompleted();
     setAppState("dashboard");
   };
 
