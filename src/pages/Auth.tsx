@@ -351,7 +351,7 @@ const Auth = () => {
                     setForgotLoading(true);
                     try {
                       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-                        redirectTo: `${window.location.origin}/reset-password`,
+                        redirectTo: "https://macnutrition.lovable.app/reset-password",
                       });
                       if (error) {
                         toast({ title: "Error", description: error.message, variant: "destructive" });

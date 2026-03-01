@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,27 +22,32 @@ const ResetPassword = () => {
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
+  const verifyAttemptedRef = useRef(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    if (verifyAttemptedRef.current) return;
+    verifyAttemptedRef.current = true;
+
     const verifyToken = async () => {
       const tokenHash = searchParams.get("token_hash");
       const type = searchParams.get("type");
 
-      // First check if there's already a valid session (e.g. from PASSWORD_RECOVERY event)
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setHasSession(true);
+        if (tokenHash && type === "recovery") {
+          window.history.replaceState({}, "", "/reset-password");
+        }
         setVerifying(false);
         return;
       }
 
-      // No session — try to verify the token_hash
       if (!tokenHash || type !== "recovery") {
-        setTokenError("This reset link is invalid or has expired.");
+        setTokenError("Link expired. Please request a new reset email.");
         setVerifying(false);
         return;
       }
@@ -53,15 +58,16 @@ const ResetPassword = () => {
       });
 
       if (error) {
-        setTokenError("This reset link has expired or is invalid. Please request a new one.");
+        setTokenError("Link expired. Please request a new reset email.");
       } else {
         setHasSession(true);
+        window.history.replaceState({}, "", "/reset-password");
       }
       setVerifying(false);
     };
 
     verifyToken();
-  }, [searchParams]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +107,7 @@ const ResetPassword = () => {
     setResendLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: "https://macnutrition.lovable.app/reset-password",
       });
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
