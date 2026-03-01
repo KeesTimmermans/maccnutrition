@@ -35,11 +35,12 @@ import QuickAddMeals from "./pages/QuickAddMeals";
 import Onboarding from "./pages/Onboarding";
 import PostCheckout from "./pages/PostCheckout";
 import Pricing from "./pages/Pricing";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
 /** Public routes that never show the re-consent overlay or subscription gate */
-const PUBLIC_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing"];
+const PUBLIC_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/reset-password"];
 
 // ── Onboarding context ──────────────────────────────────────────────
 export interface OnboardingCtx {
@@ -134,7 +135,7 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Subscription gate — redirects unsubscribed users to /pricing ──
-const SUBSCRIPTION_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding"];
+const SUBSCRIPTION_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding", "/reset-password"];
 
 const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -181,7 +182,7 @@ const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Onboarding gate — redirects incomplete users to "/onboarding" ──
-const ONBOARDING_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing", "/admin"];
+const ONBOARDING_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing", "/admin", "/reset-password"];
 
 const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -302,6 +303,7 @@ const App = () => {
                     <Route path="/diagnostics" element={<Diagnostics />} />
                     <Route path="/post-checkout" element={<PostCheckout />} />
                     <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/admin" element={<AdminDashboard />} />
                     
                     {/* Legacy routes */}
