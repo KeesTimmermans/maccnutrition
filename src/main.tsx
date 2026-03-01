@@ -20,10 +20,30 @@ import { initPostHog } from "@/analytics/posthog";
     return;
   }
 
-  // Handle /reset-password redirect from Supabase (non-hash URL with token_hash)
+  // Handle /reset-password redirect from auth email links (supports query or hash token payloads)
   if (pathname.endsWith("/reset-password")) {
-    // Preserve query params so the reset page can read token_hash & type
-    window.location.replace(`${window.location.origin}/#/reset-password${search}`);
+    // Standard case: token_hash is in query params
+    if (params.has("token_hash") && params.get("type") === "recovery") {
+      window.location.replace(`${window.location.origin}/#/reset-password${search}`);
+      return;
+    }
+
+    // Fallback: some providers deliver token_hash inside URL hash fragment
+    const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+    const tokenHashFromHash = hashParams.get("token_hash");
+    const typeFromHash = hashParams.get("type");
+
+    if (tokenHashFromHash && typeFromHash === "recovery") {
+      const normalizedSearch = new URLSearchParams({
+        token_hash: tokenHashFromHash,
+        type: typeFromHash,
+      }).toString();
+      window.location.replace(`${window.location.origin}/#/reset-password?${normalizedSearch}`);
+      return;
+    }
+
+    // No token payload found; still route to reset page so user can re-request email
+    window.location.replace(`${window.location.origin}/#/reset-password`);
     return;
   }
 
