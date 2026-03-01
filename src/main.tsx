@@ -3,9 +3,10 @@ import App from "./App.tsx";
 import "./index.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { initPostHog } from "@/analytics/posthog";
+import { supabase } from "@/integrations/supabase/client";
 
 // HashRouter requires a hash in the URL. When returning from external redirects (like Stripe
-// or Supabase password reset), the hash is often lost. Detect this and redirect to ensure
+// or auth password reset), the hash is often lost. Detect this and redirect to ensure
 // the router works.
 (function ensureHashRoute() {
   const { pathname, search, hash } = window.location;
@@ -28,10 +29,12 @@ import { initPostHog } from "@/analytics/posthog";
       return;
     }
 
-    // Fallback: some providers deliver token_hash inside URL hash fragment
+    // Fallback: providers may deliver tokens inside URL hash fragment
     const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
     const tokenHashFromHash = hashParams.get("token_hash");
     const typeFromHash = hashParams.get("type");
+    const accessTokenFromHash = hashParams.get("access_token");
+    const refreshTokenFromHash = hashParams.get("refresh_token");
 
     if (tokenHashFromHash && typeFromHash === "recovery") {
       const normalizedSearch = new URLSearchParams({
@@ -39,6 +42,16 @@ import { initPostHog } from "@/analytics/posthog";
         type: typeFromHash,
       }).toString();
       window.location.replace(`${window.location.origin}/#/reset-password?${normalizedSearch}`);
+      return;
+    }
+
+    // Common recovery format: #access_token=...&refresh_token=...&type=recovery
+    if (accessTokenFromHash && refreshTokenFromHash && typeFromHash === "recovery") {
+      void supabase.auth
+        .setSession({ access_token: accessTokenFromHash, refresh_token: refreshTokenFromHash })
+        .finally(() => {
+          window.location.replace(`${window.location.origin}/#/reset-password`);
+        });
       return;
     }
 
