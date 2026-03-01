@@ -26,6 +26,9 @@ const Auth = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedHealthConsent, setAcceptedHealthConsent] = useState(false);
   const [acceptedMarketing, setAcceptedMarketing] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
@@ -249,7 +252,18 @@ const Auth = () => {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+          {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+          {isLogin && (
+            <div className="text-right -mt-2">
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
           </div>
 
           {/* Consent checkboxes — signup only */}
@@ -310,6 +324,53 @@ const Auth = () => {
             </button>
           </p>
         </div>
+
+        {/* Forgot password modal */}
+        {showForgot && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="bg-background rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl">
+              <h2 className="text-lg font-bold text-foreground">Reset Password</h2>
+              <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link.</p>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="pl-10 h-12 rounded-xl"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowForgot(false)}>Cancel</Button>
+                <Button
+                  variant="hero"
+                  className="flex-1"
+                  disabled={forgotLoading || !forgotEmail}
+                  onClick={async () => {
+                    setForgotLoading(true);
+                    try {
+                      const appUrl = window.location.origin + window.location.pathname;
+                      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+                        redirectTo: appUrl + "#/reset-password",
+                      });
+                      if (error) {
+                        toast({ title: "Error", description: error.message, variant: "destructive" });
+                      } else {
+                        toast({ title: "Email sent", description: "Check your inbox for the reset link." });
+                        setShowForgot(false);
+                      }
+                    } finally {
+                      setForgotLoading(false);
+                    }
+                  }}
+                >
+                  {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Link"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Legal footer */}
         <div className="mt-8 text-center text-xs text-muted-foreground space-x-3">
