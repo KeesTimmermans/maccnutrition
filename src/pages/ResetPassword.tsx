@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,29 +16,52 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const [verifying, setVerifying] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
 
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Check for recovery session from the magic link
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
+    const verifyToken = async () => {
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
+
+      // First check if there's already a valid session (e.g. from PASSWORD_RECOVERY event)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setHasSession(true);
+        setVerifying(false);
+        return;
+      }
+
+      // No session — try to verify the token_hash
+      if (!tokenHash || type !== "recovery") {
+        setTokenError("This reset link is invalid or has expired.");
+        setVerifying(false);
+        return;
+      }
+
+      const { error } = await supabase.auth.verifyOtp({
+        type: "recovery",
+        token_hash: tokenHash,
+      });
+
+      if (error) {
+        setTokenError("This reset link has expired or is invalid. Please request a new one.");
+      } else {
         setHasSession(true);
       }
-    });
+      setVerifying(false);
+    };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // Check URL hash for recovery type
-      const hash = window.location.hash;
-      const hasRecoveryToken = hash.includes("type=recovery") || hash.includes("access_token");
-      setHasSession(!!(session || hasRecoveryToken));
-    });
-  }, []);
+    verifyToken();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,9 +100,8 @@ const ResetPassword = () => {
     if (!resendEmail) return;
     setResendLoading(true);
     try {
-      const appUrl = window.location.origin + window.location.pathname;
       const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
-        redirectTo: appUrl + "#/reset-password",
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -91,8 +113,8 @@ const ResetPassword = () => {
     }
   };
 
-  // Still checking session
-  if (hasSession === null) {
+  // Verifying token
+  if (verifying) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
@@ -161,7 +183,7 @@ const ResetPassword = () => {
         ) : (
           <div className="space-y-4 text-center">
             <p className="text-muted-foreground text-sm">
-              This reset link has expired or is invalid. Enter your email to receive a new one.
+              {tokenError || "This reset link has expired or is invalid. Enter your email to receive a new one."}
             </p>
             <div className="space-y-2">
               <div className="relative">

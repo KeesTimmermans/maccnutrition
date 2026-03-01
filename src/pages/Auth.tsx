@@ -350,9 +350,8 @@ const Auth = () => {
                   onClick={async () => {
                     setForgotLoading(true);
                     try {
-                      const appUrl = window.location.origin + window.location.pathname;
                       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-                        redirectTo: appUrl + "#/reset-password",
+                        redirectTo: `${window.location.origin}/reset-password`,
                       });
                       if (error) {
                         toast({ title: "Error", description: error.message, variant: "destructive" });
