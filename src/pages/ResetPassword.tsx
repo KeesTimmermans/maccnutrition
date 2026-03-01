@@ -40,7 +40,7 @@ const ResetPassword = () => {
       if (session) {
         setHasSession(true);
         if (tokenHash && type === "recovery") {
-          window.history.replaceState({}, "", "/reset-password");
+          window.history.replaceState({}, "", "/#/reset-password");
         }
         setVerifying(false);
         return;
@@ -61,7 +61,7 @@ const ResetPassword = () => {
         setTokenError("Link expired. Please request a new reset email.");
       } else {
         setHasSession(true);
-        window.history.replaceState({}, "", "/reset-password");
+        window.history.replaceState({}, "", "/#/reset-password");
       }
       setVerifying(false);
     };
