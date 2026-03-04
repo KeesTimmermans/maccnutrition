@@ -5,7 +5,7 @@ import { useOnboarding } from "@/App";
 import { useNavigate } from "react-router-dom";
 
 const navItems = [
-  { to: "/", icon: Home, label: "Today" },
+  { to: "/dashboard", icon: Home, label: "Today" },
   { to: "/progress", icon: TrendingUp, label: "Progress" },
   { to: "/meals", icon: UtensilsCrossed, label: "Meals" },
   { to: "/metrics", icon: Activity, label: "Metrics" },
