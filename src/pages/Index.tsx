@@ -430,7 +430,7 @@ const Index = () => {
       {/* Main content — two columns */}
       <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-12 lg:px-20 gap-8 md:gap-16 lg:gap-24 min-h-0">
         {/* Left — copy */}
-        <div className="flex-1 max-w-lg space-y-6 md:space-y-8 text-center md:text-left">
+        <div className="flex-1 max-w-lg space-y-6 md:space-y-8 text-center md:text-left pt-4 md:pt-0">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground leading-[1.1] tracking-tight">
             Stop guessing your calories.
           </h1>
