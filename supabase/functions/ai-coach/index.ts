@@ -4,13 +4,14 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Input validation schemas
 const messageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
-  content: z.string().max(5000, "Message content too long")
+  content: z.string().max(5000, "Message content too long"),
+  client_message_id: z.string().max(120).optional(),
 });
 
 const mealSchema = z.object({
@@ -81,6 +82,7 @@ const userContextSchema = z.object({
 const requestSchema = z.object({
   message: z.string().max(5000, "Message too long").optional(),
   messages: z.array(messageSchema).max(50, "Too many messages").optional(),
+  client_message_id: z.string().max(120).optional(),
   userContext: userContextSchema,
   todaysMeals: z.array(mealSchema).max(20, "Too many meals").optional(),
   type: z.enum(['chat', 'meal_feedback', 'daily_checkin', 'focus_tip', 'progress_update']).optional(),
@@ -357,9 +359,81 @@ serve(async (req) => {
       });
     }
 
-    const { message, messages, userContext, todaysMeals, type, progressUpdateData } = validationResult.data;
+    const { message, messages, userContext, todaysMeals, type, progressUpdateData, client_message_id } = validationResult.data;
+
+    const getCurrentWeekStart = () => {
+      const now = new Date();
+      const day = now.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - diff);
+      monday.setHours(0, 0, 0, 0);
+      return monday.toISOString().split('T')[0];
+    };
+
+    const weekStart = getCurrentWeekStart();
+
+    // Idempotency: return cached response for duplicate client_message_id in the same conversation week
+    if (client_message_id) {
+      const { data: existingRow, error: existingErr } = await supabase
+        .from('coach_message_idempotency')
+        .select('response')
+        .eq('user_id', user.id)
+        .eq('week_start', weekStart)
+        .eq('client_message_id', client_message_id)
+        .maybeSingle();
+
+      if (existingErr) {
+        console.error('Idempotency lookup error:', existingErr);
+      }
+
+      if (existingRow?.response) {
+        return new Response(JSON.stringify({
+          response: existingRow.response,
+          client_message_id,
+          deduped: true,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Reserve this request key before generating AI response
+      const { error: reserveErr } = await supabase
+        .from('coach_message_idempotency')
+        .insert({
+          user_id: user.id,
+          week_start: weekStart,
+          client_message_id,
+          response: null,
+        });
+
+      if (reserveErr && reserveErr.code !== '23505') {
+        console.error('Idempotency reserve error:', reserveErr);
+      }
+
+      // If a duplicate hit happened between lookup and reserve, try returning cached response again
+      if (reserveErr?.code === '23505') {
+        const { data: dupRow } = await supabase
+          .from('coach_message_idempotency')
+          .select('response')
+          .eq('user_id', user.id)
+          .eq('week_start', weekStart)
+          .eq('client_message_id', client_message_id)
+          .maybeSingle();
+
+        if (dupRow?.response) {
+          return new Response(JSON.stringify({
+            response: dupRow.response,
+            client_message_id,
+            deduped: true,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
@@ -926,8 +1000,20 @@ RESPONSE GUIDELINES:
 
     console.log("AI chat response generated, finish_reason:", finishReason);
 
+    if (client_message_id) {
+      const { error: persistErr } = await supabase
+        .from('coach_message_idempotency')
+        .update({ response: aiResponse })
+        .eq('user_id', user.id)
+        .eq('week_start', weekStart)
+        .eq('client_message_id', client_message_id);
 
-    return new Response(JSON.stringify({ response: aiResponse }), {
+      if (persistErr) {
+        console.error('Idempotency persist error:', persistErr);
+      }
+    }
+
+    return new Response(JSON.stringify({ response: aiResponse, client_message_id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

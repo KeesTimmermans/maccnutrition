@@ -18,6 +18,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   client_message_id?: string;
+  pending?: boolean;
 }
 
 interface AICoachChatProps {
@@ -34,6 +35,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [todaysCheckIn, setTodaysCheckIn] = useState<DailyCheckIn | null>(null);
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
@@ -295,23 +297,34 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading || isSendingRef.current) return;
+    if (!input.trim() || isLoading || isSending || isSendingRef.current) return;
 
-    // Synchronous ref guard — prevents any double-trigger from Enter + onClick race
+    // Synchronous guard for click/submit race + state guard for UI disabling
     isSendingRef.current = true;
+    setIsSending(true);
 
     const userMessage = input.trim();
     const clientMsgId = crypto.randomUUID();
-    const responseMsgId = crypto.randomUUID();
+    const assistantPendingId = `assistant-${clientMsgId}`;
     setInput("");
-    
-    const userMsg: Message = { role: "user", content: userMessage, client_message_id: clientMsgId };
-    const newMessages: Message[] = [...messages, userMsg];
-    setMessages(newMessages);
+
+    const userMsg: Message = {
+      role: "user",
+      content: userMessage,
+      client_message_id: clientMsgId,
+    };
+
+    const outboundMessages: Message[] = [...messages, userMsg];
+
+    // Optimistic user message + optimistic assistant placeholder (for reconciliation)
+    setMessages(prev => [
+      ...prev,
+      userMsg,
+      { role: "assistant", content: "", client_message_id: assistantPendingId, pending: true },
+    ]);
     setIsLoading(true);
 
     try {
-      // Refresh check-in data
       const recentCheckIns = await getRecentCheckIns(7);
       const analysis = analyzeCheckIns(recentCheckIns);
       const checkInContext = clampContext(formatCheckInsForAI(recentCheckIns, analysis));
@@ -323,7 +336,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
         try {
           const { data, error } = await supabase.functions.invoke("ai-coach", {
             body: {
-              messages: newMessages,
+              messages: outboundMessages,
               client_message_id: clientMsgId,
               userContext: baseline ? {
                 userName: baseline.name,
@@ -403,22 +416,29 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       };
 
       const responseText = await invokeCoach();
-      // Append assistant response with dedup guard
+
+      // Reconcile optimistic assistant placeholder by client_message_id instead of appending
       setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && last.client_message_id === responseMsgId) {
-          return prev; // already reconciled
+        const hasPlaceholder = prev.some(m => m.client_message_id === assistantPendingId);
+        if (!hasPlaceholder) {
+          return [...prev, { role: "assistant", content: responseText, client_message_id: assistantPendingId }];
         }
-        return [...prev, { role: "assistant", content: responseText, client_message_id: responseMsgId }];
+        return prev.map(m =>
+          m.client_message_id === assistantPendingId
+            ? { ...m, content: responseText, pending: false }
+            : m
+        );
       });
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: "Sorry, I had trouble responding. Please try again." 
-      }]);
+      setMessages(prev => prev.map(m =>
+        m.client_message_id === assistantPendingId
+          ? { ...m, content: "Sorry, I had trouble responding. Please try again.", pending: false }
+          : m
+      ));
     } finally {
       setIsLoading(false);
+      setIsSending(false);
       isSendingRef.current = false;
     }
   };
@@ -599,7 +619,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                     ? "bg-primary text-primary-foreground rounded-tr-sm"
                     : "bg-muted text-foreground rounded-tl-sm"
                 }`}>
-                  <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+                  {msg.pending ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+                  )}
                 </div>
               </div>
 
@@ -617,7 +641,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             </div>
           );
         })}
-        {isLoading && (
+        {isLoading && !messages.some(m => m.pending) && (
           <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full gradient-hero flex items-center justify-center">
               <Bot className="w-4 h-4 text-primary-foreground" />
@@ -664,11 +688,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask me anything..."
             className="flex-1 px-4 py-3 bg-muted rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            disabled={isLoading}
+            disabled={isSending || isLoading}
           />
           <Button
             type="submit"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isSending || isLoading}
             className="px-4 rounded-xl"
           >
             <Send className="w-5 h-5" />
