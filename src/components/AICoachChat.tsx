@@ -17,6 +17,7 @@ import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  client_message_id?: string;
 }
 
 interface AICoachChatProps {
@@ -43,6 +44,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastAssistantRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
+  const isSendingRef = useRef(false);
 
   // Save conversation whenever messages change (debounced)
   const saveConversation = useCallback(async (msgs: Message[]) => {
@@ -293,12 +295,18 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isSendingRef.current) return;
+
+    // Synchronous ref guard — prevents any double-trigger from Enter + onClick race
+    isSendingRef.current = true;
 
     const userMessage = input.trim();
+    const clientMsgId = crypto.randomUUID();
+    const responseMsgId = crypto.randomUUID();
     setInput("");
     
-    const newMessages: Message[] = [...messages, { role: "user", content: userMessage }];
+    const userMsg: Message = { role: "user", content: userMessage, client_message_id: clientMsgId };
+    const newMessages: Message[] = [...messages, userMsg];
     setMessages(newMessages);
     setIsLoading(true);
 
@@ -310,12 +318,13 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
       const invokeCoach = async (attempt = 1): Promise<string> => {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        const timeout = setTimeout(() => controller.abort(), 30000);
 
         try {
           const { data, error } = await supabase.functions.invoke("ai-coach", {
             body: {
               messages: newMessages,
+              client_message_id: clientMsgId,
               userContext: baseline ? {
                 userName: baseline.name,
                 primaryGoal: baseline.primary_goal,
@@ -377,7 +386,6 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
           });
 
           clearTimeout(timeout);
-
           if (error) throw error;
 
           const responseText = typeof data?.response === "string" ? data.response.trim() : "";
@@ -385,7 +393,6 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
           return responseText;
         } catch (err) {
           clearTimeout(timeout);
-          // Retry once on failure (network timeout, empty response)
           if (attempt < 2) {
             console.warn(`Coach attempt ${attempt} failed, retrying...`, err);
             await new Promise(r => setTimeout(r, 1500));
@@ -396,7 +403,14 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       };
 
       const responseText = await invokeCoach();
-      setMessages(prev => [...prev, { role: "assistant", content: responseText }]);
+      // Append assistant response with dedup guard
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.client_message_id === responseMsgId) {
+          return prev; // already reconciled
+        }
+        return [...prev, { role: "assistant", content: responseText, client_message_id: responseMsgId }];
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       setMessages(prev => [...prev, { 
@@ -405,14 +419,13 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       }]);
     } finally {
       setIsLoading(false);
+      isSendingRef.current = false;
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage();
   };
 
   const handleClearConversation = async () => {
@@ -644,24 +657,23 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
       {/* Input */}
       <div className="px-4 py-4 border-t border-border">
-        <div className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
             placeholder="Ask me anything..."
             className="flex-1 px-4 py-3 bg-muted rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isLoading}
           />
           <Button
-            onClick={sendMessage}
+            type="submit"
             disabled={!input.trim() || isLoading}
             className="px-4 rounded-xl"
           >
             <Send className="w-5 h-5" />
           </Button>
-        </div>
+        </form>
       </div>
     </SafeAreaContainer>
   );
