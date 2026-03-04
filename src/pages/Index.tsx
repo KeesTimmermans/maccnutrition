@@ -409,7 +409,7 @@ const Index = () => {
 
   // Welcome / Landing screen
   return (
-    <div className="h-screen overflow-hidden bg-[hsl(45_30%_97%)] flex flex-col">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-[hsl(45_30%_97%)] to-[hsl(40_20%_94%)] flex flex-col">
       {/* Nav bar */}
       <nav className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-4 flex-shrink-0">
         <img
@@ -449,9 +449,15 @@ const Index = () => {
               Build My Plan
             </Button>
 
-            <p className="text-xs text-muted-foreground">
-              £9.99/month · 7-Day Free Trial · Cancel Anytime
-            </p>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">
+                £9.99/month · 7-Day Free Trial · Cancel Anytime
+              </p>
+              <div className="flex items-center gap-1.5 justify-center md:justify-start">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[11px] text-muted-foreground">Secure checkout powered by Stripe</span>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2.5 pt-2">
@@ -466,31 +472,29 @@ const Index = () => {
               </div>
             ))}
           </div>
-
-          <div className="flex items-center gap-1.5 justify-center md:justify-start pt-1">
-            <Lock className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground">Secure checkout powered by Stripe</span>
-          </div>
         </div>
 
-        {/* Right — mockup */}
+        {/* Right — iPhone mockup with screenshot */}
         <div className="flex-1 flex items-center justify-center max-w-sm md:max-w-md relative">
           {/* Soft gradient blob behind the phone */}
-          <div className="absolute inset-0 -m-8 rounded-full bg-gradient-to-br from-primary/8 via-accent/30 to-transparent blur-3xl" />
+          <div className="absolute inset-0 -m-12 rounded-full bg-gradient-to-br from-primary/6 via-accent/20 to-transparent blur-3xl" />
           {/* Phone frame */}
-          <div className="relative w-56 sm:w-64 md:w-72 lg:w-80 transform rotate-[2deg] drop-shadow-2xl">
-            <div className="rounded-[2.5rem] border-[6px] border-foreground/90 bg-foreground/90 overflow-hidden shadow-xl">
+          <div className="relative w-52 sm:w-60 md:w-64 lg:w-72 transform rotate-[6deg] drop-shadow-2xl">
+            <div className="rounded-[2.5rem] border-[5px] border-foreground/85 bg-foreground/85 p-[2px] overflow-hidden shadow-2xl">
               {/* Dynamic Island */}
-              <div className="relative z-10 mx-auto w-[30%] h-5 bg-foreground/90 rounded-b-2xl" />
-              {/* Screen */}
-              <div className="bg-background -mt-1 overflow-hidden" style={{ height: '480px', maxHeight: '60vh' }}>
+              <div className="relative z-10 mx-auto w-[28%] h-[18px] bg-foreground/85 rounded-b-xl" />
+              {/* Screen content */}
+              <div className="rounded-[2.2rem] bg-background overflow-hidden -mt-0.5">
                 <img
                   src={appMockup}
-                  alt="MacNutrition app dashboard showing calorie targets and macro breakdown"
-                  className="w-full h-auto block scale-[0.6] origin-top"
+                  alt="MacNutrition app dashboard showing coaching plan, calorie targets, and macro breakdown"
+                  className="w-full h-auto block scale-[0.55] origin-top"
+                  style={{ marginBottom: '-45%' }}
                 />
               </div>
             </div>
+            {/* Bottom bar indicator */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[30%] h-1 bg-foreground/40 rounded-full" />
           </div>
         </div>
       </main>
