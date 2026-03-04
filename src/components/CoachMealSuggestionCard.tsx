@@ -10,9 +10,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { UtensilsCrossed, Clock, Plus, Pencil, Check, Trash2 } from "lucide-react";
+import { UtensilsCrossed, Clock, Plus, Pencil, Check, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { saveMeal } from "@/lib/mealService";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+export interface LogPayloadItem {
+  ingredient: string;
+  quantity: number;
+  unit: string;
+  brand?: string;
+}
 
 export interface MealSuggestion {
   type: "meal_suggestion";
@@ -31,6 +39,7 @@ export interface MealSuggestion {
       carbs_g: number | null;
       fat_g: number | null;
     };
+    log_payload?: LogPayloadItem[];
   };
 }
 
@@ -54,6 +63,41 @@ export function stripMealSuggestionJson(content: string): string {
   return content.replace(/```json\s*\{[\s\S]*?"type"\s*:\s*"meal_suggestion"[\s\S]*?```/g, "").trim();
 }
 
+/** Compute macros from log_payload using our analyze-food edge function */
+async function computeMacrosFromPayload(
+  payload: LogPayloadItem[]
+): Promise<{ calories: number; protein: number; carbs: number; fats: number }> {
+  const totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+
+  // Build a single description of all ingredients for batch analysis
+  const description = payload
+    .map((p) => `${p.quantity}${p.unit} ${p.ingredient}`)
+    .join(", ");
+
+  try {
+    const { data, error } = await supabase.functions.invoke("analyze-food", {
+      body: { searchQuery: description, mode: "parse_meal" },
+    });
+
+    if (error) throw error;
+
+    // parse_meal returns { ingredients: [...], mealName, confidence }
+    if (data?.ingredients && Array.isArray(data.ingredients)) {
+      for (const ing of data.ingredients) {
+        const grams = ing.estimatedGrams || 0;
+        totals.calories += Math.round((ing.caloriesPer100g || 0) * grams / 100);
+        totals.protein += Math.round((ing.proteinPer100g || 0) * grams / 100);
+        totals.carbs += Math.round((ing.carbsPer100g || 0) * grams / 100);
+        totals.fats += Math.round((ing.fatsPer100g || 0) * grams / 100);
+      }
+    }
+  } catch (err) {
+    console.error("computeMacrosFromPayload failed:", err);
+  }
+
+  return totals;
+}
+
 interface Props {
   suggestion: MealSuggestion;
   onLogged?: () => void;
@@ -63,6 +107,7 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
   const [logged, setLogged] = useState(false);
+  const [showZeroMacroWarning, setShowZeroMacroWarning] = useState(false);
 
   // Edit state
   const [editTitle, setEditTitle] = useState(suggestion.meal.title);
@@ -84,10 +129,41 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
 
   const hasValidIngredients = editIngredients.some((i) => i.item.trim().length > 0);
 
+  const hasLogPayload = meal.log_payload && meal.log_payload.length > 0;
+
+  /** Resolve macros: try log_payload first, fall back to estimated_macros */
+  const resolveMacros = async (
+    servingsMultiplier: number
+  ): Promise<{ calories: number; protein: number; carbs: number; fats: number }> => {
+    // 1. Try computing from structured log_payload
+    if (hasLogPayload) {
+      const scaled = meal.log_payload!.map((p) => ({
+        ...p,
+        quantity: Math.round(p.quantity * servingsMultiplier),
+      }));
+      const computed = await computeMacrosFromPayload(scaled);
+      if (computed.calories > 0 || computed.protein > 0) {
+        return computed;
+      }
+    }
+
+    // 2. Fall back to estimated_macros from AI
+    const est = {
+      calories: Math.round((macros?.calories || 0) * servingsMultiplier),
+      protein: Math.round((macros?.protein_g || 0) * servingsMultiplier),
+      carbs: Math.round((macros?.carbs_g || 0) * servingsMultiplier),
+      fats: Math.round((macros?.fat_g || 0) * servingsMultiplier),
+    };
+
+    return est;
+  };
+
+  const isAllZero = (m: { calories: number; protein: number; carbs: number; fats: number }) =>
+    m.calories === 0 && m.protein === 0 && m.carbs === 0 && m.fats === 0;
+
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    // Reset edit fields to current suggestion values
     setEditTitle(suggestion.meal.title);
     setEditServings(suggestion.meal.servings || 1);
     setEditSlot("");
@@ -99,9 +175,6 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
     setEditNotes(
       Array.isArray(suggestion.meal.notes) ? suggestion.meal.notes.join("\n") : ""
     );
-    if (import.meta.env.DEV) {
-      console.log("[CoachMealSuggestionCard] onEditClick", { title: suggestion.meal.title });
-    }
     setShowEditModal(true);
   };
 
@@ -139,20 +212,27 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
   const handleSaveClick = async () => {
     const name = editSlot ? `${editSlot}: ${editTitle}` : editTitle;
     const notes = buildRecipeNotes();
-    const payload = {
-      name,
-      calories: Math.round((macros?.calories || 0) * editServings),
-      protein: Math.round((macros?.protein_g || 0) * editServings),
-      carbs: Math.round((macros?.carbs_g || 0) * editServings),
-      fats: Math.round((macros?.fat_g || 0) * editServings),
-      notes: notes || undefined,
-    };
-    if (import.meta.env.DEV) {
-      console.log("[CoachMealSuggestionCard] onSaveClick payload", payload);
-    }
+
     setIsLogging(true);
+    setShowZeroMacroWarning(false);
+
     try {
-      await saveMeal(payload);
+      const resolved = await resolveMacros(editServings);
+
+      if (isAllZero(resolved)) {
+        setShowZeroMacroWarning(true);
+        setIsLogging(false);
+        return;
+      }
+
+      await saveMeal({
+        name,
+        calories: resolved.calories,
+        protein: resolved.protein,
+        carbs: resolved.carbs,
+        fats: resolved.fats,
+        notes: notes || undefined,
+      });
       setLogged(true);
       setShowEditModal(false);
       toast.success("Added to your meals");
@@ -167,17 +247,29 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
 
   const logMealQuick = async () => {
     setIsLogging(true);
+    setShowZeroMacroWarning(false);
+
     try {
+      const resolved = await resolveMacros(1);
+
+      if (isAllZero(resolved)) {
+        // Can't log zeros — open edit modal so user can confirm ingredients
+        setShowZeroMacroWarning(true);
+        setShowEditModal(true);
+        setIsLogging(false);
+        return;
+      }
+
       const ingredientLines = meal.ingredients
         .map((i) => `• ${i.amount} ${i.item}`.trim());
       const quickNotes = ingredientLines.length > 0 ? "Ingredients:\n" + ingredientLines.join("\n") : undefined;
 
       await saveMeal({
         name: meal.title,
-        calories: Math.round(macros?.calories || 0),
-        protein: Math.round(macros?.protein_g || 0),
-        carbs: Math.round(macros?.carbs_g || 0),
-        fats: Math.round(macros?.fat_g || 0),
+        calories: resolved.calories,
+        protein: resolved.protein,
+        carbs: resolved.carbs,
+        fats: resolved.fats,
         notes: quickNotes,
       });
       setLogged(true);
@@ -242,7 +334,11 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
               onClick={logMealQuick}
               disabled={isLogging}
             >
-              <Plus className="w-3 h-3 mr-1" />
+              {isLogging ? (
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              ) : (
+                <Plus className="w-3 h-3 mr-1" />
+              )}
               Add to today's log
             </Button>
             <Button
@@ -265,6 +361,17 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
             <DialogTitle>Edit before logging</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Zero-macro warning */}
+            {showZeroMacroWarning && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-destructive">
+                  <p className="font-medium">Couldn't calculate macros for this meal.</p>
+                  <p className="mt-1">Please confirm or edit the ingredients below, then try again. Meals with 0 macros cannot be saved.</p>
+                </div>
+              </div>
+            )}
+
             {/* Title */}
             <div>
               <label className="text-xs font-medium text-muted-foreground">Meal name</label>
@@ -399,7 +506,14 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
               disabled={isLogging || !editTitle.trim() || !hasValidIngredients}
               className="w-full"
             >
-              {isLogging ? "Saving…" : "Log meal"}
+              {isLogging ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Calculating macros…
+                </>
+              ) : (
+                "Log meal"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

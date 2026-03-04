@@ -186,16 +186,17 @@ CRITICAL RULES:
 2. Place the JSON block FIRST — at the very top of your message, BEFORE any human-readable text.
 3. The fenced code block MUST open with \`\`\`json and close with \`\`\` on its own line. ALWAYS close the block.
 4. The JSON inside MUST be valid and complete. If you cannot produce a complete, valid JSON block, do NOT output any JSON at all.
-5. Set estimated_macros fields to null UNLESS you are confident. Do NOT hallucinate exact numbers.
-6. When including a meal_suggestion, keep the human-readable explanation SHORT — under 150 words maximum. This prevents the response from being cut off.
-7. Skip the JSON block entirely for general advice like "eat more protein" — only include it when naming a specific meal or recipe.
+5. estimated_macros fields MUST be realistic numbers — NEVER null, NEVER 0. Calculate based on the log_payload ingredients and quantities.
+6. You MUST include a "log_payload" array with structured ingredient data (name, quantity in grams, unit). This is required for macro calculation.
+7. When including a meal_suggestion, keep the human-readable explanation SHORT — under 150 words maximum. This prevents the response from being cut off.
+8. Skip the JSON block entirely for general advice like "eat more protein" — only include it when naming a specific meal or recipe.
 
 Use this EXACT schema:
 
 \`\`\`json
 {
   "type": "meal_suggestion",
-  "version": 1,
+  "version": 2,
   "meal": {
     "title": "Meal Name",
     "servings": 1,
@@ -205,14 +206,27 @@ Use this EXACT schema:
     "instructions": ["Step 1", "Step 2"],
     "notes": [],
     "estimated_macros": {
-      "calories": null,
-      "protein_g": null,
-      "carbs_g": null,
-      "fat_g": null
-    }
+      "calories": 450,
+      "protein_g": 35,
+      "carbs_g": 40,
+      "fat_g": 12
+    },
+    "log_payload": [
+      {"ingredient": "chicken breast", "quantity": 150, "unit": "g"},
+      {"ingredient": "cooked rice", "quantity": 120, "unit": "g"},
+      {"ingredient": "mixed peppers", "quantity": 80, "unit": "g"},
+      {"ingredient": "olive oil", "quantity": 5, "unit": "g"}
+    ]
   }
 }
 \`\`\`
+
+CRITICAL LOG_PAYLOAD RULES:
+- You MUST always include a "log_payload" array with every meal_suggestion.
+- Each entry MUST have: "ingredient" (common food name), "quantity" (number), "unit" ("g", "ml", or "count").
+- Use realistic gram weights for the suggested portion.
+- estimated_macros MUST NOT be null — calculate reasonable estimates based on the log_payload ingredients. Use the 4/4/9 calorie rule (4 cal/g protein, 4 cal/g carbs, 9 cal/g fat).
+- If you are unsure of exact macros, provide your best estimate — never leave them as null or 0.
 `;
 
 // CJT Nutrition Core Values and Guidelines - COMPLETE KNOWLEDGE BASE
