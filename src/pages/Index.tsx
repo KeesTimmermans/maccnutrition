@@ -480,8 +480,9 @@ const Index = () => {
           <div className="absolute inset-0 -m-12 rounded-full bg-gradient-to-br from-primary/5 via-accent/10 to-transparent blur-3xl" />
           {/* Phone frame */}
           <div
-            className="relative w-60 sm:w-68 md:w-72 lg:w-80 transform rotate-[2deg]"
+            className="relative transform rotate-[2deg]"
             style={{
+              width: 'clamp(240px, 22vw, 320px)',
               filter: 'drop-shadow(0 25px 50px rgba(0,0,0,0.15)) drop-shadow(0 10px 20px rgba(0,0,0,0.08))',
             }}
           >
@@ -489,12 +490,15 @@ const Index = () => {
               {/* Dynamic Island */}
               <div className="relative z-10 mx-auto w-[26%] h-[16px] mt-[6px] bg-[hsl(0_0%_8%)] rounded-full" />
               {/* Screen content */}
-              <div className="bg-background overflow-hidden mt-1 mx-[2px] mb-[2px] rounded-b-[2.7rem]">
+              <div
+                className="bg-background overflow-hidden mt-1 mx-[2px] mb-[2px] rounded-b-[2.7rem]"
+                style={{ height: 'clamp(420px, 50vh, 620px)' }}
+              >
                 <img
                   src={appMockup}
                   alt="MacNutrition app dashboard showing coaching plan, calorie targets, and macro breakdown"
-                  className="w-full h-auto block scale-[0.52] origin-top"
-                  style={{ marginBottom: '-48%' }}
+                  className="w-full h-auto block"
+                  style={{ transform: 'scale(0.48)', transformOrigin: 'top center' }}
                 />
               </div>
             </div>
