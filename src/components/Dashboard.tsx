@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { MacroRing } from "@/components/MacroRing";
 import { AddMealCard } from "@/components/MealCard";
 import { CollapsibleMealCard } from "@/components/CollapsibleMealCard";
@@ -46,6 +46,7 @@ interface DashboardMeal {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
   const [showMealLogger, setShowMealLogger] = useState(false);
@@ -770,24 +771,30 @@ export const Dashboard = () => {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50 safe-pb-4">
-        <div className="container flex justify-around py-3">
+        <div className="container grid grid-cols-6 gap-1 py-2">
           {[
-            { icon: "🏠", label: t('home'), path: "/", active: true },
-            { icon: "📊", label: t('progress'), path: "/progress", active: false },
-            { icon: "🍽️", label: t('meals'), path: "/history", active: false },
-            { icon: "👤", label: t('profile'), path: "/", active: false },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-colors ${
-                item.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-xs font-medium">{item.label}</span>
-            </button>
-          ))}
+            { icon: "🏠", label: "Today", path: "/dashboard" },
+            { icon: "📈", label: "Progress", path: "/progress" },
+            { icon: "🍽️", label: "Meals", path: "/meals" },
+            { icon: "📊", label: "Metrics", path: "/metrics" },
+            { icon: "👥", label: "Community", path: "/community" },
+            { icon: "👤", label: "Profile", path: "/profile" },
+          ].map((item) => {
+            const isActive = location.pathname === item.path;
+
+            return (
+              <button
+                key={item.label}
+                onClick={() => navigate(item.path)}
+                className={`flex flex-col items-center gap-0.5 px-1 py-1 rounded-xl transition-colors ${
+                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span className="text-base leading-none">{item.icon}</span>
+                <span className="text-[10px] font-medium leading-none">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
