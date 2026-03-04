@@ -28,7 +28,7 @@ export function extractMealSuggestions(message: string): ExtractedMealSuggestion
       if (
         parsed &&
         parsed.type === "meal_suggestion" &&
-        parsed.version === 1 &&
+        (parsed.version === 1 || parsed.version === 2) &&
         parsed.meal?.title
       ) {
         suggestions.push(parsed as MealSuggestion);
@@ -43,7 +43,7 @@ export function extractMealSuggestions(message: string): ExtractedMealSuggestion
           jsonString.slice(0, 200)
         );
       }
-      // Still strip blocks that look like meal_suggestion attempts
+      // Strip malformed meal_suggestion attempts from chat text
       if (jsonString.includes('"meal_suggestion"')) {
         blocksToStrip.push(fullMatch);
       }
@@ -60,21 +60,18 @@ export function extractMealSuggestions(message: string): ExtractedMealSuggestion
   const unclosedIdx = cleanText.search(/```json\s/i);
   if (unclosedIdx !== -1) {
     const remainingBlock = cleanText.slice(unclosedIdx);
-    // Only strip if it looks like a meal_suggestion attempt
+    // Strip if it looks like a meal_suggestion attempt
     if (remainingBlock.includes('"meal_suggestion"')) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          "[extractMealSuggestions] Stripping unclosed/truncated meal_suggestion block (" +
-          remainingBlock.length + " chars)"
-        );
-      }
-      // Try to parse (unlikely for truncated, but possible)
       const innerMatch = /```json\s*([\s\S]*)$/i.exec(remainingBlock);
       if (innerMatch) {
         const jsonString = innerMatch[1].trim();
         try {
           const parsed = JSON.parse(jsonString);
-          if (parsed?.type === "meal_suggestion" && parsed?.version === 1 && parsed?.meal?.title) {
+          if (
+            parsed?.type === "meal_suggestion" &&
+            (parsed?.version === 1 || parsed?.version === 2) &&
+            parsed?.meal?.title
+          ) {
             suggestions.push(parsed as MealSuggestion);
           }
         } catch {
@@ -87,6 +84,10 @@ export function extractMealSuggestions(message: string): ExtractedMealSuggestion
 
   // Collapse excessive whitespace left behind
   cleanText = cleanText.replace(/\n{3,}/g, "\n\n").trim();
+
+  if (!cleanText && suggestions.length === 0) {
+    cleanText = "I had trouble formatting that meal suggestion — please send again.";
+  }
 
   return { cleanText, suggestions };
 }
