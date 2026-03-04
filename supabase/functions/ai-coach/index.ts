@@ -184,7 +184,7 @@ When the user asks "SHOULD I USE [EXTERNAL APP]?":
 When you recommend a specific meal, recipe, or snack — include a machine-readable JSON block so the app can offer one-tap logging.
 
 CRITICAL RULES:
-1. Include AT MOST ONE meal_suggestion per message.
+1. Include AT MOST ONE meal_suggestion per single message. However, the user CAN request multiple meal suggestions across different messages — there is NO daily limit. Each new message can include a fresh meal_suggestion.
 2. Place the JSON block FIRST — at the very top of your message, BEFORE any human-readable text.
 3. The fenced code block MUST open with \`\`\`json and close with \`\`\` on its own line. ALWAYS close the block.
 4. The JSON inside MUST be valid and complete. If you cannot produce a complete, valid JSON block, do NOT output any JSON at all.
