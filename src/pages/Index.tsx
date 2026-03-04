@@ -4,19 +4,19 @@ import { Button } from "@/components/ui/button";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineSummary } from "@/components/BaselineSummary";
 import { Dashboard } from "@/components/Dashboard";
-import { Sparkles, Heart, Zap, ChevronRight } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import macLogo from "@/assets/mac-nutrition-logo.png";
+import appMockup from "@/assets/app-mockup.png";
 
 type AppState = "welcome" | "questionnaire" | "baseline" | "dashboard";
 
 const getCheckoutReturnUrl = () => {
   const basePath = window.location.pathname.endsWith("/") ? window.location.pathname : `${window.location.pathname}/`;
-  // HashRouter expects /#/… routes
   return `${window.location.origin}${basePath}#/`;
 };
 
@@ -43,16 +43,9 @@ const Index = () => {
 
   console.log("[Index] Render:");
 
-  // IMPORTANT: don't block the whole app UI during background subscription refreshes.
-  // Only block during the initial auth+subscription bootstrap.
   const isBootstrapping = loading || authLoading || (user ? !subscriptionChecked && !subscriptionError : false);
-
-  // Prevent re-fetching baseline repeatedly (e.g. when subscription refresh runs)
   const baselineCheckedRef = useRef<string | null>(null);
 
-  // Checkout return handling:
-  // Stripe returns to a URL WITHOUT hash fragments (e.g. /?checkout=success).
-  // Since the app uses HashRouter, we must move the user back onto /#/ and then refresh subscription.
   useEffect(() => {
     if (authLoading) return;
 
@@ -87,27 +80,18 @@ const Index = () => {
     }
   }, [authLoading, user, navigate, checkSubscription, toast]);
 
-  // Check for existing baseline data and subscription
   useEffect(() => {
     const checkUserBaseline = async () => {
       if (authLoading) return;
-      // Wait for the *initial* subscription verification (or an error) before deciding what to show.
-      // This avoids "Loading…" screens that unmount the questionnaire and reset progress.
       if (user && !subscriptionChecked && !subscriptionError) return;
 
       if (user) {
-        // If the backend can't verify subscription right now, don't force checkout.
-        // This prevents users from getting stuck in a "start trial" loop.
         if (!subscription && !isTrialing) {
-          // If we haven't successfully verified at least once (or we hit an error),
-          // show the subscription screen and let the user manually start checkout/refresh.
           if (!subscriptionChecked || subscriptionError) {
             setLoading(false);
             return;
           }
 
-          // Pre-fetch a checkout URL so the "Open Checkout" button is instant,
-          // but don't auto-redirect (avoids loops on refresh / popup blockers).
           if (!checkoutUrl) {
             setCheckoutInitLoading(true);
             try {
@@ -131,7 +115,6 @@ const Index = () => {
           return;
         }
 
-        // Baseline already resolved for this user in this session; don't block UI again
         if (baselineCheckedRef.current === user.id) {
           setLoading(false);
           return;
@@ -140,10 +123,8 @@ const Index = () => {
         try {
           const baseline = await getUserBaseline(user.id);
           if (baseline) {
-            // User has completed onboarding
-          setAppState("dashboard");
+            setAppState("dashboard");
           } else {
-            // User is authenticated but hasn't completed onboarding
             setAppState("questionnaire");
           }
           baselineCheckedRef.current = user.id;
@@ -151,7 +132,6 @@ const Index = () => {
           console.error("Error checking baseline:", error);
         }
       } else {
-        // Check localStorage for non-authenticated flow
         const hasOnboarded = localStorage.getItem("cjt_onboarded");
         if (hasOnboarded) {
           const savedData = localStorage.getItem("cjt_user_data");
@@ -193,7 +173,6 @@ const Index = () => {
       try {
         await saveUserBaseline(user.id, data, baseline);
 
-        // Send baseline summary email
         if (user.email) {
           sendBaselineEmail(
             user.email,
@@ -236,7 +215,6 @@ const Index = () => {
     setAppState("dashboard");
   };
 
-  // If anything in the auth/subscription bootstrap hangs, never leave the user on a blank screen.
   useEffect(() => {
     if (!isBootstrapping) {
       setStuckLoading(false);
@@ -341,7 +319,7 @@ const Index = () => {
 
           {subscriptionError ? (
             <p className="text-xs text-muted-foreground">
-              We’re having trouble verifying your trial right now. Try refreshing access before starting checkout again.
+              We're having trouble verifying your trial right now. Try refreshing access before starting checkout again.
             </p>
           ) : null}
 
@@ -429,72 +407,83 @@ const Index = () => {
     return <OnboardingQuestionnaire onComplete={handleQuestionnaireComplete} />;
   }
 
-  // Welcome screen
+  // Welcome / Landing screen
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-y-auto">
-      {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center safe-pt-4">
-        {/* Logo */}
-        <div className="relative mb-8 animate-float">
-          <img src={macLogo} alt="MAC Nutrition" className="w-52 sm:w-60 h-auto" style={{ mixBlendMode: 'multiply' }} />
+    <div className="h-screen overflow-hidden bg-[hsl(45_30%_97%)] flex flex-col">
+      {/* Nav bar */}
+      <nav className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-4 flex-shrink-0">
+        <img
+          src={macLogo}
+          alt="MacNutrition"
+          className="h-8 md:h-10 w-auto"
+          style={{ mixBlendMode: "multiply" }}
+        />
+        <Button
+          variant="ghost"
+          className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          onClick={() => navigate("/auth")}
+        >
+          Log in
+        </Button>
+      </nav>
+
+      {/* Main content — two columns */}
+      <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-12 lg:px-20 gap-8 md:gap-16 lg:gap-24 min-h-0">
+        {/* Left — copy */}
+        <div className="flex-1 max-w-lg space-y-6 md:space-y-8 text-center md:text-left">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground leading-[1.1] tracking-tight">
+            Stop guessing your calories.
+          </h1>
+
+          <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto md:mx-0">
+            Personalised calorie and macro targets built around your body, training, and lifestyle — no food restrictions.
+          </p>
+
+          <div className="space-y-3">
+            <Button
+              variant="hero"
+              size="xl"
+              className="w-full md:w-auto text-base px-10 rounded-2xl shadow-medium hover:shadow-glow transition-all duration-300 hover:scale-[1.03]"
+              onClick={handleGetStarted}
+            >
+              Build My Plan
+            </Button>
+
+            <p className="text-xs text-muted-foreground">
+              £9.99/month · 7-Day Free Trial · Cancel Anytime
+            </p>
+          </div>
+
+          <div className="space-y-2.5 pt-2">
+            {[
+              "Precision targets tailored to you",
+              "Flexible, not restrictive",
+              "Adjusts to your lifestyle",
+            ].map((benefit) => (
+              <div key={benefit} className="flex items-center gap-2.5 justify-center md:justify-start">
+                <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-sm text-foreground/80">{benefit}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5 justify-center md:justify-start pt-1">
+            <Lock className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground">Secure checkout powered by Stripe</span>
+          </div>
         </div>
 
-        {/* Headline - benefit-driven */}
-        <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-3 max-w-md leading-tight animate-slide-up delay-100">
-          Finally, nutrition guidance that fits your life
-        </h1>
-        
-        {/* Subheadline - explains the how */}
-        <p className="text-base sm:text-lg text-muted-foreground mb-8 max-w-sm animate-slide-up delay-150 leading-relaxed">
-          Personalized coaching meets simple tracking — so you can eat well without the guesswork.
-        </p>
-
-        {/* Value propositions - not feature lists */}
-        <div className="w-full max-w-sm space-y-3 mb-8 animate-slide-up delay-200">
-          <div className="flex items-start gap-3 text-left">
-            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Heart className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground text-sm mb-0.5">Your goals, your way</h3>
-              <p className="text-xs text-muted-foreground">A plan built around your preferences, schedule, and what actually works for you.</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3 text-left">
-            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground text-sm mb-0.5">Smart, not strict</h3>
-              <p className="text-xs text-muted-foreground">AI coaching that adapts to your lifestyle and helps you stay on track without obsession.</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3 text-left">
-            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground text-sm mb-0.5">Results that last</h3>
-              <p className="text-xs text-muted-foreground">Build sustainable habits, not quick fixes. Progress you can actually maintain.</p>
-            </div>
-          </div>
+        {/* Right — mockup */}
+        <div className="flex-1 flex items-center justify-center max-w-sm md:max-w-md relative">
+          {/* Soft gradient blob behind the phone */}
+          <div className="absolute inset-0 -m-8 rounded-full bg-gradient-to-br from-primary/8 via-accent/30 to-transparent blur-3xl" />
+          <img
+            src={appMockup}
+            alt="MacNutrition app dashboard showing calorie targets and macro breakdown"
+            className="relative w-56 sm:w-64 md:w-72 lg:w-80 h-auto drop-shadow-2xl transform rotate-[2deg]"
+          />
         </div>
-
-        {/* CTA Button */}
-        <div className="w-full max-w-sm animate-slide-up delay-300 safe-pb-4">
-          <Button
-            variant="hero"
-            size="xl"
-            className="w-full text-lg font-bold"
-            onClick={handleGetStarted}
-          >
-            Get Started
-            <ChevronRight className="w-5 h-5 ml-1" />
-          </Button>
-        </div>
-      </div>
+      </main>
     </div>
   );
 };
