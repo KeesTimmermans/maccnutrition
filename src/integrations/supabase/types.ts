@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_message_idempotency: {
+        Row: {
+          client_message_id: string
+          created_at: string
+          id: string
+          response: string | null
+          updated_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          client_message_id: string
+          created_at?: string
+          id?: string
+          response?: string | null
+          updated_at?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          client_message_id?: string
+          created_at?: string
+          id?: string
+          response?: string | null
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       community_comments: {
         Row: {
           content: string
