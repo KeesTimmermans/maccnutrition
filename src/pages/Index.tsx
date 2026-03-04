@@ -436,7 +436,7 @@ const Index = () => {
           </h1>
 
           <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto md:mx-0">
-            Personalised calorie and macro targets built around your body, training, and lifestyle — no food restrictions.
+            Personalised nutrition plan and coaching built around your body, training, and lifestyle — no food restrictions.
           </p>
 
           <div className="space-y-3">
@@ -465,6 +465,7 @@ const Index = () => {
               "Personalised targets tailored to you",
               "Flexible, not restrictive",
               "Adjusts to your lifestyle",
+              "Instant feedback from Coach Mac",
             ].map((benefit) => (
               <div key={benefit} className="flex items-center gap-2.5 justify-center md:justify-start">
                 <Check className="w-4 h-4 text-primary flex-shrink-0" />
