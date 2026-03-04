@@ -713,7 +713,7 @@ You MUST follow these rules for this response:
     let maxTokens: number;
     if (effectiveType === 'chat' || effectiveType === 'focus_tip') {
       const baseTokens = maxTokensByStyle[coachingTone] || 600;
-      maxTokens = isMealIntent ? Math.max(baseTokens, 900) : baseTokens;
+      maxTokens = isMealIntent ? Math.max(baseTokens, 1200) : Math.max(baseTokens, 600);
     } else {
       maxTokens = 2000; // generous for check-ins and progress updates
     }
@@ -725,8 +725,33 @@ ${progressUpdateContext}
 
 ${chatStyleBlock}
 
-LANGUAGE INSTRUCTION:
+    LANGUAGE INSTRUCTION:
 ${languageInstruction}
+
+ANSWER-FIRST MEAL FORMAT (use for ANY meal/recipe/snack suggestion in regular chat):
+When the user asks "what should I eat", "give me a meal", or any meal-related question:
+Stay under ~1500 characters total. Use this EXACT structure:
+
+🍽️ **Tonight's meal:** [One sentence describing the meal]
+
+**Quick recipe:**
+• [Step 1]
+• [Step 2]
+• [Step 3]
+• [Step 4]
+• [Step 5 — max 6 steps]
+
+**Your portion:** [X grams]${userContext?.sex === 'female' ? '' : ' | **Kids portion:** [Y grams]'}
+
+**What to log in the app:**
+• [Exact item 1 — name + grams]
+• [Exact item 2 — name + grams]
+
+Rules for this format:
+- Maximum ONE empathy/intro sentence before the meal. Skip it if unnecessary.
+- ALWAYS include the meal AND the "What to log" section in the SAME message — never split across messages.
+- Do NOT give a long preamble or explanation before the meal.
+- If you cannot fit it, drop the explanation — keep the recipe + log instructions.
 
 CONSECUTIVE PATTERN DETECTION:
 If the check-in data shows "CONSECUTIVE PATTERN ALERT" with metrics logged at the SAME VALUE for 3+ days:
@@ -795,6 +820,7 @@ RESPONSE GUIDELINES:
     }
 
     const data = await response.json();
+    const finishReason = data.choices?.[0]?.finish_reason;
     const rawContent = data.choices?.[0]?.message?.content;
 
     let aiResponse = "";
@@ -815,7 +841,44 @@ RESPONSE GUIDELINES:
       aiResponse = "Sorry — I had a formatting hiccup. Please send that again and I’ll answer properly.";
     }
 
-    console.log("AI chat response generated successfully");
+    // Auto-continue if response was truncated and missing the "What to log" section
+    const wasTruncated = finishReason === "length" || finishReason === "MAX_TOKENS";
+    const missingLogSection = isMealIntent && !aiResponse.toLowerCase().includes("what to log");
+
+    if (wasTruncated && missingLogSection) {
+      console.log("Response truncated, sending auto-continue request");
+      try {
+        const continueMessages = [
+          ...apiMessages,
+          { role: "assistant", content: aiResponse },
+          { role: "user", content: "Continue from where you left off. Provide ONLY the missing sections: recipe steps, portion sizes, and 'What to log in the app' items. Do not repeat earlier text." }
+        ];
+        const continueResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: continueMessages,
+            max_tokens: 800,
+          }),
+        });
+        if (continueResponse.ok) {
+          const continueData = await continueResponse.json();
+          const cc = continueData.choices?.[0]?.message?.content;
+          if (typeof cc === "string" && cc.trim()) {
+            aiResponse = aiResponse + "\n\n" + cc.trim();
+            console.log("Auto-continue appended successfully");
+          }
+        }
+      } catch (continueErr) {
+        console.error("Auto-continue failed, returning partial:", continueErr);
+      }
+    }
+
+    console.log("AI chat response generated, finish_reason:", finishReason);
 
     return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
