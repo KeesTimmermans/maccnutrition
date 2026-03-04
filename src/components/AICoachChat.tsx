@@ -40,6 +40,9 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastAssistantRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef(0);
 
   // Save conversation whenever messages change (debounced)
   const saveConversation = useCallback(async (msgs: Message[]) => {
@@ -61,7 +64,35 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const newCount = messages.length;
+    const oldCount = prevMessageCountRef.current;
+    prevMessageCountRef.current = newCount;
+
+    // Only auto-scroll when a new message is added
+    if (newCount <= oldCount) return;
+
+    const lastMsg = messages[messages.length - 1];
+
+    if (lastMsg?.role === "assistant" && lastAssistantRef.current) {
+      // Only auto-scroll if user is near the bottom (within 150px)
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+
+      if (isNearBottom) {
+        // Scroll so the TOP of the new assistant message is visible
+        requestAnimationFrame(() => {
+          lastAssistantRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    } else if (lastMsg?.role === "user") {
+      // For user messages, scroll to bottom so they see their own message
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
   }, [messages]);
 
   // Save messages when they change (after initial load)
@@ -509,7 +540,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-auto p-4 space-y-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto p-4 space-y-4">
         {messages.map((msg, index) => {
           // Extract meal suggestions and clean text for assistant messages
           const isAssistant = msg.role === "assistant";
@@ -534,7 +565,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             : extractedClean;
 
           return (
-            <div key={index} className="space-y-1">
+            <div
+              key={index}
+              className="space-y-1"
+              ref={isAssistant && index === messages.length - 1 ? lastAssistantRef : undefined}
+            >
               <div className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                   msg.role === "user" 
