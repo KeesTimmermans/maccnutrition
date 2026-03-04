@@ -29,6 +29,12 @@ interface AICoachChatProps {
 
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
 const clampContext = (text: string, max = 10000) => (text.length > max ? `${text.slice(0, max)}\n\n[Context truncated for request size]` : text);
+const generateClientMessageId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+};
 
 export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived }: AICoachChatProps) => {
   const { language } = useLanguage();
@@ -303,28 +309,30 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
     isSendingRef.current = true;
     setIsSending(true);
 
-    const userMessage = input.trim();
-    const clientMsgId = crypto.randomUUID();
-    const assistantPendingId = `assistant-${clientMsgId}`;
-    setInput("");
-
-    const userMsg: Message = {
-      role: "user",
-      content: userMessage,
-      client_message_id: clientMsgId,
-    };
-
-    const outboundMessages: Message[] = [...messages, userMsg];
-
-    // Optimistic user message + optimistic assistant placeholder (for reconciliation)
-    setMessages(prev => [
-      ...prev,
-      userMsg,
-      { role: "assistant", content: "", client_message_id: assistantPendingId, pending: true },
-    ]);
-    setIsLoading(true);
+    let assistantPendingId: string | null = null;
 
     try {
+      const userMessage = input.trim();
+      const clientMsgId = generateClientMessageId();
+      assistantPendingId = `assistant-${clientMsgId}`;
+      setInput("");
+
+      const userMsg: Message = {
+        role: "user",
+        content: userMessage,
+        client_message_id: clientMsgId,
+      };
+
+      const outboundMessages: Message[] = [...messages, userMsg];
+
+      // Optimistic user message + optimistic assistant placeholder (for reconciliation)
+      setMessages(prev => [
+        ...prev,
+        userMsg,
+        { role: "assistant", content: "", client_message_id: assistantPendingId, pending: true },
+      ]);
+      setIsLoading(true);
+
       const recentCheckIns = await getRecentCheckIns(7);
       const analysis = analyzeCheckIns(recentCheckIns);
       const checkInContext = clampContext(formatCheckInsForAI(recentCheckIns, analysis));
@@ -421,7 +429,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       setMessages(prev => {
         const hasPlaceholder = prev.some(m => m.client_message_id === assistantPendingId);
         if (!hasPlaceholder) {
-          return [...prev, { role: "assistant", content: responseText, client_message_id: assistantPendingId }];
+          return [...prev, { role: "assistant", content: responseText, client_message_id: assistantPendingId ?? undefined }];
         }
         return prev.map(m =>
           m.client_message_id === assistantPendingId
@@ -431,11 +439,15 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       });
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages(prev => prev.map(m =>
-        m.client_message_id === assistantPendingId
-          ? { ...m, content: "Sorry, I had trouble responding. Please try again.", pending: false }
-          : m
-      ));
+      if (assistantPendingId) {
+        setMessages(prev => prev.map(m =>
+          m.client_message_id === assistantPendingId
+            ? { ...m, content: "Sorry, I had trouble responding. Please try again.", pending: false }
+            : m
+        ));
+      } else {
+        toast.error("Unable to send message. Please try again.");
+      }
     } finally {
       setIsLoading(false);
       setIsSending(false);
