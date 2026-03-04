@@ -15,6 +15,7 @@ import { useAuthAnalytics } from "@/analytics/useAuthAnalytics";
 import { useAuth } from "@/hooks/useAuth";
 
 // Pages
+import Index from "./pages/Index";
 import Today from "./pages/Today";
 import Progress from "./pages/Progress";
 import Meals from "./pages/Meals";
@@ -40,7 +41,7 @@ import ResetPassword from "./pages/ResetPassword";
 const queryClient = new QueryClient();
 
 /** Public routes that never show the re-consent overlay or subscription gate */
-const PUBLIC_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/reset-password"];
+const PUBLIC_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/reset-password"];
 
 // ── Onboarding context ──────────────────────────────────────────────
 export interface OnboardingCtx {
@@ -135,7 +136,7 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Subscription gate — redirects unsubscribed users to /pricing ──
-const SUBSCRIPTION_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding", "/reset-password"];
+const SUBSCRIPTION_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding", "/reset-password"];
 
 const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -182,7 +183,7 @@ const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Onboarding gate — redirects incomplete users to "/onboarding" ──
-const ONBOARDING_EXEMPT_PATHS = ["/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing", "/admin", "/reset-password"];
+const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing", "/admin", "/reset-password"];
 
 const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -285,7 +286,8 @@ const App = () => {
                 <OnboardingGate>
                   <Routes>
                     {/* Primary tab routes */}
-                    <Route path="/" element={<Today />} />
+                    <Route path="/" element={<Index />} />
+                    <Route path="/dashboard" element={<Today />} />
                     <Route path="/progress" element={<Progress />} />
                     <Route path="/meals" element={<Meals />} />
                     <Route path="/metrics" element={<Metrics />} />
