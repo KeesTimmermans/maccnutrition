@@ -462,7 +462,7 @@ const Index = () => {
 
           <div className="space-y-2.5 pt-2">
             {[
-              "Precision targets tailored to you",
+              "Personalised targets tailored to you",
               "Flexible, not restrictive",
               "Adjusts to your lifestyle",
             ].map((benefit) => (
