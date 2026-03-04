@@ -277,86 +277,94 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       const analysis = analyzeCheckIns(recentCheckIns);
       const checkInContext = clampContext(formatCheckInsForAI(recentCheckIns, analysis));
 
-      const { data, error } = await supabase.functions.invoke("ai-coach", {
-        body: {
-          messages: newMessages,
-          userContext: baseline ? {
-            // User's name
-            userName: baseline.name,
-            // Core profile
-            primaryGoal: baseline.primary_goal,
-            secondaryGoals: baseline.secondary_goals,
-            sex: baseline.sex,
-            age: baseline.age,
-            // Nutrition targets
-            targetCalories: baseline.target_calories,
-            proteinGrams: baseline.protein_grams,
-            carbsGrams: baseline.carbs_grams,
-            fatsGrams: baseline.fats_grams,
-            waterLiters: baseline.water_liters,
-            // Lifestyle
-            activityLevel: baseline.activity_level,
-            trainingDays: baseline.training_days,
-            trainingIntensity: baseline.training_intensity,
-            sleepHours: baseline.sleep_hours,
-            stressLevel: baseline.stress_level,
-            occupation: baseline.occupation,
-            // Eating behavior
-            eatingSpeed: baseline.eating_speed,
-            hungerPatterns: baseline.hunger_patterns,
-            cravingsTriggers: baseline.cravings_triggers,
-            emotionalEating: baseline.emotional_eating,
-            snackingHabits: baseline.snacking_habits,
-            hydrationHabits: baseline.hydration_habits,
-            energyPatterns: baseline.energy_patterns,
-            // Challenges & history
-            biggestChallenge: baseline.biggest_challenge,
-            pastDiets: baseline.past_diets,
-            weekendHabits: baseline.weekend_habits,
-            eatingOutFrequency: baseline.eating_out_frequency,
-            // Motivation
-            motivationStyle: baseline.motivation_style,
-            accountabilityPreference: baseline.accountability_preference,
-            // Preferences
-            dietType: baseline.diet_type,
-            foodDislikes: baseline.food_dislikes,
-            allergies: baseline.allergies,
-            conditions: baseline.conditions,
-            coachingTone: baseline.coaching_tone,
-            focusPoints: baseline.focus_points,
-            mealsPerDay: baseline.meals_per_day,
-            mealPrepTime: baseline.meal_prep_time,
-            cookingSkill: baseline.cooking_skill,
-            proteinShakesPreference: baseline.protein_shakes_preference,
-            // Female-specific
-            currentPhase: baseline.current_phase,
-            cycleRegularity: baseline.cycle_regularity,
-            cycleSymptoms: baseline.cycle_symptoms,
-            cyclePhaseTodayCheckin: (todaysCheckIn as any)?.cycle_phase_today || undefined,
-            // Check-in data
-            checkInContext: checkInContext,
-            checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
-            // Language preference
-            preferredLanguage: language as Language,
-            // App state
-            lastProgressUpdate: baseline.last_progress_update || undefined,
-            lastDailyCheckin: todaysCheckIn?.check_in_date || undefined,
-          } : {},
-          todaysMeals: todaysMeals.map(m => ({
-            name: m.name,
-            calories: m.calories,
-            protein: m.protein,
-            carbs: m.carbs,
-            fats: m.fats
-          }))
+      const invokeCoach = async (attempt = 1): Promise<string> => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+        try {
+          const { data, error } = await supabase.functions.invoke("ai-coach", {
+            body: {
+              messages: newMessages,
+              userContext: baseline ? {
+                userName: baseline.name,
+                primaryGoal: baseline.primary_goal,
+                secondaryGoals: baseline.secondary_goals,
+                sex: baseline.sex,
+                age: baseline.age,
+                targetCalories: baseline.target_calories,
+                proteinGrams: baseline.protein_grams,
+                carbsGrams: baseline.carbs_grams,
+                fatsGrams: baseline.fats_grams,
+                waterLiters: baseline.water_liters,
+                activityLevel: baseline.activity_level,
+                trainingDays: baseline.training_days,
+                trainingIntensity: baseline.training_intensity,
+                sleepHours: baseline.sleep_hours,
+                stressLevel: baseline.stress_level,
+                occupation: baseline.occupation,
+                eatingSpeed: baseline.eating_speed,
+                hungerPatterns: baseline.hunger_patterns,
+                cravingsTriggers: baseline.cravings_triggers,
+                emotionalEating: baseline.emotional_eating,
+                snackingHabits: baseline.snacking_habits,
+                hydrationHabits: baseline.hydration_habits,
+                energyPatterns: baseline.energy_patterns,
+                biggestChallenge: baseline.biggest_challenge,
+                pastDiets: baseline.past_diets,
+                weekendHabits: baseline.weekend_habits,
+                eatingOutFrequency: baseline.eating_out_frequency,
+                motivationStyle: baseline.motivation_style,
+                accountabilityPreference: baseline.accountability_preference,
+                dietType: baseline.diet_type,
+                foodDislikes: baseline.food_dislikes,
+                allergies: baseline.allergies,
+                conditions: baseline.conditions,
+                coachingTone: baseline.coaching_tone,
+                focusPoints: baseline.focus_points,
+                mealsPerDay: baseline.meals_per_day,
+                mealPrepTime: baseline.meal_prep_time,
+                cookingSkill: baseline.cooking_skill,
+                proteinShakesPreference: baseline.protein_shakes_preference,
+                currentPhase: baseline.current_phase,
+                cycleRegularity: baseline.cycle_regularity,
+                cycleSymptoms: baseline.cycle_symptoms,
+                cyclePhaseTodayCheckin: (todaysCheckIn as any)?.cycle_phase_today || undefined,
+                checkInContext: checkInContext,
+                checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
+                preferredLanguage: language as Language,
+                lastProgressUpdate: baseline.last_progress_update || undefined,
+                lastDailyCheckin: todaysCheckIn?.check_in_date || undefined,
+              } : {},
+              todaysMeals: todaysMeals.map(m => ({
+                name: m.name,
+                calories: m.calories,
+                protein: m.protein,
+                carbs: m.carbs,
+                fats: m.fats
+              }))
+            }
+          });
+
+          clearTimeout(timeout);
+
+          if (error) throw error;
+
+          const responseText = typeof data?.response === "string" ? data.response.trim() : "";
+          if (!responseText) throw new Error("Empty AI response");
+          return responseText;
+        } catch (err) {
+          clearTimeout(timeout);
+          // Retry once on failure (network timeout, empty response)
+          if (attempt < 2) {
+            console.warn(`Coach attempt ${attempt} failed, retrying...`, err);
+            await new Promise(r => setTimeout(r, 1500));
+            return invokeCoach(attempt + 1);
+          }
+          throw err;
         }
-      });
+      };
 
-      if (error) throw error;
-
-      const responseText = typeof data?.response === "string" ? data.response.trim() : "";
-      if (!responseText) throw new Error("Empty AI response");
-
+      const responseText = await invokeCoach();
       setMessages(prev => [...prev, { role: "assistant", content: responseText }]);
     } catch (error) {
       console.error("Error sending message:", error);
