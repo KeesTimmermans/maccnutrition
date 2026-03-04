@@ -479,15 +479,15 @@ const Index = () => {
           <div className="absolute inset-0 -m-8 rounded-full bg-gradient-to-br from-primary/8 via-accent/30 to-transparent blur-3xl" />
           {/* Phone frame */}
           <div className="relative w-56 sm:w-64 md:w-72 lg:w-80 transform rotate-[2deg] drop-shadow-2xl">
-            <div className="rounded-[2.5rem] border-[6px] border-foreground/90 bg-foreground/90 overflow-hidden shadow-xl aspect-[9/19.5]">
-              {/* Notch / Dynamic Island */}
-              <div className="relative z-10 mx-auto w-[30%] h-6 bg-foreground/90 rounded-b-3xl" />
+            <div className="rounded-[2.5rem] border-[6px] border-foreground/90 bg-foreground/90 overflow-hidden shadow-xl">
+              {/* Dynamic Island */}
+              <div className="relative z-10 mx-auto w-[30%] h-5 bg-foreground/90 rounded-b-2xl" />
               {/* Screen */}
-              <div className="bg-background -mt-1 h-full overflow-hidden">
+              <div className="bg-background -mt-1 overflow-hidden" style={{ height: '480px', maxHeight: '60vh' }}>
                 <img
                   src={appMockup}
                   alt="MacNutrition app dashboard showing calorie targets and macro breakdown"
-                  className="w-full h-full object-cover object-top block"
+                  className="w-full h-auto block scale-[0.6] origin-top"
                 />
               </div>
             </div>
