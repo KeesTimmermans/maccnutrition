@@ -497,7 +497,7 @@ const Index = () => {
                 <img
                   src={appMockup}
                   alt="MacNutrition app dashboard showing coaching plan, calorie targets, and macro breakdown"
-                  className="w-full h-full object-cover object-top block"
+                  className="w-full h-full object-contain object-top block"
                 />
               </div>
             </div>
