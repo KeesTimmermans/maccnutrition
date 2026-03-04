@@ -191,8 +191,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
           if (error) throw error;
           
+          const responseText = typeof data?.response === "string" ? data.response.trim() : "";
+          if (!responseText) throw new Error("Empty AI response");
+
           // Parse daily focus points from the AI response for dashboard
-          const { cleanResponse, focusPoints } = parseDailyFocusPoints(data.response);
+          const { cleanResponse, focusPoints } = parseDailyFocusPoints(responseText);
           
           // Save focus points to database for persistence (uses clean response for storage)
           if (focusPoints.length > 0) {
@@ -205,11 +208,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
           }
           
           // For chat display, keep the full response but strip marker tags only
-          const displayResponse = data.response
+          const displayResponse = responseText
             .replace(/---DAILY_FOCUS---/g, '\n\n**Today\'s Focus:**\n')
             .replace(/---END_DAILY_FOCUS---/g, '')
             .trim();
-          
+
           setMessages([{ role: "assistant", content: displayResponse }]);
         } catch (error) {
           console.error("Error getting check-in response:", error);
@@ -351,7 +354,10 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
       if (error) throw error;
 
-      setMessages(prev => [...prev, { role: "assistant", content: data.response }]);
+      const responseText = typeof data?.response === "string" ? data.response.trim() : "";
+      if (!responseText) throw new Error("Empty AI response");
+
+      setMessages(prev => [...prev, { role: "assistant", content: responseText }]);
     } catch (error) {
       console.error("Error sending message:", error);
       setMessages(prev => [...prev, { 

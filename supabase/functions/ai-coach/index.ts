@@ -795,7 +795,25 @@ RESPONSE GUIDELINES:
     }
 
     const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content || "I'm here to help with your nutrition journey!";
+    const rawContent = data.choices?.[0]?.message?.content;
+
+    let aiResponse = "";
+    if (typeof rawContent === "string") {
+      aiResponse = rawContent.trim();
+    } else if (Array.isArray(rawContent)) {
+      aiResponse = rawContent
+        .map((part: any) => {
+          if (typeof part === "string") return part;
+          if (part && typeof part.text === "string") return part.text;
+          return "";
+        })
+        .join("")
+        .trim();
+    }
+
+    if (!aiResponse) {
+      aiResponse = "Sorry — I had a formatting hiccup. Please send that again and I’ll answer properly.";
+    }
 
     console.log("AI chat response generated successfully");
 
