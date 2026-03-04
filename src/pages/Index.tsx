@@ -411,7 +411,7 @@ const Index = () => {
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-[hsl(45_30%_97%)] to-[hsl(40_20%_94%)] flex flex-col">
       {/* Nav bar */}
-      <nav className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-4 flex-shrink-0">
+      <nav className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-4 flex-shrink-0 relative z-10">
         <img
           src={macLogo}
           alt="MacNutrition"
