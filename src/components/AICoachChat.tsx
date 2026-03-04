@@ -26,6 +26,7 @@ interface AICoachChatProps {
 }
 
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
+const clampContext = (text: string, max = 10000) => (text.length > max ? `${text.slice(0, max)}\n\n[Context truncated for request size]` : text);
 
 export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived }: AICoachChatProps) => {
   const { language } = useLanguage();
@@ -116,7 +117,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         
         try {
           // Build check-in context
-          const checkInContext = formatCheckInsForAI(recentCheckIns, analysis);
+          const checkInContext = clampContext(formatCheckInsForAI(recentCheckIns, analysis));
           
           const { data, error } = await supabase.functions.invoke("ai-coach", {
             body: {
@@ -271,7 +272,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
       // Refresh check-in data
       const recentCheckIns = await getRecentCheckIns(7);
       const analysis = analyzeCheckIns(recentCheckIns);
-      const checkInContext = formatCheckInsForAI(recentCheckIns, analysis);
+      const checkInContext = clampContext(formatCheckInsForAI(recentCheckIns, analysis));
 
       const { data, error } = await supabase.functions.invoke("ai-coach", {
         body: {

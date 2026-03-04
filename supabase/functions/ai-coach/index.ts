@@ -70,8 +70,8 @@ const userContextSchema = z.object({
   cycleSymptoms: z.array(z.string().max(100)).max(20).nullish(),
   cyclePhaseTodayCheckin: z.string().max(50).nullish(),
   // Context
-  checkInContext: z.string().max(2000).nullish(),
-  wearableContext: z.string().max(2000).nullish(),
+  checkInContext: z.string().max(12000).nullish(),
+  wearableContext: z.string().max(4000).nullish(),
   preferredLanguage: z.enum(['en', 'fr', 'es', 'it', 'pt']).nullish(),
   // App state
   lastProgressUpdate: z.string().max(50).nullish(),
