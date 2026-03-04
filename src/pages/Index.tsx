@@ -477,11 +477,21 @@ const Index = () => {
         <div className="flex-1 flex items-center justify-center max-w-sm md:max-w-md relative">
           {/* Soft gradient blob behind the phone */}
           <div className="absolute inset-0 -m-8 rounded-full bg-gradient-to-br from-primary/8 via-accent/30 to-transparent blur-3xl" />
-          <img
-            src={appMockup}
-            alt="MacNutrition app dashboard showing calorie targets and macro breakdown"
-            className="relative w-56 sm:w-64 md:w-72 lg:w-80 h-auto drop-shadow-2xl transform rotate-[2deg]"
-          />
+          {/* Phone frame */}
+          <div className="relative w-56 sm:w-64 md:w-72 lg:w-80 transform rotate-[2deg] drop-shadow-2xl">
+            <div className="rounded-[2.5rem] border-[6px] border-foreground/90 bg-foreground/90 overflow-hidden shadow-xl">
+              {/* Notch */}
+              <div className="relative z-10 mx-auto w-[40%] h-5 bg-foreground/90 rounded-b-2xl" />
+              {/* Screen */}
+              <div className="bg-background -mt-1">
+                <img
+                  src={appMockup}
+                  alt="MacNutrition app dashboard showing calorie targets and macro breakdown"
+                  className="w-full h-auto block"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
