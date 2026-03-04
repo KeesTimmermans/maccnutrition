@@ -477,24 +477,29 @@ const Index = () => {
         {/* Right — iPhone mockup with screenshot */}
         <div className="flex-1 flex items-center justify-center max-w-sm md:max-w-md relative">
           {/* Soft gradient blob behind the phone */}
-          <div className="absolute inset-0 -m-12 rounded-full bg-gradient-to-br from-primary/6 via-accent/20 to-transparent blur-3xl" />
+          <div className="absolute inset-0 -m-12 rounded-full bg-gradient-to-br from-primary/5 via-accent/10 to-transparent blur-3xl" />
           {/* Phone frame */}
-          <div className="relative w-52 sm:w-60 md:w-64 lg:w-72 transform rotate-[6deg] drop-shadow-2xl">
-            <div className="rounded-[2.5rem] border-[5px] border-foreground/85 bg-foreground/85 p-[2px] overflow-hidden shadow-2xl">
+          <div
+            className="relative w-60 sm:w-68 md:w-72 lg:w-80 transform rotate-[2deg]"
+            style={{
+              filter: 'drop-shadow(0 25px 50px rgba(0,0,0,0.15)) drop-shadow(0 10px 20px rgba(0,0,0,0.08))',
+            }}
+          >
+            <div className="rounded-[3rem] border-[4px] border-[hsl(0_0%_15%)] bg-[hsl(0_0%_15%)] overflow-hidden">
               {/* Dynamic Island */}
-              <div className="relative z-10 mx-auto w-[28%] h-[18px] bg-foreground/85 rounded-b-xl" />
+              <div className="relative z-10 mx-auto w-[26%] h-[16px] mt-[6px] bg-[hsl(0_0%_8%)] rounded-full" />
               {/* Screen content */}
-              <div className="rounded-[2.2rem] bg-background overflow-hidden -mt-0.5">
+              <div className="bg-background overflow-hidden mt-1 mx-[2px] mb-[2px] rounded-b-[2.7rem]">
                 <img
                   src={appMockup}
                   alt="MacNutrition app dashboard showing coaching plan, calorie targets, and macro breakdown"
-                  className="w-full h-auto block scale-[0.55] origin-top"
-                  style={{ marginBottom: '-45%' }}
+                  className="w-full h-auto block scale-[0.52] origin-top"
+                  style={{ marginBottom: '-48%' }}
                 />
               </div>
             </div>
-            {/* Bottom bar indicator */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[30%] h-1 bg-foreground/40 rounded-full" />
+            {/* Home indicator */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[28%] h-[3px] bg-foreground/30 rounded-full" />
           </div>
         </div>
       </main>
