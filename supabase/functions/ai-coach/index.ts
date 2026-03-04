@@ -696,26 +696,26 @@ You MUST follow these rules for this response:
       ? chatStyleDirectives[coachingTone] || chatStyleDirectives['supportive']
       : '';
 
-    // max_tokens caps per style
+    // Token budgets: keep at least 1500 for chat outputs to avoid truncation
     const maxTokensByStyle: Record<string, number> = {
-      direct: 300,
-      supportive: 600,
-      educational: 1200,
-      motivational: 600,
+      direct: 1500,
+      supportive: 1600,
+      educational: 1800,
+      motivational: 1600,
     };
 
-    // Detect meal/recipe intent to bump token budget
+    // Detect meal/recipe intent to increase budget and enforce structured completion
     const lastUserMsg = (messages && messages.length > 0)
       ? messages[messages.length - 1]?.content?.toLowerCase() || ''
       : (message || '').toLowerCase();
     const isMealIntent = /\b(recipe|meal idea|what should i eat|suggest a meal|what can i eat|give me a meal|lunch|dinner|breakfast|snack idea)\b/i.test(lastUserMsg);
-    
+
     let maxTokens: number;
     if (effectiveType === 'chat' || effectiveType === 'focus_tip') {
-      const baseTokens = maxTokensByStyle[coachingTone] || 600;
-      maxTokens = isMealIntent ? Math.max(baseTokens, 1200) : Math.max(baseTokens, 600);
+      const baseTokens = maxTokensByStyle[coachingTone] || 1600;
+      maxTokens = isMealIntent ? Math.max(baseTokens, 1800) : Math.max(baseTokens, 1500);
     } else {
-      maxTokens = 2000; // generous for check-ins and progress updates
+      maxTokens = 2200; // generous for check-ins and progress updates
     }
 
     const systemPrompt = `${CJT_CORE_SYSTEM}
@@ -728,30 +728,32 @@ ${chatStyleBlock}
     LANGUAGE INSTRUCTION:
 ${languageInstruction}
 
-ANSWER-FIRST MEAL FORMAT (use for ANY meal/recipe/snack suggestion in regular chat):
-When the user asks "what should I eat", "give me a meal", or any meal-related question:
-Stay under ~1500 characters total. Use this EXACT structure:
+MEAL RESPONSE FORMAT (required for ANY meal/recipe/snack suggestion in regular chat):
+Keep the full answer concise (~1200 characters target). Use this EXACT structure and complete every section:
 
-🍽️ **Tonight's meal:** [One sentence describing the meal]
+**Meal idea:** [One sentence]
 
-**Quick recipe:**
-• [Step 1]
-• [Step 2]
-• [Step 3]
-• [Step 4]
-• [Step 5 — max 6 steps]
+**Ingredients / quick steps:**
+• [Ingredient or step 1]
+• [Ingredient or step 2]
+• [Ingredient or step 3]
+• [Ingredient or step 4]
+• [Max 6 bullets total]
 
-**Your portion:** [X grams]${userContext?.sex === 'female' ? '' : ' | **Kids portion:** [Y grams]'}
+**Your portion:** [X grams]
 
-**What to log in the app:**
+**Kids portion:** [Y grams]
+
+**What to log:**
 • [Exact item 1 — name + grams]
 • [Exact item 2 — name + grams]
 
-Rules for this format:
-- Maximum ONE empathy/intro sentence before the meal. Skip it if unnecessary.
-- ALWAYS include the meal AND the "What to log" section in the SAME message — never split across messages.
-- Do NOT give a long preamble or explanation before the meal.
-- If you cannot fit it, drop the explanation — keep the recipe + log instructions.
+Rules:
+- Maximum ONE empathy sentence.
+- No long introductions or preamble.
+- Always include meal + logging instructions in the same message.
+- Never stop before completing **What to log**.
+- If a response is interrupted, continue the answer immediately without apologizing.
 
 CONSECUTIVE PATTERN DETECTION:
 If the check-in data shows "CONSECUTIVE PATTERN ALERT" with metrics logged at the SAME VALUE for 3+ days:
@@ -772,7 +774,7 @@ RESPONSE GUIDELINES:
 
     // Build messages array for chat
     let apiMessages: any[] = [{ role: "system", content: systemPrompt }];
-    
+
     if (messages && messages.length > 0) {
       // Add conversation history
       apiMessages = apiMessages.concat(messages.map((m: any) => ({
@@ -784,7 +786,41 @@ RESPONSE GUIDELINES:
       apiMessages.push({ role: "user", content: message });
     }
 
-    console.log("Calling AI gateway for chat, messages count:", apiMessages.length);
+    const parseResponseText = (raw: unknown): string => {
+      if (typeof raw === "string") return raw.trim();
+      if (Array.isArray(raw)) {
+        return raw
+          .map((part: any) => {
+            if (typeof part === "string") return part;
+            if (part && typeof part.text === "string") return part.text;
+            return "";
+          })
+          .join("")
+          .trim();
+      }
+      return "";
+    };
+
+    const isStopped = (reason?: string) => {
+      const normalized = (reason || "").toLowerCase();
+      return normalized === "stop" || normalized === "end_turn";
+    };
+
+    const hasMealSections = (text: string) => {
+      const normalized = text.toLowerCase();
+      return normalized.includes("meal idea")
+        && (normalized.includes("ingredients / quick steps") || normalized.includes("quick recipe"))
+        && normalized.includes("your portion")
+        && normalized.includes("kids portion")
+        && normalized.includes("what to log");
+    };
+
+    const stripLeadingApology = (text: string) =>
+      text
+        .replace(/^(sorry|apologies|i apologize)[^\n.!?]*[\n.!?]\s*/i, "")
+        .trim();
+
+    console.log("Calling AI gateway for chat, messages count:", apiMessages.length, "max_tokens:", maxTokens);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -802,7 +838,7 @@ RESPONSE GUIDELINES:
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
           status: 429,
@@ -815,44 +851,34 @@ RESPONSE GUIDELINES:
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
+
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    const finishReason = data.choices?.[0]?.finish_reason;
-    const rawContent = data.choices?.[0]?.message?.content;
-
-    let aiResponse = "";
-    if (typeof rawContent === "string") {
-      aiResponse = rawContent.trim();
-    } else if (Array.isArray(rawContent)) {
-      aiResponse = rawContent
-        .map((part: any) => {
-          if (typeof part === "string") return part;
-          if (part && typeof part.text === "string") return part.text;
-          return "";
-        })
-        .join("")
-        .trim();
-    }
+    let finishReason = data.choices?.[0]?.finish_reason;
+    let aiResponse = parseResponseText(data.choices?.[0]?.message?.content);
 
     if (!aiResponse) {
-      aiResponse = "Sorry — I had a formatting hiccup. Please send that again and I’ll answer properly.";
+      aiResponse = "I lost the tail end of that response. Send it once more and I’ll complete it fully.";
     }
 
-    // Auto-continue if response was truncated and missing the "What to log" section
-    const wasTruncated = finishReason === "length" || finishReason === "MAX_TOKENS";
-    const missingLogSection = isMealIntent && !aiResponse.toLowerCase().includes("what to log");
+    // For meal intent, continue until we have required sections and a stop finish_reason (max 3 total calls)
+    if (isMealIntent) {
+      let attempts = 0;
+      while (attempts < 2 && (!isStopped(finishReason) || !hasMealSections(aiResponse))) {
+        attempts += 1;
+        console.log("Meal response incomplete, sending auto-continue", { attempts, finishReason });
 
-    if (wasTruncated && missingLogSection) {
-      console.log("Response truncated, sending auto-continue request");
-      try {
         const continueMessages = [
           ...apiMessages,
           { role: "assistant", content: aiResponse },
-          { role: "user", content: "Continue from where you left off. Provide ONLY the missing sections: recipe steps, portion sizes, and 'What to log in the app' items. Do not repeat earlier text." }
+          {
+            role: "user",
+            content: "Continue from where you left off. Start with the missing meal/recipe and logging instructions. Do not repeat earlier text. Do not apologize."
+          }
         ];
+
         const continueResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -862,23 +888,30 @@ RESPONSE GUIDELINES:
           body: JSON.stringify({
             model: "google/gemini-2.5-flash",
             messages: continueMessages,
-            max_tokens: 800,
+            max_tokens: 1500,
           }),
         });
-        if (continueResponse.ok) {
-          const continueData = await continueResponse.json();
-          const cc = continueData.choices?.[0]?.message?.content;
-          if (typeof cc === "string" && cc.trim()) {
-            aiResponse = aiResponse + "\n\n" + cc.trim();
-            console.log("Auto-continue appended successfully");
-          }
+
+        if (!continueResponse.ok) {
+          console.error("Auto-continue failed with status", continueResponse.status);
+          break;
         }
-      } catch (continueErr) {
-        console.error("Auto-continue failed, returning partial:", continueErr);
+
+        const continueData = await continueResponse.json();
+        const continueReason = continueData.choices?.[0]?.finish_reason;
+        const continuedText = stripLeadingApology(parseResponseText(continueData.choices?.[0]?.message?.content));
+
+        if (!continuedText) {
+          break;
+        }
+
+        aiResponse = `${aiResponse}\n\n${continuedText}`.trim();
+        finishReason = continueReason;
       }
     }
 
     console.log("AI chat response generated, finish_reason:", finishReason);
+
 
     return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
