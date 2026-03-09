@@ -7,7 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Input validation schema
 const userContextSchema = z.object({
   primaryGoal: z.string().max(100).nullable().optional(),
   targetCalories: z.number().min(500).max(10000).nullable().optional(),
@@ -22,13 +21,11 @@ const userContextSchema = z.object({
   proteinShakesPreference: z.string().max(50).nullable().optional(),
   cookingSkill: z.string().max(50).nullable().optional(),
   mealPrepTime: z.string().max(50).nullable().optional(),
-  // Additional behavioral context
   eatingOutFrequency: z.string().max(50).nullable().optional(),
   snackingHabits: z.string().max(100).nullable().optional(),
   weekendHabits: z.string().max(100).nullable().optional(),
   energyPatterns: z.string().max(100).nullable().optional(),
   conditions: z.array(z.string().max(100)).max(20).nullable().optional(),
-  // Unit system preference
   unitSystem: z.enum(['metric', 'imperial']).nullable().optional()
 }).passthrough().optional();
 
@@ -36,18 +33,32 @@ const requestSchema = z.object({
   userContext: userContextSchema
 });
 
+// Timing helper
+function timer() {
+  const start = Date.now();
+  return {
+    elapsed: () => Date.now() - start,
+    log: (label: string) => {
+      const ms = Date.now() - start;
+      console.log(`[TIMING] ${label}: ${ms}ms`);
+      return ms;
+    }
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const totalTimer = timer();
+
   try {
-    // Authentication check
+    // Auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -59,251 +70,98 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      console.error("Auth error:", authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    console.log("Authenticated user:", user.id);
+    totalTimer.log("auth_complete");
 
-    // Parse and validate input
+    // Validate input
     const rawBody = await req.json();
     const validationResult = requestSchema.safeParse(rawBody);
-    
     if (!validationResult.success) {
-      console.error("Validation error:", validationResult.error.errors);
       return new Response(JSON.stringify({ 
         error: "Invalid input", 
         details: validationResult.error.errors.map(e => e.message).join(", ")
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { userContext } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Parse meals per day to determine meal structure
+    totalTimer.log("validation_complete");
+
+    // Parse context
     const mealsPerDayRaw = userContext?.mealsPerDay || '3';
-    // Handle values like "4+" or "5+" by extracting the number
     const mealsPerDayNum = parseInt(mealsPerDayRaw.replace(/\D/g, ''), 10) || 3;
-    
-    console.log("User context received:", JSON.stringify({
-      mealsPerDay: userContext?.mealsPerDay,
-      targetCalories: userContext?.targetCalories,
-      proteinGrams: userContext?.proteinGrams,
-      carbsGrams: userContext?.carbsGrams,
-      fatsGrams: userContext?.fatsGrams,
-      dietType: userContext?.dietType,
-      primaryGoal: userContext?.primaryGoal
-    }));
-    console.log(`Parsed mealsPerDay: "${mealsPerDayRaw}" -> ${mealsPerDayNum}`);
-    
-    // Define meal structure based on number of meals
-    let mealStructure = '';
-    let allowedMealTypes: string[] = [];
-    
-    if (mealsPerDayNum === 2) {
-      mealStructure = 'EXACTLY 2 meals per day: Brunch (mid-morning) and Dinner (evening). NO breakfast, lunch, or snacks.';
-      allowedMealTypes = ['Brunch', 'Dinner'];
-    } else if (mealsPerDayNum === 3) {
-      mealStructure = 'EXACTLY 3 meals per day: Breakfast (morning), Lunch (midday), and Dinner (evening). NO snacks.';
-      allowedMealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-    } else if (mealsPerDayNum === 4) {
-      mealStructure = 'EXACTLY 4 meals per day: Breakfast (morning), Lunch (midday), Afternoon Snack, and Dinner (evening).';
-      allowedMealTypes = ['Breakfast', 'Lunch', 'Snack', 'Dinner'];
-    } else if (mealsPerDayNum === 5) {
-      mealStructure = 'EXACTLY 5 meals per day: Breakfast (morning), Morning Snack, Lunch (midday), Afternoon Snack, and Dinner (evening).';
-      allowedMealTypes = ['Breakfast', 'Snack', 'Lunch', 'Snack', 'Dinner'];
-    } else if (mealsPerDayNum >= 6) {
-      mealStructure = 'EXACTLY 6 meals per day: Breakfast, Morning Snack, Lunch, Afternoon Snack, Dinner, and Evening Snack.';
-      allowedMealTypes = ['Breakfast', 'Snack', 'Lunch', 'Snack', 'Dinner', 'Snack'];
-    } else {
-      // Default to 3 meals
-      mealStructure = 'EXACTLY 3 meals per day: Breakfast (morning), Lunch (midday), and Dinner (evening). NO snacks.';
-      allowedMealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-    }
-
-    console.log(`Generating meal plan with ${mealsPerDayNum} meals per day:`, mealStructure);
-
-    // Parse protein shakes preference
+    const targetCal = userContext?.targetCalories || 2000;
+    const proteinG = userContext?.proteinGrams || 120;
+    const carbsG = userContext?.carbsGrams || 200;
+    const fatsG = userContext?.fatsGrams || 65;
+    const dietType = userContext?.dietType || 'balanced';
+    const allergies = userContext?.allergies || [];
+    const foodDislikes = userContext?.foodDislikes || '';
+    const isImperial = (userContext?.unitSystem || 'metric') === 'imperial';
     const proteinShakesPref = userContext?.proteinShakesPreference || 'sometimes';
-    let proteinShakesGuideline = '';
-    if (proteinShakesPref === 'love') {
-      proteinShakesGuideline = 'The user LOVES protein shakes - feel free to include protein shakes/smoothies as meals or snacks (1-2 per day is great).';
-    } else if (proteinShakesPref === 'sometimes') {
-      proteinShakesGuideline = 'The user is open to occasional protein shakes - include 2-3 protein shakes throughout the week when convenient.';
-    } else if (proteinShakesPref === 'prefer_whole_foods') {
-      proteinShakesGuideline = 'The user PREFERS whole foods over shakes - minimize protein shakes, only suggest rarely (1 per week max) and focus on whole food protein sources.';
-    } else if (proteinShakesPref === 'never') {
-      proteinShakesGuideline = 'IMPORTANT: The user does NOT want protein shakes - DO NOT include any protein shakes, smoothies, or protein powder in the meal plan. Use only whole food protein sources.';
-    }
 
-    // Parse cooking skill and prep time
-    const cookingSkill = userContext?.cookingSkill || 'intermediate';
-    const mealPrepTime = userContext?.mealPrepTime || 'moderate';
-    let complexityGuideline = '';
-    if (cookingSkill === 'beginner' || mealPrepTime === 'minimal') {
-      complexityGuideline = 'Keep recipes SIMPLE with 5 ingredients or fewer. Focus on quick meals that take under 20 minutes.';
-    } else if (cookingSkill === 'advanced' && mealPrepTime === 'plenty') {
-      complexityGuideline = 'Can include more complex recipes and meal prep strategies.';
-    }
-
-    // Build strict dietary restrictions string
-    const dietTypeRaw = userContext?.dietType || 'balanced';
-    const allergiesRaw = userContext?.allergies || [];
-    const foodDislikesRaw = userContext?.foodDislikes || '';
-    
-    // Map diet types to strict exclusion rules
-    const dietTypeRules: Record<string, string> = {
-      'vegetarian': 'STRICT VEGETARIAN: NO meat of any kind including beef, pork, lamb, chicken, turkey, duck, or any other poultry. NO fish or seafood. Use only plant proteins (tofu, tempeh, legumes, beans, lentils), eggs, and dairy.',
-      'vegan': 'STRICT VEGAN: NO animal products whatsoever - no meat (including chicken, beef, pork), no fish, no poultry, no eggs, no dairy, no honey, or any animal-derived ingredients. Use only plant-based proteins and ingredients.',
-      'pescatarian': 'PESCATARIAN: NO meat including beef, pork, lamb, chicken, turkey, or any poultry. Fish and seafood are allowed. Include eggs and dairy.',
-      'keto': 'KETOGENIC: Very low carb (under 30g net carbs per day), high fat, moderate protein. No grains, sugar, high-carb fruits, or starchy vegetables.',
-      'paleo': 'PALEO: No grains, legumes, dairy, refined sugar, or processed foods. Focus on meat, fish, vegetables, fruits, nuts, and seeds.',
-      'mediterranean': 'MEDITERRANEAN: Emphasize olive oil, fish, whole grains, legumes, vegetables, and fruits. Limited red meat.',
-      'gluten_free': 'GLUTEN-FREE: NO wheat, barley, rye, or any gluten-containing ingredients. Use rice, quinoa, corn, and certified gluten-free products.',
-      'dairy_free': 'DAIRY-FREE: NO milk, cheese, yogurt, butter, cream, or any dairy products. Use plant-based alternatives.',
-      'low_carb': 'LOW CARB: Keep carbohydrates under 100g per day. Focus on protein and healthy fats.',
-      'balanced': 'Balanced diet with a variety of whole foods.'
+    // Meal structure
+    const mealStructures: Record<number, string[]> = {
+      2: ['Brunch', 'Dinner'],
+      3: ['Breakfast', 'Lunch', 'Dinner'],
+      4: ['Breakfast', 'Lunch', 'Snack', 'Dinner'],
+      5: ['Breakfast', 'Snack', 'Lunch', 'Snack', 'Dinner'],
+      6: ['Breakfast', 'Snack', 'Lunch', 'Snack', 'Dinner', 'Snack'],
     };
-    
-    const dietTypeGuideline = dietTypeRules[dietTypeRaw] || dietTypeRules['balanced'];
-    
-    // Build allergy exclusions
-    let allergyGuideline = '';
-    if (allergiesRaw.length > 0) {
-      allergyGuideline = `CRITICAL ALLERGIES - NEVER INCLUDE: ${allergiesRaw.join(', ')}. These ingredients must be completely avoided in all meals and recipes.`;
-    }
-    
-    // Build food dislikes
-    let dislikesGuideline = '';
-    if (foodDislikesRaw.trim()) {
-      dislikesGuideline = `FOOD DISLIKES - AVOID: ${foodDislikesRaw}. Do not include these foods in the meal plan.`;
-    }
+    const allowedMealTypes = mealStructures[mealsPerDayNum] || mealStructures[3];
 
-    // Build additional behavioral context
-    const eatingOutFreq = userContext?.eatingOutFrequency || '';
-    const snackingHabitsRaw = userContext?.snackingHabits || '';
-    const weekendHabitsRaw = userContext?.weekendHabits || '';
-    const energyPatternsRaw = userContext?.energyPatterns || '';
-    const conditionsRaw = userContext?.conditions || [];
-    
-    let behavioralGuidelines = '';
-    if (eatingOutFreq === 'daily' || eatingOutFreq === 'most_days') {
-      behavioralGuidelines += '\n- Include some restaurant-friendly or quick grab-and-go meal options.';
-    }
-    if (snackingHabitsRaw === 'frequent' || snackingHabitsRaw === 'constant') {
-      behavioralGuidelines += '\n- Consider including satisfying, protein-rich snacks when snacks are in the plan.';
-    }
-    if (weekendHabitsRaw === 'relaxed' || weekendHabitsRaw === 'very_different') {
-      behavioralGuidelines += '\n- Make weekend meals slightly more flexible and enjoyable while still meeting targets.';
-    }
-    if (energyPatternsRaw === 'low_afternoon') {
-      behavioralGuidelines += '\n- Include energizing, balanced lunches to prevent afternoon energy crashes.';
-    }
-    if (conditionsRaw.includes('diabetes') || conditionsRaw.includes('insulin_resistance')) {
-      behavioralGuidelines += '\n- Focus on low-glycemic foods and balanced blood sugar with protein/fat at each meal.';
-    }
-    if (conditionsRaw.includes('high_blood_pressure')) {
-      behavioralGuidelines += '\n- Keep sodium moderate in meal suggestions.';
-    }
+    // Diet rules (compact)
+    const dietRules: Record<string, string> = {
+      'vegetarian': 'VEGETARIAN: No meat/poultry/fish. Use plant proteins, eggs, dairy.',
+      'vegan': 'VEGAN: No animal products at all. Plant-based only.',
+      'pescatarian': 'PESCATARIAN: No meat/poultry. Fish, eggs, dairy OK.',
+      'keto': 'KETO: Under 30g net carbs/day. High fat, moderate protein.',
+      'paleo': 'PALEO: No grains, legumes, dairy, refined sugar.',
+      'mediterranean': 'MEDITERRANEAN: Olive oil, fish, whole grains, vegetables.',
+      'gluten_free': 'GLUTEN-FREE: No wheat, barley, rye.',
+      'dairy_free': 'DAIRY-FREE: No dairy products.',
+      'low_carb': 'LOW CARB: Under 100g carbs/day.',
+      'balanced': 'Balanced whole foods.',
+    };
 
-    // Determine unit system
-    const unitSystem = userContext?.unitSystem || 'metric';
-    const isImperial = unitSystem === 'imperial';
-    
-    // Unit-specific instructions
-    const unitInstructions = isImperial
-      ? `MEASUREMENT UNITS (IMPERIAL):
-- Use "oz" for weight-based items (meat, cheese, vegetables by weight)
-- Use "cups" for volume items like rice, pasta, liquids
-- Use "tbsp" for smaller amounts
-- Use "pcs" for countable items (eggs, bananas, slices)
-- gramsPerUnit: For "oz" use 28.35, for "cups" use approximate gram weight, for "pcs" use actual weight per item
-- All nutrition values (caloriesPer100g, proteinPer100g, etc.) should still be per 100 GRAMS for calculation accuracy
+    // Protein shakes (compact)
+    const shakeRules: Record<string, string> = {
+      'love': 'Include 1-2 protein shakes/day.',
+      'sometimes': 'Include 2-3 shakes/week.',
+      'prefer_whole_foods': 'Minimize shakes, max 1/week.',
+      'never': 'NO protein shakes/powder.',
+    };
 
-Example for chicken (imperial): { "name": "Chicken Breast", "quantity": 5, "unit": "oz", "gramsPerUnit": 28.35, "caloriesPer100g": 165, "proteinPer100g": 31, "carbsPer100g": 0, "fatsPer100g": 3.6 }
-Example for rice (imperial): { "name": "Cooked Rice", "quantity": 0.5, "unit": "cups", "gramsPerUnit": 158, "caloriesPer100g": 130, "proteinPer100g": 2.7, "carbsPer100g": 28, "fatsPer100g": 0.3 }`
-      : `MEASUREMENT UNITS (METRIC):
-- Use "g" for weight-based items (meat, vegetables, cheese)
-- Use "ml" for liquids
-- Use "pcs" for countable items (eggs, bananas, slices)
-- gramsPerUnit: For "g" unit use 1, for "pcs" use actual weight per item (e.g., ~50 for eggs, ~120 for banana)
+    // Build compact prompt
+    const systemPrompt = `Expert meal planner. Create a 7-day meal plan.
 
-Example for chicken (metric): { "name": "Chicken Breast", "quantity": 150, "unit": "g", "gramsPerUnit": 1, "caloriesPer100g": 165, "proteinPer100g": 31, "carbsPer100g": 0, "fatsPer100g": 3.6 }
-Example for eggs: { "name": "Large Eggs", "quantity": 2, "unit": "pcs", "gramsPerUnit": 50, "caloriesPer100g": 155, "proteinPer100g": 13, "carbsPer100g": 1, "fatsPer100g": 11 }`;
+Targets: ${targetCal}kcal, ${proteinG}g protein, ${carbsG}g carbs, ${fatsG}g fat/day.
+Meals/day: ${mealsPerDayNum} (${allowedMealTypes.join(', ')})
+Diet: ${dietRules[dietType] || dietRules['balanced']}
+${allergies.length > 0 ? `Allergies (NEVER include): ${allergies.join(', ')}` : ''}
+${foodDislikes ? `Avoid: ${foodDislikes}` : ''}
+${shakeRules[proteinShakesPref] || ''}
+Units: ${isImperial ? 'imperial (oz, cups, pcs)' : 'metric (g, ml, pcs)'}
 
-    const systemPrompt = `You are an expert meal planner for CJTNutrition. Create a personalized 7-day meal plan based on the user's goals, preferences, and dietary restrictions.
+Rules:
+- EXACTLY ${mealsPerDayNum} meals per day, 7 days
+- ~${Math.round(targetCal / mealsPerDayNum)}kcal per meal
+- Vary protein sources
+- Practical, easy meals
+- Each ingredient needs: name, quantity, unit${isImperial ? ' (oz/cups/tbsp/pcs)' : ' (g/ml/pcs)'}, gramsPerUnit${isImperial ? ' (28.35 for oz)' : ' (1 for g)'}`;
 
-User Profile:
-- Primary Goal: ${userContext?.primaryGoal || 'general health'}
-- Daily Calorie Target: ${userContext?.targetCalories || 2000} kcal
-- Protein Goal: ${userContext?.proteinGrams || 120}g
-- Carbs Goal: ${userContext?.carbsGrams || 200}g
-- Fats Goal: ${userContext?.fatsGrams || 65}g
-- Meals Per Day: ${mealsPerDayNum}
-- Activity Level: ${userContext?.activityLevel || 'moderate'}
-- Cooking Skill: ${cookingSkill}
-- Meal Prep Time Available: ${mealPrepTime}
-- Unit System: ${isImperial ? 'IMPERIAL (oz, cups, tbsp)' : 'METRIC (grams, ml)'}
+    const userPrompt = `Generate 7-day plan. ${mealsPerDayNum} meals/day: ${allowedMealTypes.join(', ')}. ${isImperial ? 'Imperial' : 'Metric'} units.`;
 
-⚠️ CRITICAL DIETARY REQUIREMENTS (MUST FOLLOW STRICTLY):
-${dietTypeGuideline}
-${allergyGuideline ? `\n${allergyGuideline}` : ''}
-${dislikesGuideline ? `\n${dislikesGuideline}` : ''}
+    totalTimer.log("prompt_built");
 
-CRITICAL MEAL STRUCTURE REQUIREMENT:
-${mealStructure}
-
-You MUST provide EXACTLY ${mealsPerDayNum} meals for EACH of the 7 days. No more, no less.
-The allowed meal types are: ${allowedMealTypes.join(', ')}.
-
-PROTEIN SHAKES PREFERENCE:
-${proteinShakesGuideline}
-
-${complexityGuideline ? `COMPLEXITY GUIDELINE:\n${complexityGuideline}\n` : ''}
-BEHAVIORAL ADAPTATIONS:${behavioralGuidelines || '\n- No specific behavioral adaptations needed.'}
-
-${unitInstructions}
-
-Guidelines:
-- Create balanced, whole-food focused meals
-- Distribute the ${userContext?.targetCalories || 2000} daily calories evenly across ${mealsPerDayNum} meals (approximately ${Math.round((userContext?.targetCalories || 2000) / mealsPerDayNum)} kcal per meal)
-- Ensure daily totals approximately match calorie and macro targets
-- Vary protein sources throughout the week (RESPECTING the diet type above)
-- Include vegetables with most meals
-- Keep meals practical and easy to prepare
-- STRICTLY respect the dietary type, restrictions, and allergies listed above - NEVER violate these
-- USE THE CORRECT UNIT SYSTEM (${isImperial ? 'imperial' : 'metric'}) for all ingredient quantities`;
-
-    const userPrompt = `Generate a complete 7-day meal plan with EXACTLY ${mealsPerDayNum} meals per day. 
-
-IMPORTANT: Each day MUST have exactly these meals: ${allowedMealTypes.join(', ')}.
-IMPORTANT: Use ${isImperial ? 'IMPERIAL units (oz, cups, tbsp, pcs)' : 'METRIC units (g, ml, pcs)'} for all ingredient quantities.
-
-${proteinShakesPref === 'never' ? 'REMINDER: NO protein shakes or smoothies - whole foods only!' : ''}
-
-For EACH meal, include:
-- Name and description
-- Total calories, protein, carbs, and fats
-- A detailed "ingredients" array with each ingredient's:
-  - name (e.g., "Chicken Breast", "Large Eggs", "Banana")
-  - quantity (e.g., 2 for eggs, ${isImperial ? '5 for ounces' : '150 for grams'})
-  - unit: ${isImperial ? 'Use "oz" for weight, "cups" for volume, "tbsp" for small amounts, "pcs" for countable items' : 'Use "g" for weight, "ml" for liquids, "pcs" for countable items'}
-  - gramsPerUnit: Weight in grams per single unit (${isImperial ? '28.35 for oz, ~158 for cup of rice' : '1 for "g" unit, ~50 for eggs, ~120 for banana'})
-  - Nutrition per 100g (caloriesPer100g, proteinPer100g, carbsPer100g, fatsPer100g) - ALWAYS in grams for calculation accuracy
-
-Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
-
-    console.log("Generating meal plan for user");
+    // AI call
+    const aiTimer = timer();
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -312,7 +170,7 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -322,7 +180,7 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
             type: "function",
             function: {
               name: "create_meal_plan",
-              description: "Create a structured 7-day meal plan with detailed ingredient breakdowns",
+              description: "Create a 7-day meal plan",
               parameters: {
                 type: "object",
                 properties: {
@@ -331,39 +189,34 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
                     items: {
                       type: "object",
                       properties: {
-                        day: { type: "string", description: "Day name (Monday, Tuesday, etc.)" },
+                        day: { type: "string" },
                         meals: {
                           type: "array",
                           items: {
                             type: "object",
                             properties: {
-                              type: { type: "string", description: "Meal type (Breakfast, Lunch, Dinner, Snack)" },
-                              name: { type: "string", description: "Meal name" },
-                              description: { type: "string", description: "Brief description of ingredients" },
+                              type: { type: "string" },
+                              name: { type: "string" },
+                              description: { type: "string" },
                               calories: { type: "number" },
                               protein: { type: "number" },
                               carbs: { type: "number" },
                               fats: { type: "number" },
                               ingredients: {
                                 type: "array",
-                                description: "Detailed ingredient breakdown with quantities and nutrition per 100g",
                                 items: {
                                   type: "object",
                                   properties: {
-                                    name: { type: "string", description: "Ingredient name (e.g., 'Chicken Breast', 'Eggs', 'Banana')" },
-                                    quantity: { type: "number", description: "Amount (e.g., 2 for eggs, 150 for grams)" },
-                                    unit: { type: "string", description: "Unit type: 'pcs' for countable items (eggs, bananas), 'g' for grams, 'ml' for liquids" },
-                                    gramsPerUnit: { type: "number", description: "Grams per single unit. For 'g' unit use 1, for eggs ~50, for banana ~120, etc." },
-                                    caloriesPer100g: { type: "number", description: "Calories per 100g of this ingredient" },
-                                    proteinPer100g: { type: "number", description: "Protein grams per 100g" },
-                                    carbsPer100g: { type: "number", description: "Carbs grams per 100g" },
-                                    fatsPer100g: { type: "number", description: "Fats grams per 100g" }
+                                    name: { type: "string" },
+                                    quantity: { type: "number" },
+                                    unit: { type: "string" },
+                                    gramsPerUnit: { type: "number" }
                                   },
-                                  required: ["name", "quantity", "unit", "gramsPerUnit", "caloriesPer100g", "proteinPer100g", "carbsPer100g", "fatsPer100g"]
+                                  required: ["name", "quantity", "unit", "gramsPerUnit"]
                                 }
                               }
                             },
-                            required: ["type", "name", "description", "calories", "protein", "carbs", "fats", "ingredients"]
+                            required: ["type", "name", "calories", "protein", "carbs", "fats", "ingredients"]
                           }
                         },
                         totals: {
@@ -383,7 +236,7 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
                   tips: {
                     type: "array",
                     items: { type: "string" },
-                    description: "3-5 helpful meal prep tips"
+                    description: "3 meal prep tips"
                   }
                 },
                 required: ["days", "tips"]
@@ -395,20 +248,20 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
       }),
     });
 
+    aiTimer.log("ai_call_complete");
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       
@@ -416,21 +269,21 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
     }
 
     const data = await response.json();
-    console.log("AI response received");
+    aiTimer.log("ai_response_parsed");
 
-    // Extract the tool call result
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall && toolCall.function?.arguments) {
       const mealPlan = JSON.parse(toolCall.function.arguments);
-      console.log("Meal plan generated successfully");
+      totalTimer.log("total_complete");
+      console.log(`[PERF] Meal plan generated: ${mealPlan.days?.length} days, ${mealPlan.days?.[0]?.meals?.length} meals/day`);
       return new Response(JSON.stringify({ mealPlan }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fallback if tool call didn't work
     const content = data.choices?.[0]?.message?.content;
     if (content) {
+      totalTimer.log("total_complete_fallback");
       return new Response(JSON.stringify({ rawContent: content }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -439,11 +292,11 @@ Remember: ${mealsPerDayNum} meals per day, no exceptions.`;
     throw new Error("Failed to generate meal plan");
 
   } catch (error) {
+    totalTimer.log("total_error");
     console.error("Error in generate-meal-plan function:", error);
     const errorMessage = error instanceof Error ? error.message : "An error occurred";
     return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
