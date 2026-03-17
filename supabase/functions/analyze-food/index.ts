@@ -665,15 +665,17 @@ serve(async (req) => {
     // SUGGESTIONS MODE - OFF (UK) → FoodRepo → FatSecret → USDA → AI
     // ============================================
     if (mode === 'suggestions' && searchQuery) {
+      const suggestStart = Date.now();
       console.log(`[Suggestions Mode] UK-first search for: ${searchQuery}`);
       
-      // Search UK OFF, FoodRepo, FatSecret, and USDA in parallel
+      // Search UK OFF, FoodRepo, FatSecret, and USDA in parallel (all have 5s timeouts)
       const [offUKResults, frResults, fsResult, usdaResults] = await Promise.all([
         searchOpenFoodFactsUK(searchQuery, 4),
         searchFoodRepo(searchQuery, 3),
         lookupFatSecret(searchQuery),
         searchUSDA(searchQuery, 3),
       ]);
+      console.log(`[Suggestions Mode] All lookups completed in ${Date.now() - suggestStart}ms`);
       
       // Merge: OFF (UK) → FoodRepo → FatSecret → USDA (deduplicated)
       const allResults: NutritionPer100g[] = [];
