@@ -8,6 +8,21 @@ const corsHeaders = {
 };
 
 // ============================================
+// TIMEOUT HELPER - prevents hanging on slow external APIs
+// ============================================
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ============================================
 // NUTRITION DATABASE LOOKUPS (inline for edge function)
 // ============================================
 
@@ -86,9 +101,10 @@ async function searchOpenFoodFactsUK(query: string, limit: number = 5): Promise<
   try {
     console.log(`[OFF-UK] Searching for: ${query}`);
     const encodedQuery = encodeURIComponent(query);
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://uk.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=${limit}`,
-      { headers: { 'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com' } }
+      { headers: { 'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com' } },
+      5000
     );
 
     if (!response.ok) return [];
@@ -159,14 +175,15 @@ async function searchFoodRepo(query: string, limit: number = 3): Promise<Nutriti
   try {
     console.log(`[FoodRepo] Searching for: ${query}`);
     const encodedQuery = encodeURIComponent(query);
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://www.foodrepo.org/api/v3/products?q=${encodedQuery}&page_size=${limit}`,
       {
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Token token=""',
         },
-      }
+      },
+      5000
     );
 
     if (!response.ok) return [];
@@ -236,13 +253,14 @@ async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
   try {
     console.log(`[OpenFoodFacts] Looking up barcode: ${barcode}`);
     
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`,
       {
         headers: {
           'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com'
         }
-      }
+      },
+      5000
     );
 
     if (!response.ok) {
@@ -306,13 +324,14 @@ async function searchUSDA(query: string, limit: number = 5): Promise<NutritionPe
     // Use DEMO_KEY for basic access (rate limited but free)
     const apiKey = 'DEMO_KEY';
     const encodedQuery = encodeURIComponent(query);
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodedQuery}&pageSize=${limit}&dataType=Foundation,SR%20Legacy`,
       {
         headers: {
           'Content-Type': 'application/json'
         }
-      }
+      },
+      5000
     );
 
     if (!response.ok) {
@@ -402,14 +421,14 @@ async function lookupFatSecret(query: string): Promise<NutritionData | null> {
     }
 
     // Inline token fetch to avoid cross-function calls
-    const tokenResponse = await fetch('https://oauth.fatsecret.com/connect/token', {
+    const tokenResponse = await fetchWithTimeout('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
       },
       body: 'grant_type=client_credentials',
-    });
+    }, 5000);
 
     if (!tokenResponse.ok) {
       console.error('[FatSecret] Token error:', tokenResponse.status);
@@ -427,12 +446,12 @@ async function lookupFatSecret(query: string): Promise<NutritionData | null> {
       max_results: '3',
     });
 
-    const searchResponse = await fetch(`https://platform.fatsecret.com/rest/server.api?${params}`, {
+    const searchResponse = await fetchWithTimeout(`https://platform.fatsecret.com/rest/server.api?${params}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
-    });
+    }, 5000);
 
     if (!searchResponse.ok) {
       console.error('[FatSecret] Search error:', searchResponse.status);
@@ -646,15 +665,17 @@ serve(async (req) => {
     // SUGGESTIONS MODE - OFF (UK) → FoodRepo → FatSecret → USDA → AI
     // ============================================
     if (mode === 'suggestions' && searchQuery) {
+      const suggestStart = Date.now();
       console.log(`[Suggestions Mode] UK-first search for: ${searchQuery}`);
       
-      // Search UK OFF, FoodRepo, FatSecret, and USDA in parallel
+      // Search UK OFF, FoodRepo, FatSecret, and USDA in parallel (all have 5s timeouts)
       const [offUKResults, frResults, fsResult, usdaResults] = await Promise.all([
         searchOpenFoodFactsUK(searchQuery, 4),
         searchFoodRepo(searchQuery, 3),
         lookupFatSecret(searchQuery),
         searchUSDA(searchQuery, 3),
       ]);
+      console.log(`[Suggestions Mode] All lookups completed in ${Date.now() - suggestStart}ms`);
       
       // Merge: OFF (UK) → FoodRepo → FatSecret → USDA (deduplicated)
       const allResults: NutritionPer100g[] = [];
