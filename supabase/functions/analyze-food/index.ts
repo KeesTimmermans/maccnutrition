@@ -446,12 +446,12 @@ async function lookupFatSecret(query: string): Promise<NutritionData | null> {
       max_results: '3',
     });
 
-    const searchResponse = await fetch(`https://platform.fatsecret.com/rest/server.api?${params}`, {
+    const searchResponse = await fetchWithTimeout(`https://platform.fatsecret.com/rest/server.api?${params}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
-    });
+    }, 5000);
 
     if (!searchResponse.ok) {
       console.error('[FatSecret] Search error:', searchResponse.status);
