@@ -324,13 +324,14 @@ async function searchUSDA(query: string, limit: number = 5): Promise<NutritionPe
     // Use DEMO_KEY for basic access (rate limited but free)
     const apiKey = 'DEMO_KEY';
     const encodedQuery = encodeURIComponent(query);
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodedQuery}&pageSize=${limit}&dataType=Foundation,SR%20Legacy`,
       {
         headers: {
           'Content-Type': 'application/json'
         }
-      }
+      },
+      5000
     );
 
     if (!response.ok) {
