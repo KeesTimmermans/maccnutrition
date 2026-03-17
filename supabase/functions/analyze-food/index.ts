@@ -421,14 +421,14 @@ async function lookupFatSecret(query: string): Promise<NutritionData | null> {
     }
 
     // Inline token fetch to avoid cross-function calls
-    const tokenResponse = await fetch('https://oauth.fatsecret.com/connect/token', {
+    const tokenResponse = await fetchWithTimeout('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
       },
       body: 'grant_type=client_credentials',
-    });
+    }, 5000);
 
     if (!tokenResponse.ok) {
       console.error('[FatSecret] Token error:', tokenResponse.status);
