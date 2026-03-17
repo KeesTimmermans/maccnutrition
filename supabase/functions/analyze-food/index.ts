@@ -253,13 +253,14 @@ async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
   try {
     console.log(`[OpenFoodFacts] Looking up barcode: ${barcode}`);
     
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`,
       {
         headers: {
           'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com'
         }
-      }
+      },
+      5000
     );
 
     if (!response.ok) {
