@@ -8,6 +8,21 @@ const corsHeaders = {
 };
 
 // ============================================
+// TIMEOUT HELPER - prevents hanging on slow external APIs
+// ============================================
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ============================================
 // NUTRITION DATABASE LOOKUPS (inline for edge function)
 // ============================================
 
