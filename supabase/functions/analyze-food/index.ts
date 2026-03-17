@@ -101,9 +101,10 @@ async function searchOpenFoodFactsUK(query: string, limit: number = 5): Promise<
   try {
     console.log(`[OFF-UK] Searching for: ${query}`);
     const encodedQuery = encodeURIComponent(query);
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://uk.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=${limit}`,
-      { headers: { 'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com' } }
+      { headers: { 'User-Agent': 'CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com' } },
+      5000
     );
 
     if (!response.ok) return [];
