@@ -175,14 +175,15 @@ async function searchFoodRepo(query: string, limit: number = 3): Promise<Nutriti
   try {
     console.log(`[FoodRepo] Searching for: ${query}`);
     const encodedQuery = encodeURIComponent(query);
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://www.foodrepo.org/api/v3/products?q=${encodedQuery}&page_size=${limit}`,
       {
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Token token=""',
         },
-      }
+      },
+      5000
     );
 
     if (!response.ok) return [];
