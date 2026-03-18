@@ -10,6 +10,7 @@ export interface Meal {
   protein: number;
   carbs: number;
   fats: number;
+  sugar: number;
   logged_at: string;
   created_at: string;
 }
@@ -21,6 +22,7 @@ export interface MealInput {
   protein: number;
   carbs: number;
   fats: number;
+  sugar?: number;
   notes?: string;
 }
 
