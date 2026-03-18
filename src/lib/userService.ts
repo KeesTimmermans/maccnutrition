@@ -153,6 +153,7 @@ export const saveUserBaseline = async (
       protein_grams: baseline.macros.protein.grams,
       carbs_grams: baseline.macros.carbs.grams,
       fats_grams: baseline.macros.fats.grams,
+      sugar_grams: baseline.sugarGrams,
       water_liters: baseline.hydration.lowerLiters,
       water_liters_training: baseline.hydration.upperLiters,
       sodium_mg: baseline.hydration.sodiumMg,
