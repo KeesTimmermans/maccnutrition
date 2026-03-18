@@ -450,6 +450,7 @@ export const recalculateNutritionFromBaseline = async (
       protein_grams: results.macros.protein.grams,
       carbs_grams: results.macros.carbs.grams,
       fats_grams: results.macros.fats.grams,
+      sugar_grams: results.sugarGrams,
       water_liters: results.hydration.lowerLiters,
       water_liters_training: results.hydration.upperLiters,
       sodium_mg: results.hydration.sodiumMg,
