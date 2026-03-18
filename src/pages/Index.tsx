@@ -409,9 +409,9 @@ const Index = () => {
 
   // Welcome / Landing screen
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-[hsl(45_30%_97%)] to-[hsl(40_20%_94%)] flex flex-col">
+    <div className="min-h-screen md:h-screen md:overflow-hidden bg-gradient-to-br from-[hsl(45_30%_97%)] to-[hsl(40_20%_94%)] flex flex-col">
       {/* Nav bar */}
-      <nav className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-4 flex-shrink-0 relative z-10">
+      <nav className="flex items-center justify-between px-5 md:px-12 lg:px-20 py-3 md:py-4 flex-shrink-0 relative z-10">
         <img
           src={macLogo}
           alt="MacNutrition"
@@ -428,14 +428,14 @@ const Index = () => {
       </nav>
 
       {/* Main content — two columns */}
-      <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-12 lg:px-20 gap-8 md:gap-16 lg:gap-24 min-h-0">
+      <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-5 md:px-12 lg:px-20 gap-6 md:gap-16 lg:gap-24 min-h-0 pb-8 md:pb-0">
         {/* Left — copy */}
-        <div className="flex-1 max-w-lg space-y-6 md:space-y-8 text-center md:text-left pt-10 md:pt-0">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground leading-[1.1] tracking-tight">
+        <div className="flex-1 max-w-lg space-y-5 md:space-y-8 text-center md:text-left pt-4 md:pt-0">
+          <h1 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold text-foreground leading-[1.1] tracking-tight">
             Stop guessing your calories.
           </h1>
 
-          <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto md:mx-0">
+          <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto md:mx-0">
             Personalised nutrition plan and coaching built around your body, training, and lifestyle — no food restrictions.
           </p>
 
@@ -460,7 +460,7 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="space-y-2.5 pt-2">
+          <div className="space-y-2 pt-1 md:pt-2">
             {[
               "Personalised targets tailored to you",
               "Flexible, not restrictive",
@@ -476,24 +476,24 @@ const Index = () => {
         </div>
 
         {/* Right — iPhone mockup with screenshot */}
-        <div className="flex-1 flex items-center justify-center max-w-sm md:max-w-md relative">
+        <div className="flex-1 flex items-center justify-center max-w-[240px] md:max-w-md relative">
           {/* Soft gradient blob behind the phone */}
           <div className="absolute inset-0 -m-12 rounded-full bg-gradient-to-br from-primary/5 via-accent/10 to-transparent blur-3xl" />
           {/* Phone frame */}
           <div
             className="relative transform rotate-[2deg]"
             style={{
-              width: 'clamp(240px, 22vw, 320px)',
+              width: 'clamp(200px, 22vw, 320px)',
               filter: 'drop-shadow(0 25px 50px rgba(0,0,0,0.15)) drop-shadow(0 10px 20px rgba(0,0,0,0.08))',
             }}
           >
-            <div className="rounded-[3rem] border-[4px] border-[hsl(0_0%_15%)] bg-[hsl(0_0%_15%)] overflow-hidden">
+            <div className="rounded-[2.5rem] md:rounded-[3rem] border-[3px] md:border-[4px] border-[hsl(0_0%_15%)] bg-[hsl(0_0%_15%)] overflow-hidden">
               {/* Dynamic Island */}
-              <div className="relative z-10 mx-auto w-[26%] h-[16px] mt-[6px] bg-[hsl(0_0%_8%)] rounded-full" />
+              <div className="relative z-10 mx-auto w-[26%] h-[12px] md:h-[16px] mt-[4px] md:mt-[6px] bg-[hsl(0_0%_8%)] rounded-full" />
               {/* Screen content */}
               <div
-                className="bg-background overflow-hidden mt-1 mx-[2px] mb-[2px] rounded-b-[2.7rem]"
-                style={{ height: 'clamp(420px, 50vh, 620px)' }}
+                className="bg-background overflow-hidden mt-1 mx-[2px] mb-[2px] rounded-b-[2.2rem] md:rounded-b-[2.7rem]"
+                style={{ height: 'clamp(320px, 50vh, 620px)' }}
               >
                 <img
                   src={appMockup}
