@@ -43,6 +43,7 @@ export const saveMeal = async (meal: MealInput, loggedAt?: Date): Promise<Meal |
       protein: meal.protein,
       carbs: meal.carbs,
       fats: meal.fats,
+      sugar: meal.sugar || 0,
       notes: meal.notes || null,
       logged_at: loggedAt ? loggedAt.toISOString() : new Date().toISOString(),
     } as any)
