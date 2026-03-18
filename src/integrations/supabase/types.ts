@@ -423,6 +423,7 @@ export type Database = {
           name: string
           notes: string | null
           protein: number
+          sugar: number
           user_id: string
         }
         Insert: {
@@ -436,6 +437,7 @@ export type Database = {
           name: string
           notes?: string | null
           protein?: number
+          sugar?: number
           user_id: string
         }
         Update: {
@@ -449,6 +451,7 @@ export type Database = {
           name?: string
           notes?: string | null
           protein?: number
+          sugar?: number
           user_id?: string
         }
         Relationships: []
@@ -706,6 +709,7 @@ export type Database = {
           snacking_habits: string | null
           sodium_mg: number | null
           stress_level: string | null
+          sugar_grams: number | null
           target_calories: number | null
           tdee: number | null
           terms_accepted: boolean
@@ -810,6 +814,7 @@ export type Database = {
           snacking_habits?: string | null
           sodium_mg?: number | null
           stress_level?: string | null
+          sugar_grams?: number | null
           target_calories?: number | null
           tdee?: number | null
           terms_accepted?: boolean
@@ -914,6 +919,7 @@ export type Database = {
           snacking_habits?: string | null
           sodium_mg?: number | null
           stress_level?: string | null
+          sugar_grams?: number | null
           target_calories?: number | null
           tdee?: number | null
           terms_accepted?: boolean
