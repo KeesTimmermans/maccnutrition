@@ -32,6 +32,7 @@ export interface BaselineResults {
     carbs: { grams: number; calories: number; percentage: number };
     fats: { grams: number; calories: number; percentage: number };
   };
+  sugarGrams: number;
   hydration: HydrationWindow;
   mealPattern: MealTiming[];
   focusPoints: string[];
