@@ -502,6 +502,7 @@ export const TodayDashboard = () => {
         protein: editedMeal.protein,
         carbs: editedMeal.carbs,
         fats: editedMeal.fats,
+        sugar: editedMeal.sugar,
       });
       setMeals(prev => prev.map(m => m.id === editedMeal.id ? editedMeal : m));
       toast.success(t('meal_updated'));
