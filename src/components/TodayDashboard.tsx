@@ -106,6 +106,7 @@ export const TodayDashboard = () => {
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
   const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
   const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
+  const totalSugar = meals.reduce((sum, m) => sum + (m.sugar || 0), 0);
 
   const generateCoachGreeting = () => {
     const calorieGoal = baseline?.target_calories || 2000;
