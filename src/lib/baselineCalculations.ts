@@ -32,6 +32,7 @@ export interface BaselineResults {
     carbs: { grams: number; calories: number; percentage: number };
     fats: { grams: number; calories: number; percentage: number };
   };
+  sugarGrams: number;
   hydration: HydrationWindow;
   mealPattern: MealTiming[];
   focusPoints: string[];
@@ -425,12 +426,48 @@ function generateFocusPoints(data: OnboardingData): string[] {
 }
 
 /**
+ * Calculate daily sugar target (grams) based on goal, calories, and activity.
+ *
+ * WHO recommends <10% of total energy from free sugars (~25g for 2000 kcal).
+ * We scale by caloric target and tighten or loosen based on goal:
+ *   fat_loss / health_markers  → 5% of calories  (strict)
+ *   general_health / recovery  → 7% of calories  (moderate)
+ *   energy / performance       → 8% of calories  (slightly relaxed for fuel)
+ *   muscle_gain                → 8% of calories
+ *
+ * Floor: 15g (below this isn't practical). Cap: 50g.
+ */
+function calculateSugarTarget(data: OnboardingData, targetCalories: number): number {
+  const goal = data.primaryGoal || "general_health";
+
+  const SUGAR_PERCENT: Record<string, number> = {
+    fat_loss: 0.05,
+    health_markers: 0.05,
+    general_health: 0.07,
+    recovery: 0.07,
+    energy: 0.08,
+    performance: 0.08,
+    muscle_gain: 0.08,
+  };
+
+  const pct = SUGAR_PERCENT[goal] ?? 0.07;
+  // sugar has 4 kcal/g
+  let sugarGrams = Math.round((targetCalories * pct) / 4);
+
+  // Clamp
+  sugarGrams = Math.max(15, Math.min(50, sugarGrams));
+
+  return sugarGrams;
+}
+
+/**
  * Single source-of-truth function for all nutrition targets.
  * Used at onboarding AND whenever profile fields change.
  */
 export function calculateNutritionTargets(data: OnboardingData): BaselineResults {
   const calories = calculateTDEE(data);
   const macros = calculateMacros(data, calories.target);
+  const sugarGrams = calculateSugarTarget(data, calories.target);
   const hydration = calculateHydration(data);
   const mealPattern = generateMealPattern(data);
   const focusPoints = generateFocusPoints(data);
@@ -438,6 +475,7 @@ export function calculateNutritionTargets(data: OnboardingData): BaselineResults
   return {
     calories,
     macros,
+    sugarGrams,
     hydration,
     mealPattern,
     focusPoints,
