@@ -381,6 +381,7 @@ export const TodayDashboard = () => {
         protein: meal.protein,
         carbs: meal.carbs,
         fats: meal.fats,
+        sugar: meal.sugar || 0,
         imageUrl: meal.image_url || undefined,
       }));
       setMeals(formattedMeals);
