@@ -10,6 +10,7 @@ export interface Meal {
   protein: number;
   carbs: number;
   fats: number;
+  sugar: number;
   logged_at: string;
   created_at: string;
 }
@@ -21,6 +22,7 @@ export interface MealInput {
   protein: number;
   carbs: number;
   fats: number;
+  sugar?: number;
   notes?: string;
 }
 
@@ -41,6 +43,7 @@ export const saveMeal = async (meal: MealInput, loggedAt?: Date): Promise<Meal |
       protein: meal.protein,
       carbs: meal.carbs,
       fats: meal.fats,
+      sugar: meal.sugar || 0,
       notes: meal.notes || null,
       logged_at: loggedAt ? loggedAt.toISOString() : new Date().toISOString(),
     } as any)
@@ -286,6 +289,7 @@ export const updateMeal = async (
       protein: updates.protein,
       carbs: updates.carbs,
       fats: updates.fats,
+      sugar: updates.sugar,
     })
     .eq("id", mealId)
     .select()

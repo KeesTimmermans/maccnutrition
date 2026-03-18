@@ -2,7 +2,7 @@ interface MacroRingProps {
   value: number;
   max: number;
   label: string;
-  color: "protein" | "carbs" | "fats" | "calories";
+  color: "protein" | "carbs" | "fats" | "calories" | "sugar";
   size?: "sm" | "md" | "lg";
   unit?: string;
 }
@@ -12,6 +12,7 @@ const colorClasses = {
   carbs: "stroke-carbs",
   fats: "stroke-fats",
   calories: "stroke-calories",
+  sugar: "stroke-sugar",
 };
 
 const bgColorClasses = {
@@ -19,6 +20,7 @@ const bgColorClasses = {
   carbs: "text-carbs",
   fats: "text-fats",
   calories: "text-calories",
+  sugar: "text-sugar",
 };
 
 const sizeConfig = {

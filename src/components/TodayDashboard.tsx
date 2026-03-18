@@ -39,6 +39,7 @@ interface DashboardMeal {
   protein: number;
   carbs: number;
   fats: number;
+  sugar: number;
   imageUrl?: string;
 }
 
@@ -105,6 +106,7 @@ export const TodayDashboard = () => {
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
   const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
   const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
+  const totalSugar = meals.reduce((sum, m) => sum + (m.sugar || 0), 0);
 
   const generateCoachGreeting = () => {
     const calorieGoal = baseline?.target_calories || 2000;
@@ -379,6 +381,7 @@ export const TodayDashboard = () => {
         protein: meal.protein,
         carbs: meal.carbs,
         fats: meal.fats,
+        sugar: meal.sugar || 0,
         imageUrl: meal.image_url || undefined,
       }));
       setMeals(formattedMeals);
@@ -440,6 +443,7 @@ export const TodayDashboard = () => {
           protein: savedMeal.protein,
           carbs: savedMeal.carbs,
           fats: savedMeal.fats,
+          sugar: savedMeal.sugar || 0,
           imageUrl: savedMeal.image_url || undefined,
         };
         
@@ -498,6 +502,7 @@ export const TodayDashboard = () => {
         protein: editedMeal.protein,
         carbs: editedMeal.carbs,
         fats: editedMeal.fats,
+        sugar: editedMeal.sugar,
       });
       setMeals(prev => prev.map(m => m.id === editedMeal.id ? editedMeal : m));
       toast.success(t('meal_updated'));
@@ -558,6 +563,13 @@ export const TodayDashboard = () => {
             max={baseline?.fats_grams || 65} 
             label={t('fats')} 
             color="fats"
+            size="sm"
+          />
+          <MacroRing 
+            value={totalSugar} 
+            max={baseline?.sugar_grams || 25} 
+            label={t('sugar') || 'Sugar'} 
+            color="sugar"
             size="sm"
           />
         </div>

@@ -38,6 +38,7 @@ export interface UserBaseline {
   protein_grams: number | null;
   carbs_grams: number | null;
   fats_grams: number | null;
+  sugar_grams: number | null;
   water_liters: number | null;
   water_liters_training: number | null;
   sodium_mg: number | null;
