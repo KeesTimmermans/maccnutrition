@@ -289,6 +289,7 @@ export const updateMeal = async (
       protein: updates.protein,
       carbs: updates.carbs,
       fats: updates.fats,
+      sugar: updates.sugar,
     })
     .eq("id", mealId)
     .select()
