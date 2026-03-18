@@ -564,6 +564,13 @@ export const TodayDashboard = () => {
             color="fats"
             size="sm"
           />
+          <MacroRing 
+            value={totalSugar} 
+            max={baseline?.sugar_grams || 25} 
+            label={t('sugar') || 'Sugar'} 
+            color="sugar"
+            size="sm"
+          />
         </div>
       </div>
     </section>
