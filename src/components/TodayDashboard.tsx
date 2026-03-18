@@ -39,6 +39,7 @@ interface DashboardMeal {
   protein: number;
   carbs: number;
   fats: number;
+  sugar: number;
   imageUrl?: string;
 }
 
