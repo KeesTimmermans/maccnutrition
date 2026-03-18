@@ -443,6 +443,7 @@ export const TodayDashboard = () => {
           protein: savedMeal.protein,
           carbs: savedMeal.carbs,
           fats: savedMeal.fats,
+          sugar: savedMeal.sugar || 0,
           imageUrl: savedMeal.image_url || undefined,
         };
         
