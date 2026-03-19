@@ -197,42 +197,21 @@ function goalLabel(g: CompGoal): string {
   return map[g];
 }
 
-// ── Taper / race-week guidance ──────────────────────────────────
+// ── Taper / race-week guidance (uses coaching templates) ────────
 function getTaperGuidance(phase: PrepPhase, demand: EventDemandProfile): string[] | null {
   if (phase === "taper") {
-    return [
-      "Move toward maintenance calories",
-      "Stop any aggressive fat loss",
-      "Maintain protein intake",
-      "Slightly raise carbs if training is still meaningful",
-      demand.fuelingPrecision >= 4 ? "Reduce fiber only if GI-sensitive" : "Keep diet consistent",
-    ];
+    return getTaperMessages(demand.fuelingPrecision >= 4);
   }
   if (phase === "race_week") {
-    const tips = [
-      "Keep foods familiar — no new experiments",
-      "Keep hydration consistent",
-      "Avoid cheat meals or large calorie swings",
-      "Prioritize digestion, sleep, and sodium consistency",
-    ];
-    if (demand.glycogen >= 4) {
-      tips.push("Increase carbs modestly in the final 1-2 days");
-      tips.push("Reduce very high-fiber and high-fat meals if GI issues are common");
-    }
-    return tips;
+    return getRaceWeekMessages(demand.glycogen >= 4);
   }
   return null;
 }
 
-// ── Hydration notes ─────────────────────────────────────────────
+// ── Hydration notes (uses coaching templates) ───────────────────
 function getHydrationNotes(phase: PrepPhase): string[] | null {
   if (phase === "taper" || phase === "race_week") {
-    return [
-      "Show hydration guidance more prominently",
-      "Encourage consistent fluids and sodium",
-      "Avoid excessive water loading",
-      "Add electrolytes during long or hot sessions",
-    ];
+    return HYDRATION_TAPER_MESSAGES;
   }
   return null;
 }
