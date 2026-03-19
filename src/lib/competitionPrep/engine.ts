@@ -106,30 +106,33 @@ function getProteinPerKg(mode: NutritionMode): number {
   }
 }
 
-// ── Fat logic (two-tier: default target + safety floor) ─────────
+// ── Fat logic (three-tier: preferred → reduced → hard floor) ────
 function getFatFloorPerKg(demand: EventDemandProfile): number {
-  // Absolute minimum — only used as a guardrail
   if (demand.endurance >= 4 || demand.glycogen >= 4) return 0.6;
   return 0.7;
 }
 
+function getFatReducedPerKg(demand: EventDemandProfile): number {
+  if (demand.endurance >= 4 || demand.glycogen >= 4) return 0.8;
+  return 0.85;
+}
+
 function getFatDefaultPerKg(mode: NutritionMode, demand: EventDemandProfile): number {
-  // Preferred starting fat target — produces realistic ~20-28% of calories
   const isHighEndurance = demand.endurance >= 4 || demand.glycogen >= 4;
 
   switch (mode) {
     case "fat_loss":
-      return isHighEndurance ? 0.8 : 0.85;
+      return isHighEndurance ? 0.9 : 1.0;
     case "recomp":
-      return isHighEndurance ? 0.85 : 0.9;
+      return isHighEndurance ? 0.9 : 1.0;
     case "performance_build":
-      return isHighEndurance ? 0.8 : 0.9;
+      return isHighEndurance ? 0.9 : 1.0;
     case "strength_support":
-      return isHighEndurance ? 0.85 : 1.0;
+      return isHighEndurance ? 1.0 : 1.1;
     case "peak":
-      return isHighEndurance ? 0.8 : 0.9;
+      return isHighEndurance ? 0.9 : 1.0;
     default:
-      return 0.85;
+      return 1.0;
   }
 }
 
@@ -331,35 +334,47 @@ export function calculateCompetitionPrep(input: CompPrepCalcInput): CompetitionP
   const proteinGrams = Math.round(weightKg * proteinPerKg);
   const proteinCals = proteinGrams * 4;
 
-  // ── Fat (start at preferred default, not the floor) ──
-  const fatDefault = getFatDefaultPerKg(mode, demand);
+  // ── Fat (start at preferred, step down through 3 tiers if needed) ──
+  const fatPreferred = getFatDefaultPerKg(mode, demand);
+  const fatReduced = getFatReducedPerKg(demand);
   const fatFloor = getFatFloorPerKg(demand);
-  let fatGrams = Math.round(weightKg * fatDefault);
+  let fatGrams = Math.round(weightKg * fatPreferred);
   let fatCals = fatGrams * 9;
 
   // ── Carbs (flexible lever) ──
   let carbCals = baseCals - proteinCals - fatCals;
   let carbGrams = Math.round(carbCals / 4);
 
-  // Enforce carb floor
+  // Enforce carb floor using 3-tier fat reduction
   const carbFloor = getCarbFloorPerKg(eventType, mode);
   const carbFloorGrams = Math.round(weightKg * carbFloor);
   if (carbGrams < carbFloorGrams) {
-    // Try reducing fat first
-    const carbDeficitCals = (carbFloorGrams - carbGrams) * 4;
-    const fatReduceGrams = Math.round(carbDeficitCals / 9);
-    const newFatGrams = fatGrams - fatReduceGrams;
-    const fatFloorGrams = Math.round(weightKg * 0.6);
+    const fatReducedGrams = Math.round(weightKg * fatReduced);
+    const fatFloorGrams = Math.round(weightKg * fatFloor);
 
-    if (newFatGrams >= fatFloorGrams) {
-      fatGrams = newFatGrams;
+    // Tier 1: try reducing fat toward the acceptable reduced level
+    const carbsAtReduced = Math.round((baseCals - proteinCals - fatReducedGrams * 9) / 4);
+    if (carbsAtReduced >= carbFloorGrams) {
+      const carbDeficitCals = (carbFloorGrams - carbGrams) * 4;
+      const fatReduce = Math.ceil(carbDeficitCals / 9);
+      fatGrams = Math.max(fatGrams - fatReduce, fatReducedGrams);
       fatCals = fatGrams * 9;
-      carbGrams = carbFloorGrams;
+      carbGrams = Math.round((baseCals - proteinCals - fatCals) / 4);
     } else {
-      // Can't reduce fat enough — raise calories
-      fatGrams = fatFloorGrams;
-      fatCals = fatGrams * 9;
-      carbGrams = carbFloorGrams;
+      // Tier 2: try reducing fat toward hard floor
+      const carbsAtFloor = Math.round((baseCals - proteinCals - fatFloorGrams * 9) / 4);
+      if (carbsAtFloor >= carbFloorGrams) {
+        const neededCarbCals = (carbFloorGrams - carbsAtReduced) * 4;
+        const extraReduce = Math.ceil(neededCarbCals / 9);
+        fatGrams = Math.max(fatReducedGrams - extraReduce, fatFloorGrams);
+        fatCals = fatGrams * 9;
+        carbGrams = Math.round((baseCals - proteinCals - fatCals) / 4);
+      } else {
+        // Tier 3: raise calories to meet carb floor
+        fatGrams = fatFloorGrams;
+        fatCals = fatGrams * 9;
+        carbGrams = carbFloorGrams;
+      }
     }
   }
 
