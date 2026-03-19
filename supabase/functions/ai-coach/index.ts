@@ -761,11 +761,14 @@ ${userContext?.checkInContext || ''}
 ${userContext?.wearableContext || ''}
 ${mealsContext}${mealsAnalysis}
 
+${buildCompPrepSection(userContext)}
+
 USER APP STATE:
 - Meal logging: available (barcode, photo, text description)
 - Water logging: available
 - Daily check-in: available${(userContext as any)?.lastDailyCheckin ? ` (last completed: ${(userContext as any).lastDailyCheckin})` : ''}
 - Progress check-in: available${(userContext as any)?.lastProgressUpdate ? ` (last completed: ${(userContext as any).lastProgressUpdate})` : ''}
+- Competition Prep: ${(userContext as any)?.competitionPrepContext ? 'ACTIVE (see above)' : 'not active'}
 - Targets are live and shown on dashboard`;
 
     // Determine response language
