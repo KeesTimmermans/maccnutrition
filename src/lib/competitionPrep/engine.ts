@@ -379,41 +379,43 @@ export function calculateCompetitionPrep(input: CompPrepCalcInput): CompetitionP
   }
 
   // ── Soft fat-percentage target (~28-35% of cals, midpoint ~30%) ──
-  const currentFatPct = (fatGrams * 9) / (proteinCals + carbGrams * 4 + fatGrams * 9);
+  const totalCalsBeforeSoft = proteinCals + carbGrams * 4 + fatGrams * 9;
+  const currentFatPct = (fatGrams * 9) / totalCalsBeforeSoft;
   if (currentFatPct < 0.28) {
     const isHighEndurance = demand.endurance >= 4 || demand.glycogen >= 4;
-    const hasCarbFloorPressure = carbGrams <= carbFloorGrams + 5; // within 5g of floor
+    const hasCarbFloorPressure = carbGrams <= carbFloorGrams + 5;
     const isExemptMode = mode === "fat_loss" || mode === "peak";
-    const isCloseToEvent = daysOut <= 42; // ≤6 weeks
+    const isCloseToEvent = daysOut <= 42;
 
     const allowLowFat = isHighEndurance && hasCarbFloorPressure && (isExemptMode || isCloseToEvent);
 
     if (!allowLowFat) {
-      // Push fat toward 28% without breaking carb floor
-      const totalCalsNow = proteinCals + carbGrams * 4 + fatGrams * 9;
-      const targetFatCals = Math.round(totalCalsNow * 0.30); // aim for 30%
-      const targetFatGrams = Math.round(targetFatCals / 9);
-      const maxFatGrams = Math.round(weightKg * fatPreferred);
-      const newFatGrams = Math.min(targetFatGrams, maxFatGrams);
+      // Calculate fat grams needed for 30% of current total calories
+      const softCeilPerKg = 1.2; // absolute ceiling for soft target push
+      const targetFatGrams = Math.min(
+        Math.round((totalCalsBeforeSoft * 0.30) / 9),
+        Math.round(weightKg * softCeilPerKg),
+      );
 
-      if (newFatGrams > fatGrams) {
-        const newCarbGrams = Math.round((totalCalsNow - proteinCals - newFatGrams * 9) / 4);
+      if (targetFatGrams > fatGrams) {
+        // Try shifting carbs → fat within same total calories
+        const newCarbGrams = Math.round((totalCalsBeforeSoft - proteinCals - targetFatGrams * 9) / 4);
         if (newCarbGrams >= carbFloorGrams) {
-          // Safe to raise fat by reducing carbs
-          fatGrams = newFatGrams;
+          fatGrams = targetFatGrams;
           carbGrams = newCarbGrams;
         } else {
-          // Reduce carbs to floor, then bump calories for the rest
-          const fatFromCarbReduction = Math.round(((carbGrams - carbFloorGrams) * 4) / 9);
-          if (fatFromCarbReduction > 0) {
-            fatGrams = fatGrams + fatFromCarbReduction;
+          // Reduce carbs only to their floor, give freed cals to fat
+          const availableCarbCals = (carbGrams - carbFloorGrams) * 4;
+          if (availableCarbCals > 0) {
+            const extraFatGrams = Math.floor(availableCarbCals / 9);
+            fatGrams += extraFatGrams;
             carbGrams = carbFloorGrams;
           }
-          // If still below 28%, slightly increase total calories
-          const stillLow = (fatGrams * 9) / (proteinCals + carbGrams * 4 + fatGrams * 9) < 0.28;
-          if (stillLow) {
-            const desiredFatGrams = Math.min(Math.round(weightKg * fatPreferred), maxFatGrams);
-            fatGrams = desiredFatGrams;
+          // If still below 28%, bump total calories to reach it
+          const pctAfterShift = (fatGrams * 9) / (proteinCals + carbGrams * 4 + fatGrams * 9);
+          if (pctAfterShift < 0.28) {
+            const cappedFat = Math.min(targetFatGrams, Math.round(weightKg * softCeilPerKg));
+            fatGrams = cappedFat;
             // Carbs stay at floor; total cals rise naturally
           }
         }
