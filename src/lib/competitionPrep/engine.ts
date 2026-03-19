@@ -331,9 +331,10 @@ export function calculateCompetitionPrep(input: CompPrepCalcInput): CompetitionP
   const proteinGrams = Math.round(weightKg * proteinPerKg);
   const proteinCals = proteinGrams * 4;
 
-  // ── Fat ──
+  // ── Fat (start at preferred default, not the floor) ──
+  const fatDefault = getFatDefaultPerKg(mode, demand);
   const fatFloor = getFatFloorPerKg(demand);
-  let fatGrams = Math.round(weightKg * fatFloor);
+  let fatGrams = Math.round(weightKg * fatDefault);
   let fatCals = fatGrams * 9;
 
   // ── Carbs (flexible lever) ──
