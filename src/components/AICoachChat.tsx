@@ -13,6 +13,7 @@ import { useLanguage, Language } from "@/lib/i18n";
 import { toast } from "sonner";
 import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
+import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
 
 interface Message {
   role: "user" | "assistant";
@@ -47,6 +48,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const [checkInAnalysis, setCheckInAnalysis] = useState<CheckInAnalysis | null>(null);
   const [todaysMeals, setTodaysMeals] = useState<Meal[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
+  const [compPrepContext, setCompPrepContext] = useState<CompPrepCoachContext | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -114,15 +116,27 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
 
   const initializeChat = async () => {
     try {
-      const [userBaseline, meals, recentCheckIns, savedConversation] = await Promise.all([
+      const [userBaseline, meals, recentCheckIns, savedConversation, compPrep] = await Promise.all([
         getUserBaseline(),
         getTodaysMeals(),
         getRecentCheckIns(7),
         loadWeeklyConversation(),
+        buildCompPrepCoachContext(null, null), // will use defaults; updated below
       ]);
 
       setBaseline(userBaseline);
       setTodaysMeals(meals);
+
+      // Re-fetch comp prep with actual user data if available
+      if (userBaseline && compPrep) {
+        const updatedCompPrep = await buildCompPrepCoachContext(
+          userBaseline.weight ?? null,
+          userBaseline.tdee ?? null,
+        );
+        setCompPrepContext(updatedCompPrep);
+      } else {
+        setCompPrepContext(compPrep);
+      }
 
       const today = new Date().toISOString().split('T')[0];
       // Prefer freshCheckIn if provided (just completed), otherwise find from recent
@@ -219,6 +233,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 preferredLanguage: language as Language,
                 lastProgressUpdate: userBaseline.last_progress_update || undefined,
                 lastDailyCheckin: freshCheckIn?.check_in_date || undefined,
+                competitionPrepContext: compPrepContext || undefined,
               } : {},
               todaysMeals: meals.map(m => ({
                 name: m.name,
@@ -395,6 +410,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 preferredLanguage: language as Language,
                 lastProgressUpdate: baseline.last_progress_update || undefined,
                 lastDailyCheckin: todaysCheckIn?.check_in_date || undefined,
+                competitionPrepContext: compPrepContext || undefined,
               } : {},
               todaysMeals: todaysMeals.map(m => ({
                 name: m.name,
