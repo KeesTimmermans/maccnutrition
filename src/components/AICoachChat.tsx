@@ -116,15 +116,27 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
 
   const initializeChat = async () => {
     try {
-      const [userBaseline, meals, recentCheckIns, savedConversation] = await Promise.all([
+      const [userBaseline, meals, recentCheckIns, savedConversation, compPrep] = await Promise.all([
         getUserBaseline(),
         getTodaysMeals(),
         getRecentCheckIns(7),
         loadWeeklyConversation(),
+        buildCompPrepCoachContext(null, null), // will use defaults; updated below
       ]);
 
       setBaseline(userBaseline);
       setTodaysMeals(meals);
+
+      // Re-fetch comp prep with actual user data if available
+      if (userBaseline && compPrep) {
+        const updatedCompPrep = await buildCompPrepCoachContext(
+          userBaseline.weight ?? null,
+          userBaseline.tdee ?? null,
+        );
+        setCompPrepContext(updatedCompPrep);
+      } else {
+        setCompPrepContext(compPrep);
+      }
 
       const today = new Date().toISOString().split('T')[0];
       // Prefer freshCheckIn if provided (just completed), otherwise find from recent
