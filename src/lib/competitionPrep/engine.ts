@@ -378,6 +378,50 @@ export function calculateCompetitionPrep(input: CompPrepCalcInput): CompetitionP
     }
   }
 
+  // ── Soft fat-percentage target (~28-35% of cals, midpoint ~30%) ──
+  const currentFatPct = (fatGrams * 9) / (proteinCals + carbGrams * 4 + fatGrams * 9);
+  if (currentFatPct < 0.28) {
+    const isHighEndurance = demand.endurance >= 4 || demand.glycogen >= 4;
+    const hasCarbFloorPressure = carbGrams <= carbFloorGrams + 5; // within 5g of floor
+    const isExemptMode = mode === "fat_loss" || mode === "peak";
+    const isCloseToEvent = daysOut <= 42; // ≤6 weeks
+
+    const allowLowFat = isHighEndurance && hasCarbFloorPressure && (isExemptMode || isCloseToEvent);
+
+    if (!allowLowFat) {
+      // Push fat toward 28% without breaking carb floor
+      const totalCalsNow = proteinCals + carbGrams * 4 + fatGrams * 9;
+      const targetFatCals = Math.round(totalCalsNow * 0.30); // aim for 30%
+      const targetFatGrams = Math.round(targetFatCals / 9);
+      const maxFatGrams = Math.round(weightKg * fatPreferred);
+      const newFatGrams = Math.min(targetFatGrams, maxFatGrams);
+
+      if (newFatGrams > fatGrams) {
+        const newCarbGrams = Math.round((totalCalsNow - proteinCals - newFatGrams * 9) / 4);
+        if (newCarbGrams >= carbFloorGrams) {
+          // Safe to raise fat by reducing carbs
+          fatGrams = newFatGrams;
+          carbGrams = newCarbGrams;
+        } else {
+          // Reduce carbs to floor, then bump calories for the rest
+          const fatFromCarbReduction = Math.round(((carbGrams - carbFloorGrams) * 4) / 9);
+          if (fatFromCarbReduction > 0) {
+            fatGrams = fatGrams + fatFromCarbReduction;
+            carbGrams = carbFloorGrams;
+          }
+          // If still below 28%, slightly increase total calories
+          const stillLow = (fatGrams * 9) / (proteinCals + carbGrams * 4 + fatGrams * 9) < 0.28;
+          if (stillLow) {
+            const desiredFatGrams = Math.min(Math.round(weightKg * fatPreferred), maxFatGrams);
+            fatGrams = desiredFatGrams;
+            // Carbs stay at floor; total cals rise naturally
+          }
+        }
+        fatCals = fatGrams * 9;
+      }
+    }
+  }
+
   const finalCals = proteinCals + (carbGrams * 4) + fatCals;
 
   // ── Training day cycling ──
