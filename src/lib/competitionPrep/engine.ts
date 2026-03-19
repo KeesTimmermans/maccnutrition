@@ -438,7 +438,7 @@ export function calculateCompetitionPrep(input: CompPrepCalcInput): CompetitionP
     goalWeightRealistic: goalCheck.realistic,
     goalWeightWarning: goalCheck.warning,
     priorities: getPriorities(primaryGoal, daysOut),
-    explanation: getExplanation(mode, phase, primaryGoal, weeksOut, eventLabel),
+    explanation: getPhaseExplanation(phase, mode, primaryGoal, weeksOut, eventLabel),
     taperGuidance: getTaperGuidance(phase, demand),
     hydrationNotes: getHydrationNotes(phase),
   };
