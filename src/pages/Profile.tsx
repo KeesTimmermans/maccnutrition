@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, Mail, LogOut, Loader2, Lock, ChevronRight, Shield } from "lucide-react";
+import { Settings, Mail, LogOut, Loader2, Lock, ChevronRight, Shield, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
