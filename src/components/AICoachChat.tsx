@@ -13,6 +13,7 @@ import { useLanguage, Language } from "@/lib/i18n";
 import { toast } from "sonner";
 import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
+import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
 
 interface Message {
   role: "user" | "assistant";
