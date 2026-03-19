@@ -470,18 +470,16 @@ export function calculateWeeklyAdjustment(
     const targetRate = currentResult.weightLossRatePct;
 
     if (weeklyLossRate > targetRate * 1.3) {
-      // Losing too fast
       calorieChange += 125;
       carbChange += Math.round(125 / 4);
-      reasons.push("Weight loss faster than target — adding calories from carbs");
+      reasons.push(ADJUSTMENT_TEMPLATES.losingTooFast);
     } else if (weeklyLossRate < targetRate * 0.5 && checkin.adherencePct >= 80) {
-      // Losing too slow with good adherence
       calorieChange -= 125;
       carbChange -= Math.round(75 / 4);
       fatChange -= Math.round(50 / 9);
-      reasons.push("Weight loss slower than target with good adherence — small calorie reduction");
+      reasons.push(ADJUSTMENT_TEMPLATES.losingTooSlow);
     } else if (weeklyLossRate < targetRate * 0.5 && checkin.adherencePct < 80) {
-      reasons.push("Weight stable but adherence could improve — focus on consistency before adjusting calories");
+      reasons.push(ADJUSTMENT_TEMPLATES.losingSlowLowAdherence);
     }
   }
 
@@ -489,20 +487,20 @@ export function calculateWeeklyAdjustment(
   if (checkin.performanceTrend === "declining" && checkin.adherencePct >= 80) {
     calorieChange += 150;
     carbChange += Math.round(150 / 4);
-    reasons.push("Performance declining — adding carbs around training");
+    reasons.push(ADJUSTMENT_TEMPLATES.performanceDeclining);
   }
 
   if (checkin.recoveryLevel <= 2) {
     calorieChange += 100;
     carbChange += Math.round(100 / 4);
-    reasons.push("Recovery is poor — reducing deficit and adding carbs");
+    reasons.push(ADJUSTMENT_TEMPLATES.poorRecovery);
   }
 
   if (checkin.hungerLevel >= 4 && currentResult.daysOut <= 21) {
     calorieChange += 100;
     carbChange += Math.round(60 / 4);
     fatChange += Math.round(40 / 9);
-    reasons.push("High hunger close to event — moving toward maintenance");
+    reasons.push(ADJUSTMENT_TEMPLATES.highHungerNearEvent);
   }
 
   // ── C. Timeline override ──
@@ -511,7 +509,7 @@ export function calculateWeeklyAdjustment(
     carbChange = 0;
     fatChange = 0;
     reasons.length = 0;
-    reasons.push("Within 21 days of event — performance logic overrides fat-loss adjustments");
+    reasons.push(ADJUSTMENT_TEMPLATES.timelineOverride);
   }
 
   return {
@@ -519,6 +517,6 @@ export function calculateWeeklyAdjustment(
     carbChange,
     fatChange,
     proteinChange,
-    reason: reasons.length > 0 ? reasons.join(". ") : "No adjustment needed this week — keep consistent.",
+    reason: reasons.length > 0 ? reasons.join(" ") : ADJUSTMENT_TEMPLATES.noChange,
   };
 }
