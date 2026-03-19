@@ -106,11 +106,31 @@ function getProteinPerKg(mode: NutritionMode): number {
   }
 }
 
-// ── Fat floor logic ─────────────────────────────────────────────
+// ── Fat logic (two-tier: default target + safety floor) ─────────
 function getFatFloorPerKg(demand: EventDemandProfile): number {
-  // High endurance events → lower fat floor to leave room for carbs
+  // Absolute minimum — only used as a guardrail
   if (demand.endurance >= 4 || demand.glycogen >= 4) return 0.6;
   return 0.7;
+}
+
+function getFatDefaultPerKg(mode: NutritionMode, demand: EventDemandProfile): number {
+  // Preferred starting fat target — produces realistic ~20-28% of calories
+  const isHighEndurance = demand.endurance >= 4 || demand.glycogen >= 4;
+
+  switch (mode) {
+    case "fat_loss":
+      return isHighEndurance ? 0.8 : 0.85;
+    case "recomp":
+      return isHighEndurance ? 0.85 : 0.9;
+    case "performance_build":
+      return isHighEndurance ? 0.8 : 0.9;
+    case "strength_support":
+      return isHighEndurance ? 0.85 : 1.0;
+    case "peak":
+      return isHighEndurance ? 0.8 : 0.9;
+    default:
+      return 0.85;
+  }
 }
 
 // ── Carb floor logic ────────────────────────────────────────────
