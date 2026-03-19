@@ -37,6 +37,8 @@ import Onboarding from "./pages/Onboarding";
 import PostCheckout from "./pages/PostCheckout";
 import Pricing from "./pages/Pricing";
 import ResetPassword from "./pages/ResetPassword";
+import CompetitionPrep from "./pages/CompetitionPrep";
+import CompetitionPrepSetup from "./pages/CompetitionPrepSetup";
 
 const queryClient = new QueryClient();
 
