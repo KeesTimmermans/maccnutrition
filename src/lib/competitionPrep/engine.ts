@@ -235,7 +235,7 @@ function checkGoalWeight(
   if (!safeRate) {
     return {
       realistic: false,
-      warning: "Too close to event for deliberate weight loss.",
+      warning: GOAL_WEIGHT_TOO_CLOSE,
       projected: null,
     };
   }
@@ -248,7 +248,11 @@ function checkGoalWeight(
     const conservativeLossTotal = minSafePerWeek * weeksRemaining;
     return {
       realistic: false,
-      warning: `This target would require losing ${requiredPerWeek.toFixed(1)} kg/week. That's likely too aggressive for maintaining performance. A more realistic target by event day is ${(currentWeight - realisticLossTotal).toFixed(1)}–${(currentWeight - conservativeLossTotal).toFixed(1)} kg.`,
+      warning: getGoalWeightWarning(
+        requiredPerWeek,
+        Math.round((currentWeight - realisticLossTotal) * 10) / 10,
+        Math.round((currentWeight - conservativeLossTotal) * 10) / 10,
+      ),
       projected: {
         low: Math.round((currentWeight - realisticLossTotal) * 10) / 10,
         high: Math.round((currentWeight - conservativeLossTotal) * 10) / 10,
@@ -262,29 +266,6 @@ function checkGoalWeight(
   };
 
   return { realistic: true, warning: null, projected };
-}
-
-// ── Phase change explanation ────────────────────────────────────
-function getExplanation(mode: NutritionMode, phase: PrepPhase, goal: CompGoal, weeksOut: number, eventLabel: string): string {
-  if (phase === "race_week") {
-    return `Race week is here. Your nutrition is focused entirely on fueling performance for ${eventLabel}. Keep things familiar and consistent.`;
-  }
-  if (phase === "taper") {
-    return `You're in taper mode for ${eventLabel}. Calories have shifted toward maintenance to protect performance and recovery.`;
-  }
-  if (phase === "performance_protection") {
-    return `Your event is close enough that performance matters more than aggressive body composition changes. Calories and carbs have been adjusted to protect training quality.`;
-  }
-  if (mode === "fat_loss" && phase === "specific_prep") {
-    return `You're ${weeksOut} weeks from ${eventLabel}. Fat loss continues but at a conservative rate to maintain training quality and recovery.`;
-  }
-  if (mode === "fat_loss") {
-    return `You have ${weeksOut} weeks until ${eventLabel}. Your plan uses a moderate calorie deficit while keeping protein high and carbs above the event floor to support training.`;
-  }
-  if (mode === "peak") {
-    return `Your plan is focused on peaking for ${eventLabel}. Calories are at or slightly above maintenance with extra carbs around key sessions.`;
-  }
-  return `Your plan is optimized for ${goalLabel(goal).toLowerCase()} with ${weeksOut} weeks until ${eventLabel}. The plan will adapt as the event gets closer.`;
 }
 
 // ════════════════════════════════════════════════════════════════
