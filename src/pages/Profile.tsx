@@ -150,6 +150,25 @@ const Profile = () => {
         {/* Reminder Settings */}
         <ReminderSettings />
 
+        {/* Competition Prep */}
+        <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
+          <CardContent className="p-0">
+            <button
+              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-accent/50 transition-colors"
+              onClick={() => navigate("/competition-prep")}
+            >
+              <div className="flex items-center gap-3">
+                <Trophy className="w-5 h-5 text-primary" />
+                <div>
+                  <span className="text-sm font-semibold text-foreground">Competition Prep Mode</span>
+                  <p className="text-xs text-muted-foreground">Event-specific nutrition planning</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </CardContent>
+        </Card>
+
         {/* Security */}
         <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
           <CardHeader className="pb-2">
