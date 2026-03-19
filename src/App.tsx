@@ -309,6 +309,8 @@ const App = () => {
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/competition-prep" element={<CompetitionPrep />} />
+                    <Route path="/competition-prep/setup" element={<CompetitionPrepSetup />} />
                     
                     {/* Legacy routes */}
                     <Route path="/history" element={<MealHistory />} />
