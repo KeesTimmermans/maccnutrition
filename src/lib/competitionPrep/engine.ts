@@ -10,6 +10,15 @@ import type {
   CompetitionPrepResult, EventDemandProfile, WeeklyCheckinInput, WeeklyAdjustment,
 } from "./types";
 import { EVENT_DEMAND_PROFILES } from "./eventProfiles";
+import {
+  getPhaseExplanation,
+  ADJUSTMENT_TEMPLATES,
+  getGoalWeightWarning,
+  GOAL_WEIGHT_TOO_CLOSE,
+  getTaperMessages,
+  getRaceWeekMessages,
+  HYDRATION_TAPER_MESSAGES,
+} from "./coachingMessages";
 
 // ── Phase determination ─────────────────────────────────────────
 export function getPhase(daysOut: number): PrepPhase {
