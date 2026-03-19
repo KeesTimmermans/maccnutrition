@@ -10,6 +10,15 @@ import type {
   CompetitionPrepResult, EventDemandProfile, WeeklyCheckinInput, WeeklyAdjustment,
 } from "./types";
 import { EVENT_DEMAND_PROFILES } from "./eventProfiles";
+import {
+  getPhaseExplanation,
+  ADJUSTMENT_TEMPLATES,
+  getGoalWeightWarning,
+  GOAL_WEIGHT_TOO_CLOSE,
+  getTaperMessages,
+  getRaceWeekMessages,
+  HYDRATION_TAPER_MESSAGES,
+} from "./coachingMessages";
 
 // ── Phase determination ─────────────────────────────────────────
 export function getPhase(daysOut: number): PrepPhase {
@@ -188,42 +197,21 @@ function goalLabel(g: CompGoal): string {
   return map[g];
 }
 
-// ── Taper / race-week guidance ──────────────────────────────────
+// ── Taper / race-week guidance (uses coaching templates) ────────
 function getTaperGuidance(phase: PrepPhase, demand: EventDemandProfile): string[] | null {
   if (phase === "taper") {
-    return [
-      "Move toward maintenance calories",
-      "Stop any aggressive fat loss",
-      "Maintain protein intake",
-      "Slightly raise carbs if training is still meaningful",
-      demand.fuelingPrecision >= 4 ? "Reduce fiber only if GI-sensitive" : "Keep diet consistent",
-    ];
+    return getTaperMessages(demand.fuelingPrecision >= 4);
   }
   if (phase === "race_week") {
-    const tips = [
-      "Keep foods familiar — no new experiments",
-      "Keep hydration consistent",
-      "Avoid cheat meals or large calorie swings",
-      "Prioritize digestion, sleep, and sodium consistency",
-    ];
-    if (demand.glycogen >= 4) {
-      tips.push("Increase carbs modestly in the final 1-2 days");
-      tips.push("Reduce very high-fiber and high-fat meals if GI issues are common");
-    }
-    return tips;
+    return getRaceWeekMessages(demand.glycogen >= 4);
   }
   return null;
 }
 
-// ── Hydration notes ─────────────────────────────────────────────
+// ── Hydration notes (uses coaching templates) ───────────────────
 function getHydrationNotes(phase: PrepPhase): string[] | null {
   if (phase === "taper" || phase === "race_week") {
-    return [
-      "Show hydration guidance more prominently",
-      "Encourage consistent fluids and sodium",
-      "Avoid excessive water loading",
-      "Add electrolytes during long or hot sessions",
-    ];
+    return HYDRATION_TAPER_MESSAGES;
   }
   return null;
 }
@@ -247,7 +235,7 @@ function checkGoalWeight(
   if (!safeRate) {
     return {
       realistic: false,
-      warning: "Too close to event for deliberate weight loss.",
+      warning: GOAL_WEIGHT_TOO_CLOSE,
       projected: null,
     };
   }
@@ -260,7 +248,11 @@ function checkGoalWeight(
     const conservativeLossTotal = minSafePerWeek * weeksRemaining;
     return {
       realistic: false,
-      warning: `This target would require losing ${requiredPerWeek.toFixed(1)} kg/week. That's likely too aggressive for maintaining performance. A more realistic target by event day is ${(currentWeight - realisticLossTotal).toFixed(1)}–${(currentWeight - conservativeLossTotal).toFixed(1)} kg.`,
+      warning: getGoalWeightWarning(
+        requiredPerWeek,
+        Math.round((currentWeight - realisticLossTotal) * 10) / 10,
+        Math.round((currentWeight - conservativeLossTotal) * 10) / 10,
+      ),
       projected: {
         low: Math.round((currentWeight - realisticLossTotal) * 10) / 10,
         high: Math.round((currentWeight - conservativeLossTotal) * 10) / 10,
@@ -274,29 +266,6 @@ function checkGoalWeight(
   };
 
   return { realistic: true, warning: null, projected };
-}
-
-// ── Phase change explanation ────────────────────────────────────
-function getExplanation(mode: NutritionMode, phase: PrepPhase, goal: CompGoal, weeksOut: number, eventLabel: string): string {
-  if (phase === "race_week") {
-    return `Race week is here. Your nutrition is focused entirely on fueling performance for ${eventLabel}. Keep things familiar and consistent.`;
-  }
-  if (phase === "taper") {
-    return `You're in taper mode for ${eventLabel}. Calories have shifted toward maintenance to protect performance and recovery.`;
-  }
-  if (phase === "performance_protection") {
-    return `Your event is close enough that performance matters more than aggressive body composition changes. Calories and carbs have been adjusted to protect training quality.`;
-  }
-  if (mode === "fat_loss" && phase === "specific_prep") {
-    return `You're ${weeksOut} weeks from ${eventLabel}. Fat loss continues but at a conservative rate to maintain training quality and recovery.`;
-  }
-  if (mode === "fat_loss") {
-    return `You have ${weeksOut} weeks until ${eventLabel}. Your plan uses a moderate calorie deficit while keeping protein high and carbs above the event floor to support training.`;
-  }
-  if (mode === "peak") {
-    return `Your plan is focused on peaking for ${eventLabel}. Calories are at or slightly above maintenance with extra carbs around key sessions.`;
-  }
-  return `Your plan is optimized for ${goalLabel(goal).toLowerCase()} with ${weeksOut} weeks until ${eventLabel}. The plan will adapt as the event gets closer.`;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -469,7 +438,7 @@ export function calculateCompetitionPrep(input: CompPrepCalcInput): CompetitionP
     goalWeightRealistic: goalCheck.realistic,
     goalWeightWarning: goalCheck.warning,
     priorities: getPriorities(primaryGoal, daysOut),
-    explanation: getExplanation(mode, phase, primaryGoal, weeksOut, eventLabel),
+    explanation: getPhaseExplanation(phase, mode, primaryGoal, weeksOut, eventLabel),
     taperGuidance: getTaperGuidance(phase, demand),
     hydrationNotes: getHydrationNotes(phase),
   };
@@ -501,18 +470,16 @@ export function calculateWeeklyAdjustment(
     const targetRate = currentResult.weightLossRatePct;
 
     if (weeklyLossRate > targetRate * 1.3) {
-      // Losing too fast
       calorieChange += 125;
       carbChange += Math.round(125 / 4);
-      reasons.push("Weight loss faster than target — adding calories from carbs");
+      reasons.push(ADJUSTMENT_TEMPLATES.losingTooFast);
     } else if (weeklyLossRate < targetRate * 0.5 && checkin.adherencePct >= 80) {
-      // Losing too slow with good adherence
       calorieChange -= 125;
       carbChange -= Math.round(75 / 4);
       fatChange -= Math.round(50 / 9);
-      reasons.push("Weight loss slower than target with good adherence — small calorie reduction");
+      reasons.push(ADJUSTMENT_TEMPLATES.losingTooSlow);
     } else if (weeklyLossRate < targetRate * 0.5 && checkin.adherencePct < 80) {
-      reasons.push("Weight stable but adherence could improve — focus on consistency before adjusting calories");
+      reasons.push(ADJUSTMENT_TEMPLATES.losingSlowLowAdherence);
     }
   }
 
@@ -520,20 +487,20 @@ export function calculateWeeklyAdjustment(
   if (checkin.performanceTrend === "declining" && checkin.adherencePct >= 80) {
     calorieChange += 150;
     carbChange += Math.round(150 / 4);
-    reasons.push("Performance declining — adding carbs around training");
+    reasons.push(ADJUSTMENT_TEMPLATES.performanceDeclining);
   }
 
   if (checkin.recoveryLevel <= 2) {
     calorieChange += 100;
     carbChange += Math.round(100 / 4);
-    reasons.push("Recovery is poor — reducing deficit and adding carbs");
+    reasons.push(ADJUSTMENT_TEMPLATES.poorRecovery);
   }
 
   if (checkin.hungerLevel >= 4 && currentResult.daysOut <= 21) {
     calorieChange += 100;
     carbChange += Math.round(60 / 4);
     fatChange += Math.round(40 / 9);
-    reasons.push("High hunger close to event — moving toward maintenance");
+    reasons.push(ADJUSTMENT_TEMPLATES.highHungerNearEvent);
   }
 
   // ── C. Timeline override ──
@@ -542,7 +509,7 @@ export function calculateWeeklyAdjustment(
     carbChange = 0;
     fatChange = 0;
     reasons.length = 0;
-    reasons.push("Within 21 days of event — performance logic overrides fat-loss adjustments");
+    reasons.push(ADJUSTMENT_TEMPLATES.timelineOverride);
   }
 
   return {
@@ -550,6 +517,6 @@ export function calculateWeeklyAdjustment(
     carbChange,
     fatChange,
     proteinChange,
-    reason: reasons.length > 0 ? reasons.join(". ") : "No adjustment needed this week — keep consistent.",
+    reason: reasons.length > 0 ? reasons.join(" ") : ADJUSTMENT_TEMPLATES.noChange,
   };
 }
