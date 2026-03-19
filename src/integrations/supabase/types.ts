@@ -201,6 +201,134 @@ export type Database = {
         }
         Relationships: []
       }
+      competition_checkins: {
+        Row: {
+          adherence_pct: number | null
+          adjustments_applied: Json | null
+          avg_weight: number | null
+          created_at: string
+          cycle_phase: string | null
+          energy_level: number | null
+          hunger_level: number | null
+          id: string
+          notes: string | null
+          performance_trend: string | null
+          prep_id: string
+          recovery_level: number | null
+          user_id: string
+          week_number: number
+        }
+        Insert: {
+          adherence_pct?: number | null
+          adjustments_applied?: Json | null
+          avg_weight?: number | null
+          created_at?: string
+          cycle_phase?: string | null
+          energy_level?: number | null
+          hunger_level?: number | null
+          id?: string
+          notes?: string | null
+          performance_trend?: string | null
+          prep_id: string
+          recovery_level?: number | null
+          user_id: string
+          week_number: number
+        }
+        Update: {
+          adherence_pct?: number | null
+          adjustments_applied?: Json | null
+          avg_weight?: number | null
+          created_at?: string
+          cycle_phase?: string | null
+          energy_level?: number | null
+          hunger_level?: number | null
+          id?: string
+          notes?: string | null
+          performance_trend?: string | null
+          prep_id?: string
+          recovery_level?: number | null
+          user_id?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_checkins_prep_id_fkey"
+            columns: ["prep_id"]
+            isOneToOne: false
+            referencedRelation: "competition_preps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competition_preps: {
+        Row: {
+          calorie_target: number | null
+          carb_grams: number | null
+          created_at: string
+          current_mode: string | null
+          current_phase: string | null
+          division: string
+          event_date: string
+          event_type: string
+          fat_grams: number | null
+          goal_weight: number | null
+          id: string
+          is_active: boolean
+          phase_explanation: string | null
+          primary_goal: string
+          protein_grams: number | null
+          rest_day_calories: number | null
+          training_day_calories: number | null
+          updated_at: string
+          user_id: string
+          weight_loss_rate_pct: number | null
+        }
+        Insert: {
+          calorie_target?: number | null
+          carb_grams?: number | null
+          created_at?: string
+          current_mode?: string | null
+          current_phase?: string | null
+          division?: string
+          event_date: string
+          event_type: string
+          fat_grams?: number | null
+          goal_weight?: number | null
+          id?: string
+          is_active?: boolean
+          phase_explanation?: string | null
+          primary_goal: string
+          protein_grams?: number | null
+          rest_day_calories?: number | null
+          training_day_calories?: number | null
+          updated_at?: string
+          user_id: string
+          weight_loss_rate_pct?: number | null
+        }
+        Update: {
+          calorie_target?: number | null
+          carb_grams?: number | null
+          created_at?: string
+          current_mode?: string | null
+          current_phase?: string | null
+          division?: string
+          event_date?: string
+          event_type?: string
+          fat_grams?: number | null
+          goal_weight?: number | null
+          id?: string
+          is_active?: boolean
+          phase_explanation?: string | null
+          primary_goal?: string
+          protein_grams?: number | null
+          rest_day_calories?: number | null
+          training_day_calories?: number | null
+          updated_at?: string
+          user_id?: string
+          weight_loss_rate_pct?: number | null
+        }
+        Relationships: []
+      }
       consent_log: {
         Row: {
           accepted: boolean
