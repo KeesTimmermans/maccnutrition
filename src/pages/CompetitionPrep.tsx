@@ -261,10 +261,10 @@ const CompetitionPrep = () => {
 
         {/* Hydration notes */}
         {result.hydrationNotes && (
-          <Card className="border-blue-500/20 bg-blue-500/5">
+          <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Droplets className="h-4 w-4 text-blue-500" /> Hydration Focus
+                <Droplets className="h-4 w-4 text-primary" /> Hydration Focus
               </CardTitle>
             </CardHeader>
             <CardContent>

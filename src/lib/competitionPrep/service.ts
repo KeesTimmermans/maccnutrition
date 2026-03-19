@@ -198,7 +198,7 @@ export async function submitCheckin(
   // Save check-in
   await supabase
     .from("competition_checkins")
-    .insert({
+    .insert([{
       user_id: user.id,
       prep_id: prepId,
       week_number: weekNumber,
@@ -209,8 +209,8 @@ export async function submitCheckin(
       recovery_level: checkinInput.recoveryLevel,
       performance_trend: checkinInput.performanceTrend,
       cycle_phase: checkinInput.cyclePhase || null,
-      adjustments_applied: adjustment,
-    });
+      adjustments_applied: adjustment as any,
+    }]);
 
   // Apply adjustments to the prep
   if (adjustment.calorieChange !== 0) {
