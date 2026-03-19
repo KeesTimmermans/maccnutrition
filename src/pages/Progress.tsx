@@ -7,13 +7,14 @@ import { getStreaks, UserStreak } from "@/lib/streakService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Minus, Target, Flame, ClipboardCheck } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Target, Flame, ClipboardCheck, Trophy } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { WeeklyAchievements } from "@/components/WeeklyAchievements";
 import { StreakCard } from "@/components/StreakCard";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { ProgressHistory } from "@/components/ProgressHistory";
 import { AppLayout } from "@/components/layout/AppLayout";
+import CompetitionPrepTab from "@/components/CompetitionPrepTab";
 interface DayData {
   date: string;
   fullDate: string;
