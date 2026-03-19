@@ -37,6 +37,8 @@ import Onboarding from "./pages/Onboarding";
 import PostCheckout from "./pages/PostCheckout";
 import Pricing from "./pages/Pricing";
 import ResetPassword from "./pages/ResetPassword";
+import CompetitionPrep from "./pages/CompetitionPrep";
+import CompetitionPrepSetup from "./pages/CompetitionPrepSetup";
 
 const queryClient = new QueryClient();
 
@@ -307,6 +309,8 @@ const App = () => {
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/competition-prep" element={<CompetitionPrep />} />
+                    <Route path="/competition-prep/setup" element={<CompetitionPrepSetup />} />
                     
                     {/* Legacy routes */}
                     <Route path="/history" element={<MealHistory />} />
