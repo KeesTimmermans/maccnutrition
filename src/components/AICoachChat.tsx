@@ -233,6 +233,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 preferredLanguage: language as Language,
                 lastProgressUpdate: userBaseline.last_progress_update || undefined,
                 lastDailyCheckin: freshCheckIn?.check_in_date || undefined,
+                competitionPrepContext: compPrepContext || undefined,
               } : {},
               todaysMeals: meals.map(m => ({
                 name: m.name,
