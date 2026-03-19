@@ -352,6 +352,124 @@ When they're just asking questions or chatting:
 💬 COACHING TONE ADAPTATION:
 (See STYLE DIRECTIVE section below for detailed per-style rules.)`;
 
+// Build Competition Prep coaching context section
+function buildCompPrepSection(userContext: any): string {
+  const cp = userContext?.competitionPrepContext;
+  if (!cp) return '';
+
+  const phaseDirectives: Record<string, string> = {
+    race_week: `RACE WEEK COACHING RULES:
+- Focus ONLY on fueling, hydration, digestion, consistency, and sleep.
+- Do NOT suggest calorie cuts, new foods, or aggressive changes.
+- Encourage sticking with familiar meals and routines.
+- Remind the user this is about performing, not losing weight.`,
+    taper: `TAPER PHASE COACHING RULES:
+- Prioritise recovery, sleep, and consistent nutrition.
+- Do NOT suggest aggressive fat loss or calorie cuts.
+- Encourage maintaining training quality without overloading.
+- Calories should be near maintenance — do not contradict this.`,
+    performance_protection: `PERFORMANCE PROTECTION COACHING RULES:
+- Training quality and energy are the priority now.
+- Do NOT recommend aggressive calorie deficits.
+- Keep carbs adequate for session quality.
+- Body composition goals are secondary to performance at this point.`,
+    specific_prep: `SPECIFIC PREP COACHING RULES:
+- Balance body composition goals with training demands.
+- Keep deficits gentle — training quality matters.
+- Ensure adequate carbs for high-endurance events.`,
+    build: `BUILD PHASE COACHING RULES:
+- Steady progress and consistency are the focus.
+- Support training adaptations with adequate nutrition.
+- Moderate deficits are acceptable if fat loss is the goal.`,
+    foundation: `FOUNDATION PHASE COACHING RULES:
+- Build good habits and base fitness.
+- Moderate deficits are fine for fat loss goals.
+- Focus on consistency and building routines.`,
+  };
+
+  const highEnduranceEvents = ['hyrox', 'athx'];
+  const isHighEndurance = highEnduranceEvents.includes(cp.eventType);
+
+  let section = `
+━━━ ACTIVE COMPETITION PREP ━━━
+This user has an ACTIVE Competition Prep plan. Your coaching advice MUST align with it.
+
+EVENT DETAILS:
+- Event: ${cp.eventLabel} (${cp.divisionLabel})
+- Event Date: ${cp.eventDate}
+- Countdown: ${cp.weeksOut} weeks (${cp.daysOut} days) out
+- Primary Goal: ${cp.primaryGoal.replace(/_/g, ' ')}
+
+CURRENT PLAN STATUS:
+- Phase: ${cp.phaseLabel} (${cp.currentPhase})
+- Mode: ${cp.modeLabel} (${cp.currentMode})
+- Why: ${cp.explanation}
+
+COMPETITION PREP NUTRITION TARGETS (override general targets when discussing comp prep):
+- Calorie Target: ${cp.calorieTarget} kcal
+- Training Day: ${cp.trainingDayCalories} kcal
+- Rest Day: ${cp.restDayCalories} kcal
+- Protein: ${cp.proteinGrams}g
+- Carbs: ${cp.carbGrams}g
+- Fats: ${cp.fatGrams}g
+${cp.weightLossRatePct ? `- Expected Weekly Loss: ~${cp.weightLossRatePct}% body weight` : ''}
+${cp.projectedEventWeight ? `- Projected Event-Day Weight: ${cp.projectedEventWeight.low.toFixed(1)}–${cp.projectedEventWeight.high.toFixed(1)} kg` : ''}
+${cp.goalWeightWarning ? `- ⚠️ Goal Weight Warning: ${cp.goalWeightWarning}` : ''}
+
+CURRENT PRIORITIES:
+${cp.priorities.map((p: string) => `- ${p}`).join('\n')}
+`;
+
+  if (cp.taperGuidance && cp.taperGuidance.length > 0) {
+    section += `\nTAPER/RACE GUIDANCE:\n${cp.taperGuidance.map((g: string) => `- ${g}`).join('\n')}\n`;
+  }
+
+  if (cp.hydrationNotes && cp.hydrationNotes.length > 0) {
+    section += `\nHYDRATION GUIDANCE:\n${cp.hydrationNotes.map((h: string) => `- ${h}`).join('\n')}\n`;
+  }
+
+  if (cp.recentCheckin) {
+    const rc = cp.recentCheckin;
+    section += `\nMOST RECENT COMPETITION CHECK-IN (Week ${rc.weekNumber}):
+- Average Weight: ${rc.avgWeight ?? 'not logged'} kg
+- Adherence: ${rc.adherencePct ?? 'not logged'}%
+- Hunger: ${rc.hungerLevel ?? '?'}/5
+- Energy: ${rc.energyLevel ?? '?'}/5
+- Recovery: ${rc.recoveryLevel ?? '?'}/5
+- Performance Trend: ${rc.performanceTrend ?? 'not logged'}
+${rc.adjustmentsApplied ? `- Last Adjustment: ${rc.adjustmentsApplied}` : ''}
+`;
+  }
+
+  // Phase-specific directives
+  const directive = phaseDirectives[cp.currentPhase] || '';
+  if (directive) {
+    section += `\n${directive}\n`;
+  }
+
+  // High-endurance event protection
+  if (isHighEndurance) {
+    section += `\nHIGH-ENDURANCE EVENT RULE:
+- ${cp.eventLabel} requires high carbohydrate intake for performance.
+- Do NOT suggest low-carb diets or aggressive carb reduction.
+- Protect carb intake even during fat loss phases.
+- Recommend carb-rich meals around training sessions.\n`;
+  }
+
+  section += `
+CRITICAL COMPETITION PREP COACHING RULES:
+1. All daily advice MUST align with the active competition prep plan.
+2. Do NOT suggest calorie or macro targets that contradict the prep engine outputs.
+3. When the user asks about nutrition, reference their competition prep targets.
+4. Explain advice in the context of their event timeline and current phase.
+5. If close to event day, always prioritise performance, recovery, and fueling over body composition.
+6. Use natural language to connect advice to their prep — e.g., "Because your ${cp.eventLabel} is ${cp.weeksOut} weeks away..."
+7. Never suggest aggressive last-minute changes during taper or race week.
+`;
+
+  return section;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
