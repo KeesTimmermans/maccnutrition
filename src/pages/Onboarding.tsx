@@ -8,6 +8,7 @@ import { saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import { createCompPrep } from "@/lib/competitionPrep/service";
+import { syncOnboardingCompleted } from "@/lib/mailerliteSync";
 import type { CompetitionPrepInput, EventType, CompGoal, CompDivision } from "@/lib/competitionPrep/types";
 
 const VALID_EVENT_TYPES: EventType[] = ["hyrox", "athx", "deka", "turf_games", "metrix"];
@@ -121,6 +122,14 @@ const Onboarding = () => {
       // Mark onboarding complete — this updates profiles AND context state
       await markOnboardingCompleted();
       localStorage.setItem("cjt_onboarded", "true");
+
+      // Fire-and-forget: sync to MailerLite
+      if (user?.email) {
+        syncOnboardingCompleted(
+          user.email,
+          userData?.name || user.user_metadata?.full_name || user.email.split("@")[0],
+        );
+      }
 
       // Navigate to pricing/checkout — app access requires active subscription
       navigate("/pricing");

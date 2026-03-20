@@ -2,6 +2,7 @@
  * Service layer for competition prep CRUD and recalculation
  */
 import { supabase } from "@/integrations/supabase/client";
+import { syncCompetitionPrepActivated } from "@/lib/mailerliteSync";
 import type { CompetitionPrepInput, CompetitionPrepResult, WeeklyCheckinInput } from "./types";
 import { calculateCompetitionPrep, calculateWeeklyAdjustment, CompPrepCalcInput } from "./engine";
 
@@ -115,6 +116,19 @@ export async function createCompPrep(
     .single();
 
   if (error) throw error;
+
+  // Fire-and-forget: sync to MailerLite
+  supabase.auth.getUser().then(({ data: { user: u } }) => {
+    if (u?.email) {
+      syncCompetitionPrepActivated(u.email, {
+        eventType: input.eventType,
+        eventDate: input.eventDate,
+        division: input.division,
+        primaryGoal: input.primaryGoal,
+      });
+    }
+  });
+
   return { prep: data as StoredCompPrep, result };
 }
 
