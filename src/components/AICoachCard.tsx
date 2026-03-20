@@ -99,13 +99,20 @@ export const AICoachCard = ({
   const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
   const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
   
-  // Use activeTargets (single source of truth) with baseline as fallback
-  const calorieGoal = activeTargets?.calories ?? baseline?.target_calories ?? 2000;
-  const proteinGoal = activeTargets?.protein ?? baseline?.protein_grams ?? 120;
-  const carbsGoal = activeTargets?.carbs ?? baseline?.carbs_grams ?? 200;
-  const fatsGoal = activeTargets?.fats ?? baseline?.fats_grams ?? 65;
-  const waterGoalL = activeTargets?.waterLiters ?? baseline?.water_liters ?? 2.5;
+  // activeTargets is the SOLE source of truth — never read baseline macros directly
+  const calorieGoal = activeTargets?.calories || 2000;
+  const proteinGoal = activeTargets?.protein || 120;
+  const carbsGoal = activeTargets?.carbs || 200;
+  const fatsGoal = activeTargets?.fats || 65;
+  const waterGoalL = activeTargets?.waterLiters || 2.5;
   const waterGoal = waterGoalL * 1000;
+  
+  // Debug: log what AICoachCard is actually using
+  console.log('[AICoachCard Debug] Target values:', {
+    source: activeTargets?.source ?? 'no-activeTargets',
+    calorieGoal, proteinGoal, carbsGoal, fatsGoal, waterGoalL,
+    activeTargetsProvided: !!activeTargets,
+  });
   const targetSleepHours = baseline?.sleep_hours ? parseFloat(baseline.sleep_hours) : 8;
   
   const calPercent = Math.round((totalCalories / calorieGoal) * 100);
