@@ -202,10 +202,10 @@ export const ProgressUpdateDialog = ({
       // Apply coaching adjustment
       const adjustment = applyProgressAdjustment(
         {
-          calories: baseline.target_calories || 2000,
-          protein: baseline.protein_grams || 150,
-          carbs: baseline.carbs_grams || 200,
-          fats: baseline.fats_grams || 70,
+          calories: activeTargets.calories,
+          protein: activeTargets.protein,
+          carbs: activeTargets.carbs,
+          fats: activeTargets.fats,
         },
         {
           primaryGoal: baseline.primary_goal,
