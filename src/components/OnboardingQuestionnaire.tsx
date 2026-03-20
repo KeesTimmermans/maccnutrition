@@ -1925,6 +1925,14 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
 
   return (
     <div className="space-y-6 animate-slide-up">
+      {/* Event-specific guidance */}
+      {guidance && (
+        <div className="bg-accent/50 rounded-xl p-4 flex gap-3">
+          <Trophy className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-foreground">{guidance.tagline}</p>
+        </div>
+      )}
+
       {/* Event Type */}
       <div className="space-y-3">
         <Label className="text-sm font-semibold">What type of event?</Label>
