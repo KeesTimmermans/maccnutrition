@@ -338,6 +338,8 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         return <ChallengesStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "goals":
         return <GoalsStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
+      case "competition_prep":
+        return <CompetitionPrepOnboardingStep data={data} updateData={updateData} />;
       case "preferences":
         return <PreferencesStep data={data} updateData={updateData} t={t} />;
       case "female":
