@@ -1,3 +1,4 @@
+import type { ActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import {
   Bot, 
   Lightbulb, 
