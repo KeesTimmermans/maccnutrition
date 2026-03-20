@@ -167,8 +167,8 @@ const Auth = () => {
 
       trackSignedUp();
 
-      // Immediately redirect to Stripe Checkout
-      await redirectToCheckout();
+      // Redirect to onboarding questionnaire (payment comes after)
+      redirectToOnboarding();
     } catch (_error) {
       toast({ title: "Error", description: "An unexpected error occurred. Please try again.", variant: "destructive" });
     } finally {
