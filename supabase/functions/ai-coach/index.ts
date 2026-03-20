@@ -840,13 +840,14 @@ USER PROFILE:
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
 
-NUTRITION TARGETS:
+NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your PRIMARY targets)' : ''}:
 - Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
 - Protein: ${userContext?.proteinGrams || 'not set'}g
 - Carbs: ${userContext?.carbsGrams || 'not set'}g
 - Fats: ${userContext?.fatsGrams || 'not set'}g
 - Water: ${userContext?.waterLiters || 'not set'}L
 - Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
+- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override or contradict)' : 'Standard baseline'}
 
 PREFERENCES & RESTRICTIONS:
 - Diet Type: ${userContext?.dietType || 'not specified'}
