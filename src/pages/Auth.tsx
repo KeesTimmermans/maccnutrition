@@ -88,35 +88,8 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const redirectToCheckout = async () => {
-    try {
-      const { data: checkoutData, error: checkoutError } = await Promise.race([
-        supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
-      ]);
-
-      if (checkoutError) throw checkoutError;
-
-      if (checkoutData?.already_subscribed) {
-        // Already has a subscription — skip checkout, go to onboarding
-        navigate("/onboarding");
-        return;
-      }
-
-      const url = checkoutData?.url as string | undefined;
-      if (url) {
-        trackTrialStarted();
-        window.location.assign(url);
-      } else {
-        // No URL returned — send to pricing page so they can subscribe
-        toast({ title: "Account created!", description: "Please subscribe to continue." });
-        navigate("/pricing");
-      }
-    } catch (checkoutErr) {
-      console.error("Checkout error:", checkoutErr);
-      toast({ title: "Account created!", description: "Please subscribe to continue.", variant: "destructive" });
-      navigate("/pricing");
-    }
+  const redirectToOnboarding = () => {
+    navigate("/onboarding");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
