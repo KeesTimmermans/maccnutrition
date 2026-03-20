@@ -171,22 +171,33 @@ const CompetitionPrepSetup = () => {
               </div>
 
               <div>
-                <Label>Division / Category</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  {(Object.keys(DIVISION_LABELS) as CompDivision[]).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setDivision(d)}
-                      className={`px-3 py-2 rounded-lg border text-sm transition-all ${
-                        division === d
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-border bg-card text-muted-foreground hover:border-primary/50"
-                      }`}
-                    >
-                      {DIVISION_LABELS[d]}
-                    </button>
-                  ))}
-                </div>
+                <Label>
+                  {eventType
+                    ? `Select your division for ${EVENT_LABELS[eventType]}`
+                    : "Division / Category"}
+                </Label>
+                {(() => {
+                  const divisions = eventType
+                    ? EVENT_DIVISIONS[eventType] ?? FALLBACK_DIVISIONS
+                    : FALLBACK_DIVISIONS;
+                  return (
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {divisions.map((d) => (
+                        <button
+                          key={d.value}
+                          onClick={() => setDivision(d.value)}
+                          className={`px-3 py-2 rounded-lg border text-sm transition-all ${
+                            division === d.value
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {division === "custom" && (
                   <Input
                     placeholder="Enter custom division..."
