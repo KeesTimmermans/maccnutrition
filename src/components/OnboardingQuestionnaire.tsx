@@ -1912,18 +1912,14 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
   ];
 
   const eventKey = data.compEventType as EventType | undefined;
+  const guidance = eventKey && EVENT_GUIDANCE[eventKey] ? EVENT_GUIDANCE[eventKey] : null;
   const divisions = eventKey && EVENT_DIVISIONS[eventKey]
     ? EVENT_DIVISIONS[eventKey]
     : FALLBACK_DIVISIONS;
 
-  const goals = [
-    { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
-    { label: "Improve Performance", desc: "Maximise event-day output", value: "improve_performance", icon: "⚡" },
-    { label: "Build Strength", desc: "Get stronger for the event", value: "build_strength", icon: "💪" },
-    { label: "Improve Endurance", desc: "Go longer and harder", value: "improve_endurance", icon: "🏃" },
-    { label: "Recomp", desc: "Lose fat while building muscle", value: "recomp", icon: "🔄" },
-    { label: "Maintain & Peak", desc: "Stay steady and peak for event", value: "maintain_and_peak", icon: "🎯" },
-  ];
+  const goals = guidance
+    ? guidance.compGoals
+    : FALLBACK_COMP_GOALS;
 
   const selectedDate = data.compEventDate ? new Date(data.compEventDate) : undefined;
 
