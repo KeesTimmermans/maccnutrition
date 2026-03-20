@@ -74,6 +74,7 @@ const userContextSchema = z.object({
   checkInContext: z.string().max(12000).nullish(),
   wearableContext: z.string().max(4000).nullish(),
   preferredLanguage: z.enum(['en', 'fr', 'es', 'it', 'pt']).nullish(),
+  targetSource: z.enum(['standard', 'competition_prep']).nullish(),
   // App state
   lastProgressUpdate: z.string().max(50).nullish(),
   lastDailyCheckin: z.string().max(50).nullish(),
