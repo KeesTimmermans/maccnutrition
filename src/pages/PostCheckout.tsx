@@ -29,9 +29,9 @@ const PostCheckout = () => {
         const isActive = data?.subscribed === true;
         if (isActive) {
           setStatus("success");
-          // Short delay so user sees the confirmation
+          // Short delay so user sees the confirmation, then go to app
           setTimeout(() => {
-            navigate("/onboarding", { replace: true });
+            navigate("/dashboard", { replace: true });
           }, 2000);
         } else {
           // Subscription not yet active — retry once after a short delay
@@ -41,7 +41,7 @@ const PostCheckout = () => {
           if (retry?.subscribed) {
             setStatus("success");
             setTimeout(() => {
-              navigate("/onboarding", { replace: true });
+              navigate("/dashboard", { replace: true });
             }, 2000);
           } else {
             setStatus("error");
