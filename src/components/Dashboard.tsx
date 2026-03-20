@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MacroRing } from "@/components/MacroRing";
+import { MacroRingGroupSkeleton } from "@/components/MacroRingSkeleton";
 import { AddMealCard } from "@/components/MealCard";
 import { CollapsibleMealCard } from "@/components/CollapsibleMealCard";
 import { AICoachCard } from "@/components/AICoachCard";
@@ -51,7 +52,7 @@ export const Dashboard = () => {
   const location = useLocation();
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
-  const { targets: activeTargets } = useActiveNutritionTargets();
+  const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [freshCheckInData, setFreshCheckInData] = useState<{
@@ -588,39 +589,43 @@ export const Dashboard = () => {
           <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
         </div>
       </div>
-      <div className="flex justify-around items-center">
-        <MacroRing 
-          value={totalCalories} 
-          max={activeTargets.calories} 
-          label={t('calories')} 
-          color="calories"
-          size="lg"
-          unit=""
-        />
-        <div className="space-y-4">
+      {targetsLoading ? (
+        <MacroRingGroupSkeleton />
+      ) : (
+        <div className="flex justify-around items-center">
           <MacroRing 
-            value={totalProtein} 
-            max={activeTargets.protein} 
-            label={t('protein')} 
-            color="protein"
-            size="sm"
+            value={totalCalories} 
+            max={activeTargets.calories} 
+            label={t('calories')} 
+            color="calories"
+            size="lg"
+            unit=""
           />
-          <MacroRing 
-            value={totalCarbs} 
-            max={activeTargets.carbs} 
-            label={t('carbs')} 
-            color="carbs"
-            size="sm"
-          />
-          <MacroRing 
-            value={totalFats} 
-            max={activeTargets.fats} 
-            label={t('fats')} 
-            color="fats"
-            size="sm"
-          />
+          <div className="space-y-4">
+            <MacroRing 
+              value={totalProtein} 
+              max={activeTargets.protein} 
+              label={t('protein')} 
+              color="protein"
+              size="sm"
+            />
+            <MacroRing 
+              value={totalCarbs} 
+              max={activeTargets.carbs} 
+              label={t('carbs')} 
+              color="carbs"
+              size="sm"
+            />
+            <MacroRing 
+              value={totalFats} 
+              max={activeTargets.fats} 
+              label={t('fats')} 
+              color="fats"
+              size="sm"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 
