@@ -40,6 +40,7 @@ const generateClientMessageId = () => {
 
 export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived }: AICoachChatProps) => {
   const { language } = useLanguage();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
