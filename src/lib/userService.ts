@@ -422,6 +422,7 @@ function baselineToOnboardingData(baseline: UserBaseline): import("@/components/
     coachingTone: baseline.coaching_tone || "",
     proteinShakesPreference: "",
     cycleRegularity: baseline.cycle_regularity || "", cycleSymptoms: baseline.cycle_symptoms || [],
+    preparingForEvent: "", compEventType: "", compEventTypeOther: "", compEventDate: "", compDivision: "", compGoal: "",
     bodyFatPercentage: "", waist: "", hip: "", chest: "",
     arm: "", thigh: "", neck: "",
     hasProgressPhoto: false, progressPhotoUrl: null,

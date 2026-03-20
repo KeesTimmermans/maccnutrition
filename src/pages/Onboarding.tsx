@@ -7,6 +7,10 @@ import { useOnboarding } from "@/App";
 import { saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
+import { createCompPrep } from "@/lib/competitionPrep/service";
+import type { CompetitionPrepInput, EventType, CompGoal, CompDivision } from "@/lib/competitionPrep/types";
+
+const VALID_EVENT_TYPES: EventType[] = ["hyrox", "athx", "deka", "turf_games", "metrix"];
 
 const Onboarding = () => {
   const [userData, setUserData] = useState<OnboardingData | null>(null);
@@ -52,7 +56,36 @@ const Onboarding = () => {
         ).catch((err) => console.error("Failed to send baseline email:", err));
       }
 
-      // 4. Only on success: persist locally and show summary
+      // 4. Auto-create Competition Prep if user selected event during onboarding
+      if (data.preparingForEvent === "yes" && data.compEventType && data.compEventDate && data.compGoal) {
+        try {
+          const eventType: EventType = VALID_EVENT_TYPES.includes(data.compEventType as EventType)
+            ? (data.compEventType as EventType)
+            : "hyrox"; // fallback for "other"
+
+          const weightKg = data.unitSystem === "imperial"
+            ? Number(data.weight) / 2.205
+            : Number(data.weight);
+
+          const prepInput: CompetitionPrepInput = {
+            eventType,
+            eventDate: data.compEventDate,
+            division: (data.compDivision || "open") as CompDivision,
+            primaryGoal: data.compGoal as CompGoal,
+          };
+
+          await createCompPrep(prepInput, weightKg, baseline.calories.tdee);
+
+          if (import.meta.env.DEV) {
+            console.log("[Onboarding] Competition Prep auto-created for user", user.id);
+          }
+        } catch (compErr) {
+          // Non-blocking — log but don't fail onboarding
+          console.error("[Onboarding] Competition Prep auto-creation failed:", compErr);
+        }
+      }
+
+      // 5. Only on success: persist locally and show summary
       localStorage.setItem("cjt_user_data", JSON.stringify(data));
       setUserData(data);
       setSavedBaseline(baseline);
@@ -60,7 +93,9 @@ const Onboarding = () => {
 
       toast({
         title: "Profile saved!",
-        description: "Your personalized baseline has been created.",
+        description: data.preparingForEvent === "yes"
+          ? "Your personalized baseline and competition prep have been created."
+          : "Your personalized baseline has been created.",
       });
     } catch (error: any) {
       if (import.meta.env.DEV) {
