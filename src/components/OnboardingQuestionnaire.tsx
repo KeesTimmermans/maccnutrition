@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { EVENT_LABELS, EVENT_DIVISIONS, FALLBACK_DIVISIONS } from "@/lib/competitionPrep/eventProfiles";
+import type { EventType } from "@/lib/competitionPrep/types";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1891,15 +1893,10 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
     { label: "Other", value: "other", icon: "🎯" },
   ];
 
-  const divisions = [
-    { label: "Open", value: "open" },
-    { label: "Pro", value: "pro" },
-    { label: "Solo", value: "solo" },
-    { label: "Doubles", value: "doubles" },
-    { label: "Mixed Doubles", value: "mixed_doubles" },
-    { label: "Team", value: "team" },
-    { label: "Relay", value: "relay" },
-  ];
+  const eventKey = data.compEventType as EventType | undefined;
+  const divisions = eventKey && EVENT_DIVISIONS[eventKey]
+    ? EVENT_DIVISIONS[eventKey]
+    : FALLBACK_DIVISIONS;
 
   const goals = [
     { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
@@ -1921,7 +1918,7 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
           {eventTypes.map((evt) => (
             <button
               key={evt.value}
-              onClick={() => updateData("compEventType", evt.value)}
+              onClick={() => { updateData("compEventType", evt.value); updateData("compDivision", ""); }}
               className={`p-3 rounded-xl text-left transition-all ${
                 data.compEventType === evt.value
                   ? "bg-primary text-primary-foreground"
@@ -1979,7 +1976,11 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
 
       {/* Division */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Division (optional)</Label>
+        <Label className="text-sm font-semibold">
+          {eventKey && EVENT_LABELS[eventKey]
+            ? `Select your division for ${EVENT_LABELS[eventKey]}`
+            : "Division (optional)"}
+        </Label>
         <div className="flex flex-wrap gap-2">
           {divisions.map((div) => (
             <button

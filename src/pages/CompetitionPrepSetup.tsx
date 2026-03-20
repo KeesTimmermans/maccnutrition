@@ -10,8 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserBaseline } from "@/lib/userService";
 import { createCompPrep } from "@/lib/competitionPrep/service";
 import { calculateCompetitionPrep } from "@/lib/competitionPrep/engine";
-import { EVENT_LABELS, DIVISION_LABELS } from "@/lib/competitionPrep/eventProfiles";
-import type { EventType, CompDivision, CompGoal, CompetitionPrepResult } from "@/lib/competitionPrep/types";
+import { EVENT_LABELS, EVENT_DIVISIONS, FALLBACK_DIVISIONS } from "@/lib/competitionPrep/eventProfiles";
+import type { EventType, CompGoal, CompetitionPrepResult } from "@/lib/competitionPrep/types";
 
 const GOAL_OPTIONS: { value: CompGoal; label: string; icon: string }[] = [
   { value: "lose_weight", label: "Lose Weight", icon: "🔥" },
@@ -26,7 +26,7 @@ const CompetitionPrepSetup = () => {
   const [step, setStep] = useState(0);
   const [eventType, setEventType] = useState<EventType | "">("");
   const [eventDate, setEventDate] = useState("");
-  const [division, setDivision] = useState<CompDivision>("open");
+  const [division, setDivision] = useState("");
   const [customDivision, setCustomDivision] = useState("");
   const [goal, setGoal] = useState<CompGoal | "">("");
   const [goalWeight, setGoalWeight] = useState("");
@@ -130,7 +130,10 @@ const CompetitionPrepSetup = () => {
               {(Object.keys(EVENT_LABELS) as EventType[]).map((et) => (
                 <button
                   key={et}
-                  onClick={() => setEventType(et)}
+                  onClick={() => {
+                    setEventType(et);
+                    setDivision("");
+                  }}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                     eventType === et
                       ? "border-primary bg-primary/10 text-foreground"
@@ -168,22 +171,33 @@ const CompetitionPrepSetup = () => {
               </div>
 
               <div>
-                <Label>Division / Category</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  {(Object.keys(DIVISION_LABELS) as CompDivision[]).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setDivision(d)}
-                      className={`px-3 py-2 rounded-lg border text-sm transition-all ${
-                        division === d
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-border bg-card text-muted-foreground hover:border-primary/50"
-                      }`}
-                    >
-                      {DIVISION_LABELS[d]}
-                    </button>
-                  ))}
-                </div>
+                <Label>
+                  {eventType
+                    ? `Select your division for ${EVENT_LABELS[eventType]}`
+                    : "Division / Category"}
+                </Label>
+                {(() => {
+                  const divisions = eventType
+                    ? EVENT_DIVISIONS[eventType] ?? FALLBACK_DIVISIONS
+                    : FALLBACK_DIVISIONS;
+                  return (
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {divisions.map((d) => (
+                        <button
+                          key={d.value}
+                          onClick={() => setDivision(d.value)}
+                          className={`px-3 py-2 rounded-lg border text-sm transition-all ${
+                            division === d.value
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {division === "custom" && (
                   <Input
                     placeholder="Enter custom division..."
@@ -198,7 +212,7 @@ const CompetitionPrepSetup = () => {
                 <Button variant="outline" onClick={() => setStep(0)}>
                   <ChevronLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
-                <Button onClick={() => setStep(2)} disabled={!eventDate} className="flex-1">
+                <Button onClick={() => setStep(2)} disabled={!eventDate || !division} className="flex-1">
                   Continue <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
