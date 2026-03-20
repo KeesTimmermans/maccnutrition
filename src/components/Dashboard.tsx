@@ -51,6 +51,7 @@ export const Dashboard = () => {
   const location = useLocation();
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [freshCheckInData, setFreshCheckInData] = useState<{
