@@ -801,13 +801,13 @@ export const TodayDashboard = () => {
               if (streak) setCoachingStreak(streak);
             });
             getRecentCheckIns(7).then(recentCheckIns => {
-              if (recentCheckIns.length > 0 && baseline) {
+              if (recentCheckIns.length > 0) {
                 const userTargets: UserTargets = {
-                  targetCalories: baseline?.target_calories || undefined,
-                  proteinGrams: baseline?.protein_grams || undefined,
-                  carbsGrams: baseline?.carbs_grams || undefined,
-                  fatsGrams: baseline?.fats_grams || undefined,
-                  waterLiters: baseline?.water_liters || undefined,
+                  targetCalories: activeTargets.calories,
+                  proteinGrams: activeTargets.protein,
+                  carbsGrams: activeTargets.carbs,
+                  fatsGrams: activeTargets.fats,
+                  waterLiters: activeTargets.waterLiters,
                   sleepHours: baseline?.sleep_hours || undefined,
                 };
                 setCheckInAnalysis(analyzeCheckIns(recentCheckIns, userTargets));
