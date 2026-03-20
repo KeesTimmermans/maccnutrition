@@ -285,7 +285,7 @@ export const Dashboard = () => {
     
     // Real-time progress tips
     if (hour < 10 && meals.length === 0) {
-      return `💡 Morning tip: ${Math.round((baseline?.protein_grams || 120) * 0.25)}g protein at breakfast = fewer cravings later.`;
+      return `💡 Morning tip: ${Math.round(activeTargets.protein * 0.25)}g protein at breakfast = fewer cravings later.`;
     }
     
     if (hour >= 10 && hour < 14 && proteinPercent < 25) {
