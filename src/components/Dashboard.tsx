@@ -382,11 +382,11 @@ export const Dashboard = () => {
       // Analyze check-in data for AI coach insights with user-specific targets
       if (recentCheckIns.length > 0) {
         const userTargets: UserTargets = {
-          targetCalories: userBaseline?.target_calories || undefined,
-          proteinGrams: userBaseline?.protein_grams || undefined,
-          carbsGrams: userBaseline?.carbs_grams || undefined,
-          fatsGrams: userBaseline?.fats_grams || undefined,
-          waterLiters: userBaseline?.water_liters || undefined,
+          targetCalories: activeTargets.calories,
+          proteinGrams: activeTargets.protein,
+          carbsGrams: activeTargets.carbs,
+          fatsGrams: activeTargets.fats,
+          waterLiters: activeTargets.waterLiters,
           sleepHours: userBaseline?.sleep_hours || undefined,
         };
         const analysis = analyzeCheckIns(recentCheckIns, userTargets);
