@@ -26,7 +26,7 @@ const CompetitionPrepSetup = () => {
   const [step, setStep] = useState(0);
   const [eventType, setEventType] = useState<EventType | "">("");
   const [eventDate, setEventDate] = useState("");
-  const [division, setDivision] = useState<CompDivision>("open");
+  const [division, setDivision] = useState("");
   const [customDivision, setCustomDivision] = useState("");
   const [goal, setGoal] = useState<CompGoal | "">("");
   const [goalWeight, setGoalWeight] = useState("");
