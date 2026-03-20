@@ -1001,7 +1001,7 @@ export const AICoachCard = ({
                 // Detect water-related focus points
                 if (textLower.includes('water') || textLower.includes('hydrat') || textLower.includes(' l ') || /\d+\.?\d*l/i.test(textLower)) {
                   const percent = Math.min(100, waterPercent);
-                  const waterGoalL = waterGoalL;
+                  // waterGoalL already available from outer scope
                   progressIndicator = (
                     <div className="mt-2">
                       <div className="flex items-center justify-between text-xs mb-1">
