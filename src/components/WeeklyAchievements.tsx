@@ -4,7 +4,7 @@ import { Trophy, Target, Droplets, Flame, Check, X, TrendingUp } from "lucide-re
 import { format, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { getMealsByDateRange, Meal } from "@/lib/mealService";
 import { getWaterIntakeByDateRange, WaterIntake } from "@/lib/waterService";
-import { getUserBaseline, UserBaseline } from "@/lib/userService";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { useLanguage } from "@/lib/i18n";
 
 interface DayAchievement {
@@ -30,13 +30,16 @@ interface WeeklyStats {
 
 export const WeeklyAchievements = () => {
   const { t } = useLanguage();
+  const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
   const [achievements, setAchievements] = useState<DayAchievement[]>([]);
   const [stats, setStats] = useState<WeeklyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadWeeklyData();
-  }, []);
+    if (!targetsLoading) {
+      loadWeeklyData();
+    }
+  }, [targetsLoading]);
 
   const loadWeeklyData = async () => {
     try {
@@ -44,18 +47,17 @@ export const WeeklyAchievements = () => {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-      const [meals, waterIntakes, baseline] = await Promise.all([
+      const [meals, waterIntakes] = await Promise.all([
         getMealsByDateRange(weekStart, weekEnd),
         getWaterIntakeByDateRange(weekStart, weekEnd),
-        getUserBaseline(),
       ]);
 
       const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
-      const calorieGoal = baseline?.target_calories || 2000;
-      const proteinGoal = baseline?.protein_grams || 120;
-      const carbsGoal = baseline?.carbs_grams || 200;
-      const fatsGoal = baseline?.fats_grams || 65;
-      const waterGoalMl = (baseline?.water_liters || 2.5) * 1000;
+      const calorieGoal = activeTargets.calories;
+      const proteinGoal = activeTargets.protein;
+      const carbsGoal = activeTargets.carbs;
+      const fatsGoal = activeTargets.fats;
+      const waterGoalMl = activeTargets.waterLiters * 1000;
 
       const dayAchievements: DayAchievement[] = days.map(date => {
         const dateStr = format(date, 'yyyy-MM-dd');

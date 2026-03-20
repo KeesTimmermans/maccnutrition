@@ -151,7 +151,7 @@ export const TodayDashboard = () => {
         return `⚠️ Afternoon alert: Only ${calPercent}% of calories. Don't under-fuel!`;
       }
       if (waterPercent < 50) {
-        return `💧 Hydration check: ${Math.round(totalWaterMl/1000 * 10)/10}L/${baseline?.water_liters || 2.5}L. Drink up!`;
+        return `💧 Hydration check: ${Math.round(totalWaterMl/1000 * 10)/10}L/${activeTargets.waterLiters}L. Drink up!`;
       }
       if (proteinPercent >= 80) {
         return `💪 Protein on point${firstName ? `, ${firstName}` : ''}! ${proteinPercent}% complete.`;
@@ -258,17 +258,17 @@ export const TodayDashboard = () => {
     const hour = new Date().getHours();
     
     if (checkInAnalysis?.trends.energy === "declining") {
-      return `💡 Energy declining this week. Today: prioritize ${Math.round((baseline?.carbs_grams || 200) * 0.4)}g carbs before 3pm.`;
+      return `💡 Energy declining this week. Today: prioritize ${Math.round(activeTargets.carbs * 0.4)}g carbs before 3pm.`;
     }
     if (checkInAnalysis?.trends.sleep === "declining") {
-      return `💡 Sleep trending down. Tonight: magnesium-rich dinner, no caffeine after 2pm, ${baseline?.water_liters || 2.5}L water.`;
+      return `💡 Sleep trending down. Tonight: magnesium-rich dinner, no caffeine after 2pm, ${activeTargets.waterLiters}L water.`;
     }
     if (todaysCheckIn?.stress_level && todaysCheckIn.stress_level <= 2) {
       return `💡 Stress is high today. Skip sugar, add omega-3s at dinner, and take a 10-min walk after eating.`;
     }
     
     if (hour < 10 && meals.length === 0) {
-      return `💡 Morning tip: ${Math.round((baseline?.protein_grams || 120) * 0.25)}g protein at breakfast = fewer cravings later.`;
+      return `💡 Morning tip: ${Math.round(activeTargets.protein * 0.25)}g protein at breakfast = fewer cravings later.`;
     }
     
     if (hour >= 10 && hour < 14 && proteinPercent < 25) {
@@ -367,11 +367,11 @@ export const TodayDashboard = () => {
       
       if (recentCheckIns.length > 0) {
         const userTargets: UserTargets = {
-          targetCalories: userBaseline?.target_calories || undefined,
-          proteinGrams: userBaseline?.protein_grams || undefined,
-          carbsGrams: userBaseline?.carbs_grams || undefined,
-          fatsGrams: userBaseline?.fats_grams || undefined,
-          waterLiters: userBaseline?.water_liters || undefined,
+          targetCalories: activeTargets.calories,
+          proteinGrams: activeTargets.protein,
+          carbsGrams: activeTargets.carbs,
+          fatsGrams: activeTargets.fats,
+          waterLiters: activeTargets.waterLiters,
           sleepHours: userBaseline?.sleep_hours || undefined,
         };
         setCheckInAnalysis(analyzeCheckIns(recentCheckIns, userTargets));
@@ -651,8 +651,8 @@ export const TodayDashboard = () => {
   const renderWaterSection = () => (
     <section key="water">
       <WaterTracker 
-        dailyGoalLiters={baseline?.water_liters || 2.1} 
-        upperGoalLiters={baseline?.water_liters_training}
+        dailyGoalLiters={activeTargets.waterLiters} 
+        upperGoalLiters={activeTargets.waterLitersTraining}
         onWaterLogged={refreshCoachingFocusPoints}
       />
     </section>
@@ -801,13 +801,13 @@ export const TodayDashboard = () => {
               if (streak) setCoachingStreak(streak);
             });
             getRecentCheckIns(7).then(recentCheckIns => {
-              if (recentCheckIns.length > 0 && baseline) {
+              if (recentCheckIns.length > 0) {
                 const userTargets: UserTargets = {
-                  targetCalories: baseline?.target_calories || undefined,
-                  proteinGrams: baseline?.protein_grams || undefined,
-                  carbsGrams: baseline?.carbs_grams || undefined,
-                  fatsGrams: baseline?.fats_grams || undefined,
-                  waterLiters: baseline?.water_liters || undefined,
+                  targetCalories: activeTargets.calories,
+                  proteinGrams: activeTargets.protein,
+                  carbsGrams: activeTargets.carbs,
+                  fatsGrams: activeTargets.fats,
+                  waterLiters: activeTargets.waterLiters,
                   sleepHours: baseline?.sleep_hours || undefined,
                 };
                 setCheckInAnalysis(analyzeCheckIns(recentCheckIns, userTargets));

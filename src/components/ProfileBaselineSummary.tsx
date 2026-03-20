@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserBaseline } from "@/lib/userService";
 import { updateProfileAndRecalculate } from "@/lib/userService";
-import { Flame, Droplets, Target, Dumbbell, Loader2, ChevronDown } from "lucide-react";
+import { Flame, Droplets, Target, Dumbbell, Loader2, ChevronDown, Trophy } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 
 interface ProfileBaselineSummaryProps {
   baseline: UserBaseline | null;
@@ -24,6 +25,7 @@ const GOAL_OPTIONS = [
 
 export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileBaselineSummaryProps) => {
   const { t } = useLanguage();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [saving, setSaving] = useState(false);
 
   if (!baseline) return null;
@@ -82,6 +84,14 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
           </Select>
         </div>
 
+        {/* Active Target Source */}
+        {activeTargets.source === 'competition_prep' && (
+          <div className="flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 px-3 py-1.5 rounded-full">
+            <Trophy className="w-3.5 h-3.5" />
+            Targets driven by Competition Prep
+          </div>
+        )}
+
         {/* Calorie & Macro Targets */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-muted/50 rounded-xl p-3 text-center">
@@ -89,7 +99,7 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
               <Flame className="w-4 h-4 text-orange-500" />
             </div>
             <p className="text-2xl font-bold text-foreground">
-              {baseline.target_calories?.toLocaleString() || '-'}
+              {activeTargets.calories?.toLocaleString() || '-'}
             </p>
             <p className="text-xs text-muted-foreground">{t('cal_day') || 'cal/day'}</p>
           </div>
@@ -98,7 +108,7 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
               <Droplets className="w-4 h-4 text-blue-500" />
             </div>
             <p className="text-lg font-bold text-foreground">
-              {baseline.water_liters?.toFixed(1) || '-'} – {baseline.water_liters_training?.toFixed(1) || '-'}L
+              {activeTargets.waterLiters?.toFixed(1) || '-'} – {activeTargets.waterLitersTraining?.toFixed(1) || activeTargets.waterLiters?.toFixed(1) || '-'}L
             </p>
             <p className="text-xs text-muted-foreground">{t('water_day') || 'water/day'}</p>
           </div>
@@ -108,26 +118,42 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-[hsl(var(--protein))]/10 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-[hsl(var(--protein))]">
-              {baseline.protein_grams || '-'}g
+              {activeTargets.protein || '-'}g
             </p>
             <p className="text-xs text-muted-foreground">{t('protein') || 'Protein'}</p>
           </div>
           <div className="bg-[hsl(var(--carbs))]/10 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-[hsl(var(--carbs))]">
-              {baseline.carbs_grams || '-'}g
+              {activeTargets.carbs || '-'}g
             </p>
             <p className="text-xs text-muted-foreground">{t('carbs') || 'Carbs'}</p>
           </div>
           <div className="bg-[hsl(var(--fats))]/10 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-[hsl(var(--fats))]">
-              {baseline.fats_grams || '-'}g
+              {activeTargets.fats || '-'}g
             </p>
             <p className="text-xs text-muted-foreground">{t('fats') || 'Fats'}</p>
           </div>
         </div>
 
         {/* Focus Points */}
-        {baseline.focus_points && baseline.focus_points.length > 0 && (
+        {activeTargets.priorities && activeTargets.priorities.length > 0 ? (
+          <div className="pt-2">
+            <p className="text-sm font-medium text-muted-foreground mb-2">
+              {t('current_focus') || 'Current Focus'}
+            </p>
+            <div className="space-y-2">
+              {activeTargets.priorities.slice(0, 3).map((point, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-sm">
+                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <span className="text-foreground">{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : baseline?.focus_points && baseline.focus_points.length > 0 && (
           <div className="pt-2">
             <p className="text-sm font-medium text-muted-foreground mb-2">
               {t('current_focus') || 'Current Focus'}

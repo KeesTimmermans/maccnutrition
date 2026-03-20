@@ -24,6 +24,7 @@ import {
 import { parseFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import {
   TrendingUp,
   ChevronRight,
@@ -66,6 +67,7 @@ export const ProgressUpdateDialog = ({
   baseline,
   onComplete,
 }: ProgressUpdateDialogProps) => {
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [step, setStep] = useState<DialogStep>("status");
   const [progressStatus, setProgressStatus] = useState<ProgressStatus | null>(null);
   const [energy, setEnergy] = useState<EnergyLevel | null>(null);
@@ -148,13 +150,13 @@ export const ProgressUpdateDialog = ({
             userName: baseline.name,
             primaryGoal: baseline.primary_goal,
             secondaryGoals: baseline.secondary_goals,
-            targetCalories: baseline.target_calories,
-            proteinGrams: baseline.protein_grams,
-            carbsGrams: baseline.carbs_grams,
-            fatsGrams: baseline.fats_grams,
+            targetCalories: activeTargets.calories,
+            proteinGrams: activeTargets.protein,
+            carbsGrams: activeTargets.carbs,
+            fatsGrams: activeTargets.fats,
             activityLevel: baseline.activity_level,
             coachingTone: baseline.coaching_tone,
-            focusPoints: baseline.focus_points,
+            focusPoints: activeTargets.priorities.length > 0 ? activeTargets.priorities : (baseline.focus_points || []),
             preferredLanguage: baseline.preferred_language,
           },
         },
@@ -200,10 +202,10 @@ export const ProgressUpdateDialog = ({
       // Apply coaching adjustment
       const adjustment = applyProgressAdjustment(
         {
-          calories: baseline.target_calories || 2000,
-          protein: baseline.protein_grams || 150,
-          carbs: baseline.carbs_grams || 200,
-          fats: baseline.fats_grams || 70,
+          calories: activeTargets.calories,
+          protein: activeTargets.protein,
+          carbs: activeTargets.carbs,
+          fats: activeTargets.fats,
         },
         {
           primaryGoal: baseline.primary_goal,
