@@ -201,16 +201,24 @@ const initialData: OnboardingData = {
   },
 };
 
-const getSteps = (t: (key: string) => string): { id: StepType; title: string; icon: React.ReactNode }[] => [
-  { id: "demographics", title: t('about_you'), icon: <User className="w-6 h-6" /> },
-  { id: "medical", title: t('health_info'), icon: <Heart className="w-6 h-6" /> },
-  { id: "lifestyle", title: t('lifestyle'), icon: <Activity className="w-6 h-6" /> },
-  { id: "eating_behavior", title: "Eating Habits", icon: <Coffee className="w-6 h-6" /> },
-  { id: "challenges", title: "Your Journey", icon: <Brain className="w-6 h-6" /> },
-  { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
-  { id: "preferences", title: t('preferences'), icon: <Utensils className="w-6 h-6" /> },
-  { id: "measurements", title: "Measurements", icon: <RulerIcon className="w-6 h-6" /> },
-];
+const getSteps = (t: (key: string) => string, showCompPrep: boolean): { id: StepType; title: string; icon: React.ReactNode }[] => {
+  const base: { id: StepType; title: string; icon: React.ReactNode }[] = [
+    { id: "demographics", title: t('about_you'), icon: <User className="w-6 h-6" /> },
+    { id: "medical", title: t('health_info'), icon: <Heart className="w-6 h-6" /> },
+    { id: "lifestyle", title: t('lifestyle'), icon: <Activity className="w-6 h-6" /> },
+    { id: "eating_behavior", title: "Eating Habits", icon: <Coffee className="w-6 h-6" /> },
+    { id: "challenges", title: "Your Journey", icon: <Brain className="w-6 h-6" /> },
+    { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
+  ];
+  if (showCompPrep) {
+    base.push({ id: "competition_prep", title: "Event Prep", icon: <Trophy className="w-6 h-6" /> });
+  }
+  base.push(
+    { id: "preferences", title: t('preferences'), icon: <Utensils className="w-6 h-6" /> },
+    { id: "measurements", title: "Measurements", icon: <RulerIcon className="w-6 h-6" /> },
+  );
+  return base;
+};
 
 interface OnboardingQuestionnaireProps {
   onComplete: (data: OnboardingData) => void;
