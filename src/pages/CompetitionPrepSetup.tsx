@@ -130,7 +130,10 @@ const CompetitionPrepSetup = () => {
               {(Object.keys(EVENT_LABELS) as EventType[]).map((et) => (
                 <button
                   key={et}
-                  onClick={() => setEventType(et)}
+                  onClick={() => {
+                    setEventType(et);
+                    setDivision("");
+                  }}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                     eventType === et
                       ? "border-primary bg-primary/10 text-foreground"
