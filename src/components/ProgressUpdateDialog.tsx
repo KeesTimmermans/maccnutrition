@@ -67,6 +67,7 @@ export const ProgressUpdateDialog = ({
   baseline,
   onComplete,
 }: ProgressUpdateDialogProps) => {
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [step, setStep] = useState<DialogStep>("status");
   const [progressStatus, setProgressStatus] = useState<ProgressStatus | null>(null);
   const [energy, setEnergy] = useState<EnergyLevel | null>(null);
