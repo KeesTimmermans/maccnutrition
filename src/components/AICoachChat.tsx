@@ -15,6 +15,8 @@ import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { buildUnifiedCoachContext, buildEdgeFunctionUserContext, type UnifiedCoachContext } from "@/lib/unifiedCoachContext";
+import { getAccountAgeDays } from "@/lib/coachingAnalytics";
 
 interface Message {
   role: "user" | "assistant";
@@ -51,6 +53,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const [todaysMeals, setTodaysMeals] = useState<Meal[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [compPrepContext, setCompPrepContext] = useState<CompPrepCoachContext | null>(null);
+  const unifiedCtxRef = useRef<UnifiedCoachContext | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -123,26 +126,13 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         getTodaysMeals(),
         getRecentCheckIns(7),
         loadWeeklyConversation(),
-        buildCompPrepCoachContext(null, null), // will use defaults; updated below
+        buildCompPrepCoachContext(null, null),
       ]);
-
-      // Debug: log active targets alignment
-      console.log('[Coach Mac Debug] activeTargets:', {
-        source: activeTargets.source,
-        calories: activeTargets.calories,
-        protein: activeTargets.protein,
-        carbs: activeTargets.carbs,
-        fats: activeTargets.fats,
-        priorities: activeTargets.priorities,
-        compPrepMeta: activeTargets.compPrepMeta || null,
-      });
-      console.log('[Coach Mac Debug] compPrepContext detected:', !!compPrep);
 
       setBaseline(userBaseline);
       setTodaysMeals(meals);
 
       // Re-fetch comp prep with actual user data if available
-      // Then OVERRIDE its macro values with activeTargets to guarantee alignment
       let finalCompPrep = compPrep;
       if (userBaseline && compPrep) {
         const updatedCompPrep = await buildCompPrepCoachContext(
@@ -152,7 +142,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         finalCompPrep = updatedCompPrep;
       }
 
-      // Critical: override compPrepContext macros with activeTargets so they never diverge
+      // Override compPrepContext macros with activeTargets so they never diverge
       if (finalCompPrep && activeTargets.source === 'competition_prep') {
         finalCompPrep = {
           ...finalCompPrep,
@@ -161,19 +151,51 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
           carbGrams: activeTargets.carbs,
           fatGrams: activeTargets.fats,
         };
-        console.log('[Coach Mac Debug] compPrepContext macros overridden with activeTargets:', {
-          calories: activeTargets.calories,
-          protein: activeTargets.protein,
-          carbs: activeTargets.carbs,
-          fats: activeTargets.fats,
-        });
       }
       setCompPrepContext(finalCompPrep);
 
+      // Get water intake for unified context
+      const waterIntake = await (async () => {
+        try {
+          const { getTodaysWaterIntake } = await import("@/lib/waterService");
+          const entries = await getTodaysWaterIntake();
+          return Array.isArray(entries) ? entries.reduce((sum, e) => sum + (e.amount_ml || 0), 0) : 0;
+        } catch { return 0; }
+      })();
+
+      const uCtx = buildUnifiedCoachContext({
+        activeTargets,
+        baseline: userBaseline,
+        compPrepContext: finalCompPrep,
+        todaysMeals: meals.map(m => ({ calories: m.calories, protein: m.protein, carbs: m.carbs, fats: m.fats })),
+        waterIntakeMl: waterIntake,
+        todaysCheckIn: null, // will be set below
+        accountAgeDays: getAccountAgeDays(userBaseline),
+      });
+
+      console.log('[Coach Mac Debug] Unified context built:', {
+        nutritionSource: uCtx.nutrition.source,
+        calories: uCtx.nutrition.calories,
+        protein: uCtx.nutrition.protein,
+        carbs: uCtx.nutrition.carbs,
+        fats: uCtx.nutrition.fats,
+        compPrepActive: !!uCtx.compPrep,
+        compPrepPhase: uCtx.compPrep?.currentPhase || 'n/a',
+      });
+
+      // Update unified context with today's check-in
       const today = new Date().toISOString().split('T')[0];
-      // Prefer freshCheckIn if provided (just completed), otherwise find from recent
       const todayCheck = freshCheckIn || recentCheckIns.find(c => c.check_in_date === today);
       setTodaysCheckIn(todayCheck || null);
+
+      // Update unified context with check-in data
+      uCtx.wellness.mood = todayCheck?.mood ?? null;
+      uCtx.wellness.energy = todayCheck?.energy_level ?? null;
+      uCtx.wellness.sleepQuality = todayCheck?.sleep_quality ?? null;
+      uCtx.wellness.sleepHours = todayCheck?.sleep_hours ?? null;
+      uCtx.wellness.stress = todayCheck?.stress_level ?? null;
+      uCtx.wellness.hasCheckedInToday = !!todayCheck;
+      unifiedCtxRef.current = uCtx;
 
       const analysis = analyzeCheckIns(recentCheckIns);
       setCheckInAnalysis(analysis);
@@ -217,57 +239,12 @@ ${freshCheckIn.sleep_hours ? `- Sleep hours: ${freshCheckIn.sleep_hours}` : ''}
 ${freshCheckIn.notes ? `- Notes: ${freshCheckIn.notes}` : ''}
 
 Please give me a comprehensive game plan for my day based on how I'm feeling.`,
-              userContext: userBaseline ? {
-                userName: userBaseline.name,
-                primaryGoal: userBaseline.primary_goal,
-                secondaryGoals: userBaseline.secondary_goals,
-                sex: userBaseline.sex,
-                age: userBaseline.age,
-                targetCalories: activeTargets.calories,
-                proteinGrams: activeTargets.protein,
-                carbsGrams: activeTargets.carbs,
-                fatsGrams: activeTargets.fats,
-                waterLiters: activeTargets.waterLiters,
-                targetSource: activeTargets.source,
-                activityLevel: userBaseline.activity_level,
-                trainingDays: userBaseline.training_days,
-                trainingIntensity: userBaseline.training_intensity,
-                sleepHours: userBaseline.sleep_hours,
-                stressLevel: userBaseline.stress_level,
-                occupation: userBaseline.occupation,
-                eatingSpeed: userBaseline.eating_speed,
-                hungerPatterns: userBaseline.hunger_patterns,
-                cravingsTriggers: userBaseline.cravings_triggers,
-                emotionalEating: userBaseline.emotional_eating,
-                snackingHabits: userBaseline.snacking_habits,
-                hydrationHabits: userBaseline.hydration_habits,
-                energyPatterns: userBaseline.energy_patterns,
-                biggestChallenge: userBaseline.biggest_challenge,
-                pastDiets: userBaseline.past_diets,
-                weekendHabits: userBaseline.weekend_habits,
-                eatingOutFrequency: userBaseline.eating_out_frequency,
-                motivationStyle: userBaseline.motivation_style,
-                accountabilityPreference: userBaseline.accountability_preference,
-                dietType: userBaseline.diet_type,
-                foodDislikes: userBaseline.food_dislikes,
-                allergies: userBaseline.allergies,
-                conditions: userBaseline.conditions,
-                coachingTone: userBaseline.coaching_tone,
-                focusPoints: activeTargets.priorities.length > 0 ? activeTargets.priorities : (userBaseline.focus_points || []),
-                mealsPerDay: userBaseline.meals_per_day,
-                mealPrepTime: userBaseline.meal_prep_time,
-                cookingSkill: userBaseline.cooking_skill,
-                proteinShakesPreference: userBaseline.protein_shakes_preference,
-                currentPhase: userBaseline.current_phase,
-                cycleRegularity: userBaseline.cycle_regularity,
-                cycleSymptoms: userBaseline.cycle_symptoms,
-                cyclePhaseTodayCheckin: (todaysCheckIn as any)?.cycle_phase_today || undefined,
-                checkInContext: checkInContext,
+              userContext: buildEdgeFunctionUserContext(uCtx, {
+                checkInContext,
+                cyclePhaseTodayCheckin: (todayCheck as any)?.cycle_phase_today || undefined,
                 preferredLanguage: language as Language,
-                lastProgressUpdate: userBaseline.last_progress_update || undefined,
                 lastDailyCheckin: freshCheckIn?.check_in_date || undefined,
-                competitionPrepContext: compPrepContext || undefined,
-              } : {},
+              }),
               todaysMeals: meals.map(m => ({
                 name: m.name,
                 calories: m.calories,
@@ -394,58 +371,15 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             body: {
               messages: outboundMessages,
               client_message_id: clientMsgId,
-              userContext: baseline ? {
-                userName: baseline.name,
-                primaryGoal: baseline.primary_goal,
-                secondaryGoals: baseline.secondary_goals,
-                sex: baseline.sex,
-                age: baseline.age,
-                targetCalories: activeTargets.calories,
-                proteinGrams: activeTargets.protein,
-                carbsGrams: activeTargets.carbs,
-                fatsGrams: activeTargets.fats,
-                waterLiters: activeTargets.waterLiters,
-                targetSource: activeTargets.source,
-                activityLevel: baseline.activity_level,
-                trainingDays: baseline.training_days,
-                trainingIntensity: baseline.training_intensity,
-                sleepHours: baseline.sleep_hours,
-                stressLevel: baseline.stress_level,
-                occupation: baseline.occupation,
-                eatingSpeed: baseline.eating_speed,
-                hungerPatterns: baseline.hunger_patterns,
-                cravingsTriggers: baseline.cravings_triggers,
-                emotionalEating: baseline.emotional_eating,
-                snackingHabits: baseline.snacking_habits,
-                hydrationHabits: baseline.hydration_habits,
-                energyPatterns: baseline.energy_patterns,
-                biggestChallenge: baseline.biggest_challenge,
-                pastDiets: baseline.past_diets,
-                weekendHabits: baseline.weekend_habits,
-                eatingOutFrequency: baseline.eating_out_frequency,
-                motivationStyle: baseline.motivation_style,
-                accountabilityPreference: baseline.accountability_preference,
-                dietType: baseline.diet_type,
-                foodDislikes: baseline.food_dislikes,
-                allergies: baseline.allergies,
-                conditions: baseline.conditions,
-                coachingTone: baseline.coaching_tone,
-                focusPoints: activeTargets.priorities.length > 0 ? activeTargets.priorities : (baseline.focus_points || []),
-                mealsPerDay: baseline.meals_per_day,
-                mealPrepTime: baseline.meal_prep_time,
-                cookingSkill: baseline.cooking_skill,
-                proteinShakesPreference: baseline.protein_shakes_preference,
-                currentPhase: baseline.current_phase,
-                cycleRegularity: baseline.cycle_regularity,
-                cycleSymptoms: baseline.cycle_symptoms,
-                cyclePhaseTodayCheckin: (todaysCheckIn as any)?.cycle_phase_today || undefined,
-                checkInContext: checkInContext,
-                checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
-                preferredLanguage: language as Language,
-                lastProgressUpdate: baseline.last_progress_update || undefined,
-                lastDailyCheckin: todaysCheckIn?.check_in_date || undefined,
-                competitionPrepContext: compPrepContext || undefined,
-              } : {},
+              userContext: unifiedCtxRef.current
+                ? buildEdgeFunctionUserContext(unifiedCtxRef.current, {
+                    checkInContext,
+                    checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
+                    cyclePhaseTodayCheckin: (todaysCheckIn as any)?.cycle_phase_today || undefined,
+                    preferredLanguage: language as Language,
+                    lastDailyCheckin: todaysCheckIn?.check_in_date || undefined,
+                  })
+                : {},
               todaysMeals: todaysMeals.map(m => ({
                 name: m.name,
                 calories: m.calories,
