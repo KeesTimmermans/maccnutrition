@@ -1829,3 +1829,155 @@ const FemaleStep = ({ data, updateData, toggleArrayItem, t }: {
     </div>
   );
 };
+
+// ==================== COMPETITION PREP ONBOARDING STEP ====================
+
+const CompetitionPrepOnboardingStep = ({ data, updateData }: {
+  data: OnboardingData;
+  updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+}) => {
+  const [dateOpen, setDateOpen] = useState(false);
+
+  const eventTypes = [
+    { label: "HYROX", value: "hyrox", icon: "🏃" },
+    { label: "ATHX", value: "athx", icon: "💪" },
+    { label: "DEKA", value: "deka", icon: "⚡" },
+    { label: "Turf Games", value: "turf_games", icon: "🏟️" },
+    { label: "Metrix", value: "metrix", icon: "📊" },
+    { label: "Other", value: "other", icon: "🎯" },
+  ];
+
+  const divisions = [
+    { label: "Open", value: "open" },
+    { label: "Pro", value: "pro" },
+    { label: "Solo", value: "solo" },
+    { label: "Doubles", value: "doubles" },
+    { label: "Mixed Doubles", value: "mixed_doubles" },
+    { label: "Team", value: "team" },
+    { label: "Relay", value: "relay" },
+  ];
+
+  const goals = [
+    { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
+    { label: "Improve Performance", desc: "Maximise event-day output", value: "improve_performance", icon: "⚡" },
+    { label: "Build Strength", desc: "Get stronger for the event", value: "build_strength", icon: "💪" },
+    { label: "Improve Endurance", desc: "Go longer and harder", value: "improve_endurance", icon: "🏃" },
+    { label: "Recomp", desc: "Lose fat while building muscle", value: "recomp", icon: "🔄" },
+    { label: "Maintain & Peak", desc: "Stay steady and peak for event", value: "maintain_and_peak", icon: "🎯" },
+  ];
+
+  const selectedDate = data.compEventDate ? new Date(data.compEventDate) : undefined;
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      {/* Event Type */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What type of event?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {eventTypes.map((evt) => (
+            <button
+              key={evt.value}
+              onClick={() => updateData("compEventType", evt.value)}
+              className={`p-3 rounded-xl text-left transition-all ${
+                data.compEventType === evt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-lg block mb-1">{evt.icon}</span>
+              <span className="font-semibold block text-sm">{evt.label}</span>
+            </button>
+          ))}
+        </div>
+        {data.compEventType === "other" && (
+          <Input
+            placeholder="Enter event name"
+            value={data.compEventTypeOther}
+            onChange={(e) => updateData("compEventTypeOther", e.target.value)}
+            className="h-12 rounded-xl mt-2"
+          />
+        )}
+      </div>
+
+      {/* Event Date */}
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">Event date</Label>
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal h-12 rounded-xl",
+                !selectedDate && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {selectedDate ? format(selectedDate, "PPP") : "Pick your event date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => {
+                if (date) {
+                  updateData("compEventDate", date.toISOString().split("T")[0]);
+                }
+                setDateOpen(false);
+              }}
+              disabled={(date) => date < new Date()}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Division */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Division (optional)</Label>
+        <div className="flex flex-wrap gap-2">
+          {divisions.map((div) => (
+            <button
+              key={div.value}
+              onClick={() => updateData("compDivision", data.compDivision === div.value ? "" : div.value)}
+              className={`px-3 py-2 rounded-xl text-sm transition-all ${
+                data.compDivision === div.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              {div.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Primary Goal */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">What's your primary goal for this event?</Label>
+        <div className="space-y-2">
+          {goals.map((goal) => (
+            <button
+              key={goal.value}
+              onClick={() => updateData("compGoal", goal.value)}
+              className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
+                data.compGoal === goal.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-2xl">{goal.icon}</span>
+              <div>
+                <span className="font-semibold block">{goal.label}</span>
+                <span className={`text-sm ${data.compGoal === goal.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  {goal.desc}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
