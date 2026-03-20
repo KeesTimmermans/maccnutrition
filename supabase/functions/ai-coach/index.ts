@@ -503,13 +503,13 @@ serve(async (req) => {
 
     console.log("Authenticated user:", user.id);
 
+    // Parse and validate input
+    const rawBody = await req.json();
+
     // Debug: log target source alignment
     const debugTargetSource = rawBody?.userContext?.targetSource || 'standard';
     const debugHasCompPrep = !!rawBody?.userContext?.competitionPrepContext;
     console.log(`[Coach Mac Debug] targetSource=${debugTargetSource}, compPrepDetected=${debugHasCompPrep}, calories=${rawBody?.userContext?.targetCalories}, protein=${rawBody?.userContext?.proteinGrams}, carbs=${rawBody?.userContext?.carbsGrams}, fats=${rawBody?.userContext?.fatsGrams}`);
-
-    // Parse and validate input
-    const rawBody = await req.json();
     const validationResult = requestSchema.safeParse(rawBody);
     
     if (!validationResult.success) {
