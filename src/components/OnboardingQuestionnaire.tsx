@@ -224,27 +224,65 @@ interface OnboardingQuestionnaireProps {
   onComplete: (data: OnboardingData) => void;
 }
 
+const DRAFT_STORAGE_KEY = "cjt_onboarding_draft";
+
 export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireProps) => {
   const { t } = useLanguage();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [data, setData] = useState<OnboardingData>(initialData);
-  
-  // Pre-fill name from user metadata (support both first_name and legacy full_name)
+  const [restored, setRestored] = useState(false);
+
+  // Restore saved draft on mount
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved) as { data: Partial<OnboardingData>; stepIndex: number };
+        if (draft.data) {
+          setData(prev => ({ ...prev, ...draft.data }));
+        }
+        if (typeof draft.stepIndex === "number" && draft.stepIndex >= 0) {
+          setCurrentStepIndex(draft.stepIndex);
+        }
+      }
+    } catch {
+      // Ignore corrupt storage
+    }
+    setRestored(true);
+  }, []);
+  
+  // Pre-fill name from user metadata only if no draft name was restored
+  useEffect(() => {
+    if (!restored) return;
+    if (data.name) return; // Already have a name from draft or user input
     const prefillUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      // Extract first name from metadata, handling both first_name and legacy full_name
       let firstName = user?.user_metadata?.first_name;
       if (!firstName && user?.user_metadata?.full_name) {
-        // Extract just the first name from full_name
         firstName = user.user_metadata.full_name.split(' ')[0];
       }
       if (firstName) {
-        setData(prev => ({ ...prev, name: firstName }));
+        setData(prev => prev.name ? prev : { ...prev, name: firstName });
       }
     };
     prefillUserData();
-  }, []);
+  }, [restored]);
+
+  // Persist draft to localStorage whenever data or step changes
+  useEffect(() => {
+    if (!restored) return; // Don't overwrite before restoring
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ data, stepIndex: currentStepIndex }));
+    } catch {
+      // Storage full or unavailable — non-critical
+    }
+  }, [data, currentStepIndex, restored]);
+
+  // Clear draft on successful completion
+  const handleComplete = (finalData: OnboardingData) => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    onComplete(finalData);
+  };
   
   const showCompPrepStep = data.preparingForEvent === "yes";
   const steps = getSteps(t, showCompPrepStep);
@@ -252,14 +290,20 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   // Insert female step before measurements if applicable
   const allSteps = data.sex === "female" 
     ? [
-        ...steps.slice(0, -1), // All steps except measurements
+        ...steps.slice(0, -1),
         { id: "female" as StepType, title: t('cycle_info'), icon: <Moon className="w-6 h-6" /> },
-        steps[steps.length - 1] // Measurements at the end
+        steps[steps.length - 1]
       ]
     : steps;
+
+  // Clamp restored step index to valid range (steps may differ if sex/compPrep changed)
+  const safeStepIndex = Math.min(currentStepIndex, allSteps.length - 1);
+  if (safeStepIndex !== currentStepIndex) {
+    setCurrentStepIndex(safeStepIndex);
+  }
   
-  const currentStep = allSteps[currentStepIndex];
-  const progress = ((currentStepIndex + 1) / allSteps.length) * 100;
+  const currentStep = allSteps[safeStepIndex];
+  const progress = ((safeStepIndex + 1) / allSteps.length) * 100;
   
   const updateData = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
