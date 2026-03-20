@@ -406,7 +406,7 @@ CURRENT PLAN STATUS:
 - Mode: ${cp.modeLabel} (${cp.currentMode})
 - Why: ${cp.explanation}
 
-COMPETITION PREP NUTRITION TARGETS (override general targets when discussing comp prep):
+COMPETITION PREP NUTRITION TARGETS (these are ALREADY set as the user's primary targets above — they are identical):
 - Calorie Target: ${cp.calorieTarget} kcal
 - Training Day: ${cp.trainingDayCalories} kcal
 - Rest Day: ${cp.restDayCalories} kcal
