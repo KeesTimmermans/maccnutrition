@@ -2022,7 +2022,11 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
 
       {/* Primary Goal */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">What's your primary goal for this event?</Label>
+        <Label className="text-sm font-semibold">
+          {eventKey && EVENT_LABELS[eventKey]
+            ? `What's your primary goal for ${EVENT_LABELS[eventKey]}?`
+            : "What's your primary goal for this event?"}
+        </Label>
         <div className="space-y-2">
           {goals.map((goal) => (
             <button
