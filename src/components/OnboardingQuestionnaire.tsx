@@ -1535,7 +1535,9 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
 
       {/* Preparing for event question */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Are you preparing for an event or competition?</Label>
+        <Label className="text-sm font-semibold">
+          {eventLabel ? `Are you preparing for a ${eventLabel} event?` : "Are you preparing for an event or competition?"}
+        </Label>
         <p className="text-xs text-muted-foreground -mt-1">This is optional — we'll tailor your plan if you are</p>
         <div className="grid grid-cols-2 gap-3">
           {[
