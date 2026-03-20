@@ -292,7 +292,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
         // Meal progress mention
         if (meals.length > 0) {
           const totalCals = meals.reduce((s, m) => s + m.calories, 0);
-          const targetCals = userBaseline?.target_calories || 2000;
+          const targetCals = activeTargets.calories;
           const percent = Math.round((totalCals / targetCals) * 100);
           if (percent >= 80) {
             greetParts.push(`You're at ${percent}% of calories — almost there.`);
