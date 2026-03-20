@@ -1974,7 +1974,11 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
 
       {/* Division */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">Division (optional)</Label>
+        <Label className="text-sm font-semibold">
+          {eventKey && EVENT_LABELS[eventKey]
+            ? `Select your division for ${EVENT_LABELS[eventKey]}`
+            : "Division (optional)"}
+        </Label>
         <div className="flex flex-wrap gap-2">
           {divisions.map((div) => (
             <button
