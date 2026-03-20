@@ -539,46 +539,50 @@ export const TodayDashboard = () => {
           <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
         </div>
       </div>
-      <div className="flex justify-around items-center">
-        <MacroRing 
-          value={totalCalories} 
-          max={activeTargets.calories} 
-          label={t('calories')} 
-          color="calories"
-          size="lg"
-          unit=""
-        />
-        <div className="space-y-4">
+      {targetsLoading ? (
+        <MacroRingGroupSkeleton />
+      ) : (
+        <div className="flex justify-around items-center">
           <MacroRing 
-            value={totalProtein} 
-            max={activeTargets.protein} 
-            label={t('protein')} 
-            color="protein"
-            size="sm"
+            value={totalCalories} 
+            max={activeTargets.calories} 
+            label={t('calories')} 
+            color="calories"
+            size="lg"
+            unit=""
           />
-          <MacroRing 
-            value={totalCarbs} 
-            max={activeTargets.carbs} 
-            label={t('carbs')} 
-            color="carbs"
-            size="sm"
-          />
-          <MacroRing 
-            value={totalFats} 
-            max={activeTargets.fats} 
-            label={t('fats')} 
-            color="fats"
-            size="sm"
-          />
-          <MacroRing 
-            value={totalSugar} 
-            max={activeTargets.sugar} 
-            label={t('sugar') || 'Sugar'} 
-            color="sugar"
-            size="sm"
-          />
+          <div className="space-y-4">
+            <MacroRing 
+              value={totalProtein} 
+              max={activeTargets.protein} 
+              label={t('protein')} 
+              color="protein"
+              size="sm"
+            />
+            <MacroRing 
+              value={totalCarbs} 
+              max={activeTargets.carbs} 
+              label={t('carbs')} 
+              color="carbs"
+              size="sm"
+            />
+            <MacroRing 
+              value={totalFats} 
+              max={activeTargets.fats} 
+              label={t('fats')} 
+              color="fats"
+              size="sm"
+            />
+            <MacroRing 
+              value={totalSugar} 
+              max={activeTargets.sugar} 
+              label={t('sugar') || 'Sugar'} 
+              color="sugar"
+              size="sm"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 
