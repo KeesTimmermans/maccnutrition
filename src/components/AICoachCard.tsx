@@ -1,3 +1,4 @@
+import type { ActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import {
   Bot, 
   Lightbulb, 
@@ -46,6 +47,8 @@ interface AICoachCardProps {
   todaysCheckIn?: DailyCheckIn | null;
   analysis?: CheckInAnalysis | null;
   baseline?: UserBaseline | null;
+  /** Resolved active targets — single source of truth for all macro/hydration goals */
+  activeTargets?: ActiveNutritionTargets | null;
   meals?: { calories: number; protein: number; carbs: number; fats: number }[];
   waterIntakeMl?: number;
   // Historical data props
@@ -78,6 +81,7 @@ export const AICoachCard = ({
   todaysCheckIn,
   analysis,
   baseline,
+  activeTargets,
   meals = [],
   waterIntakeMl = 0,
   mealPatterns,
@@ -95,11 +99,13 @@ export const AICoachCard = ({
   const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
   const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
   
-  const calorieGoal = baseline?.target_calories || 2000;
-  const proteinGoal = baseline?.protein_grams || 120;
-  const carbsGoal = baseline?.carbs_grams || 200;
-  const fatsGoal = baseline?.fats_grams || 65;
-  const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+  // Use activeTargets (single source of truth) with baseline as fallback
+  const calorieGoal = activeTargets?.calories ?? baseline?.target_calories ?? 2000;
+  const proteinGoal = activeTargets?.protein ?? baseline?.protein_grams ?? 120;
+  const carbsGoal = activeTargets?.carbs ?? baseline?.carbs_grams ?? 200;
+  const fatsGoal = activeTargets?.fats ?? baseline?.fats_grams ?? 65;
+  const waterGoalL = activeTargets?.waterLiters ?? baseline?.water_liters ?? 2.5;
+  const waterGoal = waterGoalL * 1000;
   const targetSleepHours = baseline?.sleep_hours ? parseFloat(baseline.sleep_hours) : 8;
   
   const calPercent = Math.round((totalCalories / calorieGoal) * 100);
@@ -145,7 +151,7 @@ export const AICoachCard = ({
         recommendations.push({
           type: "action",
           icon: <Target className="w-5 h-5 text-primary" />,
-          title: `Today: ${calorieGoal} kcal | ${proteinGoal}g protein | ${baseline?.water_liters || 2.5}L water`,
+          title: `Today: ${calorieGoal} kcal | ${proteinGoal}g protein | ${waterGoalL}L water`,
           description: `Breakfast target: ${breakfastProtein}g protein, ${breakfastCals} kcal. This front-loads your nutrition for stable energy and fewer cravings.`,
           action: `NOW: 3 eggs (18g) + toast = 350 kcal, 20g protein. Or: Greek yogurt 200g (20g protein) + granola = 400 kcal.`,
           priority: 1,
@@ -176,8 +182,8 @@ export const AICoachCard = ({
       recommendations.push({
         type: "action",
         icon: <Droplets className="w-5 h-5 text-blue-500" />,
-        title: `Water: 0/${baseline?.water_liters || 2.5}L — Drink 500ml now`,
-        description: `Target ${Math.round((baseline?.water_liters || 2.5) * 1000 / (18 - hour))}ml/hour to hit your goal by end of day.`,
+        title: `Water: 0/${waterGoalL}L — Drink 500ml now`,
+        description: `Target ${Math.round(waterGoalL * 1000 / (18 - hour))}ml/hour to hit your goal by end of day.`,
         action: `Set hourly reminder: 250ml every hour. Dehydration causes false hunger and 15% drop in energy.`,
         priority: 2,
       });
@@ -230,9 +236,9 @@ export const AICoachCard = ({
         recommendations.push({
           type: waterPercent < 50 && hour >= 14 ? "warning" : "info",
           icon: <Droplets className="w-5 h-5 text-blue-500" />,
-          title: `Water: ${Math.round(waterIntakeMl/100)/10}/${baseline?.water_liters || 2.5}L — ${remainingWater}L to go`,
+          title: `Water: ${Math.round(waterIntakeMl/100)/10}/${waterGoalL}L — ${remainingWater}L to go`,
           description: `Drink ${Math.round(remainingWater / Math.max(20 - hour, 1) * 10) / 10}L per hour to hit your target.`,
-          action: `NOW: Drink 500ml. Set phone timer for 250ml every hour until ${baseline?.water_liters || 2.5}L reached.`,
+          action: `NOW: Drink 500ml. Set phone timer for 250ml every hour until ${waterGoalL}L reached.`,
           priority: waterPercent < 40 && hour >= 12 ? 2 : 4,
         });
       }
@@ -283,7 +289,7 @@ export const AICoachCard = ({
           type: "info",
           icon: <Droplets className="w-5 h-5 text-blue-400" />,
           title: "Focus: Hydration Habits",
-          description: `Water intake is a key focus for you. Target ${baseline?.water_liters || 2.5}L daily for optimal energy and metabolism.`,
+          description: `Water intake is a key focus for you. Target ${waterGoalL}L daily for optimal energy and metabolism.`,
           action: `Strategy: Drink 500ml upon waking, sip throughout the day, 250ml before each meal. Set hourly reminders if you forget.`,
           priority: 3,
         });
@@ -413,7 +419,7 @@ export const AICoachCard = ({
 
     // Hydration real-time check
     const currentWaterL = Math.round(waterIntakeMl / 1000 * 10) / 10;
-    const targetWaterL = baseline?.water_liters || 2.5;
+    const targetWaterL = waterGoalL;
     const waterNeeded = Math.round((waterGoal - waterIntakeMl) / 1000 * 10) / 10;
     
     if (hour >= 12 && waterPercent < 30) {
@@ -616,7 +622,7 @@ export const AICoachCard = ({
           icon: <TrendingDown className="w-5 h-5 text-destructive" />,
           title: "7-Day Energy Declining",
           description: `Avg ${analysis.averageEnergy}/5 and falling. Pattern suggests under-fueling.`,
-          action: `This week: Hit ${proteinGoal}g protein daily, ${targetSleepHours}h sleep, ${baseline?.water_liters || 2.5}L water.`,
+          action: `This week: Hit ${proteinGoal}g protein daily, ${targetSleepHours}h sleep, ${waterGoalL}L water.`,
           priority: 1,
         });
       }
@@ -738,7 +744,7 @@ export const AICoachCard = ({
         icon: <Lightbulb className="w-5 h-5 text-secondary" />,
         title: `Welcome${firstName ? `, ${firstName}` : ''}! Let's Build Momentum`,
         description: `You're ${accountAgeDays} day${accountAgeDays === 1 ? '' : 's'} into your journey. The first week is about building the habit of logging—perfection comes later.`,
-        details: `Your personalized targets: ${calorieGoal} kcal, ${proteinGoal}g protein, ${baseline?.water_liters || 2.5}L water daily. Based on your ${primaryGoal?.replace(/_/g, ' ') || 'goals'}.`,
+        details: `Your personalized targets: ${calorieGoal} kcal, ${proteinGoal}g protein, ${waterGoalL}L water daily. Based on your ${primaryGoal?.replace(/_/g, ' ') || 'goals'}.`,
         action: `Start simple: Log your next meal, even if it's just a rough estimate. Every logged meal teaches me more about your patterns.`,
         priority: 1,
       });
@@ -995,7 +1001,7 @@ export const AICoachCard = ({
                 // Detect water-related focus points
                 if (textLower.includes('water') || textLower.includes('hydrat') || textLower.includes(' l ') || /\d+\.?\d*l/i.test(textLower)) {
                   const percent = Math.min(100, waterPercent);
-                  const waterGoalL = (baseline?.water_liters || 2.5);
+                  const waterGoalL = waterGoalL;
                   progressIndicator = (
                     <div className="mt-2">
                       <div className="flex items-center justify-between text-xs mb-1">
