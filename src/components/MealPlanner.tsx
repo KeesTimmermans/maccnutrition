@@ -68,6 +68,7 @@ const getWeekStart = () => {
 
 export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const { t } = useLanguage();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [groceryList, setGroceryList] = useState<GroceryListData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
