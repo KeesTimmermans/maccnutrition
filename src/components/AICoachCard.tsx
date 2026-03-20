@@ -47,6 +47,8 @@ interface AICoachCardProps {
   todaysCheckIn?: DailyCheckIn | null;
   analysis?: CheckInAnalysis | null;
   baseline?: UserBaseline | null;
+  /** Resolved active targets — single source of truth for all macro/hydration goals */
+  activeTargets?: ActiveNutritionTargets | null;
   meals?: { calories: number; protein: number; carbs: number; fats: number }[];
   waterIntakeMl?: number;
   // Historical data props
