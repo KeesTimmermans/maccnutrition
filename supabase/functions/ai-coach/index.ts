@@ -1025,7 +1025,10 @@ RESPONSE GUIDELINES:
 - Reference their context naturally, not as data dumps
 - ONE clear action item is better than five generic ones
 - If check-in shows changes from yesterday, acknowledge the trajectory
-- Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step`;
+- Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step
+
+CRITICAL FINAL RULE — MACRO NUMBERS:
+When you mention any calorie or macro number in your response, it MUST match the NUTRITION TARGETS above EXACTLY. Do not calculate your own values. Do not estimate. Do not round differently. The app already shows these numbers to the user — your job is to coach around them, not recalculate them.`;
 
     // Build messages array for chat
     let apiMessages: any[] = [{ role: "system", content: systemPrompt }];
