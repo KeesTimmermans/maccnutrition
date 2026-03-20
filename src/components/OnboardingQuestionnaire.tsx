@@ -246,7 +246,8 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
     prefillUserData();
   }, []);
   
-  const steps = getSteps(t);
+  const showCompPrepStep = data.preparingForEvent === "yes";
+  const steps = getSteps(t, showCompPrepStep);
   
   // Insert female step before measurements if applicable
   const allSteps = data.sex === "female" 
