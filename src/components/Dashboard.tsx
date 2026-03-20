@@ -12,6 +12,7 @@ import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { MealPlanner } from "@/components/MealPlanner";
 import { DailyCheckIn } from "@/components/DailyCheckIn";
+import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
 import { TrialBanner } from "@/components/TrialBanner";
 // RecalibrationNotification removed — targets now auto-recalculate on profile changes
@@ -30,6 +31,7 @@ import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/l
 import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
 

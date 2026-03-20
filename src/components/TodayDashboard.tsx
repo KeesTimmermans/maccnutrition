@@ -9,6 +9,7 @@ import { MealLogger } from "@/components/MealLogger";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
+import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
 import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { TrialBanner } from "@/components/TrialBanner";
@@ -28,6 +29,7 @@ import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/l
 import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
 
