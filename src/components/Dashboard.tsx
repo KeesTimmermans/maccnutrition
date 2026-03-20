@@ -12,6 +12,7 @@ import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { MealPlanner } from "@/components/MealPlanner";
 import { DailyCheckIn } from "@/components/DailyCheckIn";
+import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
 import { TrialBanner } from "@/components/TrialBanner";
 // RecalibrationNotification removed — targets now auto-recalculate on profile changes
@@ -30,6 +31,7 @@ import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/l
 import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
 
@@ -49,6 +51,7 @@ export const Dashboard = () => {
   const location = useLocation();
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [freshCheckInData, setFreshCheckInData] = useState<{
@@ -107,9 +110,9 @@ export const Dashboard = () => {
 
   // Dynamic Coach Mac greeting based on current data
   const generateCoachGreeting = () => {
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const waterGoal = activeTargets.waterLiters * 1000;
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
     const waterPercent = Math.round((totalWaterMl / waterGoal) * 100);
@@ -183,11 +186,11 @@ export const Dashboard = () => {
   // Dynamic insights based on logged data - more specific and actionable
   const generateCoachInsights = (): string[] => {
     const insights: string[] = [];
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const carbsGoal = baseline?.carbs_grams || 200;
-    const fatsGoal = baseline?.fats_grams || 65;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const carbsGoal = activeTargets.carbs;
+    const fatsGoal = activeTargets.fats;
+    const waterGoal = activeTargets.waterLiters * 1000;
     
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinRemaining = proteinGoal - totalProtein;
@@ -260,9 +263,9 @@ export const Dashboard = () => {
 
   // Dynamic tip based on current progress and check-in data
   const generateCoachTip = (): string => {
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const waterGoal = activeTargets.waterLiters * 1000;
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
     const waterPercent = Math.round((totalWaterMl / waterGoal) * 100);
@@ -500,10 +503,10 @@ export const Dashboard = () => {
         const newTotalFats = updatedMeals.reduce((sum, m) => sum + m.fats, 0);
         
         // Check if goals were just reached
-        const calorieGoal = baseline?.target_calories || 2000;
-        const proteinGoal = baseline?.protein_grams || 120;
-        const carbsGoal = baseline?.carbs_grams || 200;
-        const fatsGoal = baseline?.fats_grams || 65;
+        const calorieGoal = activeTargets.calories;
+        const proteinGoal = activeTargets.protein;
+        const carbsGoal = activeTargets.carbs;
+        const fatsGoal = activeTargets.fats;
         
         // Celebrate goal achievements
         if (newTotalCalories >= calorieGoal && totalCalories < calorieGoal) {
@@ -582,12 +585,13 @@ export const Dashboard = () => {
         <div>
           <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
           <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
+          <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
         </div>
       </div>
       <div className="flex justify-around items-center">
         <MacroRing 
           value={totalCalories} 
-          max={baseline?.target_calories || 2000} 
+          max={activeTargets.calories} 
           label={t('calories')} 
           color="calories"
           size="lg"
@@ -596,21 +600,21 @@ export const Dashboard = () => {
         <div className="space-y-4">
           <MacroRing 
             value={totalProtein} 
-            max={baseline?.protein_grams || 120} 
+            max={activeTargets.protein} 
             label={t('protein')} 
             color="protein"
             size="sm"
           />
           <MacroRing 
             value={totalCarbs} 
-            max={baseline?.carbs_grams || 200} 
+            max={activeTargets.carbs} 
             label={t('carbs')} 
             color="carbs"
             size="sm"
           />
           <MacroRing 
             value={totalFats} 
-            max={baseline?.fats_grams || 65} 
+            max={activeTargets.fats} 
             label={t('fats')} 
             color="fats"
             size="sm"
@@ -815,10 +819,10 @@ export const Dashboard = () => {
             fats: totalFats,
           }}
           dailyTargets={{
-            calories: baseline?.target_calories || 2000,
-            protein: baseline?.protein_grams || 120,
-            carbs: baseline?.carbs_grams || 250,
-            fats: baseline?.fats_grams || 65,
+            calories: activeTargets.calories,
+            protein: activeTargets.protein,
+            carbs: activeTargets.carbs,
+            fats: activeTargets.fats,
           }}
         />
       )}

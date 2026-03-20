@@ -9,6 +9,7 @@ import { MealLogger } from "@/components/MealLogger";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
+import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
 import { DailyCheckIn } from "@/components/DailyCheckIn";
 import { TrialBanner } from "@/components/TrialBanner";
@@ -28,6 +29,7 @@ import { analyzeMealPatterns, getAccountAgeDays, MealPatternAnalysis } from "@/l
 import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateService";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
 
@@ -47,6 +49,7 @@ export const TodayDashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [freshCheckInData, setFreshCheckInData] = useState<{
@@ -109,9 +112,9 @@ export const TodayDashboard = () => {
   const totalSugar = meals.reduce((sum, m) => sum + (m.sugar || 0), 0);
 
   const generateCoachGreeting = () => {
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const waterGoal = activeTargets.waterLiters * 1000;
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
     const waterPercent = Math.round((totalWaterMl / waterGoal) * 100);
@@ -177,11 +180,11 @@ export const TodayDashboard = () => {
 
   const generateCoachInsights = (): string[] => {
     const insights: string[] = [];
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const carbsGoal = baseline?.carbs_grams || 200;
-    const fatsGoal = baseline?.fats_grams || 65;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const carbsGoal = activeTargets.carbs;
+    const fatsGoal = activeTargets.fats;
+    const waterGoal = activeTargets.waterLiters * 1000;
     
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinRemaining = proteinGoal - totalProtein;
@@ -245,9 +248,9 @@ export const TodayDashboard = () => {
   };
 
   const generateCoachTip = (): string => {
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const waterGoal = activeTargets.waterLiters * 1000;
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
     const waterPercent = Math.round((totalWaterMl / waterGoal) * 100);
@@ -455,10 +458,10 @@ export const TodayDashboard = () => {
         const newTotalCarbs = updatedMeals.reduce((sum, m) => sum + m.carbs, 0);
         const newTotalFats = updatedMeals.reduce((sum, m) => sum + m.fats, 0);
         
-        const calorieGoal = baseline?.target_calories || 2000;
-        const proteinGoal = baseline?.protein_grams || 120;
-        const carbsGoal = baseline?.carbs_grams || 200;
-        const fatsGoal = baseline?.fats_grams || 65;
+        const calorieGoal = activeTargets.calories;
+        const proteinGoal = activeTargets.protein;
+        const carbsGoal = activeTargets.carbs;
+        const fatsGoal = activeTargets.fats;
         
         if (newTotalCalories >= calorieGoal && totalCalories < calorieGoal) {
           toast.success("🎉 Amazing! You've hit your calorie goal for today!", { duration: 5000 });
@@ -532,12 +535,13 @@ export const TodayDashboard = () => {
         <div>
           <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
           <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
+          <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
         </div>
       </div>
       <div className="flex justify-around items-center">
         <MacroRing 
           value={totalCalories} 
-          max={baseline?.target_calories || 2000} 
+          max={activeTargets.calories} 
           label={t('calories')} 
           color="calories"
           size="lg"
@@ -546,28 +550,28 @@ export const TodayDashboard = () => {
         <div className="space-y-4">
           <MacroRing 
             value={totalProtein} 
-            max={baseline?.protein_grams || 120} 
+            max={activeTargets.protein} 
             label={t('protein')} 
             color="protein"
             size="sm"
           />
           <MacroRing 
             value={totalCarbs} 
-            max={baseline?.carbs_grams || 200} 
+            max={activeTargets.carbs} 
             label={t('carbs')} 
             color="carbs"
             size="sm"
           />
           <MacroRing 
             value={totalFats} 
-            max={baseline?.fats_grams || 65} 
+            max={activeTargets.fats} 
             label={t('fats')} 
             color="fats"
             size="sm"
           />
           <MacroRing 
             value={totalSugar} 
-            max={baseline?.sugar_grams || 25} 
+            max={activeTargets.sugar} 
             label={t('sugar') || 'Sugar'} 
             color="sugar"
             size="sm"
@@ -738,10 +742,10 @@ export const TodayDashboard = () => {
             fats: totalFats,
           }}
           dailyTargets={{
-            calories: baseline?.target_calories || 2000,
-            protein: baseline?.protein_grams || 120,
-            carbs: baseline?.carbs_grams || 250,
-            fats: baseline?.fats_grams || 65,
+            calories: activeTargets.calories,
+            protein: activeTargets.protein,
+            carbs: activeTargets.carbs,
+            fats: activeTargets.fats,
           }}
         />
       )}

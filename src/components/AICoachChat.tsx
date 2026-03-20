@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 
 interface Message {
   role: "user" | "assistant";
@@ -39,6 +40,7 @@ const generateClientMessageId = () => {
 
 export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived }: AICoachChatProps) => {
   const { language } = useLanguage();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -191,11 +193,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 secondaryGoals: userBaseline.secondary_goals,
                 sex: userBaseline.sex,
                 age: userBaseline.age,
-                targetCalories: userBaseline.target_calories,
-                proteinGrams: userBaseline.protein_grams,
-                carbsGrams: userBaseline.carbs_grams,
-                fatsGrams: userBaseline.fats_grams,
-                waterLiters: userBaseline.water_liters,
+                targetCalories: activeTargets.calories,
+                proteinGrams: activeTargets.protein,
+                carbsGrams: activeTargets.carbs,
+                fatsGrams: activeTargets.fats,
+                waterLiters: activeTargets.waterLiters,
                 activityLevel: userBaseline.activity_level,
                 trainingDays: userBaseline.training_days,
                 trainingIntensity: userBaseline.training_intensity,
@@ -367,11 +369,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 secondaryGoals: baseline.secondary_goals,
                 sex: baseline.sex,
                 age: baseline.age,
-                targetCalories: baseline.target_calories,
-                proteinGrams: baseline.protein_grams,
-                carbsGrams: baseline.carbs_grams,
-                fatsGrams: baseline.fats_grams,
-                waterLiters: baseline.water_liters,
+                targetCalories: activeTargets.calories,
+                proteinGrams: activeTargets.protein,
+                carbsGrams: activeTargets.carbs,
+                fatsGrams: activeTargets.fats,
+                waterLiters: activeTargets.waterLiters,
                 activityLevel: baseline.activity_level,
                 trainingDays: baseline.training_days,
                 trainingIntensity: baseline.training_intensity,

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { UserBaseline } from "@/lib/userService";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { GroceryList } from "@/components/GroceryList";
 import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { saveMeal } from "@/lib/mealService";
@@ -67,6 +68,7 @@ const getWeekStart = () => {
 
 export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const { t } = useLanguage();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [groceryList, setGroceryList] = useState<GroceryListData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -155,8 +157,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   };
 
   const generateMealPlan = async () => {
-    // Check if baseline exists with required data
-    if (!baseline?.target_calories) {
+    if (!baseline?.target_calories && !activeTargets.calories) {
       toast.error(t('complete_questionnaire_first') || 'Please complete the questionnaire first to set your nutrition targets.');
       return;
     }
@@ -169,10 +170,10 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     try {
       const userContext = {
         primaryGoal: baseline?.primary_goal,
-        targetCalories: baseline?.target_calories,
-        proteinGrams: baseline?.protein_grams,
-        carbsGrams: baseline?.carbs_grams,
-        fatsGrams: baseline?.fats_grams,
+        targetCalories: activeTargets.calories,
+        proteinGrams: activeTargets.protein,
+        carbsGrams: activeTargets.carbs,
+        fatsGrams: activeTargets.fats,
         dietType: baseline?.diet_type,
         allergies: baseline?.allergies,
         foodDislikes: baseline?.food_dislikes,
@@ -314,8 +315,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     proteinShakesPreference: baseline?.protein_shakes_preference,
     cookingSkill: baseline?.cooking_skill,
     mealPrepTime: baseline?.meal_prep_time,
-    targetCalories: baseline?.target_calories,
-    proteinGrams: baseline?.protein_grams,
+    targetCalories: activeTargets.calories,
+    proteinGrams: activeTargets.protein,
   });
 
   const handleGenerateSwapOptions = async (): Promise<MealWithIngredients[]> => {
