@@ -109,3 +109,72 @@ export const DIVISION_LABELS: Record<string, string> = {
   elite: "Elite", age_group: "Age Group",
   deka_strong: "DEKA STRONG", deka_mile: "DEKA MILE", deka_fit: "DEKA FIT",
 };
+
+// ── Event-specific onboarding context ──────────────────────────────
+
+export interface EventGuidance {
+  tagline: string;
+  compGoals: { label: string; desc: string; value: string; icon: string }[];
+}
+
+export const EVENT_GUIDANCE: Record<EventType, EventGuidance> = {
+  hyrox: {
+    tagline: "HYROX requires strong endurance, pacing, and performance under fatigue.",
+    compGoals: [
+      { label: "Improve Endurance & Pacing", desc: "Build race-day stamina and pacing strategy", value: "improve_endurance", icon: "🏃" },
+      { label: "Improve Performance", desc: "Maximise your HYROX race-day output", value: "improve_performance", icon: "⚡" },
+      { label: "Lose Weight for Efficiency", desc: "Get leaner to move faster between stations", value: "lose_weight", icon: "🔥" },
+      { label: "Build Strength for Stations", desc: "Get stronger for sled, wall balls, and carries", value: "build_strength", icon: "💪" },
+      { label: "Maintain & Peak", desc: "Stay steady and peak for race day", value: "maintain_and_peak", icon: "🎯" },
+    ],
+  },
+  deka: {
+    tagline: "DEKA events require repeated high-intensity efforts across multiple zones.",
+    compGoals: [
+      { label: "Improve Conditioning", desc: "Build capacity between DEKA zones", value: "improve_endurance", icon: "🏃" },
+      { label: "Build Strength & Power", desc: "Get stronger across all DEKA stations", value: "build_strength", icon: "💪" },
+      { label: "Improve Performance", desc: "Maximise your overall DEKA score", value: "improve_performance", icon: "⚡" },
+      { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
+      { label: "Maintain & Peak", desc: "Stay steady and peak for your event", value: "maintain_and_peak", icon: "🎯" },
+    ],
+  },
+  turf_games: {
+    tagline: "Turf Games involve team-based workouts and repeated high-intensity efforts.",
+    compGoals: [
+      { label: "Improve Team Performance", desc: "Be a stronger teammate on event day", value: "improve_performance", icon: "👥" },
+      { label: "Build Strength & Work Capacity", desc: "Handle more volume under fatigue", value: "build_strength", icon: "💪" },
+      { label: "Improve Recovery Between Efforts", desc: "Bounce back faster between events", value: "improve_endurance", icon: "🔄" },
+      { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
+      { label: "Maintain & Peak", desc: "Stay steady and peak for your event", value: "maintain_and_peak", icon: "🎯" },
+    ],
+  },
+  athx: {
+    tagline: "ATHX combines strength, endurance, and recovery across multiple zones.",
+    compGoals: [
+      { label: "Improve Overall Performance", desc: "Maximise your ATHX event-day output", value: "improve_performance", icon: "⚡" },
+      { label: "Build Strength Across Zones", desc: "Get stronger for all ATHX challenges", value: "build_strength", icon: "💪" },
+      { label: "Improve Endurance Capacity", desc: "Go longer and harder across zones", value: "improve_endurance", icon: "🏃" },
+      { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
+      { label: "Maintain & Peak", desc: "Stay steady and peak for your event", value: "maintain_and_peak", icon: "🎯" },
+    ],
+  },
+  metrix: {
+    tagline: "Metrix events combine strength, conditioning, and competition-style workouts.",
+    compGoals: [
+      { label: "Improve Performance", desc: "Maximise your Metrix event-day output", value: "improve_performance", icon: "⚡" },
+      { label: "Build Strength", desc: "Get stronger for competition workouts", value: "build_strength", icon: "💪" },
+      { label: "Improve Conditioning", desc: "Build work capacity and endurance", value: "improve_endurance", icon: "🏃" },
+      { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
+      { label: "Maintain & Peak", desc: "Stay steady and peak for your event", value: "maintain_and_peak", icon: "🎯" },
+    ],
+  },
+};
+
+export const FALLBACK_COMP_GOALS = [
+  { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
+  { label: "Improve Performance", desc: "Maximise event-day output", value: "improve_performance", icon: "⚡" },
+  { label: "Build Strength", desc: "Get stronger for the event", value: "build_strength", icon: "💪" },
+  { label: "Improve Endurance", desc: "Go longer and harder", value: "improve_endurance", icon: "🏃" },
+  { label: "Recomp", desc: "Lose fat while building muscle", value: "recomp", icon: "🔄" },
+  { label: "Maintain & Peak", desc: "Stay steady and peak for event", value: "maintain_and_peak", icon: "🎯" },
+];
