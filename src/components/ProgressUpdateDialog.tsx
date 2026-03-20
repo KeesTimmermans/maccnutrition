@@ -25,6 +25,7 @@ import { parseFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateServic
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import {
   TrendingUp,
   ChevronRight,
   ChevronLeft,
