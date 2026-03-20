@@ -212,7 +212,7 @@ const CompetitionPrepSetup = () => {
                 <Button variant="outline" onClick={() => setStep(0)}>
                   <ChevronLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
-                <Button onClick={() => setStep(2)} disabled={!eventDate} className="flex-1">
+                <Button onClick={() => setStep(2)} disabled={!eventDate || !division} className="flex-1">
                   Continue <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
