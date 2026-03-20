@@ -406,13 +406,9 @@ CURRENT PLAN STATUS:
 - Mode: ${cp.modeLabel} (${cp.currentMode})
 - Why: ${cp.explanation}
 
-COMPETITION PREP NUTRITION TARGETS (these are ALREADY set as the user's primary targets above — they are identical):
-- Calorie Target: ${cp.calorieTarget} kcal
-- Training Day: ${cp.trainingDayCalories} kcal
-- Rest Day: ${cp.restDayCalories} kcal
-- Protein: ${cp.proteinGrams}g
-- Carbs: ${cp.carbGrams}g
-- Fats: ${cp.fatGrams}g
+NOTE: The competition prep nutrition targets are IDENTICAL to the NUTRITION TARGETS listed above. Do NOT reference any other numbers. The targets above are the ONLY authoritative source.
+- Training Day Calories: ${cp.trainingDayCalories} kcal
+- Rest Day Calories: ${cp.restDayCalories} kcal
 ${cp.weightLossRatePct ? `- Expected Weekly Loss: ~${cp.weightLossRatePct}% body weight` : ''}
 ${cp.projectedEventWeight ? `- Projected Event-Day Weight: ${cp.projectedEventWeight.low.toFixed(1)}–${cp.projectedEventWeight.high.toFixed(1)} kg` : ''}
 ${cp.goalWeightWarning ? `- ⚠️ Goal Weight Warning: ${cp.goalWeightWarning}` : ''}
