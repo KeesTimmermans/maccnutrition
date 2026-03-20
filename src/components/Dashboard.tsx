@@ -274,7 +274,7 @@ export const Dashboard = () => {
     
     // Check-in trend based tips (highest priority)
     if (checkInAnalysis?.trends.energy === "declining") {
-      return `💡 Energy declining this week. Today: prioritize ${Math.round((baseline?.carbs_grams || 200) * 0.4)}g carbs before 3pm.`;
+      return `💡 Energy declining this week. Today: prioritize ${Math.round(activeTargets.carbs * 0.4)}g carbs before 3pm.`;
     }
     if (checkInAnalysis?.trends.sleep === "declining") {
       return `💡 Sleep trending down. Tonight: magnesium-rich dinner, no caffeine after 2pm, ${baseline?.water_liters || 2.5}L water.`;
