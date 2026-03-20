@@ -157,8 +157,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   };
 
   const generateMealPlan = async () => {
-    // Check if baseline exists with required data
-    if (!baseline?.target_calories) {
+    if (!baseline?.target_calories && !activeTargets.calories) {
       toast.error(t('complete_questionnaire_first') || 'Please complete the questionnaire first to set your nutrition targets.');
       return;
     }
