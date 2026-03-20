@@ -183,10 +183,19 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         compPrepPhase: uCtx.compPrep?.currentPhase || 'n/a',
       });
 
+      // Update unified context with today's check-in
       const today = new Date().toISOString().split('T')[0];
-      // Prefer freshCheckIn if provided (just completed), otherwise find from recent
       const todayCheck = freshCheckIn || recentCheckIns.find(c => c.check_in_date === today);
       setTodaysCheckIn(todayCheck || null);
+
+      // Update unified context with check-in data
+      uCtx.wellness.mood = todayCheck?.mood ?? null;
+      uCtx.wellness.energy = todayCheck?.energy_level ?? null;
+      uCtx.wellness.sleepQuality = todayCheck?.sleep_quality ?? null;
+      uCtx.wellness.sleepHours = todayCheck?.sleep_hours ?? null;
+      uCtx.wellness.stress = todayCheck?.stress_level ?? null;
+      uCtx.wellness.hasCheckedInToday = !!todayCheck;
+      unifiedCtxRef.current = uCtx;
 
       const analysis = analyzeCheckIns(recentCheckIns);
       setCheckInAnalysis(analysis);
