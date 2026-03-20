@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { getMealsByDateRange, Meal } from "@/lib/mealService";
-import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 
 interface DayData {
   date: string;
@@ -17,8 +17,8 @@ interface DayData {
 export const ProgressCharts = () => {
   const [weeklyData, setWeeklyData] = useState<DayData[]>([]);
   const [monthlyData, setMonthlyData] = useState<DayData[]>([]);
-  const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
 
   useEffect(() => {
     loadChartData();
@@ -30,13 +30,11 @@ export const ProgressCharts = () => {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
       
-      const [userBaseline, weekMeals, monthMeals] = await Promise.all([
-        getUserBaseline(),
+      const [weekMeals, monthMeals] = await Promise.all([
         getMealsByDateRange(weekStart, weekEnd),
         getMealsByDateRange(subDays(today, 29), today),
       ]);
 
-      setBaseline(userBaseline);
       setWeeklyData(aggregateMealsByDay(weekMeals, 7));
       setMonthlyData(aggregateMealsByDay(monthMeals, 30));
     } catch (error) {
@@ -65,7 +63,7 @@ export const ProgressCharts = () => {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || targetsLoading) {
     return (
       <Card className="bg-card rounded-3xl shadow-medium">
         <CardContent className="py-8 text-center text-muted-foreground">
@@ -75,7 +73,7 @@ export const ProgressCharts = () => {
     );
   }
 
-  const calorieGoal = baseline?.target_calories || 2000;
+  const calorieGoal = activeTargets.calories;
 
   return (
     <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
