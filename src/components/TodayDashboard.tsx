@@ -261,7 +261,7 @@ export const TodayDashboard = () => {
       return `💡 Energy declining this week. Today: prioritize ${Math.round(activeTargets.carbs * 0.4)}g carbs before 3pm.`;
     }
     if (checkInAnalysis?.trends.sleep === "declining") {
-      return `💡 Sleep trending down. Tonight: magnesium-rich dinner, no caffeine after 2pm, ${baseline?.water_liters || 2.5}L water.`;
+      return `💡 Sleep trending down. Tonight: magnesium-rich dinner, no caffeine after 2pm, ${activeTargets.waterLiters}L water.`;
     }
     if (todaysCheckIn?.stress_level && todaysCheckIn.stress_level <= 2) {
       return `💡 Stress is high today. Skip sugar, add omega-3s at dinner, and take a 10-min walk after eating.`;
