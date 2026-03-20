@@ -15,6 +15,8 @@ import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { buildUnifiedCoachContext, buildEdgeFunctionUserContext, type UnifiedCoachContext } from "@/lib/unifiedCoachContext";
+import { getAccountAgeDays } from "@/lib/coachingAnalytics";
 
 interface Message {
   role: "user" | "assistant";
