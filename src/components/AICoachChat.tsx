@@ -126,26 +126,13 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         getTodaysMeals(),
         getRecentCheckIns(7),
         loadWeeklyConversation(),
-        buildCompPrepCoachContext(null, null), // will use defaults; updated below
+        buildCompPrepCoachContext(null, null),
       ]);
-
-      // Debug: log active targets alignment
-      console.log('[Coach Mac Debug] activeTargets:', {
-        source: activeTargets.source,
-        calories: activeTargets.calories,
-        protein: activeTargets.protein,
-        carbs: activeTargets.carbs,
-        fats: activeTargets.fats,
-        priorities: activeTargets.priorities,
-        compPrepMeta: activeTargets.compPrepMeta || null,
-      });
-      console.log('[Coach Mac Debug] compPrepContext detected:', !!compPrep);
 
       setBaseline(userBaseline);
       setTodaysMeals(meals);
 
       // Re-fetch comp prep with actual user data if available
-      // Then OVERRIDE its macro values with activeTargets to guarantee alignment
       let finalCompPrep = compPrep;
       if (userBaseline && compPrep) {
         const updatedCompPrep = await buildCompPrepCoachContext(
@@ -155,7 +142,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         finalCompPrep = updatedCompPrep;
       }
 
-      // Critical: override compPrepContext macros with activeTargets so they never diverge
+      // Override compPrepContext macros with activeTargets so they never diverge
       if (finalCompPrep && activeTargets.source === 'competition_prep') {
         finalCompPrep = {
           ...finalCompPrep,
@@ -164,14 +151,36 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
           carbGrams: activeTargets.carbs,
           fatGrams: activeTargets.fats,
         };
-        console.log('[Coach Mac Debug] compPrepContext macros overridden with activeTargets:', {
-          calories: activeTargets.calories,
-          protein: activeTargets.protein,
-          carbs: activeTargets.carbs,
-          fats: activeTargets.fats,
-        });
       }
       setCompPrepContext(finalCompPrep);
+
+      // Build unified coaching context — single source of truth
+      const waterIntake = await (async () => {
+        try {
+          const { getTodaysWaterIntake } = await import("@/lib/waterService");
+          return await getTodaysWaterIntake();
+        } catch { return 0; }
+      })();
+
+      const uCtx = buildUnifiedCoachContext({
+        activeTargets,
+        baseline: userBaseline,
+        compPrepContext: finalCompPrep,
+        todaysMeals: meals.map(m => ({ calories: m.calories, protein: m.protein, carbs: m.carbs, fats: m.fats })),
+        waterIntakeMl: waterIntake,
+        todaysCheckIn: null, // will be set below
+        accountAgeDays: getAccountAgeDays(userBaseline),
+      });
+
+      console.log('[Coach Mac Debug] Unified context built:', {
+        nutritionSource: uCtx.nutrition.source,
+        calories: uCtx.nutrition.calories,
+        protein: uCtx.nutrition.protein,
+        carbs: uCtx.nutrition.carbs,
+        fats: uCtx.nutrition.fats,
+        compPrepActive: !!uCtx.compPrep,
+        compPrepPhase: uCtx.compPrep?.currentPhase || 'n/a',
+      });
 
       const today = new Date().toISOString().split('T')[0];
       // Prefer freshCheckIn if provided (just completed), otherwise find from recent
