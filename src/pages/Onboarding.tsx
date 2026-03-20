@@ -123,6 +123,14 @@ const Onboarding = () => {
       await markOnboardingCompleted();
       localStorage.setItem("cjt_onboarded", "true");
 
+      // Fire-and-forget: sync to MailerLite
+      if (user?.email) {
+        syncOnboardingCompleted(
+          user.email,
+          userData?.name || user.user_metadata?.full_name || user.email.split("@")[0],
+        );
+      }
+
       // Navigate to pricing/checkout — app access requires active subscription
       navigate("/pricing");
     } catch (error: any) {

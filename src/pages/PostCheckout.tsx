@@ -30,6 +30,11 @@ const PostCheckout = () => {
         const isActive = data?.subscribed === true;
         if (isActive) {
           setStatus("success");
+          // Fire-and-forget: sync to MailerLite
+          syncSubscriptionActive(
+            session.user.email || "",
+            session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
+          );
           // Short delay so user sees the confirmation, then go to app
           setTimeout(() => {
             navigate("/dashboard", { replace: true });
