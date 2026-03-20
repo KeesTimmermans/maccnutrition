@@ -104,7 +104,8 @@ export const AICoachCard = ({
   const proteinGoal = activeTargets?.protein ?? baseline?.protein_grams ?? 120;
   const carbsGoal = activeTargets?.carbs ?? baseline?.carbs_grams ?? 200;
   const fatsGoal = activeTargets?.fats ?? baseline?.fats_grams ?? 65;
-  const waterGoal = ((activeTargets?.waterLiters ?? baseline?.water_liters ?? 2.5) * 1000);
+  const waterGoalL = activeTargets?.waterLiters ?? baseline?.water_liters ?? 2.5;
+  const waterGoal = waterGoalL * 1000;
   const targetSleepHours = baseline?.sleep_hours ? parseFloat(baseline.sleep_hours) : 8;
   
   const calPercent = Math.round((totalCalories / calorieGoal) * 100);
