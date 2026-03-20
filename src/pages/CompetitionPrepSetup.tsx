@@ -10,8 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserBaseline } from "@/lib/userService";
 import { createCompPrep } from "@/lib/competitionPrep/service";
 import { calculateCompetitionPrep } from "@/lib/competitionPrep/engine";
-import { EVENT_LABELS, DIVISION_LABELS } from "@/lib/competitionPrep/eventProfiles";
-import type { EventType, CompDivision, CompGoal, CompetitionPrepResult } from "@/lib/competitionPrep/types";
+import { EVENT_LABELS, EVENT_DIVISIONS, FALLBACK_DIVISIONS } from "@/lib/competitionPrep/eventProfiles";
+import type { EventType, CompGoal, CompetitionPrepResult } from "@/lib/competitionPrep/types";
 
 const GOAL_OPTIONS: { value: CompGoal; label: string; icon: string }[] = [
   { value: "lose_weight", label: "Lose Weight", icon: "🔥" },
