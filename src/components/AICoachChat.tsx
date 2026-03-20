@@ -126,6 +126,18 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         buildCompPrepCoachContext(null, null), // will use defaults; updated below
       ]);
 
+      // Debug: log active targets alignment
+      console.log('[Coach Mac Debug] activeTargets:', {
+        source: activeTargets.source,
+        calories: activeTargets.calories,
+        protein: activeTargets.protein,
+        carbs: activeTargets.carbs,
+        fats: activeTargets.fats,
+        priorities: activeTargets.priorities,
+        compPrepMeta: activeTargets.compPrepMeta || null,
+      });
+      console.log('[Coach Mac Debug] compPrepContext detected:', !!compPrep);
+
       setBaseline(userBaseline);
       setTodaysMeals(meals);
 
