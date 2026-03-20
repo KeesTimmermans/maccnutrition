@@ -154,11 +154,12 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
       }
       setCompPrepContext(finalCompPrep);
 
-      // Build unified coaching context — single source of truth
+      // Get water intake for unified context
       const waterIntake = await (async () => {
         try {
           const { getTodaysWaterIntake } = await import("@/lib/waterService");
-          return await getTodaysWaterIntake();
+          const entries = await getTodaysWaterIntake();
+          return Array.isArray(entries) ? entries.reduce((sum, e) => sum + (e.amount_ml || 0), 0) : 0;
         } catch { return 0; }
       })();
 
