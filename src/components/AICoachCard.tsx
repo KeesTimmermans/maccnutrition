@@ -81,6 +81,7 @@ export const AICoachCard = ({
   todaysCheckIn,
   analysis,
   baseline,
+  activeTargets,
   meals = [],
   waterIntakeMl = 0,
   mealPatterns,
