@@ -856,6 +856,35 @@ export const AICoachCard = ({
   const actionableRecommendations = generateActionableRecommendations();
   const hasRecommendations = actionableRecommendations.length > 0;
 
+  const formatLiters = (liters: number) => liters.toFixed(1).replace(/\.0$/, "");
+
+  const resolveLiveFocusPointCopy = (text: string, tip?: string | null) => {
+    const combined = `${text} ${tip || ""}`.toLowerCase();
+
+    if (combined.includes("protein") || combined.includes("g protein")) {
+      return {
+        text: `Prioritize protein: hit your ${proteinGoal}g target`,
+        tip: `Have ${Math.round(proteinGoal * 0.18)}-${Math.round(proteinGoal * 0.24)}g protein at breakfast, and consider a shake post-workout`,
+      };
+    }
+
+    if (combined.includes("water") || combined.includes("hydrat")) {
+      return {
+        text: `Hydration focus: aim for your ${formatLiters(waterGoalL)}L water target`,
+        tip: "Keep your water bottle handy and sip throughout the day, particularly during training",
+      };
+    }
+
+    if (combined.includes("calori") || combined.includes("kcal") || combined.includes("fuel")) {
+      return {
+        text: "Fuel consistently: don't skip meals or snacks",
+        tip: `Use the meal logging to keep an eye on your calorie intake, making sure you hit around ${calorieGoal} kcal`,
+      };
+    }
+
+    return { text, tip };
+  };
+
   const getInsightStyle = (type: InsightCard["type"]) => {
     switch (type) {
       case "positive": return "bg-green-500/10 border-green-500/20";
@@ -980,8 +1009,9 @@ export const AICoachCard = ({
             </div>
             <div className="space-y-2">
               {dailyCheckInFocusPoints.slice(0, 4).map((point, index) => {
+                const resolvedPoint = resolveLiveFocusPointCopy(point.text, point.tip);
                 // Add real-time progress indicators for focus points
-                const textLower = point.text.toLowerCase();
+                const textLower = `${resolvedPoint.text} ${resolvedPoint.tip || ''}`.toLowerCase();
                 let progressIndicator: React.ReactNode = null;
                 
                 // Detect protein-related focus points
@@ -1057,9 +1087,9 @@ export const AICoachCard = ({
                     <div className="flex items-start gap-3">
                       <span className="text-lg flex-shrink-0">{point.emoji}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{point.text}</p>
-                        {point.tip && (
-                          <p className="text-xs text-muted-foreground mt-1">→ {point.tip}</p>
+                          <p className="text-sm font-medium text-foreground">{resolvedPoint.text}</p>
+                          {resolvedPoint.tip && (
+                            <p className="text-xs text-muted-foreground mt-1">→ {resolvedPoint.tip}</p>
                         )}
                         {progressIndicator}
                       </div>
@@ -1079,23 +1109,27 @@ export const AICoachCard = ({
               </span>
             </div>
             <div className="space-y-2">
-              {customFocusPoints.slice(0, 4).map((point, index) => (
-                <div 
-                  key={index}
-                  className="p-3 rounded-xl border border-primary/20 bg-primary/5 animate-slide-up"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-lg flex-shrink-0">{point.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{point.text}</p>
-                      {point.tip && (
-                        <p className="text-xs text-muted-foreground mt-1">→ {point.tip}</p>
-                      )}
+              {customFocusPoints.slice(0, 4).map((point, index) => {
+                const resolvedPoint = resolveLiveFocusPointCopy(point.text, point.tip);
+
+                return (
+                  <div 
+                    key={index}
+                    className="p-3 rounded-xl border border-primary/20 bg-primary/5 animate-slide-up"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-lg flex-shrink-0">{point.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{resolvedPoint.text}</p>
+                        {resolvedPoint.tip && (
+                          <p className="text-xs text-muted-foreground mt-1">→ {resolvedPoint.tip}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : hasRecommendations && (
