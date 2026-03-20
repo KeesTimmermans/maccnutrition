@@ -176,6 +176,13 @@ const initialData: OnboardingData = {
   cycleRegularity: "",
   currentPhase: "",
   cycleSymptoms: [],
+  // Competition Prep (optional)
+  preparingForEvent: "",
+  compEventType: "",
+  compEventTypeOther: "",
+  compEventDate: "",
+  compDivision: "",
+  compGoal: "",
   // Measurements (optional)
   bodyFatPercentage: "",
   waist: "",
