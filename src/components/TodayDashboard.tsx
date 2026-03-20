@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MacroRing } from "@/components/MacroRing";
+import { MacroRingGroupSkeleton } from "@/components/MacroRingSkeleton";
 import { AddMealCard } from "@/components/MealCard";
 import { CollapsibleMealCard } from "@/components/CollapsibleMealCard";
 import { AICoachCard } from "@/components/AICoachCard";
