@@ -306,6 +306,13 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
         return data.biggestChallenge && data.mealPrepTime;
       case "goals":
         return data.primaryGoal;
+      case "competition_prep":
+        // If they said yes, they need event type and date; otherwise always valid
+        if (data.preparingForEvent === "yes") {
+          const hasEventType = data.compEventType && (data.compEventType !== "other" || data.compEventTypeOther.trim());
+          return !!(hasEventType && data.compEventDate && data.compGoal);
+        }
+        return true;
       case "preferences":
         return data.dietType && data.coachingTone;
       case "female":
