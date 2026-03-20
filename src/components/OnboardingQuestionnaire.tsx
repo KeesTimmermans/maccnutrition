@@ -1470,6 +1470,31 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
           ))}
         </div>
       </div>
+
+      {/* Preparing for event question */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Are you preparing for an event or competition?</Label>
+        <p className="text-xs text-muted-foreground -mt-1">This is optional — we'll tailor your plan if you are</p>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: "Yes", value: "yes" as const, icon: "🏆" },
+            { label: "No", value: "no" as const, icon: "✖️" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateData("preparingForEvent", option.value)}
+              className={`p-4 rounded-xl text-center transition-all ${
+                data.preparingForEvent === option.value
+                  ? "bg-primary text-primary-foreground shadow-medium"
+                  : "bg-card shadow-soft hover:shadow-medium"
+              }`}
+            >
+              <span className="text-xl block mb-1">{option.icon}</span>
+              <span className="font-semibold">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
