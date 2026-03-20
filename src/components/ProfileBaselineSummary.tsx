@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserBaseline } from "@/lib/userService";
 import { updateProfileAndRecalculate } from "@/lib/userService";
-import { Flame, Droplets, Target, Dumbbell, Loader2, ChevronDown } from "lucide-react";
+import { Flame, Droplets, Target, Dumbbell, Loader2, ChevronDown, Trophy } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 
 interface ProfileBaselineSummaryProps {
   baseline: UserBaseline | null;
