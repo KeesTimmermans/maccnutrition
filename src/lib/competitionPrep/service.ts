@@ -2,6 +2,7 @@
  * Service layer for competition prep CRUD and recalculation
  */
 import { supabase } from "@/integrations/supabase/client";
+import { syncCompetitionPrepActivated } from "@/lib/mailerliteSync";
 import type { CompetitionPrepInput, CompetitionPrepResult, WeeklyCheckinInput } from "./types";
 import { calculateCompetitionPrep, calculateWeeklyAdjustment, CompPrepCalcInput } from "./engine";
 
