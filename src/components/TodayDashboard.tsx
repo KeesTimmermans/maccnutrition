@@ -637,6 +637,7 @@ export const TodayDashboard = () => {
         todaysCheckIn={todaysCheckIn}
         analysis={checkInAnalysis}
         baseline={baseline}
+        activeTargets={activeTargets}
         meals={meals}
         waterIntakeMl={totalWaterMl}
         mealPatterns={mealPatterns}

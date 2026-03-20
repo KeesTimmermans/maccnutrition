@@ -99,11 +99,12 @@ export const AICoachCard = ({
   const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
   const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
   
-  const calorieGoal = baseline?.target_calories || 2000;
-  const proteinGoal = baseline?.protein_grams || 120;
-  const carbsGoal = baseline?.carbs_grams || 200;
-  const fatsGoal = baseline?.fats_grams || 65;
-  const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+  // Use activeTargets (single source of truth) with baseline as fallback
+  const calorieGoal = activeTargets?.calories ?? baseline?.target_calories ?? 2000;
+  const proteinGoal = activeTargets?.protein ?? baseline?.protein_grams ?? 120;
+  const carbsGoal = activeTargets?.carbs ?? baseline?.carbs_grams ?? 200;
+  const fatsGoal = activeTargets?.fats ?? baseline?.fats_grams ?? 65;
+  const waterGoal = ((activeTargets?.waterLiters ?? baseline?.water_liters ?? 2.5) * 1000);
   const targetSleepHours = baseline?.sleep_hours ? parseFloat(baseline.sleep_hours) : 8;
   
   const calPercent = Math.round((totalCalories / calorieGoal) * 100);
