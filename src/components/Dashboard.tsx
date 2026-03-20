@@ -186,11 +186,11 @@ export const Dashboard = () => {
   // Dynamic insights based on logged data - more specific and actionable
   const generateCoachInsights = (): string[] => {
     const insights: string[] = [];
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const carbsGoal = baseline?.carbs_grams || 200;
-    const fatsGoal = baseline?.fats_grams || 65;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const carbsGoal = activeTargets.carbs;
+    const fatsGoal = activeTargets.fats;
+    const waterGoal = activeTargets.waterLiters * 1000;
     
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinRemaining = proteinGoal - totalProtein;
