@@ -284,7 +284,7 @@ const Auth = () => {
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 {isLogin ? "Logging in..." : "Creating account..."}
               </>
-            ) : isLogin ? "Log In" : "Sign Up & Start Free Trial"}
+            ) : isLogin ? "Log In" : "Create Account"}
           </Button>
         </form>
 

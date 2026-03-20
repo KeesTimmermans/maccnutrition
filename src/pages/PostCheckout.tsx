@@ -71,7 +71,7 @@ const PostCheckout = () => {
           <>
             <CheckCircle className="w-12 h-12 text-primary mx-auto" />
             <h1 className="text-2xl font-bold text-foreground">You're all set!</h1>
-            <p className="text-muted-foreground">Your 7-day free trial has started. Let's set up your profile…</p>
+            <p className="text-muted-foreground">Your 7-day free trial has started. Taking you to your dashboard…</p>
           </>
         )}
 
