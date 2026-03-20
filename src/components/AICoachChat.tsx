@@ -142,15 +142,33 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
       setTodaysMeals(meals);
 
       // Re-fetch comp prep with actual user data if available
+      // Then OVERRIDE its macro values with activeTargets to guarantee alignment
+      let finalCompPrep = compPrep;
       if (userBaseline && compPrep) {
         const updatedCompPrep = await buildCompPrepCoachContext(
           userBaseline.weight ?? null,
           userBaseline.tdee ?? null,
         );
-        setCompPrepContext(updatedCompPrep);
-      } else {
-        setCompPrepContext(compPrep);
+        finalCompPrep = updatedCompPrep;
       }
+
+      // Critical: override compPrepContext macros with activeTargets so they never diverge
+      if (finalCompPrep && activeTargets.source === 'competition_prep') {
+        finalCompPrep = {
+          ...finalCompPrep,
+          calorieTarget: activeTargets.calories,
+          proteinGrams: activeTargets.protein,
+          carbGrams: activeTargets.carbs,
+          fatGrams: activeTargets.fats,
+        };
+        console.log('[Coach Mac Debug] compPrepContext macros overridden with activeTargets:', {
+          calories: activeTargets.calories,
+          protein: activeTargets.protein,
+          carbs: activeTargets.carbs,
+          fats: activeTargets.fats,
+        });
+      }
+      setCompPrepContext(finalCompPrep);
 
       const today = new Date().toISOString().split('T')[0];
       // Prefer freshCheckIn if provided (just completed), otherwise find from recent

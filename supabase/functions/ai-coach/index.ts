@@ -406,13 +406,9 @@ CURRENT PLAN STATUS:
 - Mode: ${cp.modeLabel} (${cp.currentMode})
 - Why: ${cp.explanation}
 
-COMPETITION PREP NUTRITION TARGETS (these are ALREADY set as the user's primary targets above — they are identical):
-- Calorie Target: ${cp.calorieTarget} kcal
-- Training Day: ${cp.trainingDayCalories} kcal
-- Rest Day: ${cp.restDayCalories} kcal
-- Protein: ${cp.proteinGrams}g
-- Carbs: ${cp.carbGrams}g
-- Fats: ${cp.fatGrams}g
+NOTE: The competition prep nutrition targets are IDENTICAL to the NUTRITION TARGETS listed above. Do NOT reference any other numbers. The targets above are the ONLY authoritative source.
+- Training Day Calories: ${cp.trainingDayCalories} kcal
+- Rest Day Calories: ${cp.restDayCalories} kcal
 ${cp.weightLossRatePct ? `- Expected Weekly Loss: ~${cp.weightLossRatePct}% body weight` : ''}
 ${cp.projectedEventWeight ? `- Projected Event-Day Weight: ${cp.projectedEventWeight.low.toFixed(1)}–${cp.projectedEventWeight.high.toFixed(1)} kg` : ''}
 ${cp.goalWeightWarning ? `- ⚠️ Goal Weight Warning: ${cp.goalWeightWarning}` : ''}
@@ -503,13 +499,13 @@ serve(async (req) => {
 
     console.log("Authenticated user:", user.id);
 
+    // Parse and validate input
+    const rawBody = await req.json();
+
     // Debug: log target source alignment
     const debugTargetSource = rawBody?.userContext?.targetSource || 'standard';
     const debugHasCompPrep = !!rawBody?.userContext?.competitionPrepContext;
     console.log(`[Coach Mac Debug] targetSource=${debugTargetSource}, compPrepDetected=${debugHasCompPrep}, calories=${rawBody?.userContext?.targetCalories}, protein=${rawBody?.userContext?.proteinGrams}, carbs=${rawBody?.userContext?.carbsGrams}, fats=${rawBody?.userContext?.fatsGrams}`);
-
-    // Parse and validate input
-    const rawBody = await req.json();
     const validationResult = requestSchema.safeParse(rawBody);
     
     if (!validationResult.success) {
@@ -840,14 +836,17 @@ USER PROFILE:
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
 
-NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your PRIMARY targets)' : ''}:
+NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your ONLY authoritative targets)' : ''}:
 - Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
 - Protein: ${userContext?.proteinGrams || 'not set'}g
 - Carbs: ${userContext?.carbsGrams || 'not set'}g
 - Fats: ${userContext?.fatsGrams || 'not set'}g
 - Water: ${userContext?.waterLiters || 'not set'}L
 - Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
-- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override or contradict)' : 'Standard baseline'}
+- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override, recalculate, or contradict)' : 'Standard baseline'}
+
+⚠️ HARD RULE — NO MACRO RECALCULATION:
+Always use the provided calorie and macro targets EXACTLY as given above. Do NOT recalculate, estimate, round, or modify them. When referencing the user's targets in your response, use EXACTLY these numbers: ${userContext?.targetCalories} kcal, ${userContext?.proteinGrams}g protein, ${userContext?.carbsGrams}g carbs, ${userContext?.fatsGrams}g fats. Any other numbers are WRONG.
 
 PREFERENCES & RESTRICTIONS:
 - Diet Type: ${userContext?.dietType || 'not specified'}
@@ -1026,7 +1025,10 @@ RESPONSE GUIDELINES:
 - Reference their context naturally, not as data dumps
 - ONE clear action item is better than five generic ones
 - If check-in shows changes from yesterday, acknowledge the trajectory
-- Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step`;
+- Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step
+
+CRITICAL FINAL RULE — MACRO NUMBERS:
+When you mention any calorie or macro number in your response, it MUST match the NUTRITION TARGETS above EXACTLY. Do not calculate your own values. Do not estimate. Do not round differently. The app already shows these numbers to the user — your job is to coach around them, not recalculate them.`;
 
     // Build messages array for chat
     let apiMessages: any[] = [{ role: "system", content: systemPrompt }];
