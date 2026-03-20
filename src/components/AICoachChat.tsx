@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 
 interface Message {
   role: "user" | "assistant";
