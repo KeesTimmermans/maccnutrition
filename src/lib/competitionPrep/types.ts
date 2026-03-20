@@ -2,9 +2,7 @@
 
 export type EventType = "hyrox" | "athx" | "metrix" | "turf_games" | "deka";
 
-export type CompDivision =
-  | "open" | "pro" | "solo" | "doubles"
-  | "mixed_doubles" | "team" | "relay" | "custom";
+export type CompDivision = string;
 
 export type CompGoal =
   | "lose_weight" | "improve_performance" | "build_strength"
