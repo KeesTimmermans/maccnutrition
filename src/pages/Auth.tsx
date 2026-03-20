@@ -190,7 +190,7 @@ const Auth = () => {
           <p className="text-muted-foreground text-sm mt-1">
             {isLogin
               ? "Log in to continue your nutrition journey"
-              : "Start your 7-day free trial"}
+              : "Create your account to get started"}
           </p>
         </div>
 
