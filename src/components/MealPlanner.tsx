@@ -315,8 +315,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     proteinShakesPreference: baseline?.protein_shakes_preference,
     cookingSkill: baseline?.cooking_skill,
     mealPrepTime: baseline?.meal_prep_time,
-    targetCalories: baseline?.target_calories,
-    proteinGrams: baseline?.protein_grams,
+    targetCalories: activeTargets.calories,
+    proteinGrams: activeTargets.protein,
   });
 
   const handleGenerateSwapOptions = async (): Promise<MealWithIngredients[]> => {
