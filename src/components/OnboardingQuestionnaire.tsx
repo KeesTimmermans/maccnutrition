@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { EVENT_LABELS, EVENT_DIVISIONS, FALLBACK_DIVISIONS } from "@/lib/competitionPrep/eventProfiles";
+import type { EventType } from "@/lib/competitionPrep/types";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
