@@ -535,12 +535,13 @@ export const TodayDashboard = () => {
         <div>
           <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
           <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
+          <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
         </div>
       </div>
       <div className="flex justify-around items-center">
         <MacroRing 
           value={totalCalories} 
-          max={baseline?.target_calories || 2000} 
+          max={activeTargets.calories} 
           label={t('calories')} 
           color="calories"
           size="lg"
@@ -549,28 +550,28 @@ export const TodayDashboard = () => {
         <div className="space-y-4">
           <MacroRing 
             value={totalProtein} 
-            max={baseline?.protein_grams || 120} 
+            max={activeTargets.protein} 
             label={t('protein')} 
             color="protein"
             size="sm"
           />
           <MacroRing 
             value={totalCarbs} 
-            max={baseline?.carbs_grams || 200} 
+            max={activeTargets.carbs} 
             label={t('carbs')} 
             color="carbs"
             size="sm"
           />
           <MacroRing 
             value={totalFats} 
-            max={baseline?.fats_grams || 65} 
+            max={activeTargets.fats} 
             label={t('fats')} 
             color="fats"
             size="sm"
           />
           <MacroRing 
             value={totalSugar} 
-            max={baseline?.sugar_grams || 25} 
+            max={activeTargets.sugar} 
             label={t('sugar') || 'Sugar'} 
             color="sugar"
             size="sm"
