@@ -503,10 +503,10 @@ export const Dashboard = () => {
         const newTotalFats = updatedMeals.reduce((sum, m) => sum + m.fats, 0);
         
         // Check if goals were just reached
-        const calorieGoal = baseline?.target_calories || 2000;
-        const proteinGoal = baseline?.protein_grams || 120;
-        const carbsGoal = baseline?.carbs_grams || 200;
-        const fatsGoal = baseline?.fats_grams || 65;
+        const calorieGoal = activeTargets.calories;
+        const proteinGoal = activeTargets.protein;
+        const carbsGoal = activeTargets.carbs;
+        const fatsGoal = activeTargets.fats;
         
         // Celebrate goal achievements
         if (newTotalCalories >= calorieGoal && totalCalories < calorieGoal) {
