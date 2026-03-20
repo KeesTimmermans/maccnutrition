@@ -18,15 +18,21 @@ import {
   Brain,
   Clock,
   Flame,
-  Coffee
+  Coffee,
+  Trophy,
+  CalendarIcon
 } from "lucide-react";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
 import { Dumbbell, Ruler as RulerIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
-type StepType = "demographics" | "medical" | "lifestyle" | "eating_behavior" | "challenges" | "goals" | "preferences" | "female" | "measurements";
+type StepType = "demographics" | "medical" | "lifestyle" | "eating_behavior" | "challenges" | "goals" | "competition_prep" | "preferences" | "female" | "measurements";
 
 export interface OnboardingData {
   // Demographics
