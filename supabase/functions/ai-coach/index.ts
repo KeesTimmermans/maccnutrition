@@ -74,6 +74,7 @@ const userContextSchema = z.object({
   checkInContext: z.string().max(12000).nullish(),
   wearableContext: z.string().max(4000).nullish(),
   preferredLanguage: z.enum(['en', 'fr', 'es', 'it', 'pt']).nullish(),
+  targetSource: z.enum(['standard', 'competition_prep']).nullish(),
   // App state
   lastProgressUpdate: z.string().max(50).nullish(),
   lastDailyCheckin: z.string().max(50).nullish(),
@@ -405,7 +406,7 @@ CURRENT PLAN STATUS:
 - Mode: ${cp.modeLabel} (${cp.currentMode})
 - Why: ${cp.explanation}
 
-COMPETITION PREP NUTRITION TARGETS (override general targets when discussing comp prep):
+COMPETITION PREP NUTRITION TARGETS (these are ALREADY set as the user's primary targets above — they are identical):
 - Calorie Target: ${cp.calorieTarget} kcal
 - Training Day: ${cp.trainingDayCalories} kcal
 - Rest Day: ${cp.restDayCalories} kcal
@@ -501,6 +502,11 @@ serve(async (req) => {
     }
 
     console.log("Authenticated user:", user.id);
+
+    // Debug: log target source alignment
+    const debugTargetSource = rawBody?.userContext?.targetSource || 'standard';
+    const debugHasCompPrep = !!rawBody?.userContext?.competitionPrepContext;
+    console.log(`[Coach Mac Debug] targetSource=${debugTargetSource}, compPrepDetected=${debugHasCompPrep}, calories=${rawBody?.userContext?.targetCalories}, protein=${rawBody?.userContext?.proteinGrams}, carbs=${rawBody?.userContext?.carbsGrams}, fats=${rawBody?.userContext?.fatsGrams}`);
 
     // Parse and validate input
     const rawBody = await req.json();
@@ -834,13 +840,14 @@ USER PROFILE:
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
 
-NUTRITION TARGETS:
+NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your PRIMARY targets)' : ''}:
 - Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
 - Protein: ${userContext?.proteinGrams || 'not set'}g
 - Carbs: ${userContext?.carbsGrams || 'not set'}g
 - Fats: ${userContext?.fatsGrams || 'not set'}g
 - Water: ${userContext?.waterLiters || 'not set'}L
 - Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
+- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override or contradict)' : 'Standard baseline'}
 
 PREFERENCES & RESTRICTIONS:
 - Diet Type: ${userContext?.dietType || 'not specified'}

@@ -126,6 +126,18 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         buildCompPrepCoachContext(null, null), // will use defaults; updated below
       ]);
 
+      // Debug: log active targets alignment
+      console.log('[Coach Mac Debug] activeTargets:', {
+        source: activeTargets.source,
+        calories: activeTargets.calories,
+        protein: activeTargets.protein,
+        carbs: activeTargets.carbs,
+        fats: activeTargets.fats,
+        priorities: activeTargets.priorities,
+        compPrepMeta: activeTargets.compPrepMeta || null,
+      });
+      console.log('[Coach Mac Debug] compPrepContext detected:', !!compPrep);
+
       setBaseline(userBaseline);
       setTodaysMeals(meals);
 
@@ -198,6 +210,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 carbsGrams: activeTargets.carbs,
                 fatsGrams: activeTargets.fats,
                 waterLiters: activeTargets.waterLiters,
+                targetSource: activeTargets.source,
                 activityLevel: userBaseline.activity_level,
                 trainingDays: userBaseline.training_days,
                 trainingIntensity: userBaseline.training_intensity,
@@ -222,7 +235,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 allergies: userBaseline.allergies,
                 conditions: userBaseline.conditions,
                 coachingTone: userBaseline.coaching_tone,
-                focusPoints: userBaseline.focus_points,
+                focusPoints: activeTargets.priorities.length > 0 ? activeTargets.priorities : (userBaseline.focus_points || []),
                 mealsPerDay: userBaseline.meals_per_day,
                 mealPrepTime: userBaseline.meal_prep_time,
                 cookingSkill: userBaseline.cooking_skill,
@@ -292,7 +305,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
         // Meal progress mention
         if (meals.length > 0) {
           const totalCals = meals.reduce((s, m) => s + m.calories, 0);
-          const targetCals = userBaseline?.target_calories || 2000;
+          const targetCals = activeTargets.calories;
           const percent = Math.round((totalCals / targetCals) * 100);
           if (percent >= 80) {
             greetParts.push(`You're at ${percent}% of calories — almost there.`);
@@ -374,6 +387,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 carbsGrams: activeTargets.carbs,
                 fatsGrams: activeTargets.fats,
                 waterLiters: activeTargets.waterLiters,
+                targetSource: activeTargets.source,
                 activityLevel: baseline.activity_level,
                 trainingDays: baseline.training_days,
                 trainingIntensity: baseline.training_intensity,
@@ -398,7 +412,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 allergies: baseline.allergies,
                 conditions: baseline.conditions,
                 coachingTone: baseline.coaching_tone,
-                focusPoints: baseline.focus_points,
+                focusPoints: activeTargets.priorities.length > 0 ? activeTargets.priorities : (baseline.focus_points || []),
                 mealsPerDay: baseline.meals_per_day,
                 mealPrepTime: baseline.meal_prep_time,
                 cookingSkill: baseline.cooking_skill,
