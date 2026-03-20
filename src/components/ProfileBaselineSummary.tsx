@@ -25,6 +25,7 @@ const GOAL_OPTIONS = [
 
 export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileBaselineSummaryProps) => {
   const { t } = useLanguage();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [saving, setSaving] = useState(false);
 
   if (!baseline) return null;
