@@ -74,7 +74,7 @@ const Onboarding = () => {
             primaryGoal: data.compGoal as CompGoal,
           };
 
-          await createCompPrep(prepInput, weightKg, baseline.tdee);
+          await createCompPrep(prepInput, weightKg, baseline.calories.tdee);
 
           if (import.meta.env.DEV) {
             console.log("[Onboarding] Competition Prep auto-created for user", user.id);
