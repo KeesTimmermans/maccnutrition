@@ -8,6 +8,7 @@ import { saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
 import { createCompPrep } from "@/lib/competitionPrep/service";
+import { syncOnboardingCompleted } from "@/lib/mailerliteSync";
 import type { CompetitionPrepInput, EventType, CompGoal, CompDivision } from "@/lib/competitionPrep/types";
 
 const VALID_EVENT_TYPES: EventType[] = ["hyrox", "athx", "deka", "turf_games", "metrix"];
