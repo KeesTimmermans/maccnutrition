@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { EVENT_LABELS, EVENT_DIVISIONS, FALLBACK_DIVISIONS, EVENT_GUIDANCE, FALLBACK_COMP_GOALS } from "@/lib/competitionPrep/eventProfiles";
+import { EVENT_LABELS, EVENT_DIVISIONS, FALLBACK_DIVISIONS, EVENT_GUIDANCE, getCompGoalsForEvent } from "@/lib/competitionPrep/eventProfiles";
 import type { EventType } from "@/lib/competitionPrep/types";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1917,9 +1917,7 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
     ? EVENT_DIVISIONS[eventKey]
     : FALLBACK_DIVISIONS;
 
-  const goals = guidance
-    ? guidance.compGoals
-    : FALLBACK_COMP_GOALS;
+  const goals = getCompGoalsForEvent(data.compEventType || undefined);
 
   const selectedDate = data.compEventDate ? new Date(data.compEventDate) : undefined;
 
