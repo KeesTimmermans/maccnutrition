@@ -1891,15 +1891,10 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
     { label: "Other", value: "other", icon: "🎯" },
   ];
 
-  const divisions = [
-    { label: "Open", value: "open" },
-    { label: "Pro", value: "pro" },
-    { label: "Solo", value: "solo" },
-    { label: "Doubles", value: "doubles" },
-    { label: "Mixed Doubles", value: "mixed_doubles" },
-    { label: "Team", value: "team" },
-    { label: "Relay", value: "relay" },
-  ];
+  const eventKey = data.compEventType as EventType | undefined;
+  const divisions = eventKey && EVENT_DIVISIONS[eventKey]
+    ? EVENT_DIVISIONS[eventKey]
+    : FALLBACK_DIVISIONS;
 
   const goals = [
     { label: "Lose Weight", desc: "Get leaner for event day", value: "lose_weight", icon: "🔥" },
