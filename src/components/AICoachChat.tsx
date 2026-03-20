@@ -53,6 +53,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const [todaysMeals, setTodaysMeals] = useState<Meal[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [compPrepContext, setCompPrepContext] = useState<CompPrepCoachContext | null>(null);
+  const unifiedCtxRef = useRef<UnifiedCoachContext | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
