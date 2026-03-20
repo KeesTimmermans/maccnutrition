@@ -101,6 +101,14 @@ export interface OnboardingData {
   currentPhase: string;
   cycleSymptoms: string[];
 
+  // Competition Prep (optional)
+  preparingForEvent: "yes" | "no" | "";
+  compEventType: string;
+  compEventTypeOther: string;
+  compEventDate: string;
+  compDivision: string;
+  compGoal: string;
+
   // Measurements (optional during onboarding)
   bodyFatPercentage: string;
   waist: string;
