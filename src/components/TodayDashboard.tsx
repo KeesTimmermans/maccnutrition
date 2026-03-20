@@ -112,9 +112,9 @@ export const TodayDashboard = () => {
   const totalSugar = meals.reduce((sum, m) => sum + (m.sugar || 0), 0);
 
   const generateCoachGreeting = () => {
-    const calorieGoal = baseline?.target_calories || 2000;
-    const proteinGoal = baseline?.protein_grams || 120;
-    const waterGoal = (baseline?.water_liters || 2.5) * 1000;
+    const calorieGoal = activeTargets.calories;
+    const proteinGoal = activeTargets.protein;
+    const waterGoal = activeTargets.waterLiters * 1000;
     const calPercent = Math.round((totalCalories / calorieGoal) * 100);
     const proteinPercent = Math.round((totalProtein / proteinGoal) * 100);
     const waterPercent = Math.round((totalWaterMl / waterGoal) * 100);
