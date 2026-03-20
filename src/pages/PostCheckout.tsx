@@ -29,9 +29,9 @@ const PostCheckout = () => {
         const isActive = data?.subscribed === true;
         if (isActive) {
           setStatus("success");
-          // Short delay so user sees the confirmation
+          // Short delay so user sees the confirmation, then go to app
           setTimeout(() => {
-            navigate("/onboarding", { replace: true });
+            navigate("/dashboard", { replace: true });
           }, 2000);
         } else {
           // Subscription not yet active — retry once after a short delay
@@ -41,7 +41,7 @@ const PostCheckout = () => {
           if (retry?.subscribed) {
             setStatus("success");
             setTimeout(() => {
-              navigate("/onboarding", { replace: true });
+              navigate("/dashboard", { replace: true });
             }, 2000);
           } else {
             setStatus("error");
@@ -71,7 +71,7 @@ const PostCheckout = () => {
           <>
             <CheckCircle className="w-12 h-12 text-primary mx-auto" />
             <h1 className="text-2xl font-bold text-foreground">You're all set!</h1>
-            <p className="text-muted-foreground">Your 7-day free trial has started. Let's set up your profile…</p>
+            <p className="text-muted-foreground">Your 7-day free trial has started. Taking you to your dashboard…</p>
           </>
         )}
 

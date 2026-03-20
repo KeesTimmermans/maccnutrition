@@ -121,7 +121,9 @@ const Onboarding = () => {
       // Mark onboarding complete — this updates profiles AND context state
       await markOnboardingCompleted();
       localStorage.setItem("cjt_onboarded", "true");
-      navigate("/");
+
+      // Navigate to pricing/checkout — app access requires active subscription
+      navigate("/pricing");
     } catch (error: any) {
       if (import.meta.env.DEV) {
         console.error("[Onboarding] markOnboardingCompleted failed:", error);

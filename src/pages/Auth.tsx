@@ -88,35 +88,8 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const redirectToCheckout = async () => {
-    try {
-      const { data: checkoutData, error: checkoutError } = await Promise.race([
-        supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 12000)),
-      ]);
-
-      if (checkoutError) throw checkoutError;
-
-      if (checkoutData?.already_subscribed) {
-        // Already has a subscription — skip checkout, go to onboarding
-        navigate("/onboarding");
-        return;
-      }
-
-      const url = checkoutData?.url as string | undefined;
-      if (url) {
-        trackTrialStarted();
-        window.location.assign(url);
-      } else {
-        // No URL returned — send to pricing page so they can subscribe
-        toast({ title: "Account created!", description: "Please subscribe to continue." });
-        navigate("/pricing");
-      }
-    } catch (checkoutErr) {
-      console.error("Checkout error:", checkoutErr);
-      toast({ title: "Account created!", description: "Please subscribe to continue.", variant: "destructive" });
-      navigate("/pricing");
-    }
+  const redirectToOnboarding = () => {
+    navigate("/onboarding");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,8 +167,8 @@ const Auth = () => {
 
       trackSignedUp();
 
-      // Immediately redirect to Stripe Checkout
-      await redirectToCheckout();
+      // Redirect to onboarding questionnaire (payment comes after)
+      redirectToOnboarding();
     } catch (_error) {
       toast({ title: "Error", description: "An unexpected error occurred. Please try again.", variant: "destructive" });
     } finally {
@@ -217,7 +190,7 @@ const Auth = () => {
           <p className="text-muted-foreground text-sm mt-1">
             {isLogin
               ? "Log in to continue your nutrition journey"
-              : "Start your 7-day free trial"}
+              : "Create your account to get started"}
           </p>
         </div>
 
@@ -311,7 +284,7 @@ const Auth = () => {
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 {isLogin ? "Logging in..." : "Creating account..."}
               </>
-            ) : isLogin ? "Log In" : "Sign Up & Start Free Trial"}
+            ) : isLogin ? "Log In" : "Create Account"}
           </Button>
         </form>
 

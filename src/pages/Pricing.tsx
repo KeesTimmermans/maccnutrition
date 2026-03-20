@@ -59,9 +59,9 @@ const Pricing = () => {
       <div className="w-full max-w-sm text-center space-y-6">
         <img src={macLogo} alt="MAC Nutrition" className="h-14 mx-auto" style={{ mixBlendMode: "multiply" }} />
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Subscribe to Continue</h1>
+          <h1 className="text-2xl font-bold text-foreground">Your Plan is Ready!</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            A subscription is required to use MacNutrition.
+            Start your free trial to unlock your personalized nutrition plan.
           </p>
         </div>
 
