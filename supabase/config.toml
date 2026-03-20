@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.recalculate-hydration]
 verify_jwt = false
+
+[functions.mailerlite-sync]
+verify_jwt = false
