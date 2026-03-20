@@ -836,14 +836,17 @@ USER PROFILE:
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
 
-NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your PRIMARY targets)' : ''}:
+NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your ONLY authoritative targets)' : ''}:
 - Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
 - Protein: ${userContext?.proteinGrams || 'not set'}g
 - Carbs: ${userContext?.carbsGrams || 'not set'}g
 - Fats: ${userContext?.fatsGrams || 'not set'}g
 - Water: ${userContext?.waterLiters || 'not set'}L
 - Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
-- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override or contradict)' : 'Standard baseline'}
+- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override, recalculate, or contradict)' : 'Standard baseline'}
+
+⚠️ HARD RULE — NO MACRO RECALCULATION:
+Always use the provided calorie and macro targets EXACTLY as given above. Do NOT recalculate, estimate, round, or modify them. When referencing the user's targets in your response, use EXACTLY these numbers: ${userContext?.targetCalories} kcal, ${userContext?.proteinGrams}g protein, ${userContext?.carbsGrams}g carbs, ${userContext?.fatsGrams}g fats. Any other numbers are WRONG.
 
 PREFERENCES & RESTRICTIONS:
 - Diet Type: ${userContext?.dietType || 'not specified'}
