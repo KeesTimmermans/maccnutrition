@@ -1917,9 +1917,7 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
     ? EVENT_DIVISIONS[eventKey]
     : FALLBACK_DIVISIONS;
 
-  const goals = guidance
-    ? guidance.compGoals
-    : FALLBACK_COMP_GOALS;
+  const goals = getCompGoalsForEvent(data.compEventType || undefined);
 
   const selectedDate = data.compEventDate ? new Date(data.compEventDate) : undefined;
 
