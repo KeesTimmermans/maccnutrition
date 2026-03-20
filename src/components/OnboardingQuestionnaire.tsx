@@ -1347,6 +1347,12 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
 }) => {
+  const eventKey = data.preparingForEvent === "yes" && data.compEventType
+    ? data.compEventType as EventType
+    : null;
+  const eventLabel = eventKey && EVENT_LABELS[eventKey] ? EVENT_LABELS[eventKey] : null;
+  const guidance = eventKey && EVENT_GUIDANCE[eventKey] ? EVENT_GUIDANCE[eventKey] : null;
+
   const primaryGoals = [
     { label: t('fat_loss'), desc: t('fat_loss_desc'), value: "fat_loss", icon: "🔥" },
     { label: t('muscle_gain'), desc: t('muscle_gain_desc'), value: "muscle_gain", icon: "💪" },
@@ -1355,17 +1361,6 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
     { label: t('energy_goal'), desc: t('energy_desc'), value: "energy", icon: "✨" },
     { label: t('health_markers'), desc: t('health_markers_desc'), value: "health_markers", icon: "📊" },
     { label: t('general_health'), desc: t('general_health_desc'), value: "general_health", icon: "🌿" },
-  ];
-
-  const secondaryGoals = [
-    { key: "better_energy", label: t('better_energy') },
-    { key: "improved_recovery", label: t('improved_recovery') },
-    { key: "better_sleep", label: t('better_sleep') },
-    { key: "reduce_inflammation", label: t('reduce_inflammation') },
-    { key: "hormone_balance", label: t('hormone_balance') },
-    { key: "mental_clarity", label: t('mental_clarity') },
-    { key: "stress_management", label: "Stress management" },
-    { key: "gut_health", label: "Gut health" },
   ];
 
   const [customGoal, setCustomGoal] = useState("");
@@ -1383,10 +1378,31 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
     { label: "Gentle nudges", desc: "Occasional reminders without pressure", value: "gentle" },
   ];
 
+  const secondaryGoals = [
+    { key: "better_energy", label: t('better_energy') },
+    { key: "improved_recovery", label: t('improved_recovery') },
+    { key: "better_sleep", label: t('better_sleep') },
+    { key: "reduce_inflammation", label: t('reduce_inflammation') },
+    { key: "hormone_balance", label: t('hormone_balance') },
+    { key: "mental_clarity", label: t('mental_clarity') },
+    { key: "stress_management", label: "Stress management" },
+    { key: "gut_health", label: "Gut health" },
+  ];
+
   return (
     <div className="space-y-6 animate-slide-up">
+      {/* Event-specific guidance banner */}
+      {guidance && (
+        <div className="bg-accent/50 rounded-xl p-4 flex gap-3">
+          <Trophy className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-foreground">{guidance.tagline}</p>
+        </div>
+      )}
+
       <div className="space-y-3">
-        <Label className="text-sm font-semibold">{t('primary_goal')}</Label>
+        <Label className="text-sm font-semibold">
+          {eventLabel ? `What is your main goal for your ${eventLabel} race?` : t('primary_goal')}
+        </Label>
         <div className="space-y-2">
           {primaryGoals.map((goal) => (
             <button
