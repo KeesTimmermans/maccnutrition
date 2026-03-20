@@ -151,7 +151,7 @@ export const TodayDashboard = () => {
         return `⚠️ Afternoon alert: Only ${calPercent}% of calories. Don't under-fuel!`;
       }
       if (waterPercent < 50) {
-        return `💧 Hydration check: ${Math.round(totalWaterMl/1000 * 10)/10}L/${baseline?.water_liters || 2.5}L. Drink up!`;
+        return `💧 Hydration check: ${Math.round(totalWaterMl/1000 * 10)/10}L/${activeTargets.waterLiters}L. Drink up!`;
       }
       if (proteinPercent >= 80) {
         return `💪 Protein on point${firstName ? `, ${firstName}` : ''}! ${proteinPercent}% complete.`;
