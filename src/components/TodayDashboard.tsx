@@ -458,10 +458,10 @@ export const TodayDashboard = () => {
         const newTotalCarbs = updatedMeals.reduce((sum, m) => sum + m.carbs, 0);
         const newTotalFats = updatedMeals.reduce((sum, m) => sum + m.fats, 0);
         
-        const calorieGoal = baseline?.target_calories || 2000;
-        const proteinGoal = baseline?.protein_grams || 120;
-        const carbsGoal = baseline?.carbs_grams || 200;
-        const fatsGoal = baseline?.fats_grams || 65;
+        const calorieGoal = activeTargets.calories;
+        const proteinGoal = activeTargets.protein;
+        const carbsGoal = activeTargets.carbs;
+        const fatsGoal = activeTargets.fats;
         
         if (newTotalCalories >= calorieGoal && totalCalories < calorieGoal) {
           toast.success("🎉 Amazing! You've hit your calorie goal for today!", { duration: 5000 });
