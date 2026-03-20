@@ -49,6 +49,7 @@ export const TodayDashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
+  const { targets: activeTargets } = useActiveNutritionTargets();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [freshCheckInData, setFreshCheckInData] = useState<{
