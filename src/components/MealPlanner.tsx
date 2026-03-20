@@ -170,10 +170,10 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     try {
       const userContext = {
         primaryGoal: baseline?.primary_goal,
-        targetCalories: baseline?.target_calories,
-        proteinGrams: baseline?.protein_grams,
-        carbsGrams: baseline?.carbs_grams,
-        fatsGrams: baseline?.fats_grams,
+        targetCalories: activeTargets.calories,
+        proteinGrams: activeTargets.protein,
+        carbsGrams: activeTargets.carbs,
+        fatsGrams: activeTargets.fats,
         dietType: baseline?.diet_type,
         allergies: baseline?.allergies,
         foodDislikes: baseline?.food_dislikes,
