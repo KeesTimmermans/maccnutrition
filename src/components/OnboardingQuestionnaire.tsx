@@ -1918,7 +1918,7 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
           {eventTypes.map((evt) => (
             <button
               key={evt.value}
-              onClick={() => updateData("compEventType", evt.value)}
+              onClick={() => { updateData("compEventType", evt.value); updateData("compDivision", ""); }}
               className={`p-3 rounded-xl text-left transition-all ${
                 data.compEventType === evt.value
                   ? "bg-primary text-primary-foreground"
