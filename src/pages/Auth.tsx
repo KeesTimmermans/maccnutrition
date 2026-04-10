@@ -48,18 +48,19 @@ const Auth = () => {
   };
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      // Only auto-navigate for login; signup flow handles its own redirect
-      if (session && isLogin) {
-        navigate("/");
+    // Check if already logged in on mount — redirect away from auth page
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/", { replace: true });
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && isLogin) {
-        navigate("/");
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only navigate on an actual sign-in, not session restore or token refresh
+      if (event === "SIGNED_IN" && session && isLogin) {
+        navigate("/", { replace: true });
       }
     });
 
