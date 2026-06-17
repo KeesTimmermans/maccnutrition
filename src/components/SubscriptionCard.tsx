@@ -41,6 +41,8 @@ export const SubscriptionCard = ({
 }: SubscriptionCardProps) => {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   const getCheckoutReturnUrl = () => {
     const basePath = window.location.pathname.endsWith("/")
@@ -70,17 +72,59 @@ export const SubscriptionCard = ({
 
   const handleManageSubscription = async () => {
     setPortalLoading(true);
+    // Pre-open a tab synchronously so popup blockers don't kill it after the
+    // async edge function call.
+    const newTab = window.open("about:blank", "_blank", "noopener,noreferrer");
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, '_blank');
+        if (newTab) {
+          newTab.location.href = data.url;
+        } else {
+          window.location.assign(data.url);
+        }
+      } else {
+        newTab?.close();
+        throw new Error("No portal URL returned");
       }
     } catch (error) {
-      console.error('Error opening customer portal:', error);
-      toast.error('Failed to open subscription management. Please try again.');
+      newTab?.close();
+      console.error("Error opening customer portal:", error);
+      toast.error("Failed to open subscription management. Please try again.");
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setCancelLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cancel-subscription");
+      if (error) throw error;
+      if (data?.success) {
+        const endDate = data.current_period_end
+          ? new Date(data.current_period_end * 1000).toLocaleDateString()
+          : subscriptionEnd
+            ? new Date(subscriptionEnd).toLocaleDateString()
+            : "the end of your billing period";
+        toast.success(
+          data.alreadyScheduled
+            ? `Your subscription is already set to cancel on ${endDate}.`
+            : `Subscription cancelled. You'll keep access until ${endDate}.`
+        );
+        setCancelDialogOpen(false);
+        onRefresh();
+      } else {
+        throw new Error(data?.error || "Cancellation failed");
+      }
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to cancel subscription";
+      toast.error(message);
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -126,7 +170,7 @@ export const SubscriptionCard = ({
                 Manage Subscription
               </Button>
               
-              <AlertDialog>
+              <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button 
                     variant="ghost" 
@@ -145,19 +189,24 @@ export const SubscriptionCard = ({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleManageSubscription}
+                    <AlertDialogCancel disabled={cancelLoading}>Keep Subscription</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCancelSubscription();
+                      }}
+                      disabled={cancelLoading}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      {portalLoading ? (
+                      {cancelLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
-                      Continue to Cancel
+                      {cancelLoading ? "Cancelling…" : "Cancel Subscription"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
 
               <Button 
                 onClick={onRefresh} 

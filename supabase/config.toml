@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.mailerlite-sync]
 verify_jwt = false
+
+[functions.cancel-subscription]
+verify_jwt = false
