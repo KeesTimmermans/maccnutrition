@@ -75,7 +75,20 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // SECURITY: cron-only endpoint. Require service-role bearer to prevent
+  // unauthenticated mass push notifications.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {
+    console.warn("[PUSH-SCHED] Unauthorized request blocked");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(supabaseUrl, serviceKey);
+
 
   const vapid: VapidKeys = {
     subject: Deno.env.get("VAPID_SUBJECT") || "mailto:hello@cjtnutrition.com",
