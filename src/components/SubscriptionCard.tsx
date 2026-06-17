@@ -170,7 +170,7 @@ export const SubscriptionCard = ({
                 Manage Subscription
               </Button>
               
-              <AlertDialog>
+              <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button 
                     variant="ghost" 
@@ -189,19 +189,24 @@ export const SubscriptionCard = ({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleManageSubscription}
+                    <AlertDialogCancel disabled={cancelLoading}>Keep Subscription</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCancelSubscription();
+                      }}
+                      disabled={cancelLoading}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      {portalLoading ? (
+                      {cancelLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
-                      Continue to Cancel
+                      {cancelLoading ? "Cancelling…" : "Cancel Subscription"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
 
               <Button 
                 onClick={onRefresh} 
