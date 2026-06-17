@@ -107,8 +107,21 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // SECURITY: internal-only (called by check-trial-reminders cron).
+  // Require service-role bearer to prevent open email abuse.
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!serviceRole || authHeader !== `Bearer ${serviceRole}`) {
+    logStep("Unauthorized request blocked");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     logStep("Function started");
+
 
     const { email, firstName, daysRemaining, trialEndDate }: TrialReminderRequest = await req.json();
 
