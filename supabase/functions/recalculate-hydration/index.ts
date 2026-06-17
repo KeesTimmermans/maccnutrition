@@ -15,10 +15,23 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // SECURITY: admin/cron-only. Require service-role bearer to prevent any
+  // internet caller from triggering a mass rewrite of every user's hydration.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!serviceRoleKey || authHeader !== `Bearer ${serviceRoleKey}`) {
+    console.warn("[RECALC-HYDRATION] Unauthorized request blocked");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
 
     const { data: baselines, error: fetchError } = await supabase
       .from("user_baselines")

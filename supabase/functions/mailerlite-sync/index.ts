@@ -47,16 +47,21 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, email, name, groupId, fields } = body;
+    const { action, name, groupId, fields } = body;
 
-    console.log("[mailerlite-sync] Action:", action, "Email:", email);
-
-    if (!email) {
+    // SECURITY: Always use the authenticated user's email from the JWT,
+    // never trust the email supplied in the request body. This prevents
+    // authenticated users from enrolling arbitrary third parties.
+    const userEmail = (claimsData.claims as { email?: string }).email;
+    if (!userEmail) {
       return new Response(
-        JSON.stringify({ error: "email is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Authenticated user has no email claim" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    const email = userEmail;
+
+    console.log("[mailerlite-sync] Action:", action, "Email:", email);
 
     const mlHeaders = {
       "Content-Type": "application/json",

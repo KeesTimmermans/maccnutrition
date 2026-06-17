@@ -107,8 +107,21 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // SECURITY: this function is internal-only (called by process-reminders cron).
+  // Require the service-role bearer to prevent open spam/phishing abuse.
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!serviceRole || authHeader !== `Bearer ${serviceRole}`) {
+    console.warn("[SEND-REMINDER] Unauthorized request blocked");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const { type, userId, email, userName }: ReminderRequest = await req.json();
+
     
     console.log(`[SEND-REMINDER] Sending ${type} reminder to ${email}`);
     
