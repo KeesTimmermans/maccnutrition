@@ -20,8 +20,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // SECURITY: cron-only endpoint. Require service-role bearer.
+  const serviceRoleAuth = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!serviceRoleAuth || authHeader !== `Bearer ${serviceRoleAuth}`) {
+    logStep("Unauthorized request blocked");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     logStep("Function started");
+
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
