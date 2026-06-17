@@ -36,7 +36,20 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // SECURITY: cron-only endpoint. Require the service-role bearer to
+  // prevent unauthenticated mass email triggering.
+  const serviceRoleAuth = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!serviceRoleAuth || authHeader !== `Bearer ${serviceRoleAuth}`) {
+    console.warn("[PROCESS-REMINDERS] Unauthorized request blocked");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   console.log("[PROCESS-REMINDERS] Starting...");
+
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
