@@ -1,5 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { triggerMealReinforcement } from "./reinforcementService";
+
+async function getEdgeFunctionErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return body.error;
+    } catch {
+      // fall through
+    }
+  }
+  return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+}
 
 export interface Meal {
   id: string;
@@ -194,7 +207,7 @@ export const analyzeFoodImage = async (imageBase64: string, userDietContext?: Us
 
   if (error) {
     console.error("Error analyzing food:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;
@@ -207,7 +220,7 @@ export const parseMealDescription = async (description: string, userDietContext?
 
   if (error) {
     console.error("Error parsing meal:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;
@@ -220,7 +233,7 @@ export const searchFoodSuggestions = async (query: string): Promise<FoodSuggesti
 
   if (error) {
     console.error("Error searching foods:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data.suggestions || [];
@@ -244,7 +257,7 @@ export const getFoodNutritionByWeight = async (
 
   if (error) {
     console.error("Error calculating nutrition:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;
@@ -271,7 +284,7 @@ export const analyzeFoodSearch = async (searchQuery: string, mode?: 'barcode' | 
 
   if (error) {
     console.error("Error analyzing food:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;

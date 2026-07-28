@@ -92,6 +92,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedFood, setSelectedFood] = useState<FoodSuggestion | null>(null);
   const [quantity, setQuantity] = useState<string>("100");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -122,6 +123,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const debouncedSearch = useCallback(async (query: string) => {
     if (query.length < 2) {
       setSuggestions([]);
+      setSearchError(null);
       return;
     }
 
@@ -129,8 +131,11 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
     try {
       const results = await searchFoodSuggestions(query);
       setSuggestions(results);
+      setSearchError(null);
     } catch (error) {
       console.error("Error searching foods:", error);
+      setSuggestions([]);
+      setSearchError((error as Error).message || "Search unavailable right now");
     } finally {
       setIsSearching(false);
     }
@@ -147,6 +152,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       }, 300);
     } else {
       setSuggestions([]);
+      setSearchError(null);
     }
 
     return () => {
@@ -222,7 +228,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
           setStep('adjust_ingredients');
         } catch (error) {
           console.error("Error analyzing image:", error);
-          toast.error(t('error'));
+          toast.error((error as Error).message || t('error'));
         } finally {
           setIsAnalyzing(false);
         }
@@ -260,7 +266,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       setStep('confirm');
     } catch (error) {
       console.error("Error calculating nutrition:", error);
-      toast.error(t('error'));
+      toast.error((error as Error).message || t('error'));
     } finally {
       setIsCalculating(false);
     }
@@ -309,7 +315,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       }
     } catch (error) {
       console.error("Error looking up barcode:", error);
-      toast.error("Could not find product. Try searching manually.");
+      toast.error((error as Error).message || "Could not find product. Try searching manually.");
       setStep('method');
     } finally {
       setIsAnalyzing(false);
@@ -337,7 +343,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       setStep('adjust_ingredients');
     } catch (error) {
       console.error("Error analyzing description:", error);
-      toast.error(t('error'));
+      toast.error((error as Error).message || t('error'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -785,7 +791,13 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         </div>
       )}
 
-      {searchQuery.length >= 2 && !isSearching && suggestions.length === 0 && (
+      {searchError && !isSearching && (
+        <p className="text-sm text-destructive text-center py-4">
+          {searchError}
+        </p>
+      )}
+
+      {!searchError && searchQuery.length >= 2 && !isSearching && suggestions.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">
           No foods found. Try a different search term.
         </p>
