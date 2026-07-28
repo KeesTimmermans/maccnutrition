@@ -790,7 +790,13 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         </div>
       )}
 
-      {searchQuery.length >= 2 && !isSearching && suggestions.length === 0 && (
+      {searchError && !isSearching && (
+        <p className="text-sm text-destructive text-center py-4">
+          {searchError}
+        </p>
+      )}
+
+      {!searchError && searchQuery.length >= 2 && !isSearching && suggestions.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">
           No foods found. Try a different search term.
         </p>
