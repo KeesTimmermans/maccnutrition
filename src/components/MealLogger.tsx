@@ -265,7 +265,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       setStep('confirm');
     } catch (error) {
       console.error("Error calculating nutrition:", error);
-      toast.error(t('error'));
+      toast.error((error as Error).message || t('error'));
     } finally {
       setIsCalculating(false);
     }
