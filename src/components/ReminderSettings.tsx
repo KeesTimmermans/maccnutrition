@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface ReminderPreferences {
@@ -72,12 +73,14 @@ export const ReminderSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      const payload: TablesUpdate<'user_baselines'> = {
+        [key]: value,
+        reminder_timezone: newPreferences.reminder_timezone,
+      };
+
       const { error } = await supabase
         .from("user_baselines")
-        .update({
-          [key]: value,
-          reminder_timezone: newPreferences.reminder_timezone,
-        })
+        .update(payload)
         .eq("user_id", user.id);
 
       if (error) throw error;

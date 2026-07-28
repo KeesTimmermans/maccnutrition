@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 
 export type PostType = "win" | "struggle" | "question";
 export type ReportReason = "spam" | "harassment" | "medical_misinformation" | "eating_disorder" | "other";
@@ -131,8 +132,10 @@ export async function createPost({ type, content }: { type: PostType; content: s
 }
 
 export async function softDeletePost(postId: string, deletedReason?: string) {
-  const update: Record<string, unknown> = { is_deleted: true };
-  if (deletedReason) update.deleted_reason = deletedReason;
+  const update: TablesUpdate<'community_posts'> = {
+    is_deleted: true,
+    ...(deletedReason ? { deleted_reason: deletedReason } : {}),
+  };
   const { error } = await supabase
     .from("community_posts")
     .update(update)
