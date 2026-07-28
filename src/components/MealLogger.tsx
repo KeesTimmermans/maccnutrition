@@ -92,6 +92,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedFood, setSelectedFood] = useState<FoodSuggestion | null>(null);
   const [quantity, setQuantity] = useState<string>("100");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
