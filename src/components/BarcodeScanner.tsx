@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useZxing } from "react-zxing";
+import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { X, Flashlight, FlashlightOff, ScanBarcode } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -13,7 +14,16 @@ export const BarcodeScanner = ({ onDetected, onClose }: BarcodeScannerProps) => 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const detectedRef = useRef(false);
 
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+    BarcodeFormat.EAN_13,
+    BarcodeFormat.EAN_8,
+    BarcodeFormat.UPC_A,
+    BarcodeFormat.UPC_E,
+  ]);
+
   const { ref, torch } = useZxing({
+    hints,
     onResult(result) {
       if (!detectedRef.current) {
         detectedRef.current = true;
