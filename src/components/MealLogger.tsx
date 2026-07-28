@@ -122,6 +122,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const debouncedSearch = useCallback(async (query: string) => {
     if (query.length < 2) {
       setSuggestions([]);
+      setSearchError(null);
       return;
     }
 
@@ -129,8 +130,11 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
     try {
       const results = await searchFoodSuggestions(query);
       setSuggestions(results);
+      setSearchError(null);
     } catch (error) {
       console.error("Error searching foods:", error);
+      setSuggestions([]);
+      setSearchError((error as Error).message || "Search unavailable right now");
     } finally {
       setIsSearching(false);
     }
