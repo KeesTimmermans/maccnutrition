@@ -249,10 +249,10 @@ async function lookupFoodRepo(query: string): Promise<NutritionData | null> {
 // ============================================
 // Open Food Facts Barcode Lookup (for barcode flow)
 // ============================================
-async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
+async function lookupBarcodeOnce(barcode: string): Promise<NutritionData | null> {
   try {
     console.log(`[OpenFoodFacts] Looking up barcode: ${barcode}`);
-    
+
     const response = await fetchWithTimeout(
       `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`,
       {
@@ -269,7 +269,7 @@ async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
     }
 
     const data = await response.json();
-    
+
     if (data.status !== 1 || !data.product) {
       console.log(`[OpenFoodFacts] Product not found for barcode: ${barcode}`);
       return null;
@@ -314,6 +314,26 @@ async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
     console.error('[OpenFoodFacts] Error:', error);
     return null;
   }
+}
+
+async function lookupBarcode(barcode: string): Promise<NutritionData | null> {
+  const result = await lookupBarcodeOnce(barcode);
+  if (result) return result;
+
+  // UPC-A (12-digit) and EAN-13 (13-digit) are equivalent; try the alternate form.
+  let alternateBarcode: string | null = null;
+  if (/^\d{12}$/.test(barcode)) {
+    alternateBarcode = `0${barcode}`;
+  } else if (/^0\d{12}$/.test(barcode)) {
+    alternateBarcode = barcode.slice(1);
+  }
+
+  if (alternateBarcode) {
+    console.log(`[OpenFoodFacts] Retrying barcode lookup with alternate form: ${alternateBarcode}`);
+    return await lookupBarcodeOnce(alternateBarcode);
+  }
+
+  return null;
 }
 
 // USDA FoodData Central - For whole foods
