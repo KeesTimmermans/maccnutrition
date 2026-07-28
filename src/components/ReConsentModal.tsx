@@ -21,31 +21,41 @@ export const ReConsentModal = ({ userId, onAccepted }: ReConsentModalProps) => {
     if (!acceptedTerms || !acceptedHealth) return;
     setSaving(true);
 
-    const now = new Date().toISOString();
+    try {
+      const now = new Date().toISOString();
 
-    await supabase.from("user_baselines").upsert(
-      {
-        user_id: userId,
-        privacy_policy_accepted: true,
-        privacy_policy_version: PRIVACY_POLICY_VERSION,
-        privacy_policy_accepted_at: now,
-        terms_accepted: true,
-        terms_version: TERMS_VERSION,
-        terms_accepted_at: now,
-        health_data_consent: true,
-        health_data_consent_at: now,
-      },
-      { onConflict: "user_id" }
-    );
+      const { error: baselineError } = await supabase.from("user_baselines").upsert(
+        {
+          user_id: userId,
+          privacy_policy_accepted: true,
+          privacy_policy_version: PRIVACY_POLICY_VERSION,
+          privacy_policy_accepted_at: now,
+          terms_accepted: true,
+          terms_version: TERMS_VERSION,
+          terms_accepted_at: now,
+          health_data_consent: true,
+          health_data_consent_at: now,
+        },
+        { onConflict: "user_id" }
+      );
 
-    await supabase.from("consent_log").insert([
-      { user_id: userId, consent_type: "privacy", policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
-      { user_id: userId, consent_type: "terms",   policy_version: TERMS_VERSION,          accepted: true, accepted_at: now },
-      { user_id: userId, consent_type: "health",  policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
-    ]);
+      if (baselineError) throw baselineError;
 
-    setSaving(false);
-    onAccepted();
+      const { error: consentError } = await supabase.from("consent_log").insert([
+        { user_id: userId, consent_type: "privacy", policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
+        { user_id: userId, consent_type: "terms",   policy_version: TERMS_VERSION,          accepted: true, accepted_at: now },
+        { user_id: userId, consent_type: "health",  policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
+      ]);
+
+      if (consentError) throw consentError;
+
+      onAccepted();
+    } catch (error) {
+      console.error("Error saving consent:", error);
+      toast.error("Failed to save your consent. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleLogout = async () => {
