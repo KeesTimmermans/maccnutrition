@@ -314,7 +314,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       }
     } catch (error) {
       console.error("Error looking up barcode:", error);
-      toast.error("Could not find product. Try searching manually.");
+      toast.error((error as Error).message || "Could not find product. Try searching manually.");
       setStep('method');
     } finally {
       setIsAnalyzing(false);
