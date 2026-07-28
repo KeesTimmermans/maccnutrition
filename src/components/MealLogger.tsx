@@ -108,7 +108,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const [editingIngredientIndex, setEditingIngredientIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const loadFavorites = async () => {

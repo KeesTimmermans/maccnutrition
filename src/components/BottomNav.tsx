@@ -27,7 +27,7 @@ export const BottomNav = () => {
         <div className="flex items-center justify-center h-16 max-w-lg mx-auto px-4">
           <button
             onClick={() => {
-              if (process.env.NODE_ENV === 'development') {
+              if (import.meta.env.DEV) {
                 console.log("CTA clicked, navigating to", "/onboarding", "current path:", location.pathname, location.hash);
               }
               navigate("/onboarding");
