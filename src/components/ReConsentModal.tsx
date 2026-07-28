@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/consentConstants";
 
 interface ReConsentModalProps {
