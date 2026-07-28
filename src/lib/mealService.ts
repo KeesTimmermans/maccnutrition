@@ -207,7 +207,7 @@ export const analyzeFoodImage = async (imageBase64: string, userDietContext?: Us
 
   if (error) {
     console.error("Error analyzing food:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;
@@ -220,7 +220,7 @@ export const parseMealDescription = async (description: string, userDietContext?
 
   if (error) {
     console.error("Error parsing meal:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;
@@ -233,7 +233,7 @@ export const searchFoodSuggestions = async (query: string): Promise<FoodSuggesti
 
   if (error) {
     console.error("Error searching foods:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data.suggestions || [];
@@ -257,7 +257,7 @@ export const getFoodNutritionByWeight = async (
 
   if (error) {
     console.error("Error calculating nutrition:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;
@@ -284,7 +284,7 @@ export const analyzeFoodSearch = async (searchQuery: string, mode?: 'barcode' | 
 
   if (error) {
     console.error("Error analyzing food:", error);
-    throw error;
+    throw new Error(await getEdgeFunctionErrorMessage(error));
   }
 
   return data;
