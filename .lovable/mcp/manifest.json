@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://nfqaanowocbcnymcqcig.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "macnutrition-mcp",
+      "version": "0.1.0",
+      "title": "MacNutrition"
+    },
+    "tools": [
+      {
+        "name": "get_nutrition_targets",
+        "title": "Get nutrition targets and profile",
+        "description": "Get the signed-in user's MacNutrition baseline: daily calorie and macro targets, hydration target, goal, diet type and allergies.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_daily_summary",
+        "title": "Get daily nutrition summary",
+        "description": "Get the signed-in user's totals for a day (calories, macros, water) compared with their MacNutrition targets.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Day in YYYY-MM-DD format. Defaults to today."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_meals",
+        "title": "List meals for a day",
+        "description": "List the signed-in user's logged meals for a given day (defaults to today).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "Day in YYYY-MM-DD format. Defaults to today."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_meal",
+        "title": "Log a meal",
+        "description": "Log a meal with its macros for the signed-in MacNutrition user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Meal name, e.g. 'Chicken and rice'."
+            },
+            "calories": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000,
+              "description": "Calories (kcal)."
+            },
+            "protein": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000,
+              "description": "Protein in grams."
+            },
+            "carbs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000,
+              "description": "Carbohydrates in grams."
+            },
+            "fats": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000,
+              "description": "Fat in grams."
+            },
+            "sugar": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000,
+              "description": "Sugar in grams."
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Optional notes about the meal."
+            },
+            "logged_at": {
+              "type": "string",
+              "description": "ISO timestamp for when the meal was eaten. Defaults to now."
+            }
+          },
+          "required": [
+            "name",
+            "calories",
+            "protein",
+            "carbs",
+            "fats"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_water",
+        "title": "Log water intake",
+        "description": "Log water intake in millilitres for the signed-in MacNutrition user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "amount_ml": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 5000,
+              "description": "Amount of water in millilitres."
+            },
+            "logged_at": {
+              "type": "string",
+              "description": "ISO timestamp. Defaults to now."
+            }
+          },
+          "required": [
+            "amount_ml"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_progress",
+        "title": "Get recent progress updates",
+        "description": "List the signed-in user's recent weight and progress check-ins from MacNutrition.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "How many recent updates to return. Defaults to 10."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
