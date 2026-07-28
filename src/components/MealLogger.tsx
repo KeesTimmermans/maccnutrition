@@ -152,6 +152,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       }, 300);
     } else {
       setSuggestions([]);
+      setSearchError(null);
     }
 
     return () => {
