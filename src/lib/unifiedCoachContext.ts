@@ -120,6 +120,7 @@ export interface ProfileLayer {
   focusPoints: string[] | null;
   lastProgressUpdate: string | null;
   accountAgeDays: number;
+  stressLevel: string | null;
 }
 
 // ── Full Unified Context ───────────────────────────────────────
@@ -268,6 +269,7 @@ export function buildUnifiedCoachContext(input: BuildUnifiedContextInput): Unifi
     focusPoints: baseline?.focus_points ?? null,
     lastProgressUpdate: baseline?.last_progress_update ?? null,
     accountAgeDays,
+    stressLevel: baseline?.stress_level ?? null,
   };
 
   const now = new Date();
@@ -317,7 +319,7 @@ export function buildEdgeFunctionUserContext(
     trainingDays: ctx.profile.trainingDays,
     trainingIntensity: ctx.profile.trainingIntensity,
     sleepHours: ctx.profile.sleepHoursTarget,
-    stressLevel: null, // baseline doesn't store numeric stress
+    stressLevel: ctx.profile.stressLevel,
     occupation: ctx.profile.occupation,
     eatingSpeed: ctx.profile.eatingSpeed,
     hungerPatterns: ctx.profile.hungerPatterns,
