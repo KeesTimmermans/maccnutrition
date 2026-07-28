@@ -120,6 +120,7 @@ export interface ProfileLayer {
   focusPoints: string[] | null;
   lastProgressUpdate: string | null;
   accountAgeDays: number;
+  stressLevel: string | null;
 }
 
 // ── Full Unified Context ───────────────────────────────────────
