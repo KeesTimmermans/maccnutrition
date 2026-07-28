@@ -121,6 +121,10 @@ export interface ProfileLayer {
   lastProgressUpdate: string | null;
   accountAgeDays: number;
   stressLevel: string | null;
+  jobActivityLevel: string | null;
+  trainingDuration: string | null;
+  climate: string | null;
+  workoutTypes: string[] | null;
 }
 
 // ── Full Unified Context ───────────────────────────────────────
@@ -270,6 +274,10 @@ export function buildUnifiedCoachContext(input: BuildUnifiedContextInput): Unifi
     lastProgressUpdate: baseline?.last_progress_update ?? null,
     accountAgeDays,
     stressLevel: baseline?.stress_level ?? null,
+    jobActivityLevel: baseline?.job_activity_level ?? null,
+    trainingDuration: baseline?.training_duration ?? null,
+    climate: baseline?.climate ?? null,
+    workoutTypes: baseline?.workout_types ?? null,
   };
 
   const now = new Date();
@@ -328,6 +336,10 @@ export function buildEdgeFunctionUserContext(
     snackingHabits: ctx.profile.snackingHabits,
     hydrationHabits: ctx.profile.hydrationHabits,
     energyPatterns: ctx.profile.energyPatterns,
+    jobActivityLevel: ctx.profile.jobActivityLevel,
+    trainingDuration: ctx.profile.trainingDuration,
+    climate: ctx.profile.climate,
+    workoutTypes: ctx.profile.workoutTypes,
     biggestChallenge: ctx.profile.biggestChallenge,
     pastDiets: ctx.profile.pastDiets,
     weekendHabits: ctx.profile.weekendHabits,

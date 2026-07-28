@@ -31,6 +31,10 @@ const userContextSchema = z.object({
   activityLevel: z.string().max(50).nullish(),
   trainingDays: z.string().max(20).nullish(),
   trainingIntensity: z.string().max(50).nullish(),
+  trainingDuration: z.string().max(50).nullish(),
+  workoutTypes: z.array(z.string().max(50)).max(10).nullish(),
+  jobActivityLevel: z.string().max(50).nullish(),
+  climate: z.string().max(50).nullish(),
   sleepHours: z.string().max(20).nullish(),
   stressLevel: z.string().max(50).nullish(),
   occupation: z.string().max(100).nullish(),
@@ -832,6 +836,10 @@ USER PROFILE:
 - Activity Level: ${userContext?.activityLevel?.replace(/_/g, ' ') || 'not specified'}
 - Training Days/Week: ${userContext?.trainingDays || 'not specified'}
 - Training Intensity: ${userContext?.trainingIntensity || 'not specified'}
+- Typical Training Duration: ${userContext?.trainingDuration || 'not specified'}
+- Workout Types: ${userContext?.workoutTypes?.join(', ') || 'not specified'}
+- Job Activity Level: ${userContext?.jobActivityLevel || 'not specified'}
+- Climate: ${userContext?.climate || 'not specified'}
 - Sleep Hours: ${userContext?.sleepHours || 'not specified'}
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
@@ -1026,6 +1034,7 @@ RESPONSE GUIDELINES:
 - ONE clear action item is better than five generic ones
 - If check-in shows changes from yesterday, acknowledge the trajectory
 - Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step
+- Mention job activity level, training duration, climate, or workout types ONLY when directly relevant to the advice being given (e.g. hydration guidance in a hot climate, meal timing around a physically demanding job). Do not force these details into every response.
 
 CRITICAL FINAL RULE — MACRO NUMBERS:
 When you mention any calorie or macro number in your response, it MUST match the NUTRITION TARGETS above EXACTLY. Do not calculate your own values. Do not estimate. Do not round differently. The app already shows these numbers to the user — your job is to coach around them, not recalculate them.`;
