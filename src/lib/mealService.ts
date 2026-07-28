@@ -1,5 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { triggerMealReinforcement } from "./reinforcementService";
+
+async function getEdgeFunctionErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return body.error;
+    } catch {
+      // fall through
+    }
+  }
+  return error instanceof Error ? error.message : "Something went wrong. Please try again.";
+}
 
 export interface Meal {
   id: string;
