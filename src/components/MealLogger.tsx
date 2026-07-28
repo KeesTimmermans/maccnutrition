@@ -227,7 +227,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
           setStep('adjust_ingredients');
         } catch (error) {
           console.error("Error analyzing image:", error);
-          toast.error(t('error'));
+          toast.error((error as Error).message || t('error'));
         } finally {
           setIsAnalyzing(false);
         }
