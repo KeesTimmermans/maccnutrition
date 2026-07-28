@@ -37,13 +37,14 @@ import Onboarding from "./pages/Onboarding";
 import PostCheckout from "./pages/PostCheckout";
 import Pricing from "./pages/Pricing";
 import ResetPassword from "./pages/ResetPassword";
+import OAuthConsent from "./pages/OAuthConsent";
 import CompetitionPrep from "./pages/CompetitionPrep";
 import CompetitionPrepSetup from "./pages/CompetitionPrepSetup";
 
 const queryClient = new QueryClient();
 
 /** Public routes that never show the re-consent overlay or subscription gate */
-const PUBLIC_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/reset-password"];
+const PUBLIC_PATHS = ["/.lovable/oauth/consent", "/", "/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/reset-password"];
 
 // ── Onboarding context ──────────────────────────────────────────────
 export interface OnboardingCtx {
@@ -138,7 +139,7 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Subscription gate — redirects unsubscribed users to /pricing ──
-const SUBSCRIPTION_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding", "/reset-password"];
+const SUBSCRIPTION_EXEMPT_PATHS = ["/.lovable/oauth/consent", "/", "/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding", "/reset-password"];
 
 const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -185,7 +186,7 @@ const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Onboarding gate — redirects incomplete users to "/onboarding" ──
-const ONBOARDING_EXEMPT_PATHS = ["/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing", "/admin", "/reset-password"];
+const ONBOARDING_EXEMPT_PATHS = ["/.lovable/oauth/consent", "/", "/auth", "/privacy-policy", "/privacy", "/terms", "/diagnostics", "/onboarding", "/post-checkout", "/pricing", "/admin", "/reset-password"];
 
 const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -300,6 +301,7 @@ const App = () => {
                     <Route path="/community/reports" element={<CommunityReports />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                     <Route path="/onboarding" element={<Onboarding />} />
                     <Route path="/privacy" element={<Privacy />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />

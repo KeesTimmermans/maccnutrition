@@ -47,11 +47,21 @@ const Auth = () => {
     return `${window.location.origin}${basePath}`;
   };
 
+  // Where to send the user after a successful sign-in (used by the OAuth consent flow)
+  const getNextPath = () => {
+    const hashQuery = window.location.hash.split("?")[1] ?? "";
+    const raw = new URLSearchParams(hashQuery).get("next");
+    if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+    return "/";
+  };
+
   useEffect(() => {
+    const target = getNextPath();
+
     // Check if already logged in on mount — redirect away from auth page
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/", { replace: true });
+        navigate(target, { replace: true });
       }
     });
 
@@ -60,12 +70,13 @@ const Auth = () => {
     } = supabase.auth.onAuthStateChange((event, session) => {
       // Only navigate on an actual sign-in, not session restore or token refresh
       if (event === "SIGNED_IN" && session && isLogin) {
-        navigate("/", { replace: true });
+        navigate(target, { replace: true });
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate, isLogin]);
+
 
   const validateForm = () => {
     const newErrors: typeof errors = {};

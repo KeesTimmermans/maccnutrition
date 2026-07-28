@@ -11,6 +11,14 @@ import { supabase } from "@/integrations/supabase/client";
 (function ensureHashRoute() {
   const { pathname, search, hash } = window.location;
 
+  // OAuth consent redirects arrive as a real path; bridge them into the hash router.
+  if (pathname.startsWith("/.lovable/oauth/consent")) {
+    window.location.replace(`${window.location.origin}/#/.lovable/oauth/consent${search}`);
+    return;
+  }
+
+
+
   // If we have a checkout param in the query string, store it and redirect to hash route
   const params = new URLSearchParams(search);
   const checkout = params.get("checkout");
