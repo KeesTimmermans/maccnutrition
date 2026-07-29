@@ -18,12 +18,14 @@ export const DEFAULT_SECTIONS: DashboardSection[] = [
   { id: "meals", label: "Today's Meals", icon: "🍽️", canHide: false },
   { id: "coach", label: "Coach Mac", icon: "🤖", canHide: true },
   { id: "water", label: "Water Intake", icon: "💧", canHide: true },
+  { id: "checkin_trends", label: "Check-In Trends", icon: "📈", canHide: true },
 ];
 
 export const DEFAULT_LAYOUT = {
-  sections: ["progress", "meals", "coach", "water"],
+  sections: ["progress", "meals", "coach", "water", "checkin_trends"],
   hidden: [] as string[],
 };
+
 
 interface DashboardLayoutSettingsProps {
   currentLayout: { sections: string[]; hidden: string[] } | null;
