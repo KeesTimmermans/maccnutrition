@@ -527,8 +527,16 @@ export const TodayDashboard = () => {
     }
   };
 
-  const layout = baseline?.dashboard_layout || DEFAULT_LAYOUT;
+  const savedLayout = baseline?.dashboard_layout || DEFAULT_LAYOUT;
+  const layout = {
+    ...savedLayout,
+    sections: [
+      ...savedLayout.sections,
+      ...DEFAULT_LAYOUT.sections.filter(s => !savedLayout.sections.includes(s)),
+    ],
+  };
   const visibleSections = layout.sections.filter(s => !layout.hidden.includes(s));
+
 
   const renderProgressSection = () => (
     <section key="progress" className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
