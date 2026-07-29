@@ -1286,6 +1286,53 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_habits: {
+        Row: {
+          completed_dates: string[]
+          created_at: string
+          difficulty_label: string | null
+          habit_description: string
+          habit_title: string
+          id: string
+          previous_habit_id: string | null
+          updated_at: string
+          user_id: string
+          week_start_date: string
+        }
+        Insert: {
+          completed_dates?: string[]
+          created_at?: string
+          difficulty_label?: string | null
+          habit_description: string
+          habit_title: string
+          id?: string
+          previous_habit_id?: string | null
+          updated_at?: string
+          user_id: string
+          week_start_date: string
+        }
+        Update: {
+          completed_dates?: string[]
+          created_at?: string
+          difficulty_label?: string | null
+          habit_description?: string
+          habit_title?: string
+          id?: string
+          previous_habit_id?: string | null
+          updated_at?: string
+          user_id?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_habits_previous_habit_id_fkey"
+            columns: ["previous_habit_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
