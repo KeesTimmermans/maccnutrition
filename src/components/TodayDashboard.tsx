@@ -10,6 +10,8 @@ import { MealLogger } from "@/components/MealLogger";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
+import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
+
 import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
 import { DailyCheckIn } from "@/components/DailyCheckIn";
@@ -527,8 +529,16 @@ export const TodayDashboard = () => {
     }
   };
 
-  const layout = baseline?.dashboard_layout || DEFAULT_LAYOUT;
+  const savedLayout = baseline?.dashboard_layout || DEFAULT_LAYOUT;
+  const layout = {
+    ...savedLayout,
+    sections: [
+      ...savedLayout.sections,
+      ...DEFAULT_LAYOUT.sections.filter(s => !savedLayout.sections.includes(s)),
+    ],
+  };
   const visibleSections = layout.sections.filter(s => !layout.hidden.includes(s));
+
 
   const renderProgressSection = () => (
     <section key="progress" className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
@@ -659,12 +669,20 @@ export const TodayDashboard = () => {
     </section>
   );
 
+  const renderCheckInTrendsSection = () => (
+    <section key="checkin_trends">
+      <CheckInTrendsCard />
+    </section>
+  );
+
   const sectionRenderers: Record<string, () => JSX.Element> = {
     progress: renderProgressSection,
     meals: renderMealsSection,
     coach: renderCoachSection,
     water: renderWaterSection,
+    checkin_trends: renderCheckInTrendsSection,
   };
+
 
   return (
     <div className="min-h-screen bg-background">
