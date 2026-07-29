@@ -81,3 +81,6 @@ verify_jwt = false
 
 [functions.cancel-subscription]
 verify_jwt = false
+
+[functions.generate-weekly-habit]
+verify_jwt = false
