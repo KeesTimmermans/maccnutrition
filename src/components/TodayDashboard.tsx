@@ -10,6 +10,8 @@ import { MealLogger } from "@/components/MealLogger";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
+import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
+
 import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
 import { DailyCheckIn } from "@/components/DailyCheckIn";
@@ -667,12 +669,20 @@ export const TodayDashboard = () => {
     </section>
   );
 
+  const renderCheckInTrendsSection = () => (
+    <section key="checkin_trends">
+      <CheckInTrendsCard />
+    </section>
+  );
+
   const sectionRenderers: Record<string, () => JSX.Element> = {
     progress: renderProgressSection,
     meals: renderMealsSection,
     coach: renderCoachSection,
     water: renderWaterSection,
+    checkin_trends: renderCheckInTrendsSection,
   };
+
 
   return (
     <div className="min-h-screen bg-background">
