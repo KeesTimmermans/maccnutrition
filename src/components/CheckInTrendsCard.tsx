@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { format, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRecentCheckIns, DailyCheckIn } from "@/lib/checkinService";
 
@@ -36,19 +36,31 @@ export const CheckInTrendsCard = () => {
     })();
   }, []);
 
-  const mapCheckIns = (checkIns: DailyCheckIn[]): TrendPoint[] =>
-    [...checkIns]
-      .sort((a, b) => a.check_in_date.localeCompare(b.check_in_date))
-      .map((c) => ({
-        date: format(parseISO(c.check_in_date), "EEE"),
-        mood: c.mood ?? null,
-        energy: c.energy_level ?? null,
-        sleepQuality: c.sleep_quality ?? null,
-        stress: c.stress_level ?? null,
-        sleepHours: c.sleep_hours ?? null,
-      }));
+  const mapCheckIns = (checkIns: DailyCheckIn[]): TrendPoint[] => {
+    const today = new Date();
+    const days = eachDayOfInterval({
+      start: startOfWeek(today, { weekStartsOn: 1 }),
+      end: endOfWeek(today, { weekStartsOn: 1 }),
+    });
+
+    return days.map((day) => {
+      const dateStr = format(day, "yyyy-MM-dd");
+      const c = checkIns.find((ci) => ci.check_in_date === dateStr);
+      return {
+        date: format(day, "EEE"),
+        mood: c?.mood ?? null,
+        energy: c?.energy_level ?? null,
+        sleepQuality: c?.sleep_quality ?? null,
+        stress: c?.stress_level ?? null,
+        sleepHours: c?.sleep_hours ?? null,
+      };
+    });
+  };
 
   const hasSleepHours = data.some((d) => d.sleepHours !== null);
+  const hasAnyCheckIn = data.some(
+    (d) => d.mood !== null || d.energy !== null || d.sleepQuality !== null || d.stress !== null || d.sleepHours !== null
+  );
 
   return (
     <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
@@ -58,10 +70,10 @@ export const CheckInTrendsCard = () => {
       <CardContent className="p-4">
         {isLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading trends...</p>
-        ) : data.length < 3 ? (
+        ) : !hasAnyCheckIn ? (
           <div className="py-8 text-center">
             <p className="text-2xl mb-2">📈</p>
-            <p className="text-sm text-muted-foreground">Check in daily to see your trends</p>
+            <p className="text-sm text-muted-foreground">Check in today to start this week's trend.</p>
           </div>
         ) : (
           <div className="space-y-4">
