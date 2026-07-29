@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { MacroRing } from "@/components/MacroRing";
 import { MacroRingGroupSkeleton } from "@/components/MacroRingSkeleton";
@@ -11,6 +11,7 @@ import { SettingsSheet } from "@/components/SettingsSheet";
 import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
+import { WeeklyHabitCard } from "@/components/WeeklyHabitCard";
 
 import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
@@ -33,6 +34,7 @@ import { getActiveCoachingFocusPoints, CoachingFocusPoint } from "@/lib/progress
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { buildUnifiedCoachContext, buildEdgeFunctionUserContext } from "@/lib/unifiedCoachContext";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
 
@@ -107,6 +109,22 @@ export const TodayDashboard = () => {
   };
 
   const firstName = baseline?.name?.split(' ')[0] || '';
+
+  const habitUserContext = useMemo(() => {
+    if (targetsLoading || !baseline) return null;
+    const unified = buildUnifiedCoachContext({
+      activeTargets,
+      baseline,
+      compPrepContext: null,
+      todaysMeals: meals.map(m => ({ calories: m.calories, protein: m.protein, carbs: m.carbs, fats: m.fats })),
+      waterIntakeMl: totalWaterMl,
+      todaysCheckIn: null,
+      accountAgeDays,
+    });
+    return buildEdgeFunctionUserContext(unified);
+    // Only rebuild when the inputs the habit generator cares about change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetsLoading, baseline, activeTargets, accountAgeDays]);
 
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
@@ -716,6 +734,9 @@ export const TodayDashboard = () => {
       </header>
 
       <main className="container py-6 space-y-6">
+        {/* Weekly Habit */}
+        <WeeklyHabitCard userContext={habitUserContext} />
+
         {/* Trial Banner */}
         {isTrialing && trialDaysRemaining !== null && trialEnd && (
           <TrialBanner daysRemaining={trialDaysRemaining} trialEnd={trialEnd} />
