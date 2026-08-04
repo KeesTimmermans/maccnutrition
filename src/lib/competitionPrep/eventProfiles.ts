@@ -65,6 +65,12 @@ export interface DivisionOption {
   label: string;
 }
 
+const RACE_DIVISIONS: DivisionOption[] = [
+  { value: "just_finish", label: "Just Finish" },
+  { value: "time_goal", label: "Time Goal" },
+  { value: "personal_best", label: "Personal Best" },
+];
+
 export const EVENT_DIVISIONS: Record<EventType, DivisionOption[]> = {
   hyrox: [
     { value: "open", label: "Open" },
