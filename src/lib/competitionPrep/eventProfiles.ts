@@ -73,32 +73,16 @@ export const EVENT_DIVISIONS: Record<EventType, DivisionOption[]> = {
     { value: "mixed_doubles", label: "Mixed Doubles" },
     { value: "relay", label: "Relay" },
   ],
-  deka: [
-    { value: "deka_strong", label: "DEKA STRONG" },
-    { value: "deka_mile", label: "DEKA MILE" },
-    { value: "deka_fit", label: "DEKA FIT" },
-    { value: "age_group", label: "Age Group" },
-    { value: "elite", label: "Elite" },
-  ],
-  turf_games: [
-    { value: "individual", label: "Individual" },
-    { value: "pairs", label: "Pairs" },
-    { value: "mixed_pairs", label: "Mixed Pairs" },
-    { value: "team", label: "Team" },
-    { value: "elite", label: "Elite" },
-  ],
   athx: [
     { value: "open", label: "Open" },
     { value: "elite", label: "Elite" },
     { value: "age_group", label: "Age Group" },
     { value: "team", label: "Team" },
   ],
-  metrix: [
-    { value: "individual", label: "Individual" },
-    { value: "pairs", label: "Pairs" },
-    { value: "team", label: "Team" },
-    { value: "elite", label: "Elite" },
-  ],
+  "5k": RACE_DIVISIONS,
+  "10k": RACE_DIVISIONS,
+  half_marathon: RACE_DIVISIONS,
+  full_marathon: RACE_DIVISIONS,
 };
 
 export const FALLBACK_DIVISIONS: DivisionOption[] = [
@@ -117,6 +101,7 @@ export const DIVISION_LABELS: Record<string, string> = {
   individual: "Individual", pairs: "Pairs", mixed_pairs: "Mixed Pairs",
   elite: "Elite", age_group: "Age Group",
   deka_strong: "DEKA STRONG", deka_mile: "DEKA MILE", deka_fit: "DEKA FIT",
+  just_finish: "Just Finish", time_goal: "Time Goal", personal_best: "Personal Best",
 };
 
 // ── Universal comp goal categories ─────────────────────────────────
