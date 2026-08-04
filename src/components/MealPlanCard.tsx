@@ -42,6 +42,7 @@ interface MealPlanCardProps {
 export const MealPlanCard = ({
   meal,
   householdSize = 1,
+  onUpdate,
   onSaveToFavorites,
   onSwap,
   onSwapIngredient,
