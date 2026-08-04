@@ -338,6 +338,34 @@ const Settings = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <Separator />
+
+            {/* Household Size */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                How many people do you usually cook for?
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Used to scale meal plans and grocery lists
+              </p>
+              <Select
+                value={String(householdSize)}
+                onValueChange={handleHouseholdSizeChange}
+                disabled={isUpdating}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n === 1 ? "Just me" : `${n} people`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
