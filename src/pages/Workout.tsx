@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Camera,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import {
   getWorkoutsForDate,
   getRecentWorkouts,
   getExerciseNameSuggestions,
+  extractWorkoutFromPhoto,
+  uploadWorkoutPhoto,
   type Workout as WorkoutRow,
   type WorkoutExercise,
   type WorkoutSet,
@@ -39,7 +42,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// NOTE: photo-based workout logging will be added in a follow-up.
+const fileToBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Couldn't read that image"));
+    reader.readAsDataURL(file);
+  });
+
 
 const WORKOUT_TYPES = [
   { key: "weightlifting", label: "Weightlifting", icon: "🏋️" },
