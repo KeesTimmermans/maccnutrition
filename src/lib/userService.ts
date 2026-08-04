@@ -65,6 +65,9 @@ export interface UserBaseline {
   protein_shakes_preference: string | null;
   preferred_currency: string | null;
   household_size: number | null;
+  left_arm: number | null;
+  right_arm: number | null;
+  clothing_size: string | null;
   dashboard_layout: {
     sections: string[];
     hidden: string[];
@@ -186,11 +189,10 @@ export const saveUserBaseline = async (
       // Measurements (optional during onboarding)
       body_fat_percentage: onboardingData.bodyFatPercentage ? parseFloat(onboardingData.bodyFatPercentage) : null,
       waist_cm: onboardingData.waist ? parseFloat(onboardingData.waist) : null,
-      hip_cm: onboardingData.hip ? parseFloat(onboardingData.hip) : null,
-      chest_cm: onboardingData.chest ? parseFloat(onboardingData.chest) : null,
-      arm_cm: onboardingData.arm ? parseFloat(onboardingData.arm) : null,
       thigh_cm: onboardingData.thigh ? parseFloat(onboardingData.thigh) : null,
-      neck_cm: onboardingData.neck ? parseFloat(onboardingData.neck) : null,
+      left_arm: onboardingData.leftArm ? parseFloat(onboardingData.leftArm) : null,
+      right_arm: onboardingData.rightArm ? parseFloat(onboardingData.rightArm) : null,
+      clothing_size: onboardingData.clothingSize || null,
       progress_photo_url: onboardingData.progressPhotoUrl || onboardingData.progressPhotos?.front || null,
       progress_photo_front: onboardingData.progressPhotos?.front || null,
       progress_photo_back: onboardingData.progressPhotos?.back || null,
@@ -425,8 +427,8 @@ function baselineToOnboardingData(baseline: UserBaseline): import("@/components/
     proteinShakesPreference: "",
     cycleRegularity: baseline.cycle_regularity || "", cycleSymptoms: baseline.cycle_symptoms || [],
     preparingForEvent: "", compEventType: "", compEventTypeOther: "", compEventDate: "", compDivision: "", compGoal: "",
-    bodyFatPercentage: "", waist: "", hip: "", chest: "",
-    arm: "", thigh: "", neck: "",
+    bodyFatPercentage: "", waist: "", thigh: "",
+    leftArm: "", rightArm: "", clothingSize: "",
     hasProgressPhoto: false, progressPhotoUrl: null,
     progressPhotos: { front: null, back: null, left: null, right: null },
   };
