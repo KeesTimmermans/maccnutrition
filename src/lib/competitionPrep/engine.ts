@@ -146,12 +146,20 @@ function getFatDefaultPerKg(mode: NutritionMode, demand: EventDemandProfile): nu
 }
 
 // ── Carb floor logic ────────────────────────────────────────────
-function getCarbFloorPerKg(eventType: EventType, mode: NutritionMode): number {
-  if (eventType === "hyrox" || eventType === "athx") return 3.0;
-  if (eventType === "half_marathon" || eventType === "full_marathon") return 3.0;
-  if (eventType === "5k" || eventType === "10k") return 2.5;
-  if (mode === "strength_support") return 2.0;
-  return 2.5;
+function getCarbFloorPerKg(mode: NutritionMode, demand: EventDemandProfile): number {
+  const highGlycogenDemand = demand.glycogen >= 4;
+
+  switch (mode) {
+    case "strength_support":
+      return highGlycogenDemand ? 2.5 : 2.0;
+    case "fat_loss":
+    case "recomp":
+      return highGlycogenDemand ? 2.75 : 2.25;
+    case "performance_build":
+    case "peak":
+    default:
+      return highGlycogenDemand ? 3.0 : 2.5;
+  }
 }
 
 // ── Weight loss rate ────────────────────────────────────────────
@@ -316,7 +324,7 @@ export function calculateCompetitionPrep(input: CompPrepCalcInput): CompetitionP
   let carbGrams = Math.round(carbCals / 4);
 
   // Enforce carb floor using 3-tier fat reduction
-  const carbFloor = getCarbFloorPerKg(eventType, mode);
+  const carbFloor = getCarbFloorPerKg(mode, demand);
   const carbFloorGrams = Math.round(weightKg * carbFloor);
   if (carbGrams < carbFloorGrams) {
     const fatReducedGrams = Math.round(weightKg * fatReduced);
