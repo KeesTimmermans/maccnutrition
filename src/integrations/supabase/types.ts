@@ -789,6 +789,7 @@ export type Database = {
           height_feet: number | null
           height_inches: number | null
           hip_cm: number | null
+          household_size: number
           hunger_patterns: string | null
           hydration_habits: string | null
           id: string
@@ -894,6 +895,7 @@ export type Database = {
           height_feet?: number | null
           height_inches?: number | null
           hip_cm?: number | null
+          household_size?: number
           hunger_patterns?: string | null
           hydration_habits?: string | null
           id?: string
@@ -999,6 +1001,7 @@ export type Database = {
           height_feet?: number | null
           height_inches?: number | null
           hip_cm?: number | null
+          household_size?: number
           hunger_patterns?: string | null
           hydration_habits?: string | null
           id?: string
