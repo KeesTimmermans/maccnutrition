@@ -35,6 +35,7 @@ const Settings = () => {
   const [isMetric, setIsMetric] = useState(false);
   const [currency, setCurrency] = useState("GBP");
   const [coachingTone, setCoachingTone] = useState("supportive");
+  const [householdSize, setHouseholdSize] = useState(1);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
