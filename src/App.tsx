@@ -40,6 +40,7 @@ import ResetPassword from "./pages/ResetPassword";
 import OAuthConsent from "./pages/OAuthConsent";
 import CompetitionPrep from "./pages/CompetitionPrep";
 import CompetitionPrepSetup from "./pages/CompetitionPrepSetup";
+import Workout from "./pages/Workout";
 
 const queryClient = new QueryClient();
 
@@ -293,6 +294,7 @@ const App = () => {
                     <Route path="/dashboard" element={<Today />} />
                     <Route path="/progress" element={<Progress />} />
                     <Route path="/meals" element={<Meals />} />
+                    <Route path="/workout" element={<Workout />} />
                     <Route path="/metrics" element={<Metrics />} />
                     <Route path="/profile" element={<Profile />} />
                     
