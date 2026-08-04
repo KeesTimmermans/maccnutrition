@@ -96,6 +96,7 @@ const Settings = () => {
         setIsMetric(baselineData.unit_system === "metric");
         setCurrency(baselineData.preferred_currency || "GBP");
         setCoachingTone(baselineData.coaching_tone || "supportive");
+        setHouseholdSize(baselineData.household_size || 1);
         setAnalyticsConsent((baselineData as any).analytics_consent ?? false);
       }
 
@@ -214,6 +215,27 @@ const Settings = () => {
       setIsUpdating(false);
     }
   };
+
+  const handleHouseholdSizeChange = async (value: string) => {
+    const newSize = parseInt(value, 10);
+    const previous = householdSize;
+    setHouseholdSize(newSize);
+    setIsUpdating(true);
+
+    try {
+      await updateUserSettings({ household_size: newSize });
+      toast.success(
+        newSize === 1 ? "Cooking for just you" : `Cooking for ${newSize} people`
+      );
+    } catch (error) {
+      console.error("Error updating household size:", error);
+      toast.error(t('error'));
+      setHouseholdSize(previous);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
