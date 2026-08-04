@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Camera,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import {
   getWorkoutsForDate,
   getRecentWorkouts,
   getExerciseNameSuggestions,
+  extractWorkoutFromPhoto,
+  uploadWorkoutPhoto,
   type Workout as WorkoutRow,
   type WorkoutExercise,
   type WorkoutSet,
@@ -39,7 +42,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// NOTE: photo-based workout logging will be added in a follow-up.
+const fileToBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Couldn't read that image"));
+    reader.readAsDataURL(file);
+  });
+
 
 const WORKOUT_TYPES = [
   { key: "weightlifting", label: "Weightlifting", icon: "🏋️" },
@@ -333,6 +343,10 @@ const WorkoutPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRow | null>(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
 
   const refresh = useCallback(async () => {
     const [today, all] = await Promise.all([
@@ -380,6 +394,50 @@ const WorkoutPage = () => {
     }
   };
 
+  const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    const target = justLogged;
+    if (!file || !target) return;
+
+    setPhotoProcessing(true);
+    setPhotoNotice(null);
+
+    try {
+      const base64 = await fileToBase64(file);
+      const [photoUrl, extraction] = await Promise.all([
+        uploadWorkoutPhoto(file),
+        extractWorkoutFromPhoto(base64),
+      ]);
+
+      await updateWorkout(target.id, {
+        source: "photo",
+        photo_url: photoUrl,
+        exercises: extraction.exercises,
+        duration_minutes: extraction.durationMinutes,
+        ...(extraction.workoutType ? { workout_type: extraction.workoutType } : {}),
+      });
+
+      if (extraction.confidence === "low" || extraction.exercises.length === 0) {
+        setPhotoNotice(
+          extraction.notes ||
+            "Couldn't clearly read the photo — check the exercises carefully."
+        );
+      }
+
+      await refresh();
+      setEditingId(target.id);
+      setExpandedId(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't read that photo");
+      setEditingId(target.id);
+      setExpandedId(null);
+    } finally {
+      setPhotoProcessing(false);
+    }
+  };
+
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
@@ -412,9 +470,14 @@ const WorkoutPage = () => {
             onSaved={async () => {
               setEditingId(null);
               setJustLogged(null);
+              setPhotoNotice(null);
               await refresh();
             }}
-            onCancel={() => setEditingId(null)}
+            onCancel={() => {
+              setEditingId(null);
+              setPhotoNotice(null);
+            }}
+
           />
         </div>
       );
@@ -529,24 +592,52 @@ const WorkoutPage = () => {
                 <Check className="w-4 h-4" />
                 {typeMeta(justLogged.workout_type).label} logged for today
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setEditingId(justLogged.id);
-                    setExpandedId(null);
-                  }}
-                >
-                  Add exercise details
-                </Button>
-                <Button className="flex-1" onClick={() => setJustLogged(null)}>
-                  Done
-                </Button>
-              </div>
+              {photoProcessing ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Reading your workout...
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 min-w-[9rem]"
+                    onClick={() => {
+                      setEditingId(justLogged.id);
+                      setExpandedId(null);
+                    }}
+                  >
+                    Add exercise details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 min-w-[9rem]"
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    <Camera className="w-4 h-4 mr-1" />
+                    Add photo
+                  </Button>
+                  <Button className="flex-1 min-w-[9rem]" onClick={() => setJustLogged(null)}>
+                    Done
+                  </Button>
+                </div>
+              )}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoSelected}
+              />
             </div>
           ) : (
             <>
+              {photoNotice && (
+                <p className="text-xs text-muted-foreground bg-muted rounded-2xl p-3">
+                  {photoNotice}
+                </p>
+              )}
               {todayWorkouts.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -555,6 +646,7 @@ const WorkoutPage = () => {
                   {todayWorkouts.map((w) => renderWorkoutRow(w, false))}
                 </div>
               )}
+
 
               {pickerOpen ? (
                 <div className="space-y-3">

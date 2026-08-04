@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getEdgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
+
 
 export type WorkoutType =
   | "weightlifting"
@@ -206,4 +208,67 @@ export async function getExerciseNameSuggestions(query: string): Promise<string[
     .map(([, name]) => name);
 
   return [...startsWith, ...contains].slice(0, 10);
+}
+
+export interface ExtractedWorkoutPhoto {
+  exercises: WorkoutExercise[];
+  workoutType: string | null;
+  durationMinutes: number | null;
+  confidence: "high" | "medium" | "low";
+  notes: string;
+}
+
+/**
+ * Send a photo of workout notes / whiteboard to AI vision for extraction.
+ */
+export async function extractWorkoutFromPhoto(
+  imageBase64: string
+): Promise<ExtractedWorkoutPhoto> {
+  const { data, error } = await supabase.functions.invoke("extract-workout-photo", {
+    body: { imageBase64 },
+  });
+
+  if (error) {
+    console.error("Error extracting workout photo:", error);
+    throw new Error(await getEdgeFunctionErrorMessage(error));
+  }
+
+  return {
+    exercises: Array.isArray(data?.exercises) ? data.exercises : [],
+    workoutType: data?.workoutType ?? null,
+    durationMinutes: typeof data?.durationMinutes === "number" ? data.durationMinutes : null,
+    confidence: data?.confidence ?? "low",
+    notes: data?.notes ?? "",
+  };
+}
+
+/**
+ * Upload a workout photo to the private workout-photos bucket and return a signed URL.
+ */
+export async function uploadWorkoutPhoto(file: File): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("User not authenticated");
+
+  const timestamp = Date.now();
+  const fileExt = file.name.split(".").pop() || "jpg";
+  const filePath = `${user.id}/${timestamp}.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("workout-photos")
+    .upload(filePath, file, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) {
+    console.error("Workout photo upload error:", uploadError);
+    throw new Error("Failed to upload photo");
+  }
+
+  const { data: signedData, error: signedError } = await supabase.storage
+    .from("workout-photos")
+    .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+
+  if (signedError || !signedData?.signedUrl) {
+    throw new Error("Failed to create photo link");
+  }
+
+  return signedData.signedUrl;
 }

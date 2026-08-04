@@ -84,3 +84,6 @@ verify_jwt = false
 
 [functions.generate-weekly-habit]
 verify_jwt = false
+
+[functions.extract-workout-photo]
+verify_jwt = false
