@@ -105,6 +105,8 @@ serve(async (req) => {
     const foodDislikes = userContext?.foodDislikes || '';
     const isImperial = (userContext?.unitSystem || 'metric') === 'imperial';
     const proteinShakesPref = userContext?.proteinShakesPreference || 'sometimes';
+    const mealPrepTime = userContext?.mealPrepTime || 'moderate';
+    const cookingSkill = userContext?.cookingSkill || 'intermediate';
 
     // Meal structure
     const mealStructures: Record<number, string[]> = {
@@ -138,6 +140,19 @@ serve(async (req) => {
       'never': 'NO protein shakes/powder.',
     };
 
+    // Prep time and cooking skill rules (compact)
+    const prepTimeRules: Record<string, string> = {
+      'quick': 'Every recipe must be ready in under 15 minutes active time, minimal steps, few ingredients, one-pan/one-pot or no-cook where possible.',
+      'moderate': '15-30 minutes active prep is fine, moderate number of steps and ingredients.',
+      'enjoy': '30-60 minutes active prep is fine, can include more involved recipes and techniques.',
+      'batch': 'Prioritize recipes that batch/meal-prep well: make-ahead, freezer-friendly, and reheat well across the week, even if total cook time is longer since it is done once.',
+    };
+    const cookingSkillRules: Record<string, string> = {
+      'beginner': 'Keep techniques simple: no advanced knife skills, no complex sauces, minimal multitasking, clear basic steps.',
+      'intermediate': 'Normal home-cooking techniques are fine.',
+      'advanced': 'More complex techniques and recipes are welcome if they suit the meal.',
+    };
+
     // Build compact prompt
     const systemPrompt = `Expert meal planner. Create a 7-day meal plan.
 
@@ -147,6 +162,8 @@ Diet: ${dietRules[dietType] || dietRules['balanced']}
 ${allergies.length > 0 ? `Allergies (NEVER include): ${allergies.join(', ')}` : ''}
 ${foodDislikes ? `Avoid: ${foodDislikes}` : ''}
 ${shakeRules[proteinShakesPref] || ''}
+${prepTimeRules[mealPrepTime] || ''}
+${cookingSkillRules[cookingSkill] || ''}
 Units: ${isImperial ? 'imperial (oz, cups, pcs)' : 'metric (g, ml, pcs)'}
 
 Rules:

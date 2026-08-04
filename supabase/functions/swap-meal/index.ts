@@ -92,6 +92,8 @@ serve(async (req) => {
     const dietTypeRaw = userContext?.dietType || 'balanced';
     const allergiesRaw = userContext?.allergies || [];
     const foodDislikesRaw = userContext?.foodDislikes || '';
+    const mealPrepTimeRaw = userContext?.mealPrepTime || 'moderate';
+    const cookingSkillRaw = userContext?.cookingSkill || 'intermediate';
     
     // Map diet types to strict exclusion rules
     const dietTypeRules: Record<string, string> = {
@@ -108,6 +110,21 @@ serve(async (req) => {
     };
     
     const dietTypeGuideline = dietTypeRules[dietTypeRaw] || dietTypeRules['balanced'];
+
+    // Prep time and cooking skill rules
+    const prepTimeRules: Record<string, string> = {
+      'quick': 'Every recipe must be ready in under 15 minutes active time, minimal steps, few ingredients, one-pan/one-pot or no-cook where possible.',
+      'moderate': '15-30 minutes active prep is fine, moderate number of steps and ingredients.',
+      'enjoy': '30-60 minutes active prep is fine, can include more involved recipes and techniques.',
+      'batch': 'Prioritize recipes that batch/meal-prep well: make-ahead, freezer-friendly, and reheat well across the week, even if total cook time is longer since it is done once.',
+    };
+    const cookingSkillRules: Record<string, string> = {
+      'beginner': 'Keep techniques simple: no advanced knife skills, no complex sauces, minimal multitasking, clear basic steps.',
+      'intermediate': 'Normal home-cooking techniques are fine.',
+      'advanced': 'More complex techniques and recipes are welcome if they suit the meal.',
+    };
+    const prepTimeGuideline = prepTimeRules[mealPrepTimeRaw] || prepTimeRules['moderate'];
+    const cookingSkillGuideline = cookingSkillRules[cookingSkillRaw] || cookingSkillRules['intermediate'];
     
     // Check if we need multiple options or a single custom swap
     const generateMultipleOptions = !userPreference || userPreference.trim() === '' || userPreference === 'generate_options';
@@ -129,6 +146,8 @@ ${foodDislikesRaw ? `\nFOOD DISLIKES - AVOID: ${foodDislikesRaw}` : ''}
 
 Guidelines:
 - ${generateMultipleOptions ? 'Provide 3 DIVERSE alternative meals' : 'Provide an alternative meal'} that match similar macro targets
+- ${prepTimeGuideline}
+- ${cookingSkillGuideline}
 - STRICTLY respect the dietary type - NEVER suggest foods that violate it
 - NEVER include any allergens listed above
 - Avoid any foods the user dislikes
