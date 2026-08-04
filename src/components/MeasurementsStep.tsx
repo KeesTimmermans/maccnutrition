@@ -118,11 +118,8 @@ export const MeasurementsStep = ({
                 <p className="text-xs text-foreground font-medium mb-1.5">Measurement points:</p>
                 <ul className="text-xs text-muted-foreground space-y-1 pl-4">
                   <li>• <strong>Waist:</strong> At the narrowest point, usually just above belly button</li>
-                  <li>• <strong>Hip:</strong> At the widest part of your buttocks</li>
-                  <li>• <strong>Chest:</strong> At the fullest part, arms at sides</li>
-                  <li>• <strong>Arm:</strong> At the largest part of your upper arm, relaxed</li>
-                  <li>• <strong>Thigh:</strong> At the widest part, standing</li>
-                  <li>• <strong>Neck:</strong> Just below the Adam's apple</li>
+                  <li>• <strong>Left / Right arm:</strong> At the largest part of your upper arm, relaxed — measure both for symmetry tracking</li>
+                  <li>• <strong>Legs:</strong> At the widest part of your thigh, standing</li>
                 </ul>
               </div>
             </div>
@@ -141,37 +138,27 @@ export const MeasurementsStep = ({
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Hip</Label>
-            <Input
-              type="number"
-              placeholder={`e.g. ${unitSystem === "metric" ? "95" : "38"}`}
-              value={data.hip}
-              onChange={(e) => updateData("hip", e.target.value)}
-              className="h-11 rounded-xl"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Chest</Label>
-            <Input
-              type="number"
-              placeholder={`e.g. ${unitSystem === "metric" ? "100" : "40"}`}
-              value={data.chest}
-              onChange={(e) => updateData("chest", e.target.value)}
-              className="h-11 rounded-xl"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Arm (bicep)</Label>
+            <Label className="text-xs text-muted-foreground">Left Arm (Bicep)</Label>
             <Input
               type="number"
               placeholder={`e.g. ${unitSystem === "metric" ? "35" : "14"}`}
-              value={data.arm}
-              onChange={(e) => updateData("arm", e.target.value)}
+              value={data.leftArm ?? ""}
+              onChange={(e) => updateData("leftArm", e.target.value)}
               className="h-11 rounded-xl"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Thigh</Label>
+            <Label className="text-xs text-muted-foreground">Right Arm (Bicep)</Label>
+            <Input
+              type="number"
+              placeholder={`e.g. ${unitSystem === "metric" ? "35" : "14"}`}
+              value={data.rightArm ?? ""}
+              onChange={(e) => updateData("rightArm", e.target.value)}
+              className="h-11 rounded-xl"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Legs</Label>
             <Input
               type="number"
               placeholder={`e.g. ${unitSystem === "metric" ? "55" : "22"}`}
@@ -180,18 +167,20 @@ export const MeasurementsStep = ({
               className="h-11 rounded-xl"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Neck</Label>
-            <Input
-              type="number"
-              placeholder={`e.g. ${unitSystem === "metric" ? "38" : "15"}`}
-              value={data.neck}
-              onChange={(e) => updateData("neck", e.target.value)}
-              className="h-11 rounded-xl"
-            />
-          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Clothing size (optional)</Label>
+          <Input
+            type="text"
+            placeholder="e.g. M, or UK 12"
+            value={data.clothingSize ?? ""}
+            onChange={(e) => updateData("clothingSize", e.target.value)}
+            className="h-11 rounded-xl"
+          />
         </div>
       </div>
+
 
       {/* Body Fat Percentage */}
       <div className="space-y-4">
