@@ -114,11 +114,10 @@ export interface OnboardingData {
   // Measurements (optional during onboarding)
   bodyFatPercentage: string;
   waist: string;
-  hip: string;
-  chest: string;
-  arm: string;
   thigh: string;
-  neck: string;
+  leftArm: string;
+  rightArm: string;
+  clothingSize: string;
   hasProgressPhoto: boolean;
   progressPhotoUrl: string | null;
   progressPhotos: {
