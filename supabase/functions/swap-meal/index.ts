@@ -146,6 +146,8 @@ ${foodDislikesRaw ? `\nFOOD DISLIKES - AVOID: ${foodDislikesRaw}` : ''}
 
 Guidelines:
 - ${generateMultipleOptions ? 'Provide 3 DIVERSE alternative meals' : 'Provide an alternative meal'} that match similar macro targets
+- ${prepTimeGuideline}
+- ${cookingSkillGuideline}
 - STRICTLY respect the dietary type - NEVER suggest foods that violate it
 - NEVER include any allergens listed above
 - Avoid any foods the user dislikes
