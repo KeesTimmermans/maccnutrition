@@ -9,22 +9,6 @@ export const EVENT_DEMAND_PROFILES: Record<EventType, EventDemandProfile> = {
     bodyweightSensitivity: 4,
     fuelingPrecision: 5,
   },
-  deka: {
-    endurance: 3,
-    glycogen: 3,
-    muscularEndurance: 4,
-    maxStrength: 2,
-    bodyweightSensitivity: 3,
-    fuelingPrecision: 3,
-  },
-  turf_games: {
-    endurance: 3,
-    glycogen: 4,
-    muscularEndurance: 4,
-    maxStrength: 4,
-    bodyweightSensitivity: 3,
-    fuelingPrecision: 4,
-  },
   athx: {
     endurance: 4,
     glycogen: 4,
@@ -33,22 +17,47 @@ export const EVENT_DEMAND_PROFILES: Record<EventType, EventDemandProfile> = {
     bodyweightSensitivity: 3,
     fuelingPrecision: 4,
   },
-  metrix: {
+  "5k": {
     endurance: 3,
+    glycogen: 2,
+    muscularEndurance: 2,
+    maxStrength: 1,
+    bodyweightSensitivity: 3,
+    fuelingPrecision: 2,
+  },
+  "10k": {
+    endurance: 4,
     glycogen: 3,
-    muscularEndurance: 4,
-    maxStrength: 3,
+    muscularEndurance: 2,
+    maxStrength: 1,
     bodyweightSensitivity: 3,
     fuelingPrecision: 3,
+  },
+  half_marathon: {
+    endurance: 4,
+    glycogen: 4,
+    muscularEndurance: 3,
+    maxStrength: 1,
+    bodyweightSensitivity: 4,
+    fuelingPrecision: 4,
+  },
+  full_marathon: {
+    endurance: 5,
+    glycogen: 5,
+    muscularEndurance: 3,
+    maxStrength: 1,
+    bodyweightSensitivity: 4,
+    fuelingPrecision: 5,
   },
 };
 
 export const EVENT_LABELS: Record<EventType, string> = {
   hyrox: "HYROX",
   athx: "ATHX",
-  metrix: "Metrix",
-  turf_games: "Turf Games",
-  deka: "DEKA",
+  "5k": "5K",
+  "10k": "10K",
+  half_marathon: "Half Marathon",
+  full_marathon: "Full Marathon",
 };
 
 export interface DivisionOption {
