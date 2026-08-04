@@ -21,7 +21,7 @@ import { TrialBanner } from "@/components/TrialBanner";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
-import { Flame, TrendingUp, Sun } from "lucide-react";
+import { Flame, TrendingUp, Sun, ChefHat, ChevronRight } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline, recalculateNutritionFromBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
