@@ -343,6 +343,10 @@ const WorkoutPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRow | null>(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
 
   const refresh = useCallback(async () => {
     const [today, all] = await Promise.all([
