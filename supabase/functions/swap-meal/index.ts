@@ -92,6 +92,8 @@ serve(async (req) => {
     const dietTypeRaw = userContext?.dietType || 'balanced';
     const allergiesRaw = userContext?.allergies || [];
     const foodDislikesRaw = userContext?.foodDislikes || '';
+    const mealPrepTimeRaw = userContext?.mealPrepTime || 'moderate';
+    const cookingSkillRaw = userContext?.cookingSkill || 'intermediate';
     
     // Map diet types to strict exclusion rules
     const dietTypeRules: Record<string, string> = {
