@@ -162,6 +162,8 @@ Diet: ${dietRules[dietType] || dietRules['balanced']}
 ${allergies.length > 0 ? `Allergies (NEVER include): ${allergies.join(', ')}` : ''}
 ${foodDislikes ? `Avoid: ${foodDislikes}` : ''}
 ${shakeRules[proteinShakesPref] || ''}
+${prepTimeRules[mealPrepTime] || ''}
+${cookingSkillRules[cookingSkill] || ''}
 Units: ${isImperial ? 'imperial (oz, cups, pcs)' : 'metric (g, ml, pcs)'}
 
 Rules:
