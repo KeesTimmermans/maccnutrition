@@ -785,6 +785,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                 <MealPlanCard
                   key={mealIndex}
                   meal={meal}
+                  householdSize={baseline?.household_size || 1}
                   onUpdate={(updatedMeal) => handleMealUpdate(selectedDay, mealIndex, updatedMeal)}
                   onSaveToFavorites={async () => {
                     try {

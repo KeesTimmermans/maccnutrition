@@ -25,10 +25,12 @@ export interface MealWithIngredients {
   carbs: number;
   fats: number;
   ingredients?: MealIngredient[];
+  isFamilyFriendly?: boolean;
 }
 
 interface MealPlanCardProps {
   meal: MealWithIngredients;
+  householdSize?: number;
   onUpdate: (updatedMeal: MealWithIngredients) => void;
   onSaveToFavorites: () => void;
   onSwap: () => void;
