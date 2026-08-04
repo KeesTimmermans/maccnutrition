@@ -1345,6 +1345,48 @@ export type Database = {
           },
         ]
       }
+      workouts: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          exercises: Json
+          id: string
+          notes: string | null
+          photo_url: string | null
+          source: string
+          updated_at: string
+          user_id: string
+          workout_date: string
+          workout_type: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          exercises?: Json
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          source?: string
+          updated_at?: string
+          user_id: string
+          workout_date: string
+          workout_type: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          exercises?: Json
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+          workout_date?: string
+          workout_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
