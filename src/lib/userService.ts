@@ -64,6 +64,7 @@ export interface UserBaseline {
   weekend_habits: string | null;
   protein_shakes_preference: string | null;
   preferred_currency: string | null;
+  household_size: number | null;
   dashboard_layout: {
     sections: string[];
     hidden: string[];
@@ -270,6 +271,7 @@ export const updateUserSettings = async (settings: {
   unit_system?: string; 
   preferred_currency?: string;
   coaching_tone?: string;
+  household_size?: number;
   dashboard_layout?: { sections: string[]; hidden: string[] };
 }) => {
   const { data: { user } } = await supabase.auth.getUser();

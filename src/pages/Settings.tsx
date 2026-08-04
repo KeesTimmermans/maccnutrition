@@ -35,6 +35,7 @@ const Settings = () => {
   const [isMetric, setIsMetric] = useState(false);
   const [currency, setCurrency] = useState("GBP");
   const [coachingTone, setCoachingTone] = useState("supportive");
+  const [householdSize, setHouseholdSize] = useState(1);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -95,6 +96,7 @@ const Settings = () => {
         setIsMetric(baselineData.unit_system === "metric");
         setCurrency(baselineData.preferred_currency || "GBP");
         setCoachingTone(baselineData.coaching_tone || "supportive");
+        setHouseholdSize(baselineData.household_size || 1);
         setAnalyticsConsent((baselineData as any).analytics_consent ?? false);
       }
 
@@ -214,6 +216,27 @@ const Settings = () => {
     }
   };
 
+  const handleHouseholdSizeChange = async (value: string) => {
+    const newSize = parseInt(value, 10);
+    const previous = householdSize;
+    setHouseholdSize(newSize);
+    setIsUpdating(true);
+
+    try {
+      await updateUserSettings({ household_size: newSize });
+      toast.success(
+        newSize === 1 ? "Cooking for just you" : `Cooking for ${newSize} people`
+      );
+    } catch (error) {
+      console.error("Error updating household size:", error);
+      toast.error(t('error'));
+      setHouseholdSize(previous);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -310,6 +333,34 @@ const Settings = () => {
                   {currencies.map((curr) => (
                     <SelectItem key={curr.code} value={curr.code}>
                       {curr.symbol} {curr.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            {/* Household Size */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                How many people do you usually cook for?
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Used to scale meal plans and grocery lists
+              </p>
+              <Select
+                value={String(householdSize)}
+                onValueChange={handleHouseholdSizeChange}
+                disabled={isUpdating}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n === 1 ? "Just me" : `${n} people`}
                     </SelectItem>
                   ))}
                 </SelectContent>
