@@ -21,7 +21,7 @@ import { TrialBanner } from "@/components/TrialBanner";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { DEFAULT_LAYOUT } from "@/components/DashboardLayoutSettings";
 
-import { Flame, TrendingUp, Sun } from "lucide-react";
+import { Flame, TrendingUp, Sun, ChefHat, ChevronRight } from "lucide-react";
 import { saveMeal, getTodaysMeals, updateMeal, deleteMeal, MealInput, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline, recalculateNutritionFromBaseline } from "@/lib/userService";
 import { getStreaks, updateStreak, UserStreak } from "@/lib/streakService";
@@ -736,6 +736,24 @@ export const TodayDashboard = () => {
       <main className="container py-6 space-y-6">
         {/* Weekly Habit */}
         <WeeklyHabitCard userContext={habitUserContext} />
+
+        {/* Meal Plan entry */}
+        <button
+          type="button"
+          onClick={() => navigate("/meals")}
+          className="w-full bg-card rounded-3xl shadow-medium p-4 flex items-center gap-3 text-left transition-transform active:scale-[0.98] hover:bg-accent/40"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <ChefHat className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">View your meal plan</p>
+            <p className="text-xs text-muted-foreground">Recipes, swaps and grocery list</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </button>
+
+
 
         {/* Trial Banner */}
         {isTrialing && trialDaysRemaining !== null && trialEnd && (

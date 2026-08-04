@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Home, TrendingUp, UtensilsCrossed, Activity, Users, User } from "lucide-react";
+import { Home, TrendingUp, Dumbbell, Activity, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOnboarding } from "@/App";
 import { useNavigate } from "react-router-dom";
@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 const navItems = [
   { to: "/dashboard", icon: Home, label: "Today" },
   { to: "/progress", icon: TrendingUp, label: "Progress" },
-  { to: "/meals", icon: UtensilsCrossed, label: "Meals" },
+  { to: "/workout", icon: Dumbbell, label: "Workout" },
   { to: "/metrics", icon: Activity, label: "Metrics" },
   { to: "/community", icon: Users, label: "Community" },
   { to: "/profile", icon: User, label: "Profile" },
