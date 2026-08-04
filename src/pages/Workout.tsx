@@ -470,9 +470,14 @@ const WorkoutPage = () => {
             onSaved={async () => {
               setEditingId(null);
               setJustLogged(null);
+              setPhotoNotice(null);
               await refresh();
             }}
-            onCancel={() => setEditingId(null)}
+            onCancel={() => {
+              setEditingId(null);
+              setPhotoNotice(null);
+            }}
+
           />
         </div>
       );
