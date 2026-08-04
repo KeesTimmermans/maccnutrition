@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getEdgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
+
 
 export type WorkoutType =
   | "weightlifting"
