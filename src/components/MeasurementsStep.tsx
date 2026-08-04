@@ -17,9 +17,9 @@ export interface MeasurementsData {
   bodyFatPercentage: string;
   waist: string;
   thigh: string;
-  leftArm: string;
-  rightArm: string;
-  clothingSize: string;
+  leftArm?: string;
+  rightArm?: string;
+  clothingSize?: string;
   hasProgressPhoto: boolean;
   progressPhotoUrl: string | null;
   // New multi-photo fields
