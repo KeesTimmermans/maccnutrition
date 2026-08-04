@@ -25,10 +25,12 @@ export interface MealWithIngredients {
   carbs: number;
   fats: number;
   ingredients?: MealIngredient[];
+  isFamilyFriendly?: boolean;
 }
 
 interface MealPlanCardProps {
   meal: MealWithIngredients;
+  householdSize?: number;
   onUpdate: (updatedMeal: MealWithIngredients) => void;
   onSaveToFavorites: () => void;
   onSwap: () => void;
@@ -37,8 +39,16 @@ interface MealPlanCardProps {
   getMealTypeColor: (type: string) => string;
 }
 
+const formatFamilyQuantity = (value: number, unit: string) => {
+  const decimalUnits = ['cups', 'tbsp', 'tsp'];
+  return decimalUnits.includes(unit) ? value.toFixed(2) : value.toFixed(0);
+};
+
+
+
 export const MealPlanCard = ({
   meal,
+  householdSize = 1,
   onUpdate,
   onSaveToFavorites,
   onSwap,
@@ -190,20 +200,27 @@ export const MealPlanCard = ({
                   key={index}
                   className="flex items-center justify-between gap-2 py-1"
                 >
-                  <div className="flex items-center gap-1 flex-1 min-w-0">
-                    <span className="text-sm text-foreground truncate">
-                      {ingredient.name}
-                    </span>
-                    {onSwapIngredient && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                        onClick={() => onSwapIngredient(index)}
-                        title="Swap this ingredient"
-                      >
-                        <ArrowLeftRight className="w-3 h-3 text-muted-foreground hover:text-primary" />
-                      </Button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-foreground truncate">
+                        {ingredient.name}
+                      </span>
+                      {onSwapIngredient && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 flex-shrink-0"
+                          onClick={() => onSwapIngredient(index)}
+                          title="Swap this ingredient"
+                        >
+                          <ArrowLeftRight className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                        </Button>
+                      )}
+                    </div>
+                    {meal.isFamilyFriendly && householdSize > 1 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Family: {formatFamilyQuantity(ingredient.quantity * householdSize, ingredient.unit)}{ingredient.unit}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
