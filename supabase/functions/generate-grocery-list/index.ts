@@ -24,7 +24,8 @@ const mealPlanSchema = z.object({
 
 const requestSchema = z.object({
   mealPlan: mealPlanSchema,
-  currency: z.string().max(10).optional().default("USD")
+  currency: z.string().max(10).optional().default("USD"),
+  householdSize: z.number().min(1).max(20).optional().default(1)
 });
 
 serve(async (req) => {
@@ -74,7 +75,7 @@ serve(async (req) => {
       });
     }
 
-    const { mealPlan, currency } = validationResult.data;
+    const { mealPlan, currency, householdSize } = validationResult.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -102,7 +103,7 @@ serve(async (req) => {
 
 ${allMeals}
 
-Consolidate all ingredients, combine duplicates, and estimate quantities needed for one person for the whole week. Be practical with quantities (e.g., buy 1 dozen eggs instead of 7 eggs).
+Consolidate all ingredients, combine duplicates, and estimate quantities needed for ${householdSize === 1 ? 'one person' : `${householdSize} people`} for the whole week. Be practical with quantities (e.g., buy 1 dozen eggs instead of 7 eggs).
 
 IMPORTANT: Provide the cost estimate in ${currency} using the ${currencySymbol} symbol.`;
 
