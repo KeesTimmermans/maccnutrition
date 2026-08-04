@@ -105,6 +105,8 @@ serve(async (req) => {
     const foodDislikes = userContext?.foodDislikes || '';
     const isImperial = (userContext?.unitSystem || 'metric') === 'imperial';
     const proteinShakesPref = userContext?.proteinShakesPreference || 'sometimes';
+    const mealPrepTime = userContext?.mealPrepTime || 'moderate';
+    const cookingSkill = userContext?.cookingSkill || 'intermediate';
 
     // Meal structure
     const mealStructures: Record<number, string[]> = {
