@@ -587,24 +587,52 @@ const WorkoutPage = () => {
                 <Check className="w-4 h-4" />
                 {typeMeta(justLogged.workout_type).label} logged for today
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setEditingId(justLogged.id);
-                    setExpandedId(null);
-                  }}
-                >
-                  Add exercise details
-                </Button>
-                <Button className="flex-1" onClick={() => setJustLogged(null)}>
-                  Done
-                </Button>
-              </div>
+              {photoProcessing ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Reading your workout...
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 min-w-[9rem]"
+                    onClick={() => {
+                      setEditingId(justLogged.id);
+                      setExpandedId(null);
+                    }}
+                  >
+                    Add exercise details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 min-w-[9rem]"
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    <Camera className="w-4 h-4 mr-1" />
+                    Add photo
+                  </Button>
+                  <Button className="flex-1 min-w-[9rem]" onClick={() => setJustLogged(null)}>
+                    Done
+                  </Button>
+                </div>
+              )}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoSelected}
+              />
             </div>
           ) : (
             <>
+              {photoNotice && (
+                <p className="text-xs text-muted-foreground bg-muted rounded-2xl p-3">
+                  {photoNotice}
+                </p>
+              )}
               {todayWorkouts.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -613,6 +641,7 @@ const WorkoutPage = () => {
                   {todayWorkouts.map((w) => renderWorkoutRow(w, false))}
                 </div>
               )}
+
 
               {pickerOpen ? (
                 <div className="space-y-3">
