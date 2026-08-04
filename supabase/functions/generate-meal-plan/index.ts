@@ -167,6 +167,7 @@ ${cookingSkillRules[cookingSkill] || ''}
 Units: ${isImperial ? 'imperial (oz, cups, pcs)' : 'metric (g, ml, pcs)'}
 
 Rules:
+- For each meal, set isFamilyFriendly to true if it's a naturally shareable cooked meal (e.g. lunch, dinner) the whole family could eat together, and false for individual/personal items (e.g. a protein shake, a quick single-serving snack).
 - EXACTLY ${mealsPerDayNum} meals per day, 7 days
 - ~${Math.round(targetCal / mealsPerDayNum)}kcal per meal
 - Vary protein sources
@@ -219,6 +220,7 @@ Rules:
                               protein: { type: "number" },
                               carbs: { type: "number" },
                               fats: { type: "number" },
+                              isFamilyFriendly: { type: "boolean" },
                               ingredients: {
                                 type: "array",
                                 items: {
@@ -233,7 +235,7 @@ Rules:
                                 }
                               }
                             },
-                            required: ["type", "name", "calories", "protein", "carbs", "fats", "ingredients"]
+                            required: ["type", "name", "calories", "protein", "carbs", "fats", "isFamilyFriendly", "ingredients"]
                           }
                         },
                         totals: {
