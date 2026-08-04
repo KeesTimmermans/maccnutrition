@@ -16,15 +16,22 @@ import { ProgressPhotoUpload, ProgressPhotos } from "@/components/ProgressPhotoU
 export interface MeasurementsData {
   bodyFatPercentage: string;
   waist: string;
-  hip: string;
-  chest: string;
-  arm: string;
   thigh: string;
-  neck: string;
+  leftArm: string;
+  rightArm: string;
+  clothingSize: string;
   hasProgressPhoto: boolean;
   progressPhotoUrl: string | null;
   // New multi-photo fields
   progressPhotos: ProgressPhotos;
+  /** @deprecated legacy fields still used by Settings/Progress screens */
+  hip?: string;
+  /** @deprecated */
+  chest?: string;
+  /** @deprecated */
+  arm?: string;
+  /** @deprecated */
+  neck?: string;
 }
 
 interface MeasurementsStepProps {
