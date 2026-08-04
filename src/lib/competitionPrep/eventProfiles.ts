@@ -154,22 +154,6 @@ export const EVENT_GUIDANCE: Record<EventType, EventGuidance> = {
       lose_weight: { label: "Lose Weight for Efficiency", desc: "Get leaner to move faster between stations" },
     },
   },
-  deka: {
-    tagline: "DEKA events require repeated high-intensity efforts across multiple zones.",
-    goalOverrides: {
-      improve_performance: { label: "Improve Overall Event Performance", desc: "Maximise your overall DEKA score" },
-      improve_endurance: { label: "Improve Conditioning Between Zones", desc: "Build capacity between DEKA zones" },
-      build_strength: { label: "Build Strength & Power", desc: "Get stronger across all DEKA stations" },
-    },
-  },
-  turf_games: {
-    tagline: "Turf Games involve team-based workouts and repeated high-intensity efforts.",
-    goalOverrides: {
-      improve_performance: { label: "Improve Team Performance", desc: "Be a stronger teammate on event day" },
-      build_strength: { label: "Build Strength & Work Capacity", desc: "Handle more volume under fatigue" },
-      improve_endurance: { label: "Improve Recovery Between Efforts", desc: "Bounce back faster between events" },
-    },
-  },
   athx: {
     tagline: "ATHX combines strength, endurance, and recovery across multiple zones.",
     goalOverrides: {
@@ -178,11 +162,36 @@ export const EVENT_GUIDANCE: Record<EventType, EventGuidance> = {
       improve_endurance: { label: "Improve Endurance Capacity", desc: "Go longer and harder across zones" },
     },
   },
-  metrix: {
-    tagline: "Metrix events combine strength, conditioning, and competition-style workouts.",
+  "5k": {
+    tagline: "5K training rewards consistent aerobic base-building and quick recovery between efforts.",
     goalOverrides: {
-      improve_performance: { label: "Improve Competition Performance", desc: "Maximise your Metrix event-day output" },
-      improve_endurance: { label: "Improve Conditioning", desc: "Build work capacity and endurance" },
+      improve_performance: { label: "Improve 5K Race Pace", desc: "Sharpen speed and hold pace to the line" },
+      improve_endurance: { label: "Build Aerobic Base", desc: "Handle harder sessions and recover faster" },
+      lose_weight: { label: "Lose Weight for Speed", desc: "Get leaner without losing race-day power" },
+    },
+  },
+  "10k": {
+    tagline: "10K training blends aerobic strength with sustained threshold pace over a longer effort.",
+    goalOverrides: {
+      improve_performance: { label: "Improve 10K Race Pace", desc: "Hold threshold pace for the full distance" },
+      improve_endurance: { label: "Build Sustained Endurance", desc: "Extend how long you can hold strong pace" },
+      lose_weight: { label: "Lose Weight for Efficiency", desc: "Get leaner while keeping training quality high" },
+    },
+  },
+  half_marathon: {
+    tagline: "Half marathon training demands a deep endurance base, steady fuelling, and smart long-run recovery.",
+    goalOverrides: {
+      improve_performance: { label: "Improve Half Marathon Time", desc: "Fuel and pace for a stronger finish" },
+      improve_endurance: { label: "Build Long-Run Endurance", desc: "Go further with steady energy throughout" },
+      lose_weight: { label: "Lose Weight Without Losing Fuel", desc: "Get leaner while protecting long-run quality" },
+    },
+  },
+  full_marathon: {
+    tagline: "Marathon training is built on high endurance volume, precise carbohydrate fuelling, and consistent recovery.",
+    goalOverrides: {
+      improve_performance: { label: "Improve Marathon Performance", desc: "Dial in fuelling and pacing for 26.2" },
+      improve_endurance: { label: "Build Marathon Endurance", desc: "Maximise glycogen capacity and long-run resilience" },
+      lose_weight: { label: "Lose Weight Carefully", desc: "Get leaner without compromising marathon fuelling" },
     },
   },
 };
