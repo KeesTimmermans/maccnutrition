@@ -11,7 +11,7 @@ import { createCompPrep } from "@/lib/competitionPrep/service";
 import { syncOnboardingCompleted } from "@/lib/mailerliteSync";
 import type { CompetitionPrepInput, EventType, CompGoal, CompDivision } from "@/lib/competitionPrep/types";
 
-const VALID_EVENT_TYPES: EventType[] = ["hyrox", "athx", "deka", "turf_games", "metrix"];
+const VALID_EVENT_TYPES: EventType[] = ["hyrox", "athx", "5k", "10k", "half_marathon", "full_marathon"];
 
 const Onboarding = () => {
   const [userData, setUserData] = useState<OnboardingData | null>(null);

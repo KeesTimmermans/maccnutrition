@@ -148,7 +148,8 @@ function getFatDefaultPerKg(mode: NutritionMode, demand: EventDemandProfile): nu
 // ── Carb floor logic ────────────────────────────────────────────
 function getCarbFloorPerKg(eventType: EventType, mode: NutritionMode): number {
   if (eventType === "hyrox" || eventType === "athx") return 3.0;
-  if (eventType === "deka" || eventType === "turf_games" || eventType === "metrix") return 2.5;
+  if (eventType === "half_marathon" || eventType === "full_marathon") return 3.0;
+  if (eventType === "5k" || eventType === "10k") return 2.5;
   if (mode === "strength_support") return 2.0;
   return 2.5;
 }

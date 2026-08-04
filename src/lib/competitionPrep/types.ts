@@ -1,6 +1,6 @@
 // ── Competition Prep Types ──────────────────────────────────────
 
-export type EventType = "hyrox" | "athx" | "metrix" | "turf_games" | "deka";
+export type EventType = "hyrox" | "athx" | "5k" | "10k" | "half_marathon" | "full_marathon";
 
 export type CompDivision = string;
 

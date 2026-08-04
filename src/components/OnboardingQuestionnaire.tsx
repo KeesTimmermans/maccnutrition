@@ -353,7 +353,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       case "competition_prep":
         // If they said yes, they need event type and date; otherwise always valid
         if (data.preparingForEvent === "yes") {
-          const hasEventType = data.compEventType && (data.compEventType !== "other" || data.compEventTypeOther.trim());
+          const hasEventType = data.compEventType;
           return !!(hasEventType && data.compEventDate && data.compGoal);
         }
         return true;
@@ -1902,10 +1902,10 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
   const eventTypes = [
     { label: "HYROX", value: "hyrox", icon: "🏃" },
     { label: "ATHX", value: "athx", icon: "💪" },
-    { label: "DEKA", value: "deka", icon: "⚡" },
-    { label: "Turf Games", value: "turf_games", icon: "🏟️" },
-    { label: "Metrix", value: "metrix", icon: "📊" },
-    { label: "Other", value: "other", icon: "🎯" },
+    { label: "5K", value: "5k", icon: "🏅" },
+    { label: "10K", value: "10k", icon: "🏅" },
+    { label: "Half Marathon", value: "half_marathon", icon: "🏅" },
+    { label: "Full Marathon", value: "full_marathon", icon: "🏅" },
   ];
 
   const eventKey = data.compEventType as EventType | undefined;
@@ -1947,14 +1947,6 @@ const CompetitionPrepOnboardingStep = ({ data, updateData }: {
             </button>
           ))}
         </div>
-        {data.compEventType === "other" && (
-          <Input
-            placeholder="Enter event name"
-            value={data.compEventTypeOther}
-            onChange={(e) => updateData("compEventTypeOther", e.target.value)}
-            className="h-12 rounded-xl mt-2"
-          />
-        )}
       </div>
 
       {/* Event Date */}
