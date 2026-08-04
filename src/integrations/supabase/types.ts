@@ -765,6 +765,7 @@ export type Database = {
           carbs_grams: number | null
           chest_cm: number | null
           climate: string | null
+          clothing_size: string | null
           coaching_tone: string | null
           conditions: string[] | null
           cooking_skill: string | null
@@ -798,6 +799,7 @@ export type Database = {
           last_progress_update: string | null
           last_water_reminder_sent: string | null
           last_weekly_summary_sent: string | null
+          left_arm: number | null
           magnesium_mg: number | null
           marketing_opt_in: boolean
           marketing_opt_in_at: string | null
@@ -832,6 +834,7 @@ export type Database = {
           reminder_water_logging: boolean | null
           reminder_weekly_summary: boolean | null
           reminders_enabled: boolean | null
+          right_arm: number | null
           secondary_goals: string[] | null
           sex: string | null
           sleep_hours: string | null
@@ -871,6 +874,7 @@ export type Database = {
           carbs_grams?: number | null
           chest_cm?: number | null
           climate?: string | null
+          clothing_size?: string | null
           coaching_tone?: string | null
           conditions?: string[] | null
           cooking_skill?: string | null
@@ -904,6 +908,7 @@ export type Database = {
           last_progress_update?: string | null
           last_water_reminder_sent?: string | null
           last_weekly_summary_sent?: string | null
+          left_arm?: number | null
           magnesium_mg?: number | null
           marketing_opt_in?: boolean
           marketing_opt_in_at?: string | null
@@ -938,6 +943,7 @@ export type Database = {
           reminder_water_logging?: boolean | null
           reminder_weekly_summary?: boolean | null
           reminders_enabled?: boolean | null
+          right_arm?: number | null
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null
@@ -977,6 +983,7 @@ export type Database = {
           carbs_grams?: number | null
           chest_cm?: number | null
           climate?: string | null
+          clothing_size?: string | null
           coaching_tone?: string | null
           conditions?: string[] | null
           cooking_skill?: string | null
@@ -1010,6 +1017,7 @@ export type Database = {
           last_progress_update?: string | null
           last_water_reminder_sent?: string | null
           last_weekly_summary_sent?: string | null
+          left_arm?: number | null
           magnesium_mg?: number | null
           marketing_opt_in?: boolean
           marketing_opt_in_at?: string | null
@@ -1044,6 +1052,7 @@ export type Database = {
           reminder_water_logging?: boolean | null
           reminder_weekly_summary?: boolean | null
           reminders_enabled?: boolean | null
+          right_arm?: number | null
           secondary_goals?: string[] | null
           sex?: string | null
           sleep_hours?: string | null

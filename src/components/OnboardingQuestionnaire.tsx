@@ -114,11 +114,10 @@ export interface OnboardingData {
   // Measurements (optional during onboarding)
   bodyFatPercentage: string;
   waist: string;
-  hip: string;
-  chest: string;
-  arm: string;
   thigh: string;
-  neck: string;
+  leftArm: string;
+  rightArm: string;
+  clothingSize: string;
   hasProgressPhoto: boolean;
   progressPhotoUrl: string | null;
   progressPhotos: {
@@ -188,11 +187,10 @@ const initialData: OnboardingData = {
   // Measurements (optional)
   bodyFatPercentage: "",
   waist: "",
-  hip: "",
-  chest: "",
-  arm: "",
   thigh: "",
-  neck: "",
+  leftArm: "",
+  rightArm: "",
+  clothingSize: "",
   hasProgressPhoto: false,
   progressPhotoUrl: null,
   progressPhotos: {
@@ -396,11 +394,10 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
             data={{
               bodyFatPercentage: data.bodyFatPercentage,
               waist: data.waist,
-              hip: data.hip,
-              chest: data.chest,
-              arm: data.arm,
               thigh: data.thigh,
-              neck: data.neck,
+              leftArm: data.leftArm,
+              rightArm: data.rightArm,
+              clothingSize: data.clothingSize,
               hasProgressPhoto: data.hasProgressPhoto,
               progressPhotoUrl: data.progressPhotoUrl,
               progressPhotos: data.progressPhotos || {
