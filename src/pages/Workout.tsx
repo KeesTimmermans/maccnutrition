@@ -394,6 +394,50 @@ const WorkoutPage = () => {
     }
   };
 
+  const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    const target = justLogged;
+    if (!file || !target) return;
+
+    setPhotoProcessing(true);
+    setPhotoNotice(null);
+
+    try {
+      const base64 = await fileToBase64(file);
+      const [photoUrl, extraction] = await Promise.all([
+        uploadWorkoutPhoto(file),
+        extractWorkoutFromPhoto(base64),
+      ]);
+
+      await updateWorkout(target.id, {
+        source: "photo",
+        photo_url: photoUrl,
+        exercises: extraction.exercises,
+        duration_minutes: extraction.durationMinutes,
+        ...(extraction.workoutType ? { workout_type: extraction.workoutType } : {}),
+      });
+
+      if (extraction.confidence === "low" || extraction.exercises.length === 0) {
+        setPhotoNotice(
+          extraction.notes ||
+            "Couldn't clearly read the photo — check the exercises carefully."
+        );
+      }
+
+      await refresh();
+      setEditingId(target.id);
+      setExpandedId(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't read that photo");
+      setEditingId(target.id);
+      setExpandedId(null);
+    } finally {
+      setPhotoProcessing(false);
+    }
+  };
+
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
