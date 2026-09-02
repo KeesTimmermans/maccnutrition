@@ -292,6 +292,22 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
                 </div>
               ))}
             </div>
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Difficulty (optional)</label>
+                <span className="text-xs text-muted-foreground">
+                  {ex.rating != null ? `${ex.rating}/10` : "Not rated"}
+                </span>
+              </div>
+              <Slider
+                min={1}
+                max={10}
+                step={1}
+                value={[ex.rating ?? 0]}
+                onValueChange={([v]) => updateExerciseRating(exIdx, v)}
+                className="py-2"
+              />
+            </div>
             <Button
               variant="ghost"
               size="sm"
