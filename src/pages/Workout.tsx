@@ -218,8 +218,19 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
       )
     );
 
+  const toggleSuperset = (exIdx: number) =>
+    setExercises((prev) =>
+      prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, supersetWithNext: !ex.supersetWithNext }))
+    );
+
   const removeExercise = (exIdx: number) =>
-    setExercises((prev) => prev.filter((_, i) => i !== exIdx));
+    setExercises((prev) =>
+      prev
+        .map((ex, i) =>
+          i === exIdx - 1 ? { ...ex, supersetWithNext: false } : ex
+        )
+        .filter((_, i) => i !== exIdx)
+    );
 
   const buildFormatBlock = (): WorkoutFormatBlock | null => {
     if (!blockFormat) return null;
