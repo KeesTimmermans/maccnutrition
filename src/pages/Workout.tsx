@@ -173,6 +173,7 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
         duration_minutes: duration ? parseInt(duration, 10) : null,
         notes: notes.trim() || null,
         exercises: exercises.filter((e) => e.name.trim()),
+        overall_rating: overallRating ?? null,
       });
       if (updated) {
         toast.success("Workout saved");
