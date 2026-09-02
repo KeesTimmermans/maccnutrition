@@ -639,7 +639,7 @@ const WorkoutPage = () => {
     </div>
   );
 
-  const history = recent.filter((w) => w.workout_date !== todayStr());
+  
 
   return (
     <AppLayout>
