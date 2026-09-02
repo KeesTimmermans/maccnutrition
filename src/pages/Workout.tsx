@@ -117,26 +117,34 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
   );
   const [notes, setNotes] = useState(workout.notes ?? "");
   const [overallRating, setOverallRating] = useState<number | null>(workout.overall_rating ?? null);
-  const [formatKind, setFormatKind] = useState<WorkoutFormat>(workout.workout_format ?? "standard");
-  const fd = workout.format_details ?? {};
-  const [fmtDescription, setFmtDescription] = useState(fd.description ?? "");
-  const [fmtMinutes, setFmtMinutes] = useState(
-    fd.resultTimeSeconds != null ? String(Math.floor(fd.resultTimeSeconds / 60)) : ""
+  const fb = workout.format_block;
+  const [blockOpen, setBlockOpen] = useState(!!fb);
+  const [blockFormat, setBlockFormat] = useState<WorkoutFormatBlock["format"] | null>(
+    fb?.format ?? null
   );
-  const [fmtSeconds, setFmtSeconds] = useState(
-    fd.resultTimeSeconds != null ? String(fd.resultTimeSeconds % 60) : ""
+  const [blockDescription, setBlockDescription] = useState(fb?.description ?? "");
+  const [blockMinutes, setBlockMinutes] = useState(
+    fb?.resultTimeSeconds != null ? String(Math.floor(fb.resultTimeSeconds / 60)) : ""
   );
-  const [fmtTimeCap, setFmtTimeCap] = useState(fd.timeCapMinutes != null ? String(fd.timeCapMinutes) : "");
-  const [fmtRounds, setFmtRounds] = useState(fd.resultRounds != null ? String(fd.resultRounds) : "");
-  const [fmtExtraReps, setFmtExtraReps] = useState(
-    fd.resultExtraReps != null ? String(fd.resultExtraReps) : ""
+  const [blockSeconds, setBlockSeconds] = useState(
+    fb?.resultTimeSeconds != null ? String(fb.resultTimeSeconds % 60) : ""
   );
-  const [fmtTotalMinutes, setFmtTotalMinutes] = useState(
-    fd.totalMinutes != null ? String(fd.totalMinutes) : ""
+  const [blockTimeCap, setBlockTimeCap] = useState(
+    fb?.timeCapMinutes != null ? String(fb.timeCapMinutes) : ""
   );
-  const [fmtRoundsCompleted, setFmtRoundsCompleted] = useState(
-    fd.roundsCompleted != null ? String(fd.roundsCompleted) : ""
+  const [blockRounds, setBlockRounds] = useState(
+    fb?.resultRounds != null ? String(fb.resultRounds) : ""
   );
+  const [blockExtraReps, setBlockExtraReps] = useState(
+    fb?.resultExtraReps != null ? String(fb.resultExtraReps) : ""
+  );
+  const [blockTotalMinutes, setBlockTotalMinutes] = useState(
+    fb?.totalMinutes != null ? String(fb.totalMinutes) : ""
+  );
+  const [blockRoundsCompleted, setBlockRoundsCompleted] = useState(
+    fb?.roundsCompleted != null ? String(fb.roundsCompleted) : ""
+  );
+
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
