@@ -108,6 +108,22 @@ interface EditorProps {
   onCancel: () => void;
 }
 
+/** Group adjacent exercises linked via supersetWithNext into runs of indices. */
+const buildSupersetGroups = (exercises: WorkoutExercise[]): number[][] => {
+  const groups: number[][] = [];
+  let current: number[] = [];
+  exercises.forEach((ex, i) => {
+    current.push(i);
+    const linked = !!ex.supersetWithNext && i < exercises.length - 1;
+    if (!linked) {
+      groups.push(current);
+      current = [];
+    }
+  });
+  if (current.length) groups.push(current);
+  return groups;
+};
+
 const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps) => {
   const [exercises, setExercises] = useState<WorkoutExercise[]>(
     workout.exercises?.length ? workout.exercises : []
