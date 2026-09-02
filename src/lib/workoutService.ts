@@ -66,9 +66,11 @@ export interface Workout {
   overall_rating: number | null;
   workout_format: WorkoutFormat;
   format_details: WorkoutFormatDetails | null;
+  format_block: WorkoutFormatBlock | null;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface WorkoutInput {
   workout_date: string;
