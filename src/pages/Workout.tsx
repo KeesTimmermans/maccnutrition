@@ -529,8 +529,10 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
           </div>
         ))}
       </div>
+      )}
 
       {/* Add exercise with autocomplete */}
+      {formatKind === "standard" && (
       <div className="relative">
         <label className="text-xs text-muted-foreground">Add exercise</label>
         <div className="flex gap-2">
