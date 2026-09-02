@@ -200,6 +200,22 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
             className="h-9"
           />
         </div>
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-muted-foreground">How hard was this workout? (optional)</label>
+            <span className="text-xs text-muted-foreground">
+              {overallRating != null ? `${overallRating}/10` : "Not rated"}
+            </span>
+          </div>
+          <Slider
+            min={1}
+            max={10}
+            step={1}
+            value={[overallRating ?? 0]}
+            onValueChange={([v]) => setOverallRating(v)}
+            className="py-2"
+          />
+        </div>
       </div>
 
       <div>
