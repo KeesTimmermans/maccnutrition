@@ -26,6 +26,7 @@ export interface WorkoutSet {
 export interface WorkoutExercise {
   name: string;
   sets: WorkoutSet[];
+  rating?: number;
 }
 
 export interface Workout {
@@ -38,6 +39,7 @@ export interface Workout {
   source: WorkoutSource;
   photo_url: string | null;
   exercises: WorkoutExercise[];
+  overall_rating: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +52,7 @@ export interface WorkoutInput {
   source?: WorkoutSource;
   photo_url?: string | null;
   exercises?: WorkoutExercise[];
+  overall_rating?: number | null;
 }
 
 function normalizeWorkout(row: Record<string, unknown>): Workout {
