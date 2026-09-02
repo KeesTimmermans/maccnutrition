@@ -16,6 +16,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -87,6 +88,7 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
     workout.duration_minutes != null ? String(workout.duration_minutes) : ""
   );
   const [notes, setNotes] = useState(workout.notes ?? "");
+  const [overallRating, setOverallRating] = useState<number | null>(workout.overall_rating ?? null);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -131,6 +133,12 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
     );
   };
 
+  const updateExerciseRating = (exIdx: number, value: number) => {
+    setExercises((prev) =>
+      prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, rating: value }))
+    );
+  };
+
   const addSet = (exIdx: number) => {
     setExercises((prev) =>
       prev.map((ex, i) => {
@@ -165,6 +173,7 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
         duration_minutes: duration ? parseInt(duration, 10) : null,
         notes: notes.trim() || null,
         exercises: exercises.filter((e) => e.name.trim()),
+        overall_rating: overallRating ?? null,
       });
       if (updated) {
         toast.success("Workout saved");
@@ -189,6 +198,22 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
             onChange={(e) => setDuration(e.target.value)}
             placeholder="45"
             className="h-9"
+          />
+        </div>
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-muted-foreground">How hard was this workout? (optional)</label>
+            <span className="text-xs text-muted-foreground">
+              {overallRating != null ? `${overallRating}/10` : "Not rated"}
+            </span>
+          </div>
+          <Slider
+            min={1}
+            max={10}
+            step={1}
+            value={[overallRating ?? 0]}
+            onValueChange={([v]) => setOverallRating(v)}
+            className="py-2"
           />
         </div>
       </div>
@@ -266,6 +291,22 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
                   </Button>
                 </div>
               ))}
+            </div>
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Difficulty (optional)</label>
+                <span className="text-xs text-muted-foreground">
+                  {ex.rating != null ? `${ex.rating}/10` : "Not rated"}
+                </span>
+              </div>
+              <Slider
+                min={1}
+                max={10}
+                step={1}
+                value={[ex.rating ?? 0]}
+                onValueChange={([v]) => updateExerciseRating(exIdx, v)}
+                className="py-2"
+              />
             </div>
             <Button
               variant="ghost"
@@ -493,15 +534,22 @@ const WorkoutPage = () => {
           <span className="text-xl">{meta.icon}</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground">{meta.label}</p>
-            <p className="text-xs text-muted-foreground">
-              {showDate && format(parseISO(w.workout_date), "EEE d MMM")}
-              {showDate && (w.duration_minutes || exerciseCount > 0) ? " · " : ""}
-              {w.duration_minutes ? `${w.duration_minutes} min` : ""}
-              {w.duration_minutes && exerciseCount > 0 ? " · " : ""}
-              {exerciseCount > 0
-                ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
-                : ""}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground">
+                {showDate && format(parseISO(w.workout_date), "EEE d MMM")}
+                {showDate && (w.duration_minutes || exerciseCount > 0) ? " · " : ""}
+                {w.duration_minutes ? `${w.duration_minutes} min` : ""}
+                {w.duration_minutes && exerciseCount > 0 ? " · " : ""}
+                {exerciseCount > 0
+                  ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
+                  : ""}
+              </p>
+              {w.overall_rating != null && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                  {w.overall_rating}/10
+                </span>
+              )}
+            </div>
           </div>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-muted-foreground" />

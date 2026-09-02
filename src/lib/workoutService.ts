@@ -26,6 +26,7 @@ export interface WorkoutSet {
 export interface WorkoutExercise {
   name: string;
   sets: WorkoutSet[];
+  rating?: number;
 }
 
 export interface Workout {
@@ -38,6 +39,7 @@ export interface Workout {
   source: WorkoutSource;
   photo_url: string | null;
   exercises: WorkoutExercise[];
+  overall_rating: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +52,7 @@ export interface WorkoutInput {
   source?: WorkoutSource;
   photo_url?: string | null;
   exercises?: WorkoutExercise[];
+  overall_rating?: number | null;
 }
 
 function normalizeWorkout(row: Record<string, unknown>): Workout {
@@ -77,6 +80,7 @@ export async function saveWorkout(input: WorkoutInput): Promise<Workout | null> 
       source: input.source ?? "manual",
       photo_url: input.photo_url ?? null,
       exercises: (input.exercises ?? []) as unknown as never,
+      overall_rating: input.overall_rating ?? null,
     })
     .select()
     .single();
@@ -104,6 +108,7 @@ export async function updateWorkout(
   if (updates.source !== undefined) payload.source = updates.source;
   if (updates.photo_url !== undefined) payload.photo_url = updates.photo_url;
   if (updates.exercises !== undefined) payload.exercises = updates.exercises;
+  if (updates.overall_rating !== undefined) payload.overall_rating = updates.overall_rating;
 
   const { data, error } = await supabase
     .from("workouts")
