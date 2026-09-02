@@ -319,7 +319,6 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
 
       {/* Exercise list */}
       <div className="space-y-3">
-      <div className="space-y-3">
         {exercises.map((ex, exIdx) => (
           <div key={exIdx} className="border border-border rounded-xl p-3 bg-background">
             <div className="flex items-center justify-between mb-2">
@@ -409,10 +408,8 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
           </div>
         ))}
       </div>
-      </div>
 
       {/* Add exercise with autocomplete */}
-      <div className="relative">
       <div className="relative">
         <label className="text-xs text-muted-foreground">Add exercise</label>
         <div className="flex gap-2">
@@ -449,7 +446,6 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
             ))}
           </div>
         )}
-      </div>
       </div>
 
 
