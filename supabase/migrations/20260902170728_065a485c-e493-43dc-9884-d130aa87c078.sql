@@ -1,0 +1,2 @@
+ALTER TABLE public.workouts ADD COLUMN overall_rating integer;
+ALTER TABLE public.workouts ADD CONSTRAINT workouts_overall_rating_check CHECK (overall_rating IS NULL OR (overall_rating BETWEEN 1 AND 10));

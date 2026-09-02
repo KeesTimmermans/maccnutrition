@@ -1352,6 +1352,7 @@ export type Database = {
           exercises: Json
           id: string
           notes: string | null
+          overall_rating: number | null
           photo_url: string | null
           source: string
           updated_at: string
@@ -1365,6 +1366,7 @@ export type Database = {
           exercises?: Json
           id?: string
           notes?: string | null
+          overall_rating?: number | null
           photo_url?: string | null
           source?: string
           updated_at?: string
@@ -1378,6 +1380,7 @@ export type Database = {
           exercises?: Json
           id?: string
           notes?: string | null
+          overall_rating?: number | null
           photo_url?: string | null
           source?: string
           updated_at?: string
