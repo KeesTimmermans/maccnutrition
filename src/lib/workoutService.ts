@@ -93,8 +93,10 @@ function normalizeWorkout(row: Record<string, unknown>): Workout {
     exercises: Array.isArray(row.exercises) ? (row.exercises as WorkoutExercise[]) : [],
     workout_format: ((row.workout_format as WorkoutFormat) ?? "standard"),
     format_details: (row.format_details as WorkoutFormatDetails | null) ?? null,
+    format_block: (row.format_block as WorkoutFormatBlock | null) ?? null,
   };
 }
+
 
 /**
  * Create a new workout for the current user
