@@ -772,13 +772,20 @@ const WorkoutPage = () => {
             <p className="text-sm font-medium text-foreground">{meta.label}</p>
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">
-                {showDate && format(parseISO(w.workout_date), "EEE d MMM")}
-                {showDate && (w.duration_minutes || exerciseCount > 0) ? " · " : ""}
-                {w.duration_minutes ? `${w.duration_minutes} min` : ""}
-                {w.duration_minutes && exerciseCount > 0 ? " · " : ""}
-                {exerciseCount > 0
-                  ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
-                  : ""}
+                {(() => {
+                  const isCustom = (w.workout_format ?? "standard") !== "standard";
+                  const tail = isCustom
+                    ? formatSummary(w)
+                    : exerciseCount > 0
+                      ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
+                      : "";
+                  const parts = [
+                    showDate ? format(parseISO(w.workout_date), "EEE d MMM") : "",
+                    w.duration_minutes ? `${w.duration_minutes} min` : "",
+                    tail,
+                  ].filter(Boolean);
+                  return parts.join(" · ");
+                })()}
               </p>
               {w.overall_rating != null && (
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
