@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import {
   Dumbbell,
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -24,7 +25,7 @@ import {
   updateWorkout,
   deleteWorkout,
   getWorkoutsForDate,
-  getRecentWorkouts,
+  getWorkoutsForMonth,
   getExerciseNameSuggestions,
   extractWorkoutFromPhoto,
   uploadWorkoutPhoto,
@@ -377,7 +378,10 @@ const WorkoutPage = () => {
   const [loading, setLoading] = useState(true);
   const [defaultUnit, setDefaultUnit] = useState<"kg" | "lb">("kg");
   const [todayWorkouts, setTodayWorkouts] = useState<WorkoutRow[]>([]);
-  const [recent, setRecent] = useState<WorkoutRow[]>([]);
+  const [visibleMonth, setVisibleMonth] = useState<Date>(new Date());
+  const [monthWorkouts, setMonthWorkouts] = useState<WorkoutRow[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDayWorkouts, setSelectedDayWorkouts] = useState<WorkoutRow[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingType, setSavingType] = useState<string | null>(null);
   const [justLogged, setJustLogged] = useState<WorkoutRow | null>(null);
@@ -390,13 +394,13 @@ const WorkoutPage = () => {
 
 
   const refresh = useCallback(async () => {
-    const [today, all] = await Promise.all([
+    const [today, month] = await Promise.all([
       getWorkoutsForDate(todayStr()),
-      getRecentWorkouts(30),
+      getWorkoutsForMonth(visibleMonth.getFullYear(), visibleMonth.getMonth()),
     ]);
     setTodayWorkouts(today);
-    setRecent(all);
-  }, []);
+    setMonthWorkouts(month);
+  }, [visibleMonth]);
 
   useEffect(() => {
     (async () => {
@@ -413,6 +417,25 @@ const WorkoutPage = () => {
       setLoading(false);
     })();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const inVisibleMonth =
+      selectedDate.getFullYear() === visibleMonth.getFullYear() &&
+      selectedDate.getMonth() === visibleMonth.getMonth();
+    if (inVisibleMonth) {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      setSelectedDayWorkouts(monthWorkouts.filter((w) => w.workout_date === dateStr));
+    } else {
+      let cancelled = false;
+      getWorkoutsForDate(format(selectedDate, "yyyy-MM-dd")).then((list) => {
+        if (!cancelled) setSelectedDayWorkouts(list);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [selectedDate, visibleMonth, monthWorkouts]);
 
   const handlePickType = async (type: string) => {
     setSavingType(type);
@@ -616,7 +639,7 @@ const WorkoutPage = () => {
     </div>
   );
 
-  const history = recent.filter((w) => w.workout_date !== todayStr());
+  
 
   return (
     <AppLayout>
@@ -716,16 +739,38 @@ const WorkoutPage = () => {
           )}
         </section>
 
-        {/* History */}
+        {/* Calendar history */}
         <section className="bg-card rounded-3xl shadow-medium p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Recent workouts</h2>
-          {history.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Your logged workouts from the last 30 days will appear here.
+          <h2 className="text-sm font-semibold text-foreground">Workout calendar</h2>
+          <Calendar
+            mode="single"
+            month={visibleMonth}
+            onMonthChange={setVisibleMonth}
+            selected={selectedDate}
+            onSelect={(d) => d && setSelectedDate(d)}
+            modifiers={{
+              hasWorkout: useMemo(
+                () => monthWorkouts.map((w) => parseISO(w.workout_date)),
+                [monthWorkouts]
+              ),
+            }}
+            modifiersClassNames={{
+              hasWorkout:
+                "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:rounded-full after:bg-primary",
+            }}
+          />
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {format(selectedDate, "EEEE d MMMM")}
             </p>
-          ) : (
-            <div className="space-y-2">{history.map((w) => renderWorkoutRow(w))}</div>
-          )}
+            {selectedDayWorkouts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No workout logged this day.</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedDayWorkouts.map((w) => renderWorkoutRow(w, false))}
+              </div>
+            )}
+          </div>
         </section>
       </div>
 
