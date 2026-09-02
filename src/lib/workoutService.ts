@@ -29,6 +29,18 @@ export interface WorkoutFormatDetails {
   roundsCompleted?: number;
 }
 
+export interface WorkoutFormatBlock {
+  format: "emom" | "for_time" | "amrap";
+  description?: string;
+  resultTimeSeconds?: number;
+  timeCapMinutes?: number;
+  resultRounds?: number;
+  resultExtraReps?: number;
+  totalMinutes?: number;
+  roundsCompleted?: number;
+}
+
+
 export interface WorkoutSet {
   reps: number;
   weight: number;
@@ -54,9 +66,11 @@ export interface Workout {
   overall_rating: number | null;
   workout_format: WorkoutFormat;
   format_details: WorkoutFormatDetails | null;
+  format_block: WorkoutFormatBlock | null;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface WorkoutInput {
   workout_date: string;
@@ -69,7 +83,9 @@ export interface WorkoutInput {
   overall_rating?: number | null;
   workout_format?: WorkoutFormat;
   format_details?: WorkoutFormatDetails | null;
+  format_block?: WorkoutFormatBlock | null;
 }
+
 
 function normalizeWorkout(row: Record<string, unknown>): Workout {
   return {
@@ -77,8 +93,10 @@ function normalizeWorkout(row: Record<string, unknown>): Workout {
     exercises: Array.isArray(row.exercises) ? (row.exercises as WorkoutExercise[]) : [],
     workout_format: ((row.workout_format as WorkoutFormat) ?? "standard"),
     format_details: (row.format_details as WorkoutFormatDetails | null) ?? null,
+    format_block: (row.format_block as WorkoutFormatBlock | null) ?? null,
   };
 }
+
 
 /**
  * Create a new workout for the current user
@@ -101,7 +119,9 @@ export async function saveWorkout(input: WorkoutInput): Promise<Workout | null> 
       overall_rating: input.overall_rating ?? null,
       workout_format: input.workout_format ?? "standard",
       format_details: (input.format_details ?? null) as unknown as never,
+      format_block: (input.format_block ?? null) as unknown as never,
     })
+
     .select()
     .single();
 
@@ -131,8 +151,10 @@ export async function updateWorkout(
   if (updates.overall_rating !== undefined) payload.overall_rating = updates.overall_rating;
   if (updates.workout_format !== undefined) payload.workout_format = updates.workout_format;
   if (updates.format_details !== undefined) payload.format_details = updates.format_details;
+  if (updates.format_block !== undefined) payload.format_block = updates.format_block;
 
   const { data, error } = await supabase
+
     .from("workouts")
     .update(payload as never)
     .eq("id", id)

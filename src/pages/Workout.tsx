@@ -32,9 +32,9 @@ import {
   type Workout as WorkoutRow,
   type WorkoutExercise,
   type WorkoutSet,
-  type WorkoutFormat,
-  type WorkoutFormatDetails,
+  type WorkoutFormatBlock,
 } from "@/lib/workoutService";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,33 +74,28 @@ const typeMeta = (type: string) =>
 
 const todayStr = () => format(new Date(), "yyyy-MM-dd");
 
-const FORMATS: { key: WorkoutFormat; label: string }[] = [
-  { key: "standard", label: "Standard" },
+const FORMAT_BLOCK_TYPES: { key: WorkoutFormatBlock["format"]; label: string }[] = [
   { key: "emom", label: "EMOM" },
   { key: "for_time", label: "For Time" },
   { key: "amrap", label: "AMRAP" },
 ];
 
-const formatLabel = (f: WorkoutFormat) => FORMATS.find((x) => x.key === f)?.label ?? "Standard";
-
-const formatSummary = (w: WorkoutRow): string => {
-  const d = w.format_details ?? {};
-  const label = formatLabel(w.workout_format);
-  if (w.workout_format === "for_time" && d.resultTimeSeconds != null) {
-    const mins = Math.floor(d.resultTimeSeconds / 60);
-    const secs = d.resultTimeSeconds % 60;
+const formatBlockSummary = (block: WorkoutFormatBlock): string => {
+  const label = FORMAT_BLOCK_TYPES.find((x) => x.key === block.format)?.label ?? block.format;
+  if (block.format === "for_time" && block.resultTimeSeconds != null) {
+    const mins = Math.floor(block.resultTimeSeconds / 60);
+    const secs = block.resultTimeSeconds % 60;
     return `${label} — ${mins}:${String(secs).padStart(2, "0")}`;
   }
-  if (w.workout_format === "amrap" && d.resultRounds != null) {
-    return `${label} — ${d.resultRounds} rounds${d.resultExtraReps ? ` + ${d.resultExtraReps} reps` : ""}`;
+  if (block.format === "amrap" && block.resultRounds != null) {
+    return `${label} — ${block.resultRounds} rounds${block.resultExtraReps ? ` + ${block.resultExtraReps} reps` : ""}`;
   }
-  if (w.workout_format === "emom") {
-    if (d.totalMinutes != null) {
-      return `${label} — ${d.totalMinutes} min${d.roundsCompleted != null ? ` · ${d.roundsCompleted} rounds` : ""}`;
-    }
+  if (block.format === "emom" && block.totalMinutes != null) {
+    return `${label} — ${block.totalMinutes} min${block.roundsCompleted != null ? ` · ${block.roundsCompleted} rounds` : ""}`;
   }
   return label;
 };
+
 
 
 
@@ -122,26 +117,34 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
   );
   const [notes, setNotes] = useState(workout.notes ?? "");
   const [overallRating, setOverallRating] = useState<number | null>(workout.overall_rating ?? null);
-  const [formatKind, setFormatKind] = useState<WorkoutFormat>(workout.workout_format ?? "standard");
-  const fd = workout.format_details ?? {};
-  const [fmtDescription, setFmtDescription] = useState(fd.description ?? "");
-  const [fmtMinutes, setFmtMinutes] = useState(
-    fd.resultTimeSeconds != null ? String(Math.floor(fd.resultTimeSeconds / 60)) : ""
+  const fb = workout.format_block;
+  const [blockOpen, setBlockOpen] = useState(!!fb);
+  const [blockFormat, setBlockFormat] = useState<WorkoutFormatBlock["format"] | null>(
+    fb?.format ?? null
   );
-  const [fmtSeconds, setFmtSeconds] = useState(
-    fd.resultTimeSeconds != null ? String(fd.resultTimeSeconds % 60) : ""
+  const [blockDescription, setBlockDescription] = useState(fb?.description ?? "");
+  const [blockMinutes, setBlockMinutes] = useState(
+    fb?.resultTimeSeconds != null ? String(Math.floor(fb.resultTimeSeconds / 60)) : ""
   );
-  const [fmtTimeCap, setFmtTimeCap] = useState(fd.timeCapMinutes != null ? String(fd.timeCapMinutes) : "");
-  const [fmtRounds, setFmtRounds] = useState(fd.resultRounds != null ? String(fd.resultRounds) : "");
-  const [fmtExtraReps, setFmtExtraReps] = useState(
-    fd.resultExtraReps != null ? String(fd.resultExtraReps) : ""
+  const [blockSeconds, setBlockSeconds] = useState(
+    fb?.resultTimeSeconds != null ? String(fb.resultTimeSeconds % 60) : ""
   );
-  const [fmtTotalMinutes, setFmtTotalMinutes] = useState(
-    fd.totalMinutes != null ? String(fd.totalMinutes) : ""
+  const [blockTimeCap, setBlockTimeCap] = useState(
+    fb?.timeCapMinutes != null ? String(fb.timeCapMinutes) : ""
   );
-  const [fmtRoundsCompleted, setFmtRoundsCompleted] = useState(
-    fd.roundsCompleted != null ? String(fd.roundsCompleted) : ""
+  const [blockRounds, setBlockRounds] = useState(
+    fb?.resultRounds != null ? String(fb.resultRounds) : ""
   );
+  const [blockExtraReps, setBlockExtraReps] = useState(
+    fb?.resultExtraReps != null ? String(fb.resultExtraReps) : ""
+  );
+  const [blockTotalMinutes, setBlockTotalMinutes] = useState(
+    fb?.totalMinutes != null ? String(fb.totalMinutes) : ""
+  );
+  const [blockRoundsCompleted, setBlockRoundsCompleted] = useState(
+    fb?.roundsCompleted != null ? String(fb.roundsCompleted) : ""
+  );
+
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -218,33 +221,33 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
   const removeExercise = (exIdx: number) =>
     setExercises((prev) => prev.filter((_, i) => i !== exIdx));
 
-  const buildFormatDetails = (): WorkoutFormatDetails | null => {
-    if (formatKind === "standard") return null;
+  const buildFormatBlock = (): WorkoutFormatBlock | null => {
+    if (!blockFormat) return null;
     const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
-    const details: WorkoutFormatDetails = {};
-    if (fmtDescription.trim()) details.description = fmtDescription.trim();
-    if (formatKind === "for_time") {
-      const mins = num(fmtMinutes) ?? 0;
-      const secs = num(fmtSeconds) ?? 0;
-      if (fmtMinutes.trim() !== "" || fmtSeconds.trim() !== "") {
-        details.resultTimeSeconds = mins * 60 + secs;
+    const block: WorkoutFormatBlock = { format: blockFormat };
+    if (blockDescription.trim()) block.description = blockDescription.trim();
+    if (blockFormat === "for_time") {
+      const mins = num(blockMinutes) ?? 0;
+      const secs = num(blockSeconds) ?? 0;
+      if (blockMinutes.trim() !== "" || blockSeconds.trim() !== "") {
+        block.resultTimeSeconds = mins * 60 + secs;
       }
     }
-    if (formatKind === "amrap") {
-      const cap = num(fmtTimeCap);
-      const rounds = num(fmtRounds);
-      const extra = num(fmtExtraReps);
-      if (cap != null) details.timeCapMinutes = cap;
-      if (rounds != null) details.resultRounds = rounds;
-      if (extra != null) details.resultExtraReps = extra;
+    if (blockFormat === "amrap") {
+      const cap = num(blockTimeCap);
+      const rounds = num(blockRounds);
+      const extra = num(blockExtraReps);
+      if (cap != null) block.timeCapMinutes = cap;
+      if (rounds != null) block.resultRounds = rounds;
+      if (extra != null) block.resultExtraReps = extra;
     }
-    if (formatKind === "emom") {
-      const total = num(fmtTotalMinutes);
-      const rounds = num(fmtRoundsCompleted);
-      if (total != null) details.totalMinutes = total;
-      if (rounds != null) details.roundsCompleted = rounds;
+    if (blockFormat === "emom") {
+      const total = num(blockTotalMinutes);
+      const rounds = num(blockRoundsCompleted);
+      if (total != null) block.totalMinutes = total;
+      if (rounds != null) block.roundsCompleted = rounds;
     }
-    return details;
+    return block;
   };
 
   const handleSave = async () => {
@@ -254,10 +257,9 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
         source: "manual",
         duration_minutes: duration ? parseInt(duration, 10) : null,
         notes: notes.trim() || null,
-        exercises: formatKind === "standard" ? exercises.filter((e) => e.name.trim()) : [],
+        exercises: exercises.filter((e) => e.name.trim()),
         overall_rating: overallRating ?? null,
-        workout_format: formatKind,
-        format_details: buildFormatDetails(),
+        format_block: buildFormatBlock(),
       });
       if (updated) {
         toast.success("Workout saved");
@@ -270,25 +272,9 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
     }
   };
 
+
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs text-muted-foreground">Format</label>
-        <div className="grid grid-cols-4 gap-2 mt-1">
-          {FORMATS.map((f) => (
-            <Button
-              key={f.key}
-              type="button"
-              variant={formatKind === f.key ? "default" : "outline"}
-              size="sm"
-              className="h-9 text-xs"
-              onClick={() => setFormatKind(f.key)}
-            >
-              {f.label}
-            </Button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -330,115 +316,8 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
         />
       </div>
 
-      {formatKind !== "standard" && (
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground">Description</label>
-            <Textarea
-              value={fmtDescription}
-              onChange={(e) => setFmtDescription(e.target.value)}
-              placeholder="What did the workout consist of?"
-              className="min-h-[70px] text-sm"
-            />
-          </div>
-
-          {formatKind === "for_time" && (
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Minutes</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={fmtMinutes}
-                  onChange={(e) => setFmtMinutes(e.target.value)}
-                  placeholder="12"
-                  className="h-9"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Seconds</label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={fmtSeconds}
-                  onChange={(e) => setFmtSeconds(e.target.value)}
-                  placeholder="34"
-                  className="h-9"
-                />
-              </div>
-            </div>
-          )}
-
-          {formatKind === "amrap" && (
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Time cap (min)</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={fmtTimeCap}
-                  onChange={(e) => setFmtTimeCap(e.target.value)}
-                  placeholder="14"
-                  className="h-9"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Rounds completed</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={fmtRounds}
-                  onChange={(e) => setFmtRounds(e.target.value)}
-                  placeholder="8"
-                  className="h-9"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Extra reps</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={fmtExtraReps}
-                  onChange={(e) => setFmtExtraReps(e.target.value)}
-                  placeholder="6"
-                  className="h-9"
-                />
-              </div>
-            </div>
-          )}
-
-          {formatKind === "emom" && (
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Total minutes</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={fmtTotalMinutes}
-                  onChange={(e) => setFmtTotalMinutes(e.target.value)}
-                  placeholder="20"
-                  className="h-9"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Rounds completed (optional)</label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={fmtRoundsCompleted}
-                  onChange={(e) => setFmtRoundsCompleted(e.target.value)}
-                  placeholder="20"
-                  className="h-9"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Exercise list */}
-      {formatKind === "standard" && (
       <div className="space-y-3">
         {exercises.map((ex, exIdx) => (
           <div key={exIdx} className="border border-border rounded-xl p-3 bg-background">
@@ -529,10 +408,8 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
           </div>
         ))}
       </div>
-      )}
 
       {/* Add exercise with autocomplete */}
-      {formatKind === "standard" && (
       <div className="relative">
         <label className="text-xs text-muted-foreground">Add exercise</label>
         <div className="flex gap-2">
@@ -570,8 +447,147 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
           </div>
         )}
       </div>
-      )}
 
+      {/* Optional format block */}
+      <div className="border border-border rounded-xl p-3 bg-background">
+        <button
+          type="button"
+          onClick={() => setBlockOpen((o) => !o)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <span className="text-sm font-medium">
+            {blockFormat
+              ? formatBlockSummary(buildFormatBlock()!)
+              : "Add EMOM / For Time / AMRAP block"}
+          </span>
+          {blockOpen ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+        </button>
+        {blockOpen && (
+          <div className="space-y-3 mt-3">
+            <div className="grid grid-cols-3 gap-2">
+              {FORMAT_BLOCK_TYPES.map((f) => (
+                <Button
+                  key={f.key}
+                  type="button"
+                  variant={blockFormat === f.key ? "default" : "outline"}
+                  size="sm"
+                  className="h-9 text-xs"
+                  onClick={() => setBlockFormat(f.key)}
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </div>
+            {blockFormat && (
+              <>
+                <div>
+                  <label className="text-xs text-muted-foreground">Description</label>
+                  <Textarea
+                    value={blockDescription}
+                    onChange={(e) => setBlockDescription(e.target.value)}
+                    placeholder="What did the workout consist of?"
+                    className="min-h-[70px] text-sm"
+                  />
+                </div>
+                {blockFormat === "for_time" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Minutes</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockMinutes}
+                        onChange={(e) => setBlockMinutes(e.target.value)}
+                        placeholder="12"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Seconds</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={blockSeconds}
+                        onChange={(e) => setBlockSeconds(e.target.value)}
+                        placeholder="34"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+                {blockFormat === "amrap" && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Time cap (min)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockTimeCap}
+                        onChange={(e) => setBlockTimeCap(e.target.value)}
+                        placeholder="14"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Rounds completed</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockRounds}
+                        onChange={(e) => setBlockRounds(e.target.value)}
+                        placeholder="8"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Extra reps</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockExtraReps}
+                        onChange={(e) => setBlockExtraReps(e.target.value)}
+                        placeholder="6"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+                {blockFormat === "emom" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Total minutes</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockTotalMinutes}
+                        onChange={(e) => setBlockTotalMinutes(e.target.value)}
+                        placeholder="20"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Rounds completed (optional)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockRoundsCompleted}
+                        onChange={(e) => setBlockRoundsCompleted(e.target.value)}
+                        placeholder="20"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-2 pt-1">
         <Button className="flex-1" onClick={handleSave} disabled={saving}>
@@ -773,12 +789,14 @@ const WorkoutPage = () => {
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">
                 {(() => {
-                  const isCustom = (w.workout_format ?? "standard") !== "standard";
-                  const tail = isCustom
-                    ? formatSummary(w)
-                    : exerciseCount > 0
+                  const exerciseText =
+                    exerciseCount > 0
                       ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
                       : "";
+                  const blockText = w.format_block
+                      ? formatBlockSummary(w.format_block)
+                      : "";
+                  const tail = [exerciseText, blockText].filter(Boolean).join(" · ");
                   const parts = [
                     showDate ? format(parseISO(w.workout_date), "EEE d MMM") : "",
                     w.duration_minutes ? `${w.duration_minutes} min` : "",

@@ -1350,6 +1350,7 @@ export type Database = {
           created_at: string
           duration_minutes: number | null
           exercises: Json
+          format_block: Json | null
           format_details: Json | null
           id: string
           notes: string | null
@@ -1366,6 +1367,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number | null
           exercises?: Json
+          format_block?: Json | null
           format_details?: Json | null
           id?: string
           notes?: string | null
@@ -1382,6 +1384,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number | null
           exercises?: Json
+          format_block?: Json | null
           format_details?: Json | null
           id?: string
           notes?: string | null
