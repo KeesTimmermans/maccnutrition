@@ -394,13 +394,13 @@ const WorkoutPage = () => {
 
 
   const refresh = useCallback(async () => {
-    const [today, all] = await Promise.all([
+    const [today, month] = await Promise.all([
       getWorkoutsForDate(todayStr()),
-      getRecentWorkouts(30),
+      getWorkoutsForMonth(visibleMonth.getFullYear(), visibleMonth.getMonth()),
     ]);
     setTodayWorkouts(today);
-    setRecent(all);
-  }, []);
+    setMonthWorkouts(month);
+  }, [visibleMonth]);
 
   useEffect(() => {
     (async () => {
@@ -417,6 +417,25 @@ const WorkoutPage = () => {
       setLoading(false);
     })();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const inVisibleMonth =
+      selectedDate.getFullYear() === visibleMonth.getFullYear() &&
+      selectedDate.getMonth() === visibleMonth.getMonth();
+    if (inVisibleMonth) {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      setSelectedDayWorkouts(monthWorkouts.filter((w) => w.workout_date === dateStr));
+    } else {
+      let cancelled = false;
+      getWorkoutsForDate(format(selectedDate, "yyyy-MM-dd")).then((list) => {
+        if (!cancelled) setSelectedDayWorkouts(list);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [selectedDate, visibleMonth, monthWorkouts]);
 
   const handlePickType = async (type: string) => {
     setSavingType(type);
