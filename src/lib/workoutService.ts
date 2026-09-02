@@ -80,6 +80,7 @@ export async function saveWorkout(input: WorkoutInput): Promise<Workout | null> 
       source: input.source ?? "manual",
       photo_url: input.photo_url ?? null,
       exercises: (input.exercises ?? []) as unknown as never,
+      overall_rating: input.overall_rating ?? null,
     })
     .select()
     .single();
@@ -107,6 +108,7 @@ export async function updateWorkout(
   if (updates.source !== undefined) payload.source = updates.source;
   if (updates.photo_url !== undefined) payload.photo_url = updates.photo_url;
   if (updates.exercises !== undefined) payload.exercises = updates.exercises;
+  if (updates.overall_rating !== undefined) payload.overall_rating = updates.overall_rating;
 
   const { data, error } = await supabase
     .from("workouts")
