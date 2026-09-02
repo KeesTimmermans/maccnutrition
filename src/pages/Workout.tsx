@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import {
   Dumbbell,
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -24,7 +25,7 @@ import {
   updateWorkout,
   deleteWorkout,
   getWorkoutsForDate,
-  getRecentWorkouts,
+  getWorkoutsForMonth,
   getExerciseNameSuggestions,
   extractWorkoutFromPhoto,
   uploadWorkoutPhoto,
