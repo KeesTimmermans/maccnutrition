@@ -129,6 +129,8 @@ export async function updateWorkout(
   if (updates.photo_url !== undefined) payload.photo_url = updates.photo_url;
   if (updates.exercises !== undefined) payload.exercises = updates.exercises;
   if (updates.overall_rating !== undefined) payload.overall_rating = updates.overall_rating;
+  if (updates.workout_format !== undefined) payload.workout_format = updates.workout_format;
+  if (updates.format_details !== undefined) payload.format_details = updates.format_details;
 
   const { data, error } = await supabase
     .from("workouts")
