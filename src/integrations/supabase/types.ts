@@ -1350,6 +1350,7 @@ export type Database = {
           created_at: string
           duration_minutes: number | null
           exercises: Json
+          format_details: Json | null
           id: string
           notes: string | null
           overall_rating: number | null
@@ -1358,12 +1359,14 @@ export type Database = {
           updated_at: string
           user_id: string
           workout_date: string
+          workout_format: string
           workout_type: string
         }
         Insert: {
           created_at?: string
           duration_minutes?: number | null
           exercises?: Json
+          format_details?: Json | null
           id?: string
           notes?: string | null
           overall_rating?: number | null
@@ -1372,12 +1375,14 @@ export type Database = {
           updated_at?: string
           user_id: string
           workout_date: string
+          workout_format?: string
           workout_type: string
         }
         Update: {
           created_at?: string
           duration_minutes?: number | null
           exercises?: Json
+          format_details?: Json | null
           id?: string
           notes?: string | null
           overall_rating?: number | null
@@ -1386,6 +1391,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           workout_date?: string
+          workout_format?: string
           workout_type?: string
         }
         Relationships: []
