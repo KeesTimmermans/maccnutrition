@@ -32,6 +32,8 @@ import {
   type Workout as WorkoutRow,
   type WorkoutExercise,
   type WorkoutSet,
+  type WorkoutFormat,
+  type WorkoutFormatDetails,
 } from "@/lib/workoutService";
 import {
   AlertDialog,
