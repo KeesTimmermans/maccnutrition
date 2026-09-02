@@ -52,6 +52,8 @@ export interface Workout {
   photo_url: string | null;
   exercises: WorkoutExercise[];
   overall_rating: number | null;
+  workout_format: WorkoutFormat;
+  format_details: WorkoutFormatDetails | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +67,8 @@ export interface WorkoutInput {
   photo_url?: string | null;
   exercises?: WorkoutExercise[];
   overall_rating?: number | null;
+  workout_format?: WorkoutFormat;
+  format_details?: WorkoutFormatDetails | null;
 }
 
 function normalizeWorkout(row: Record<string, unknown>): Workout {
