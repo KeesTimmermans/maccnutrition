@@ -221,33 +221,33 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
   const removeExercise = (exIdx: number) =>
     setExercises((prev) => prev.filter((_, i) => i !== exIdx));
 
-  const buildFormatDetails = (): WorkoutFormatDetails | null => {
-    if (formatKind === "standard") return null;
+  const buildFormatBlock = (): WorkoutFormatBlock | null => {
+    if (!blockFormat) return null;
     const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
-    const details: WorkoutFormatDetails = {};
-    if (fmtDescription.trim()) details.description = fmtDescription.trim();
-    if (formatKind === "for_time") {
-      const mins = num(fmtMinutes) ?? 0;
-      const secs = num(fmtSeconds) ?? 0;
-      if (fmtMinutes.trim() !== "" || fmtSeconds.trim() !== "") {
-        details.resultTimeSeconds = mins * 60 + secs;
+    const block: WorkoutFormatBlock = { format: blockFormat };
+    if (blockDescription.trim()) block.description = blockDescription.trim();
+    if (blockFormat === "for_time") {
+      const mins = num(blockMinutes) ?? 0;
+      const secs = num(blockSeconds) ?? 0;
+      if (blockMinutes.trim() !== "" || blockSeconds.trim() !== "") {
+        block.resultTimeSeconds = mins * 60 + secs;
       }
     }
-    if (formatKind === "amrap") {
-      const cap = num(fmtTimeCap);
-      const rounds = num(fmtRounds);
-      const extra = num(fmtExtraReps);
-      if (cap != null) details.timeCapMinutes = cap;
-      if (rounds != null) details.resultRounds = rounds;
-      if (extra != null) details.resultExtraReps = extra;
+    if (blockFormat === "amrap") {
+      const cap = num(blockTimeCap);
+      const rounds = num(blockRounds);
+      const extra = num(blockExtraReps);
+      if (cap != null) block.timeCapMinutes = cap;
+      if (rounds != null) block.resultRounds = rounds;
+      if (extra != null) block.resultExtraReps = extra;
     }
-    if (formatKind === "emom") {
-      const total = num(fmtTotalMinutes);
-      const rounds = num(fmtRoundsCompleted);
-      if (total != null) details.totalMinutes = total;
-      if (rounds != null) details.roundsCompleted = rounds;
+    if (blockFormat === "emom") {
+      const total = num(blockTotalMinutes);
+      const rounds = num(blockRoundsCompleted);
+      if (total != null) block.totalMinutes = total;
+      if (rounds != null) block.roundsCompleted = rounds;
     }
-    return details;
+    return block;
   };
 
   const handleSave = async () => {
@@ -257,10 +257,9 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
         source: "manual",
         duration_minutes: duration ? parseInt(duration, 10) : null,
         notes: notes.trim() || null,
-        exercises: formatKind === "standard" ? exercises.filter((e) => e.name.trim()) : [],
+        exercises: exercises.filter((e) => e.name.trim()),
         overall_rating: overallRating ?? null,
-        workout_format: formatKind,
-        format_details: buildFormatDetails(),
+        format_block: buildFormatBlock(),
       });
       if (updated) {
         toast.success("Workout saved");
@@ -272,6 +271,7 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
       setSaving(false);
     }
   };
+
 
   return (
     <div className="space-y-4">
