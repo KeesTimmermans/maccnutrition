@@ -51,6 +51,8 @@ export interface WorkoutExercise {
   name: string;
   sets: WorkoutSet[];
   rating?: number;
+  /** True when this exercise is performed back-to-back with the next one (no rest). */
+  supersetWithNext?: boolean;
 }
 
 export interface Workout {

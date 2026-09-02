@@ -108,6 +108,22 @@ interface EditorProps {
   onCancel: () => void;
 }
 
+/** Group adjacent exercises linked via supersetWithNext into runs of indices. */
+const buildSupersetGroups = (exercises: WorkoutExercise[]): number[][] => {
+  const groups: number[][] = [];
+  let current: number[] = [];
+  exercises.forEach((ex, i) => {
+    current.push(i);
+    const linked = !!ex.supersetWithNext && i < exercises.length - 1;
+    if (!linked) {
+      groups.push(current);
+      current = [];
+    }
+  });
+  if (current.length) groups.push(current);
+  return groups;
+};
+
 const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps) => {
   const [exercises, setExercises] = useState<WorkoutExercise[]>(
     workout.exercises?.length ? workout.exercises : []
@@ -218,8 +234,19 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
       )
     );
 
+  const toggleSuperset = (exIdx: number) =>
+    setExercises((prev) =>
+      prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, supersetWithNext: !ex.supersetWithNext }))
+    );
+
   const removeExercise = (exIdx: number) =>
-    setExercises((prev) => prev.filter((_, i) => i !== exIdx));
+    setExercises((prev) =>
+      prev
+        .map((ex, i) =>
+          i === exIdx - 1 ? { ...ex, supersetWithNext: false } : ex
+        )
+        .filter((_, i) => i !== exIdx)
+    );
 
   const buildFormatBlock = (): WorkoutFormatBlock | null => {
     if (!blockFormat) return null;
@@ -319,94 +346,151 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
 
       {/* Exercise list */}
       <div className="space-y-3">
-        {exercises.map((ex, exIdx) => (
-          <div key={exIdx} className="border border-border rounded-xl p-3 bg-background">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-sm text-foreground">{ex.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => removeExercise(exIdx)}
-                aria-label={`Remove ${ex.name}`}
-              >
-                <X className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {ex.sets.map((set, setIdx) => (
-                <div key={setIdx} className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground w-8">#{setIdx + 1}</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={set.reps || ""}
-                    onChange={(e) =>
-                      updateSet(exIdx, setIdx, { reps: parseInt(e.target.value, 10) || 0 })
-                    }
-                    placeholder="reps"
-                    className="h-8 w-16 text-center text-sm p-1"
-                  />
-                  <span className="text-xs text-muted-foreground">×</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.5"
-                    value={set.weight || ""}
-                    onChange={(e) =>
-                      updateSet(exIdx, setIdx, { weight: parseFloat(e.target.value) || 0 })
-                    }
-                    placeholder="wt"
-                    className="h-8 w-20 text-center text-sm p-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2 text-xs"
-                    onClick={() =>
-                      updateSet(exIdx, setIdx, { unit: set.unit === "kg" ? "lb" : "kg" })
-                    }
-                  >
-                    {set.unit}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 ml-auto"
-                    onClick={() => removeSet(exIdx, setIdx)}
-                    aria-label="Remove set"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">Difficulty (optional)</label>
-                <span className="text-xs text-muted-foreground">
-                  {ex.rating != null ? `${ex.rating}/10` : "Not rated"}
-                </span>
-              </div>
-              <Slider
-                min={1}
-                max={10}
-                step={1}
-                value={[ex.rating ?? 0]}
-                onValueChange={([v]) => updateExerciseRating(exIdx, v)}
-                className="py-2"
-              />
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 h-8 text-xs text-primary"
-              onClick={() => addSet(exIdx)}
+        {buildSupersetGroups(exercises).map((group, gIdx) => {
+          const linkedGroup = group.length > 1;
+          return (
+            <div
+              key={gIdx}
+              className={
+                linkedGroup ? "rounded-xl border border-primary/40 bg-primary/5 p-2" : ""
+              }
             >
-              <Plus className="w-3 h-3 mr-1" /> Add set
-            </Button>
-          </div>
-        ))}
+              {linkedGroup && (
+                <div className="px-1 pb-2 text-[10px] font-semibold tracking-widest text-primary">
+                  SUPERSET
+                </div>
+              )}
+              <div
+                className={
+                  linkedGroup
+                    ? "overflow-hidden rounded-lg border border-border bg-background divide-y divide-border"
+                    : ""
+                }
+              >
+                {group.map((exIdx, posInGroup) => {
+                  const ex = exercises[exIdx];
+                  const label = linkedGroup
+                    ? `${gIdx + 1}${String.fromCharCode(65 + posInGroup)}`
+                    : `${gIdx + 1}`;
+                  return (
+                    <div
+                      key={exIdx}
+                      className={
+                        linkedGroup
+                          ? "p-3"
+                          : "border border-border rounded-xl p-3 bg-background"
+                      }
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-sm text-foreground">
+                          <span className="mr-2 text-xs font-semibold text-muted-foreground">
+                            {label}
+                          </span>
+                          {ex.name}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => removeExercise(exIdx)}
+                          aria-label={`Remove ${ex.name}`}
+                        >
+                          <X className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {ex.sets.map((set, setIdx) => (
+                          <div key={setIdx} className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-8">#{setIdx + 1}</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={set.reps || ""}
+                              onChange={(e) =>
+                                updateSet(exIdx, setIdx, { reps: parseInt(e.target.value, 10) || 0 })
+                              }
+                              placeholder="reps"
+                              className="h-8 w-16 text-center text-sm p-1"
+                            />
+                            <span className="text-xs text-muted-foreground">×</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.5"
+                              value={set.weight || ""}
+                              onChange={(e) =>
+                                updateSet(exIdx, setIdx, { weight: parseFloat(e.target.value) || 0 })
+                              }
+                              placeholder="wt"
+                              className="h-8 w-20 text-center text-sm p-1"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              onClick={() =>
+                                updateSet(exIdx, setIdx, { unit: set.unit === "kg" ? "lb" : "kg" })
+                              }
+                            >
+                              {set.unit}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 ml-auto"
+                              onClick={() => removeSet(exIdx, setIdx)}
+                              aria-label="Remove set"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-muted-foreground">Difficulty (optional)</label>
+                          <span className="text-xs text-muted-foreground">
+                            {ex.rating != null ? `${ex.rating}/10` : "Not rated"}
+                          </span>
+                        </div>
+                        <Slider
+                          min={1}
+                          max={10}
+                          step={1}
+                          value={[ex.rating ?? 0]}
+                          onValueChange={([v]) => updateExerciseRating(exIdx, v)}
+                          className="py-2"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 h-8 text-xs text-primary"
+                        onClick={() => addSet(exIdx)}
+                      >
+                        <Plus className="w-3 h-3 mr-1" /> Add set
+                      </Button>
+                      {exIdx < exercises.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSuperset(exIdx)}
+                          aria-pressed={!!ex.supersetWithNext}
+                          className={`mt-2 flex h-8 items-center rounded-lg border px-2 text-xs transition-colors ${
+                            ex.supersetWithNext
+                              ? "border-primary/50 bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground"
+                          }`}
+                        >
+                          ⇄ Superset with next exercise
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Add exercise with autocomplete */}
