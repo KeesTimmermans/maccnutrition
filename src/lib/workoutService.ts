@@ -187,6 +187,35 @@ export async function getRecentWorkouts(days: number = 30): Promise<Workout[]> {
 }
 
 /**
+ * Get all workouts logged within a calendar month (month is 0-11, JS Date convention).
+ */
+export async function getWorkoutsForMonth(year: number, month: number): Promise<Workout[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  const startStr = start.toISOString().split("T")[0];
+  const endStr = end.toISOString().split("T")[0];
+
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("*")
+    .eq("user_id", user.id)
+    .gte("workout_date", startStr)
+    .lte("workout_date", endStr)
+    .order("workout_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching workouts for month:", error);
+    return [];
+  }
+
+  return (data || []).map(normalizeWorkout);
+}
+
+/**
  * Autocomplete: distinct exercise names from the user's last 90 days,
  * matched against the query (prefix matches first, then contains).
  */
