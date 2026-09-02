@@ -88,6 +88,7 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
     workout.duration_minutes != null ? String(workout.duration_minutes) : ""
   );
   const [notes, setNotes] = useState(workout.notes ?? "");
+  const [overallRating, setOverallRating] = useState<number | null>(workout.overall_rating ?? null);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
