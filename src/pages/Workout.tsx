@@ -275,23 +275,6 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs text-muted-foreground">Format</label>
-        <div className="grid grid-cols-4 gap-2 mt-1">
-          {FORMATS.map((f) => (
-            <Button
-              key={f.key}
-              type="button"
-              variant={formatKind === f.key ? "default" : "outline"}
-              size="sm"
-              className="h-9 text-xs"
-              onClick={() => setFormatKind(f.key)}
-            >
-              {f.label}
-            </Button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
