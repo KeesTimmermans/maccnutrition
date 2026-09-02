@@ -448,6 +448,146 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
         )}
       </div>
 
+      {/* Optional format block */}
+      <div className="border border-border rounded-xl p-3 bg-background">
+        <button
+          type="button"
+          onClick={() => setBlockOpen((o) => !o)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <span className="text-sm font-medium">
+            {blockFormat
+              ? formatBlockSummary(buildFormatBlock()!)
+              : "Add EMOM / For Time / AMRAP block"}
+          </span>
+          {blockOpen ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+        </button>
+        {blockOpen && (
+          <div className="space-y-3 mt-3">
+            <div className="grid grid-cols-3 gap-2">
+              {FORMAT_BLOCK_TYPES.map((f) => (
+                <Button
+                  key={f.key}
+                  type="button"
+                  variant={blockFormat === f.key ? "default" : "outline"}
+                  size="sm"
+                  className="h-9 text-xs"
+                  onClick={() => setBlockFormat(f.key)}
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </div>
+            {blockFormat && (
+              <>
+                <div>
+                  <label className="text-xs text-muted-foreground">Description</label>
+                  <Textarea
+                    value={blockDescription}
+                    onChange={(e) => setBlockDescription(e.target.value)}
+                    placeholder="What did the workout consist of?"
+                    className="min-h-[70px] text-sm"
+                  />
+                </div>
+                {blockFormat === "for_time" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Minutes</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockMinutes}
+                        onChange={(e) => setBlockMinutes(e.target.value)}
+                        placeholder="12"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Seconds</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={blockSeconds}
+                        onChange={(e) => setBlockSeconds(e.target.value)}
+                        placeholder="34"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+                {blockFormat === "amrap" && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Time cap (min)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockTimeCap}
+                        onChange={(e) => setBlockTimeCap(e.target.value)}
+                        placeholder="14"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Rounds completed</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockRounds}
+                        onChange={(e) => setBlockRounds(e.target.value)}
+                        placeholder="8"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Extra reps</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockExtraReps}
+                        onChange={(e) => setBlockExtraReps(e.target.value)}
+                        placeholder="6"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+                {blockFormat === "emom" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Total minutes</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockTotalMinutes}
+                        onChange={(e) => setBlockTotalMinutes(e.target.value)}
+                        placeholder="20"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Rounds completed (optional)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={blockRoundsCompleted}
+                        onChange={(e) => setBlockRoundsCompleted(e.target.value)}
+                        placeholder="20"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-2 pt-1">
         <Button className="flex-1" onClick={handleSave} disabled={saving}>
