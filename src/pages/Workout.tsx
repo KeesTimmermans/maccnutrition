@@ -534,15 +534,22 @@ const WorkoutPage = () => {
           <span className="text-xl">{meta.icon}</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground">{meta.label}</p>
-            <p className="text-xs text-muted-foreground">
-              {showDate && format(parseISO(w.workout_date), "EEE d MMM")}
-              {showDate && (w.duration_minutes || exerciseCount > 0) ? " · " : ""}
-              {w.duration_minutes ? `${w.duration_minutes} min` : ""}
-              {w.duration_minutes && exerciseCount > 0 ? " · " : ""}
-              {exerciseCount > 0
-                ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
-                : ""}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground">
+                {showDate && format(parseISO(w.workout_date), "EEE d MMM")}
+                {showDate && (w.duration_minutes || exerciseCount > 0) ? " · " : ""}
+                {w.duration_minutes ? `${w.duration_minutes} min` : ""}
+                {w.duration_minutes && exerciseCount > 0 ? " · " : ""}
+                {exerciseCount > 0
+                  ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
+                  : ""}
+              </p>
+              {w.overall_rating != null && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                  {w.overall_rating}/10
+                </span>
+              )}
+            </div>
           </div>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-muted-foreground" />
