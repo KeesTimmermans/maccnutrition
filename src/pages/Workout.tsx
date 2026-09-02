@@ -378,7 +378,10 @@ const WorkoutPage = () => {
   const [loading, setLoading] = useState(true);
   const [defaultUnit, setDefaultUnit] = useState<"kg" | "lb">("kg");
   const [todayWorkouts, setTodayWorkouts] = useState<WorkoutRow[]>([]);
-  const [recent, setRecent] = useState<WorkoutRow[]>([]);
+  const [visibleMonth, setVisibleMonth] = useState<Date>(new Date());
+  const [monthWorkouts, setMonthWorkouts] = useState<WorkoutRow[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDayWorkouts, setSelectedDayWorkouts] = useState<WorkoutRow[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingType, setSavingType] = useState<string | null>(null);
   const [justLogged, setJustLogged] = useState<WorkoutRow | null>(null);
