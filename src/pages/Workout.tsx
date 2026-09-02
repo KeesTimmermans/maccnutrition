@@ -789,12 +789,14 @@ const WorkoutPage = () => {
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">
                 {(() => {
-                  const isCustom = (w.workout_format ?? "standard") !== "standard";
-                  const tail = isCustom
-                    ? formatSummary(w)
-                    : exerciseCount > 0
+                  const exerciseText =
+                    exerciseCount > 0
                       ? `${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}`
                       : "";
+                  const blockText = w.format_block
+                      ? formatBlockSummary(w.format_block)
+                      : "";
+                  const tail = [exerciseText, blockText].filter(Boolean).join(" · ");
                   const parts = [
                     showDate ? format(parseISO(w.workout_date), "EEE d MMM") : "",
                     w.duration_minutes ? `${w.duration_minutes} min` : "",
