@@ -74,33 +74,28 @@ const typeMeta = (type: string) =>
 
 const todayStr = () => format(new Date(), "yyyy-MM-dd");
 
-const FORMATS: { key: WorkoutFormat; label: string }[] = [
-  { key: "standard", label: "Standard" },
+const FORMAT_BLOCK_TYPES: { key: WorkoutFormatBlock["format"]; label: string }[] = [
   { key: "emom", label: "EMOM" },
   { key: "for_time", label: "For Time" },
   { key: "amrap", label: "AMRAP" },
 ];
 
-const formatLabel = (f: WorkoutFormat) => FORMATS.find((x) => x.key === f)?.label ?? "Standard";
-
-const formatSummary = (w: WorkoutRow): string => {
-  const d = w.format_details ?? {};
-  const label = formatLabel(w.workout_format);
-  if (w.workout_format === "for_time" && d.resultTimeSeconds != null) {
-    const mins = Math.floor(d.resultTimeSeconds / 60);
-    const secs = d.resultTimeSeconds % 60;
+const formatBlockSummary = (block: WorkoutFormatBlock): string => {
+  const label = FORMAT_BLOCK_TYPES.find((x) => x.key === block.format)?.label ?? block.format;
+  if (block.format === "for_time" && block.resultTimeSeconds != null) {
+    const mins = Math.floor(block.resultTimeSeconds / 60);
+    const secs = block.resultTimeSeconds % 60;
     return `${label} — ${mins}:${String(secs).padStart(2, "0")}`;
   }
-  if (w.workout_format === "amrap" && d.resultRounds != null) {
-    return `${label} — ${d.resultRounds} rounds${d.resultExtraReps ? ` + ${d.resultExtraReps} reps` : ""}`;
+  if (block.format === "amrap" && block.resultRounds != null) {
+    return `${label} — ${block.resultRounds} rounds${block.resultExtraReps ? ` + ${block.resultExtraReps} reps` : ""}`;
   }
-  if (w.workout_format === "emom") {
-    if (d.totalMinutes != null) {
-      return `${label} — ${d.totalMinutes} min${d.roundsCompleted != null ? ` · ${d.roundsCompleted} rounds` : ""}`;
-    }
+  if (block.format === "emom" && block.totalMinutes != null) {
+    return `${label} — ${block.totalMinutes} min${block.roundsCompleted != null ? ` · ${block.roundsCompleted} rounds` : ""}`;
   }
   return label;
 };
+
 
 
 
