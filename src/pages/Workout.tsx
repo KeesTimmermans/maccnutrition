@@ -739,16 +739,38 @@ const WorkoutPage = () => {
           )}
         </section>
 
-        {/* History */}
+        {/* Calendar history */}
         <section className="bg-card rounded-3xl shadow-medium p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Recent workouts</h2>
-          {history.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Your logged workouts from the last 30 days will appear here.
+          <h2 className="text-sm font-semibold text-foreground">Workout calendar</h2>
+          <Calendar
+            mode="single"
+            month={visibleMonth}
+            onMonthChange={setVisibleMonth}
+            selected={selectedDate}
+            onSelect={(d) => d && setSelectedDate(d)}
+            modifiers={{
+              hasWorkout: useMemo(
+                () => monthWorkouts.map((w) => parseISO(w.workout_date)),
+                [monthWorkouts]
+              ),
+            }}
+            modifiersClassNames={{
+              hasWorkout:
+                "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:rounded-full after:bg-primary",
+            }}
+          />
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {format(selectedDate, "EEEE d MMMM")}
             </p>
-          ) : (
-            <div className="space-y-2">{history.map((w) => renderWorkoutRow(w))}</div>
-          )}
+            {selectedDayWorkouts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No workout logged this day.</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedDayWorkouts.map((w) => renderWorkoutRow(w, false))}
+              </div>
+            )}
+          </div>
         </section>
       </div>
 
