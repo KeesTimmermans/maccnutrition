@@ -83,7 +83,9 @@ export interface WorkoutInput {
   overall_rating?: number | null;
   workout_format?: WorkoutFormat;
   format_details?: WorkoutFormatDetails | null;
+  format_block?: WorkoutFormatBlock | null;
 }
+
 
 function normalizeWorkout(row: Record<string, unknown>): Workout {
   return {
