@@ -17,18 +17,6 @@ export type WorkoutType =
 
 export type WorkoutSource = "manual" | "photo" | "checkbox_only";
 
-export type WorkoutFormat = "standard" | "emom" | "for_time" | "amrap";
-
-export interface WorkoutFormatDetails {
-  description?: string;
-  resultTimeSeconds?: number;
-  timeCapMinutes?: number;
-  resultRounds?: number;
-  resultExtraReps?: number;
-  totalMinutes?: number;
-  roundsCompleted?: number;
-}
-
 export interface WorkoutFormatBlock {
   format: "emom" | "for_time" | "amrap";
   description?: string;
@@ -66,8 +54,6 @@ export interface Workout {
   photo_url: string | null;
   exercises: WorkoutExercise[];
   overall_rating: number | null;
-  workout_format: WorkoutFormat;
-  format_details: WorkoutFormatDetails | null;
   format_block: WorkoutFormatBlock | null;
   created_at: string;
   updated_at: string;
@@ -83,8 +69,6 @@ export interface WorkoutInput {
   photo_url?: string | null;
   exercises?: WorkoutExercise[];
   overall_rating?: number | null;
-  workout_format?: WorkoutFormat;
-  format_details?: WorkoutFormatDetails | null;
   format_block?: WorkoutFormatBlock | null;
 }
 
@@ -93,8 +77,6 @@ function normalizeWorkout(row: Record<string, unknown>): Workout {
   return {
     ...(row as unknown as Workout),
     exercises: Array.isArray(row.exercises) ? (row.exercises as WorkoutExercise[]) : [],
-    workout_format: ((row.workout_format as WorkoutFormat) ?? "standard"),
-    format_details: (row.format_details as WorkoutFormatDetails | null) ?? null,
     format_block: (row.format_block as WorkoutFormatBlock | null) ?? null,
   };
 }
@@ -119,8 +101,6 @@ export async function saveWorkout(input: WorkoutInput): Promise<Workout | null> 
       photo_url: input.photo_url ?? null,
       exercises: (input.exercises ?? []) as unknown as never,
       overall_rating: input.overall_rating ?? null,
-      workout_format: input.workout_format ?? "standard",
-      format_details: (input.format_details ?? null) as unknown as never,
       format_block: (input.format_block ?? null) as unknown as never,
     })
 
@@ -151,8 +131,6 @@ export async function updateWorkout(
   if (updates.photo_url !== undefined) payload.photo_url = updates.photo_url;
   if (updates.exercises !== undefined) payload.exercises = updates.exercises;
   if (updates.overall_rating !== undefined) payload.overall_rating = updates.overall_rating;
-  if (updates.workout_format !== undefined) payload.workout_format = updates.workout_format;
-  if (updates.format_details !== undefined) payload.format_details = updates.format_details;
   if (updates.format_block !== undefined) payload.format_block = updates.format_block;
 
   const { data, error } = await supabase
