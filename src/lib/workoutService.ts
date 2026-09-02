@@ -99,6 +99,8 @@ export async function saveWorkout(input: WorkoutInput): Promise<Workout | null> 
       photo_url: input.photo_url ?? null,
       exercises: (input.exercises ?? []) as unknown as never,
       overall_rating: input.overall_rating ?? null,
+      workout_format: input.workout_format ?? "standard",
+      format_details: (input.format_details ?? null) as unknown as never,
     })
     .select()
     .single();
