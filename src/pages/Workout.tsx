@@ -570,6 +570,8 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
           </div>
         )}
       </div>
+      )}
+
 
       <div className="flex gap-2 pt-1">
         <Button className="flex-1" onClick={handleSave} disabled={saving}>
