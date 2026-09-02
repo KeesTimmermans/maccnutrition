@@ -133,6 +133,12 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
     );
   };
 
+  const updateExerciseRating = (exIdx: number, value: number) => {
+    setExercises((prev) =>
+      prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, rating: value }))
+    );
+  };
+
   const addSet = (exIdx: number) => {
     setExercises((prev) =>
       prev.map((ex, i) => {
