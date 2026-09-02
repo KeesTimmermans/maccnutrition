@@ -29,6 +29,18 @@ export interface WorkoutFormatDetails {
   roundsCompleted?: number;
 }
 
+export interface WorkoutFormatBlock {
+  format: "emom" | "for_time" | "amrap";
+  description?: string;
+  resultTimeSeconds?: number;
+  timeCapMinutes?: number;
+  resultRounds?: number;
+  resultExtraReps?: number;
+  totalMinutes?: number;
+  roundsCompleted?: number;
+}
+
+
 export interface WorkoutSet {
   reps: number;
   weight: number;
