@@ -218,6 +218,35 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
   const removeExercise = (exIdx: number) =>
     setExercises((prev) => prev.filter((_, i) => i !== exIdx));
 
+  const buildFormatDetails = (): WorkoutFormatDetails | null => {
+    if (formatKind === "standard") return null;
+    const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
+    const details: WorkoutFormatDetails = {};
+    if (fmtDescription.trim()) details.description = fmtDescription.trim();
+    if (formatKind === "for_time") {
+      const mins = num(fmtMinutes) ?? 0;
+      const secs = num(fmtSeconds) ?? 0;
+      if (fmtMinutes.trim() !== "" || fmtSeconds.trim() !== "") {
+        details.resultTimeSeconds = mins * 60 + secs;
+      }
+    }
+    if (formatKind === "amrap") {
+      const cap = num(fmtTimeCap);
+      const rounds = num(fmtRounds);
+      const extra = num(fmtExtraReps);
+      if (cap != null) details.timeCapMinutes = cap;
+      if (rounds != null) details.resultRounds = rounds;
+      if (extra != null) details.resultExtraReps = extra;
+    }
+    if (formatKind === "emom") {
+      const total = num(fmtTotalMinutes);
+      const rounds = num(fmtRoundsCompleted);
+      if (total != null) details.totalMinutes = total;
+      if (rounds != null) details.roundsCompleted = rounds;
+    }
+    return details;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -225,8 +254,10 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
         source: "manual",
         duration_minutes: duration ? parseInt(duration, 10) : null,
         notes: notes.trim() || null,
-        exercises: exercises.filter((e) => e.name.trim()),
+        exercises: formatKind === "standard" ? exercises.filter((e) => e.name.trim()) : [],
         overall_rating: overallRating ?? null,
+        workout_format: formatKind,
+        format_details: buildFormatDetails(),
       });
       if (updated) {
         toast.success("Workout saved");
