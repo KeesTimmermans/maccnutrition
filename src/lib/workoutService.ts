@@ -17,6 +17,18 @@ export type WorkoutType =
 
 export type WorkoutSource = "manual" | "photo" | "checkbox_only";
 
+export type WorkoutFormat = "standard" | "emom" | "for_time" | "amrap";
+
+export interface WorkoutFormatDetails {
+  description?: string;
+  resultTimeSeconds?: number;
+  timeCapMinutes?: number;
+  resultRounds?: number;
+  resultExtraReps?: number;
+  totalMinutes?: number;
+  roundsCompleted?: number;
+}
+
 export interface WorkoutSet {
   reps: number;
   weight: number;
