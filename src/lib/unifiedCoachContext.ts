@@ -170,7 +170,43 @@ export interface BuildUnifiedContextInput {
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export function buildUnifiedCoachContext(input: BuildUnifiedContextInput): UnifiedCoachContext {
-  const { activeTargets, baseline, compPrepContext, todaysMeals, waterIntakeMl, todaysCheckIn, accountAgeDays = 0 } = input;
+  const { activeTargets, baseline, compPrepContext, todaysMeals, waterIntakeMl, todaysCheckIn, accountAgeDays = 0, recentWorkouts = [] } = input;
+
+  // B2. Recent training pattern
+  const toDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const todayDate = new Date();
+  const recentDays = Array.from({ length: 5 }, (_, i) => {
+    const daysAgo = i + 1;
+    const d = new Date(todayDate);
+    d.setDate(d.getDate() - daysAgo);
+    const dateStr = toDateStr(d);
+    const dayWorkouts = recentWorkouts.filter(w => (w.workout_date || '').slice(0, 10) === dateStr);
+    const ratings = dayWorkouts
+      .map(w => w.overall_rating)
+      .filter((r): r is number => typeof r === 'number');
+    return {
+      daysAgo,
+      hasWorkout: dayWorkouts.length > 0,
+      types: dayWorkouts.map(w => String(w.workout_type)),
+      overallRating: ratings.length > 0 ? Math.max(...ratings) : null,
+    };
+  });
+  const sevenDayCutoff = new Date(todayDate);
+  sevenDayCutoff.setDate(sevenDayCutoff.getDate() - 7);
+  const last7 = recentWorkouts.filter(w => (w.workout_date || '').slice(0, 10) >= toDateStr(sevenDayCutoff));
+  const last7Ratings = last7.map(w => w.overall_rating).filter((r): r is number => typeof r === 'number');
+  const training: TrainingLayer = {
+    recentDays,
+    last7DaysCount: last7.length,
+    last7DaysAverageRating: last7Ratings.length > 0
+      ? Math.round((last7Ratings.reduce((s, r) => s + r, 0) / last7Ratings.length) * 10) / 10
+      : null,
+  };
 
   // A. Nutrition layer — always from activeTargets
   const nutrition: NutritionLayer = {
