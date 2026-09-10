@@ -4,6 +4,10 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRecentCheckIns, DailyCheckIn } from "@/lib/checkinService";
 
+interface CheckInTrendsCardProps {
+  onDataLoaded?: (checkInCount: number) => void;
+}
+
 interface TrendPoint {
   date: string;
   mood: number | null;
@@ -19,7 +23,7 @@ const tooltipStyle = {
   borderRadius: "8px",
 };
 
-export const CheckInTrendsCard = () => {
+export const CheckInTrendsCard = ({ onDataLoaded }: CheckInTrendsCardProps) => {
   const [data, setData] = useState<TrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -27,14 +31,20 @@ export const CheckInTrendsCard = () => {
     (async () => {
       try {
         const checkIns = await getRecentCheckIns(7);
-        setData(mapCheckIns(checkIns));
+        const mapped = mapCheckIns(checkIns);
+        setData(mapped);
+        onDataLoaded?.(
+          mapped.filter(
+            (d) => d.mood !== null || d.energy !== null || d.sleepQuality !== null || d.stress !== null || d.sleepHours !== null
+          ).length
+        );
       } catch (error) {
         console.error("Error loading check-in trends:", error);
       } finally {
         setIsLoading(false);
       }
     })();
-  }, []);
+  }, [onDataLoaded]);
 
   const mapCheckIns = (checkIns: DailyCheckIn[]): TrendPoint[] => {
     const today = new Date();
