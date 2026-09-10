@@ -582,8 +582,28 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       });
     }
     
-    doc.save("meal-plan.pdf");
-    toast.success(t('meal_plan_exported'));
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const dataUri = doc.output('datauristring');
+        const base64Data = dataUri.split(',')[1];
+        const result = await Filesystem.writeFile({
+          path: 'meal-plan.pdf',
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+        await Share.share({
+          title: 'Weekly Meal Plan',
+          url: result.uri,
+          dialogTitle: 'Save or share your meal plan',
+        });
+      } catch (error) {
+        console.error('Error sharing PDF:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to share PDF');
+      }
+    } else {
+      doc.save("meal-plan.pdf");
+      toast.success(t('meal_plan_exported'));
+    }
   };
 
   const shareAsText = async () => {
