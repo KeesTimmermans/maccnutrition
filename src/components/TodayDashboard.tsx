@@ -726,9 +726,37 @@ export const TodayDashboard = () => {
   );
 
   const renderCheckInTrendsSection = () => (
-    <section key="checkin_trends">
-      <CheckInTrendsCard />
-    </section>
+    <Collapsible open={checkInTrendsOpen} onOpenChange={setCheckInTrendsOpen} key="checkin_trends">
+      <section className="bg-card rounded-3xl shadow-medium overflow-hidden animate-scale-in">
+        <div className="p-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Check-In Trends</h2>
+            <p className="text-sm text-muted-foreground">This week&apos;s check-ins</p>
+          </div>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="p-2 hover:bg-muted rounded-full transition-colors"
+              aria-label={checkInTrendsOpen ? 'Collapse check-in trends' : 'Expand check-in trends'}
+            >
+              {checkInTrendsOpen ? (
+                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              )}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+        {!checkInTrendsOpen && (
+          <div className="px-6 pb-6 text-sm text-muted-foreground">
+            This week: {checkInTrendsCount} check-in{checkInTrendsCount === 1 ? '' : 's'} logged
+          </div>
+        )}
+        <CollapsibleContent>
+          <CheckInTrendsCard onDataLoaded={setCheckInTrendsCount} />
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 
   const sectionRenderers: Record<string, () => JSX.Element> = {
