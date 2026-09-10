@@ -219,7 +219,9 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         const loadedMessages: Message[] = savedConversation.map(m => ({
           role: m.role,
           content: m.content,
+          timestamp: m.timestamp,
         }));
+
         setMessages(loadedMessages);
         setHasLoadedHistory(true);
 
