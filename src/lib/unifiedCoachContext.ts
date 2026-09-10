@@ -13,6 +13,7 @@ import type { DailyCheckIn, CheckInAnalysis } from "@/lib/checkinService";
 import type { MealPatternAnalysis } from "@/lib/coachingAnalytics";
 import type { CoachingFocusPoint } from "@/lib/progressUpdateService";
 import type { CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
+import type { Workout } from "@/lib/workoutService";
 
 // ── A. Active Nutrition Layer ──────────────────────────────────
 export interface NutritionLayer {
@@ -143,6 +144,7 @@ export interface ProfileLayer {
 export interface UnifiedCoachContext {
   nutrition: NutritionLayer;
   compPrep: CompPrepLayer | null;
+  training: TrainingLayer;
   progress: DailyProgressLayer;
   wellness: WellnessLayer;
   profile: ProfileLayer;
@@ -158,6 +160,7 @@ export interface BuildUnifiedContextInput {
   activeTargets: ActiveNutritionTargets;
   baseline: UserBaseline | null;
   compPrepContext: CompPrepCoachContext | null;
+  recentWorkouts?: Workout[];
   todaysMeals: { calories: number; protein: number; carbs: number; fats: number }[];
   waterIntakeMl: number;
   todaysCheckIn: DailyCheckIn | null;
