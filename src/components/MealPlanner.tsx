@@ -887,6 +887,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                       toast.error("Failed to log meal");
                     }
                   }}
+                  onRepeatDays={(days) => handleRepeatMealAcrossDays(selectedDay, mealIndex, days)}
                   getMealTypeColor={getMealTypeColor}
                 />
               ))}
