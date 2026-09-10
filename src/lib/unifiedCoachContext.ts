@@ -336,6 +336,7 @@ export function buildUnifiedCoachContext(input: BuildUnifiedContextInput): Unifi
   return {
     nutrition,
     compPrep,
+    training,
     progress,
     wellness,
     profile,
@@ -391,6 +392,9 @@ export function buildEdgeFunctionUserContext(
     trainingDuration: ctx.profile.trainingDuration,
     climate: ctx.profile.climate,
     workoutTypes: ctx.profile.workoutTypes,
+    trainingRecentDays: ctx.training.recentDays,
+    trainingLast7DaysCount: ctx.training.last7DaysCount,
+    trainingLast7DaysAvgRating: ctx.training.last7DaysAverageRating,
     biggestChallenge: ctx.profile.biggestChallenge,
     pastDiets: ctx.profile.pastDiets,
     weekendHabits: ctx.profile.weekendHabits,
