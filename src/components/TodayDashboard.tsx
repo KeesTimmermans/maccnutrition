@@ -87,6 +87,9 @@ export const TodayDashboard = () => {
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
   const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
   const [dailyCheckInFocusPoints, setDailyCheckInFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [checkInTrendsOpen, setCheckInTrendsOpen] = useState(false);
+  const [checkInTrendsCount, setCheckInTrendsCount] = useState(0);
 
   // Check if bi-weekly progress update is needed (every 14 days)
   const checkProgressUpdateNeeded = (userBaseline: UserBaseline | null) => {
