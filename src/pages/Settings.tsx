@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { getUserBaseline, updateUserSettings, UserBaseline } from "@/lib/userService";
+import { COACHING_TONES } from "@/lib/coachingTones";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
