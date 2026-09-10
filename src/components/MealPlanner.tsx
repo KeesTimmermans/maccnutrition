@@ -348,10 +348,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         }
       });
 
-      if (error) throw error;
-
-      if (data.error) {
-        toast.error(data.error);
+      if (error) {
+        toast.error(await getEdgeFunctionErrorMessage(error));
         return;
       }
 
