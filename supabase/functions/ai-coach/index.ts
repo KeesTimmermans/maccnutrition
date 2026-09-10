@@ -514,6 +514,72 @@ serve(async (req) => {
     // Parse and validate input
     const rawBody = await req.json();
 
+    // Early handling: rewrite an existing assistant message in a new coaching tone
+    if (rawBody?.type === 'rewrite_tone') {
+      const originalMessage = typeof rawBody.originalMessage === 'string' ? rawBody.originalMessage : '';
+      const targetTone = typeof rawBody.coachingTone === 'string' ? rawBody.coachingTone : 'supportive';
+
+      if (!originalMessage.trim()) {
+        return new Response(JSON.stringify({ error: 'originalMessage is required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const REWRITE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!REWRITE_API_KEY) {
+        throw new Error("LOVABLE_API_KEY is not configured");
+      }
+
+      const styleDirective = chatStyleDirectives[targetTone] || chatStyleDirectives['supportive'];
+      const rewriteSystemPrompt = `Rewrite the following coaching message in the style described below. Preserve every fact, number, and recommendation exactly as given — do not add new advice, remove anything, or change the substance. Only change the tone, structure, and length to match the style rules.\n\n${styleDirective}\n\nOriginal message:\n${originalMessage}`;
+
+      const rewriteResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${REWRITE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: rewriteSystemPrompt },
+            { role: "user", content: "Rewrite the message now. Return only the rewritten message." },
+          ],
+          max_tokens: 1600,
+        }),
+      });
+
+      if (!rewriteResponse.ok) {
+        const errorText = await rewriteResponse.text();
+        console.error("AI gateway error (rewrite_tone):", rewriteResponse.status, errorText);
+
+        if (rewriteResponse.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (rewriteResponse.status === 402) {
+          return new Response(JSON.stringify({ error: "AI service temporarily unavailable." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        throw new Error(`AI gateway error: ${rewriteResponse.status}`);
+      }
+
+      const rewriteData = await rewriteResponse.json();
+      const rawContent = rewriteData.choices?.[0]?.message?.content;
+      const rewrittenText = typeof rawContent === 'string' ? rawContent.trim() : '';
+
+      return new Response(JSON.stringify({ response: rewrittenText || originalMessage }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     // Debug: log target source alignment
     const debugTargetSource = rawBody?.userContext?.targetSource || 'standard';
     const debugHasCompPrep = !!rawBody?.userContext?.competitionPrepContext;
