@@ -78,8 +78,9 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
       const chatMessages: ChatMessage[] = msgs.map(m => ({
         role: m.role,
         content: m.content,
-        timestamp: new Date().toISOString(),
+        timestamp: m.timestamp || new Date().toISOString(),
       }));
+
       await saveWeeklyConversation(chatMessages);
     } catch (error) {
       console.error("Error saving conversation:", error);
