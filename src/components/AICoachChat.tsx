@@ -468,6 +468,34 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
     }
   };
 
+  const handleToneChange = async (newTone: string) => {
+    if (!baseline || baseline.coaching_tone === newTone) return;
+
+    const previousTone = baseline.coaching_tone || "supportive";
+    const toneInfo = COACHING_TONES.find(t => t.value === newTone);
+    const previousBaseline = baseline;
+
+    // Optimistically update local state and the in-memory coach context
+    const updatedBaseline = { ...baseline, coaching_tone: newTone };
+    setBaseline(updatedBaseline);
+    if (unifiedCtxRef.current) {
+      unifiedCtxRef.current.profile.coachingTone = newTone;
+    }
+
+    try {
+      await updateUserSettings({ coaching_tone: newTone });
+      toast.success(`Coaching style updated: ${toneInfo?.label || newTone}`);
+    } catch (error) {
+      console.error("Error updating coaching tone:", error);
+      const message = error instanceof Error ? error.message : "Failed to update coaching tone.";
+      toast.error(message);
+      setBaseline(previousBaseline);
+      if (unifiedCtxRef.current) {
+        unifiedCtxRef.current.profile.coachingTone = previousTone;
+      }
+    }
+  };
+
   const getTrendIcon = (trend: "improving" | "declining" | "stable") => {
     if (trend === "improving") return <TrendingUp className="w-3 h-3 text-emerald-500" />;
     if (trend === "declining") return <TrendingDown className="w-3 h-3 text-destructive" />;
