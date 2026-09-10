@@ -570,59 +570,86 @@ export const TodayDashboard = () => {
 
 
   const renderProgressSection = () => (
-    <section key="progress" className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
-          <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
-          <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
-        </div>
-      </div>
-      {targetsLoading ? (
-        <MacroRingGroupSkeleton />
-      ) : (
-        <div className="flex justify-around items-center">
-          <MacroRing 
-            value={totalCalories} 
-            max={activeTargets.calories} 
-            label={t('calories')} 
-            color="calories"
-            size="lg"
-            unit=""
-          />
-          <div className="space-y-4">
-            <MacroRing 
-              value={totalProtein} 
-              max={activeTargets.protein} 
-              label={t('protein')} 
-              color="protein"
-              size="sm"
-            />
-            <MacroRing 
-              value={totalCarbs} 
-              max={activeTargets.carbs} 
-              label={t('carbs')} 
-              color="carbs"
-              size="sm"
-            />
-            <MacroRing 
-              value={totalFats} 
-              max={activeTargets.fats} 
-              label={t('fats')} 
-              color="fats"
-              size="sm"
-            />
-            <MacroRing 
-              value={totalSugar} 
-              max={activeTargets.sugar} 
-              label={t('sugar') || 'Sugar'} 
-              color="sugar"
-              size="sm"
-            />
+    <Collapsible open={progressOpen} onOpenChange={setProgressOpen} key="progress">
+      <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
+            <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
+            <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
           </div>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="p-2 hover:bg-muted rounded-full transition-colors"
+              aria-label={progressOpen ? 'Collapse progress' : 'Expand progress'}
+            >
+              {progressOpen ? (
+                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              )}
+            </button>
+          </CollapsibleTrigger>
         </div>
-      )}
-    </section>
+        <CollapsibleContent>
+          {targetsLoading ? (
+            <div className="mt-6">
+              <MacroRingGroupSkeleton />
+            </div>
+          ) : (
+            <div className="flex justify-around items-center mt-6">
+              <MacroRing
+                value={totalCalories}
+                max={activeTargets.calories}
+                label={t('calories')}
+                color="calories"
+                size="lg"
+                unit=""
+              />
+              <div className="space-y-4">
+                <MacroRing
+                  value={totalProtein}
+                  max={activeTargets.protein}
+                  label={t('protein')}
+                  color="protein"
+                  size="sm"
+                />
+                <MacroRing
+                  value={totalCarbs}
+                  max={activeTargets.carbs}
+                  label={t('carbs')}
+                  color="carbs"
+                  size="sm"
+                />
+                <MacroRing
+                  value={totalFats}
+                  max={activeTargets.fats}
+                  label={t('fats')}
+                  color="fats"
+                  size="sm"
+                />
+                <MacroRing
+                  value={totalSugar}
+                  max={activeTargets.sugar}
+                  label={t('sugar') || 'Sugar'}
+                  color="sugar"
+                  size="sm"
+                />
+              </div>
+            </div>
+          )}
+        </CollapsibleContent>
+        {!progressOpen && !targetsLoading && (
+          <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Flame className="w-4 h-4 text-calories" />
+            <span>
+              {totalCalories} / {activeTargets.calories} kcal · {totalProtein}g / {activeTargets.protein}g protein
+            </span>
+          </div>
+        )}
+      </section>
+    </Collapsible>
   );
 
   const renderMealsSection = () => (
