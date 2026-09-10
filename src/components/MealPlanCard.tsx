@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Minus, UtensilsCrossed, Heart, Repeat, ArrowLeftRight } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Minus, UtensilsCrossed, Heart, Repeat, ArrowLeftRight, CopyPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLanguage } from "@/lib/i18n";
 
 export interface MealIngredient {
