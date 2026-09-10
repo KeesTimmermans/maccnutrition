@@ -13,6 +13,7 @@ import type { DailyCheckIn, CheckInAnalysis } from "@/lib/checkinService";
 import type { MealPatternAnalysis } from "@/lib/coachingAnalytics";
 import type { CoachingFocusPoint } from "@/lib/progressUpdateService";
 import type { CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
+import type { Workout } from "@/lib/workoutService";
 
 // ── A. Active Nutrition Layer ──────────────────────────────────
 export interface NutritionLayer {
@@ -53,6 +54,18 @@ export interface CompPrepLayer {
   hydrationNotes: string[] | null;
   recentCheckin: CompPrepCoachContext["recentCheckin"] | null;
   isTaperOrRaceWeek: boolean;
+}
+
+// ── B2. Recent Training Pattern ────────────────────────────────
+export interface TrainingLayer {
+  recentDays: Array<{
+    daysAgo: number; // 1 = yesterday, up to 5
+    hasWorkout: boolean;
+    types: string[];
+    overallRating: number | null; // highest rating that day if more than one workout
+  }>; // last 5 days, most recent first (daysAgo: 1..5)
+  last7DaysCount: number;
+  last7DaysAverageRating: number | null;
 }
 
 // ── C. Daily Progress ──────────────────────────────────────────
@@ -131,6 +144,7 @@ export interface ProfileLayer {
 export interface UnifiedCoachContext {
   nutrition: NutritionLayer;
   compPrep: CompPrepLayer | null;
+  training: TrainingLayer;
   progress: DailyProgressLayer;
   wellness: WellnessLayer;
   profile: ProfileLayer;
@@ -146,6 +160,7 @@ export interface BuildUnifiedContextInput {
   activeTargets: ActiveNutritionTargets;
   baseline: UserBaseline | null;
   compPrepContext: CompPrepCoachContext | null;
+  recentWorkouts?: Workout[];
   todaysMeals: { calories: number; protein: number; carbs: number; fats: number }[];
   waterIntakeMl: number;
   todaysCheckIn: DailyCheckIn | null;
@@ -155,7 +170,43 @@ export interface BuildUnifiedContextInput {
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export function buildUnifiedCoachContext(input: BuildUnifiedContextInput): UnifiedCoachContext {
-  const { activeTargets, baseline, compPrepContext, todaysMeals, waterIntakeMl, todaysCheckIn, accountAgeDays = 0 } = input;
+  const { activeTargets, baseline, compPrepContext, todaysMeals, waterIntakeMl, todaysCheckIn, accountAgeDays = 0, recentWorkouts = [] } = input;
+
+  // B2. Recent training pattern
+  const toDateStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const todayDate = new Date();
+  const recentDays = Array.from({ length: 5 }, (_, i) => {
+    const daysAgo = i + 1;
+    const d = new Date(todayDate);
+    d.setDate(d.getDate() - daysAgo);
+    const dateStr = toDateStr(d);
+    const dayWorkouts = recentWorkouts.filter(w => (w.workout_date || '').slice(0, 10) === dateStr);
+    const ratings = dayWorkouts
+      .map(w => w.overall_rating)
+      .filter((r): r is number => typeof r === 'number');
+    return {
+      daysAgo,
+      hasWorkout: dayWorkouts.length > 0,
+      types: dayWorkouts.map(w => String(w.workout_type)),
+      overallRating: ratings.length > 0 ? Math.max(...ratings) : null,
+    };
+  });
+  const sevenDayCutoff = new Date(todayDate);
+  sevenDayCutoff.setDate(sevenDayCutoff.getDate() - 7);
+  const last7 = recentWorkouts.filter(w => (w.workout_date || '').slice(0, 10) >= toDateStr(sevenDayCutoff));
+  const last7Ratings = last7.map(w => w.overall_rating).filter((r): r is number => typeof r === 'number');
+  const training: TrainingLayer = {
+    recentDays,
+    last7DaysCount: last7.length,
+    last7DaysAverageRating: last7Ratings.length > 0
+      ? Math.round((last7Ratings.reduce((s, r) => s + r, 0) / last7Ratings.length) * 10) / 10
+      : null,
+  };
 
   // A. Nutrition layer — always from activeTargets
   const nutrition: NutritionLayer = {
@@ -285,6 +336,7 @@ export function buildUnifiedCoachContext(input: BuildUnifiedContextInput): Unifi
   return {
     nutrition,
     compPrep,
+    training,
     progress,
     wellness,
     profile,
@@ -340,6 +392,9 @@ export function buildEdgeFunctionUserContext(
     trainingDuration: ctx.profile.trainingDuration,
     climate: ctx.profile.climate,
     workoutTypes: ctx.profile.workoutTypes,
+    trainingRecentDays: ctx.training.recentDays,
+    trainingLast7DaysCount: ctx.training.last7DaysCount,
+    trainingLast7DaysAvgRating: ctx.training.last7DaysAverageRating,
     biggestChallenge: ctx.profile.biggestChallenge,
     pastDiets: ctx.profile.pastDiets,
     weekendHabits: ctx.profile.weekendHabits,

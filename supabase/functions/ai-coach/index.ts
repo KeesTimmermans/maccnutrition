@@ -33,6 +33,14 @@ const userContextSchema = z.object({
   trainingIntensity: z.string().max(50).nullish(),
   trainingDuration: z.string().max(50).nullish(),
   workoutTypes: z.array(z.string().max(50)).max(10).nullish(),
+  trainingRecentDays: z.array(z.object({
+    daysAgo: z.number().min(1).max(5),
+    hasWorkout: z.boolean(),
+    types: z.array(z.string().max(50)).max(10).optional(),
+    overallRating: z.number().min(1).max(10).nullish(),
+  })).max(5).nullish(),
+  trainingLast7DaysCount: z.number().min(0).max(100).nullish(),
+  trainingLast7DaysAvgRating: z.number().min(0).max(10).nullish(),
   jobActivityLevel: z.string().max(50).nullish(),
   climate: z.string().max(50).nullish(),
   sleepHours: z.string().max(20).nullish(),
@@ -844,6 +852,16 @@ USER PROFILE:
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
 
+RECENT TRAINING PATTERN (last 5 days, most recent first):
+${(userContext as any)?.trainingRecentDays?.length
+  ? (userContext as any).trainingRecentDays
+      .map((d: any) => `- ${d.daysAgo === 1 ? 'Yesterday' : `${d.daysAgo} days ago`}: ${d.hasWorkout ? `trained${d.types?.length ? ` (${d.types.join(', ')})` : ''}${typeof d.overallRating === 'number' ? `, effort rating ${d.overallRating}/10` : ', no rating given'}` : 'no workout logged'}`)
+      .join('\n')
+  : '- no recent training data'}
+- Workouts logged in last 7 days: ${(userContext as any)?.trainingLast7DaysCount ?? 'not available'}
+- Average effort rating over last 7 days: ${(userContext as any)?.trainingLast7DaysAvgRating ?? 'not available'}
+
+
 NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your ONLY authoritative targets)' : ''}:
 - Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
 - Protein: ${userContext?.proteinGrams || 'not set'}g
@@ -1035,6 +1053,12 @@ RESPONSE GUIDELINES:
 - If check-in shows changes from yesterday, acknowledge the trajectory
 - Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step
 - Mention job activity level, training duration, climate, or workout types ONLY when directly relevant to the advice being given (e.g. hydration guidance in a hot climate, meal timing around a physically demanding job). Do not force these details into every response.
+
+EFFORT-OUTLOOK RULES (based on RECENT TRAINING PATTERN):
+- If 2 or more of the MOST RECENT CONSECUTIVE days (actually back-to-back, e.g. yesterday and the day before — not just any 2 days within the window) have a workout rated 7 or higher, proactively suggest today could be a good day to ease off a bit and prioritise recovery. Frame it purely as general effort/energy outlook plus fuelling advice (adequate carbs, protein, hydration, rest) — never as a specific exercise, workout type, or training instruction.
+- If there have been 0-1 workouts in the last 5 days, it's fine to note there's room to push today if they're feeling good — same framing rules apply.
+- If the pattern is mixed with no clear signal, do not force any effort-outlook commentary at all.
+- HARD RULE, ALWAYS: never suggest a specific exercise, workout type, or training session. This coach gives nutrition and general energy/effort outlook advice only — never workout programming.
 
 CRITICAL FINAL RULE — MACRO NUMBERS:
 When you mention any calorie or macro number in your response, it MUST match the NUTRITION TARGETS above EXACTLY. Do not calculate your own values. Do not estimate. Do not round differently. The app already shows these numbers to the user — your job is to coach around them, not recalculate them.`;
