@@ -9,6 +9,7 @@ import { GroceryList } from "@/components/GroceryList";
 import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { saveMeal } from "@/lib/mealService";
 import { toast } from "sonner";
+import { getEdgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
 import { useLanguage } from "@/lib/i18n";
 import { jsPDF } from "jspdf";
 import { MealPlanCard, MealWithIngredients, MealIngredient } from "@/components/MealPlanCard";
@@ -200,20 +201,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
 
       if (error) {
         console.error('Supabase function error:', error);
-        throw error;
-      }
-
-      if (data?.error) {
-        console.error('Function returned error:', data.error);
-        if (data.error.includes('Rate limit')) {
-          toast.error(t('too_many_requests') || 'Too many requests. Please try again in a moment.');
-        } else if (data.error.includes('credits')) {
-          toast.error(t('ai_service_unavailable') || 'AI service temporarily unavailable.');
-        } else if (data.error.includes('Unauthorized')) {
-          toast.error(t('please_login') || 'Please log in to generate a meal plan.');
-        } else {
-          toast.error(data.error);
-        }
+        toast.error(await getEdgeFunctionErrorMessage(error));
         return;
       }
 
@@ -254,10 +242,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         }
       });
 
-      if (error) throw error;
-
-      if (data.error) {
-        toast.error(data.error);
+      if (error) {
+        toast.error(await getEdgeFunctionErrorMessage(error));
         return;
       }
 
@@ -332,10 +318,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         }
       });
 
-      if (error) throw error;
-
-      if (data.error) {
-        toast.error(data.error);
+      if (error) {
+        toast.error(await getEdgeFunctionErrorMessage(error));
         return [];
       }
 
@@ -364,10 +348,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         }
       });
 
-      if (error) throw error;
-
-      if (data.error) {
-        toast.error(data.error);
+      if (error) {
+        toast.error(await getEdgeFunctionErrorMessage(error));
         return;
       }
 
@@ -440,10 +422,8 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         }
       });
 
-      if (error) throw error;
-
-      if (data.error) {
-        toast.error(data.error);
+      if (error) {
+        toast.error(await getEdgeFunctionErrorMessage(error));
         return [];
       }
 
