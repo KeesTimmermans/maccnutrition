@@ -37,6 +37,7 @@ interface MealPlanCardProps {
   onSwap: () => void;
   onSwapIngredient?: (ingredientIndex: number) => void;
   onLogMeal: () => void;
+  onRepeatDays?: (days: number) => void;
   getMealTypeColor: (type: string) => string;
 }
 
