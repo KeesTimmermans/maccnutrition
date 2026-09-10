@@ -70,6 +70,13 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const lastAssistantRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const isSendingRef = useRef(false);
+  const messagesRef = useRef<Message[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+
 
   // Save conversation whenever messages change (debounced)
   const saveConversation = useCallback(async (msgs: Message[]) => {
