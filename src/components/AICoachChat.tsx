@@ -473,6 +473,71 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
     }
   };
 
+  const rewriteTodaysMessages = async (newTone: string) => {
+    const today = new Date().toDateString();
+    const isToday = (ts?: string) => {
+      if (!ts) return true; // messages created this session
+      const d = new Date(ts);
+      return !isNaN(d.getTime()) && d.toDateString() === today;
+    };
+
+    const current = messagesRef.current;
+    const targets = current
+      .map((m, index) => ({ m, index }))
+      .filter(({ m }) => m.role === "assistant" && !m.pending && m.content.trim() && isToday(m.timestamp))
+      .slice(-10);
+
+    if (targets.length === 0) return;
+
+    const loadingToast = toast.loading("Updating today's messages...");
+
+    const results = await Promise.all(
+      targets.map(async ({ m, index }) => {
+        try {
+          const { data, error } = await supabase.functions.invoke("ai-coach", {
+            body: { type: "rewrite_tone", originalMessage: m.content, coachingTone: newTone },
+          });
+          if (error) throw error;
+          const rewritten = typeof data?.response === "string" ? data.response.trim() : "";
+          if (!rewritten) throw new Error("Empty rewrite");
+          return { index, content: rewritten, ok: true };
+        } catch (err) {
+          console.error("Tone rewrite failed for message", index, err);
+          return { index, content: m.content, ok: false };
+        }
+      })
+    );
+
+    const updated = [...messagesRef.current];
+    results.forEach(r => {
+      if (r.ok && updated[r.index]) {
+        updated[r.index] = { ...updated[r.index], content: r.content };
+      }
+    });
+    setMessages(updated);
+
+    try {
+      await saveWeeklyConversation(
+        updated.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp || new Date().toISOString(),
+        }))
+      );
+    } catch (err) {
+      console.error("Error saving rewritten conversation:", err);
+    }
+
+    toast.dismiss(loadingToast);
+    const anyFailed = results.some(r => !r.ok);
+    if (anyFailed) {
+      toast.error("Some messages couldn't be updated");
+    } else {
+      toast.success("Today's messages updated");
+    }
+  };
+
+
   const handleToneChange = async (newTone: string) => {
     if (!baseline || baseline.coaching_tone === newTone) return;
 
