@@ -9,6 +9,7 @@ import { GroceryList } from "@/components/GroceryList";
 import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { saveMeal } from "@/lib/mealService";
 import { toast } from "sonner";
+import { getEdgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
 import { useLanguage } from "@/lib/i18n";
 import { jsPDF } from "jspdf";
 import { MealPlanCard, MealWithIngredients, MealIngredient } from "@/components/MealPlanCard";
