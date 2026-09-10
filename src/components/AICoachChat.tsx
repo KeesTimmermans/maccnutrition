@@ -525,6 +525,29 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             <h2 className="font-bold text-foreground">Coach Mac</h2>
             <p className="text-xs text-muted-foreground">Your nutrition coach</p>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-muted hover:bg-muted/80 text-foreground rounded-full border border-border transition-colors"
+                aria-label="Change coaching style"
+              >
+                {(COACHING_TONES.find(t => t.value === baseline?.coaching_tone)?.label || "Supportive")}
+                <ChevronDown className="w-3 h-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {COACHING_TONES.map((tone) => (
+                <DropdownMenuItem
+                  key={tone.value}
+                  onClick={() => handleToneChange(tone.value)}
+                  className="flex flex-col items-start py-2"
+                >
+                  <span className="text-sm font-medium">{tone.label}</span>
+                  <span className="text-xs text-muted-foreground">{tone.description}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-2">
           {messages.length > 1 && (
