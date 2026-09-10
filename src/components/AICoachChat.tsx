@@ -490,6 +490,8 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
     try {
       await updateUserSettings({ coaching_tone: newTone });
       toast.success(`Coaching style updated: ${toneInfo?.label || newTone}`);
+      await rewriteTodaysMessages(newTone);
+
     } catch (error) {
       console.error("Error updating coaching tone:", error);
       const message = error instanceof Error ? error.message : "Failed to update coaching tone.";
