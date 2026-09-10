@@ -55,6 +55,18 @@ export interface CompPrepLayer {
   isTaperOrRaceWeek: boolean;
 }
 
+// ── B2. Recent Training Pattern ────────────────────────────────
+export interface TrainingLayer {
+  recentDays: Array<{
+    daysAgo: number; // 1 = yesterday, up to 5
+    hasWorkout: boolean;
+    types: string[];
+    overallRating: number | null; // highest rating that day if more than one workout
+  }>; // last 5 days, most recent first (daysAgo: 1..5)
+  last7DaysCount: number;
+  last7DaysAverageRating: number | null;
+}
+
 // ── C. Daily Progress ──────────────────────────────────────────
 export interface DailyProgressLayer {
   caloriesLogged: number;
