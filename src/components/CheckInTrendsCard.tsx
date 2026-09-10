@@ -4,6 +4,10 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRecentCheckIns, DailyCheckIn } from "@/lib/checkinService";
 
+interface CheckInTrendsCardProps {
+  onDataLoaded?: (checkInCount: number) => void;
+}
+
 interface TrendPoint {
   date: string;
   mood: number | null;
