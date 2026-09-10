@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { getUserBaseline, updateUserSettings, UserBaseline } from "@/lib/userService";
+import { COACHING_TONES } from "@/lib/coachingTones";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
@@ -47,12 +48,6 @@ const Settings = () => {
 
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const coachingTones = [
-    { value: "direct", label: "Direct", description: "Concise and action-focused" },
-    { value: "supportive", label: "Supportive", description: "Warm and encouraging" },
-    { value: "educational", label: "Educational", description: "Explains the 'why' behind advice" },
-    { value: "motivational", label: "Motivational", description: "High-energy and action-oriented" },
-  ];
 
   const currencies = [
     { code: "GBP", symbol: "£", name: "British Pound" },
@@ -205,7 +200,7 @@ const Settings = () => {
     
     try {
       await updateUserSettings({ coaching_tone: newTone });
-      const toneInfo = coachingTones.find(t => t.value === newTone);
+      const toneInfo = COACHING_TONES.find(t => t.value === newTone);
       toast.success(`Coaching style updated: ${toneInfo?.label || newTone}`);
     } catch (error) {
       console.error("Error updating coaching tone:", error);
@@ -386,7 +381,7 @@ const Settings = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {coachingTones.map((tone) => (
+                {COACHING_TONES.map((tone) => (
                   <SelectItem key={tone.value} value={tone.value}>
                     <div className="flex flex-col">
                       <span>{tone.label}</span>

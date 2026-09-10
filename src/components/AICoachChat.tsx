@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
-import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, RotateCcw } from "lucide-react";
+import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, RotateCcw, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals, Meal } from "@/lib/mealService";
-import { getUserBaseline, UserBaseline } from "@/lib/userService";
+import { getUserBaseline, updateUserSettings, UserBaseline } from "@/lib/userService";
+import { COACHING_TONES } from "@/lib/coachingTones";
 import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, buildTemporalCheckInContext, saveDailyFocusPoints, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
 
 import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation, type ChatMessage } from "@/lib/coachConversationService";
@@ -12,6 +13,12 @@ import { parseDailyFocusPoints, type CoachingFocusPoint } from "@/lib/progressUp
 import { useLanguage, Language } from "@/lib/i18n";
 import { toast } from "sonner";
 import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
@@ -461,6 +468,34 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
     }
   };
 
+  const handleToneChange = async (newTone: string) => {
+    if (!baseline || baseline.coaching_tone === newTone) return;
+
+    const previousTone = baseline.coaching_tone || "supportive";
+    const toneInfo = COACHING_TONES.find(t => t.value === newTone);
+    const previousBaseline = baseline;
+
+    // Optimistically update local state and the in-memory coach context
+    const updatedBaseline = { ...baseline, coaching_tone: newTone };
+    setBaseline(updatedBaseline);
+    if (unifiedCtxRef.current) {
+      unifiedCtxRef.current.profile.coachingTone = newTone;
+    }
+
+    try {
+      await updateUserSettings({ coaching_tone: newTone });
+      toast.success(`Coaching style updated: ${toneInfo?.label || newTone}`);
+    } catch (error) {
+      console.error("Error updating coaching tone:", error);
+      const message = error instanceof Error ? error.message : "Failed to update coaching tone.";
+      toast.error(message);
+      setBaseline(previousBaseline);
+      if (unifiedCtxRef.current) {
+        unifiedCtxRef.current.profile.coachingTone = previousTone;
+      }
+    }
+  };
+
   const getTrendIcon = (trend: "improving" | "declining" | "stable") => {
     if (trend === "improving") return <TrendingUp className="w-3 h-3 text-emerald-500" />;
     if (trend === "declining") return <TrendingDown className="w-3 h-3 text-destructive" />;
@@ -490,6 +525,29 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             <h2 className="font-bold text-foreground">Coach Mac</h2>
             <p className="text-xs text-muted-foreground">Your nutrition coach</p>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-muted hover:bg-muted/80 text-foreground rounded-full border border-border transition-colors"
+                aria-label="Change coaching style"
+              >
+                {(COACHING_TONES.find(t => t.value === baseline?.coaching_tone)?.label || "Supportive")}
+                <ChevronDown className="w-3 h-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {COACHING_TONES.map((tone) => (
+                <DropdownMenuItem
+                  key={tone.value}
+                  onClick={() => handleToneChange(tone.value)}
+                  className="flex flex-col items-start py-2"
+                >
+                  <span className="text-sm font-medium">{tone.label}</span>
+                  <span className="text-xs text-muted-foreground">{tone.description}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-2">
           {messages.length > 1 && (
