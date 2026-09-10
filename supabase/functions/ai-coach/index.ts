@@ -852,6 +852,16 @@ USER PROFILE:
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
 
+RECENT TRAINING PATTERN (last 5 days, most recent first):
+${(userContext as any)?.trainingRecentDays?.length
+  ? (userContext as any).trainingRecentDays
+      .map((d: any) => `- ${d.daysAgo === 1 ? 'Yesterday' : `${d.daysAgo} days ago`}: ${d.hasWorkout ? `trained${d.types?.length ? ` (${d.types.join(', ')})` : ''}${typeof d.overallRating === 'number' ? `, effort rating ${d.overallRating}/10` : ', no rating given'}` : 'no workout logged'}`)
+      .join('\n')
+  : '- no recent training data'}
+- Workouts logged in last 7 days: ${(userContext as any)?.trainingLast7DaysCount ?? 'not available'}
+- Average effort rating over last 7 days: ${(userContext as any)?.trainingLast7DaysAvgRating ?? 'not available'}
+
+
 NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your ONLY authoritative targets)' : ''}:
 - Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
 - Protein: ${userContext?.proteinGrams || 'not set'}g
