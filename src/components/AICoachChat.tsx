@@ -31,7 +31,9 @@ interface Message {
   content: string;
   client_message_id?: string;
   pending?: boolean;
+  timestamp?: string;
 }
+
 
 interface AICoachChatProps {
   onClose: () => void;
