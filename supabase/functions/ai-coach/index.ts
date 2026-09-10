@@ -479,6 +479,42 @@ CRITICAL COMPETITION PREP COACHING RULES:
   return section;
 }
 
+const chatStyleDirectives: Record<string, string> = {
+  direct: `STYLE DIRECTIVE — DIRECT:
+You MUST follow these rules for this response:
+- Begin with ONE short human paragraph (1–2 sentences max) to make it feel personal and natural — not robotic.
+- Then provide 3–6 concise bullet points.
+- Total response: 100–200 words. Do NOT exceed 200 words.
+- No long explanations or theory.
+- Highly actionable — every bullet must be something they can do today.
+- Minimal emotional reinforcement, but not robotic.
+- Do not explain "why" unless directly asked.`,
+  supportive: `STYLE DIRECTIVE — SUPPORTIVE:
+You MUST follow these rules for this response:
+- Start with a brief encouraging intro (1–2 sentences).
+- Follow with practical advice woven with reassurance.
+- Total response: 150–300 words.
+- Tone: calm, warm, supportive — like a trusted friend.
+- Use flowing paragraphs, not bullet points.
+- Acknowledge effort before giving guidance.`,
+  educational: `STYLE DIRECTIVE — EDUCATIONAL:
+You MUST follow these rules for this response:
+- Provide a clear explanation of the reasoning behind your advice.
+- Use a structured breakdown with short headings or bold sections.
+- Total response: 300–600 words.
+- Explain the "why" behind every recommendation.
+- End with a concise actionable summary (2–4 bullet points).
+- Tone: informative but conversational, like a knowledgeable coach explaining the science.`,
+  motivational: `STYLE DIRECTIVE — MOTIVATIONAL:
+You MUST follow these rules for this response:
+- Use high-energy, action-focused tone.
+- Reinforce belief, momentum, and what's possible.
+- Total response: 150–300 words.
+- Use flowing paragraphs, not bullet points.
+- Avoid exaggerated or cringe phrasing — keep it authentic and empowering.
+- End with a punchy call-to-action or affirmation.`
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -513,6 +549,72 @@ serve(async (req) => {
 
     // Parse and validate input
     const rawBody = await req.json();
+
+    // Early handling: rewrite an existing assistant message in a new coaching tone
+    if (rawBody?.type === 'rewrite_tone') {
+      const originalMessage = typeof rawBody.originalMessage === 'string' ? rawBody.originalMessage : '';
+      const targetTone = typeof rawBody.coachingTone === 'string' ? rawBody.coachingTone : 'supportive';
+
+      if (!originalMessage.trim()) {
+        return new Response(JSON.stringify({ error: 'originalMessage is required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const REWRITE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!REWRITE_API_KEY) {
+        throw new Error("LOVABLE_API_KEY is not configured");
+      }
+
+      const styleDirective = chatStyleDirectives[targetTone] || chatStyleDirectives['supportive'];
+      const rewriteSystemPrompt = `Rewrite the following coaching message in the style described below. Preserve every fact, number, and recommendation exactly as given — do not add new advice, remove anything, or change the substance. Only change the tone, structure, and length to match the style rules.\n\n${styleDirective}\n\nOriginal message:\n${originalMessage}`;
+
+      const rewriteResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${REWRITE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: rewriteSystemPrompt },
+            { role: "user", content: "Rewrite the message now. Return only the rewritten message." },
+          ],
+          max_tokens: 1600,
+        }),
+      });
+
+      if (!rewriteResponse.ok) {
+        const errorText = await rewriteResponse.text();
+        console.error("AI gateway error (rewrite_tone):", rewriteResponse.status, errorText);
+
+        if (rewriteResponse.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (rewriteResponse.status === 402) {
+          return new Response(JSON.stringify({ error: "AI service temporarily unavailable." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        throw new Error(`AI gateway error: ${rewriteResponse.status}`);
+      }
+
+      const rewriteData = await rewriteResponse.json();
+      const rawContent = rewriteData.choices?.[0]?.message?.content;
+      const rewrittenText = typeof rawContent === 'string' ? rawContent.trim() : '';
+
+      return new Response(JSON.stringify({ response: rewrittenText || originalMessage }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     // Debug: log target source alignment
     const debugTargetSource = rawBody?.userContext?.targetSource || 'standard';
@@ -935,41 +1037,7 @@ USER APP STATE:
 
     // Build chat style directive based on coaching tone (applies to chat & focus_tip only)
     const coachingTone = userContext?.coachingTone || 'supportive';
-    const chatStyleDirectives: Record<string, string> = {
-      direct: `STYLE DIRECTIVE — DIRECT:
-You MUST follow these rules for this response:
-- Begin with ONE short human paragraph (1–2 sentences max) to make it feel personal and natural — not robotic.
-- Then provide 3–6 concise bullet points.
-- Total response: 100–200 words. Do NOT exceed 200 words.
-- No long explanations or theory.
-- Highly actionable — every bullet must be something they can do today.
-- Minimal emotional reinforcement, but not robotic.
-- Do not explain "why" unless directly asked.`,
-      supportive: `STYLE DIRECTIVE — SUPPORTIVE:
-You MUST follow these rules for this response:
-- Start with a brief encouraging intro (1–2 sentences).
-- Follow with practical advice woven with reassurance.
-- Total response: 150–300 words.
-- Tone: calm, warm, supportive — like a trusted friend.
-- Use flowing paragraphs, not bullet points.
-- Acknowledge effort before giving guidance.`,
-      educational: `STYLE DIRECTIVE — EDUCATIONAL:
-You MUST follow these rules for this response:
-- Provide a clear explanation of the reasoning behind your advice.
-- Use a structured breakdown with short headings or bold sections.
-- Total response: 300–600 words.
-- Explain the "why" behind every recommendation.
-- End with a concise actionable summary (2–4 bullet points).
-- Tone: informative but conversational, like a knowledgeable coach explaining the science.`,
-      motivational: `STYLE DIRECTIVE — MOTIVATIONAL:
-You MUST follow these rules for this response:
-- Use high-energy, action-focused tone.
-- Reinforce belief, momentum, and what's possible.
-- Total response: 150–300 words.
-- Use flowing paragraphs, not bullet points.
-- Avoid exaggerated or cringe phrasing — keep it authentic and empowering.
-- End with a punchy call-to-action or affirmation.`
-    };
+
 
     // Only inject style directive for chat and focus_tip types (not check-ins or progress updates)
     const effectiveType = type || 'chat';

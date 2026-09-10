@@ -31,7 +31,9 @@ interface Message {
   content: string;
   client_message_id?: string;
   pending?: boolean;
+  timestamp?: string;
 }
+
 
 interface AICoachChatProps {
   onClose: () => void;
@@ -68,6 +70,13 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
   const lastAssistantRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const isSendingRef = useRef(false);
+  const messagesRef = useRef<Message[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+
 
   // Save conversation whenever messages change (debounced)
   const saveConversation = useCallback(async (msgs: Message[]) => {
@@ -76,8 +85,9 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
       const chatMessages: ChatMessage[] = msgs.map(m => ({
         role: m.role,
         content: m.content,
-        timestamp: new Date().toISOString(),
+        timestamp: m.timestamp || new Date().toISOString(),
       }));
+
       await saveWeeklyConversation(chatMessages);
     } catch (error) {
       console.error("Error saving conversation:", error);
@@ -216,7 +226,9 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         const loadedMessages: Message[] = savedConversation.map(m => ({
           role: m.role,
           content: m.content,
+          timestamp: m.timestamp,
         }));
+
         setMessages(loadedMessages);
         setHasLoadedHistory(true);
 
@@ -468,6 +480,71 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
     }
   };
 
+  const rewriteTodaysMessages = async (newTone: string) => {
+    const today = new Date().toDateString();
+    const isToday = (ts?: string) => {
+      if (!ts) return true; // messages created this session
+      const d = new Date(ts);
+      return !isNaN(d.getTime()) && d.toDateString() === today;
+    };
+
+    const current = messagesRef.current;
+    const targets = current
+      .map((m, index) => ({ m, index }))
+      .filter(({ m }) => m.role === "assistant" && !m.pending && m.content.trim() && isToday(m.timestamp))
+      .slice(-10);
+
+    if (targets.length === 0) return;
+
+    const loadingToast = toast.loading("Updating today's messages...");
+
+    const results = await Promise.all(
+      targets.map(async ({ m, index }) => {
+        try {
+          const { data, error } = await supabase.functions.invoke("ai-coach", {
+            body: { type: "rewrite_tone", originalMessage: m.content, coachingTone: newTone },
+          });
+          if (error) throw error;
+          const rewritten = typeof data?.response === "string" ? data.response.trim() : "";
+          if (!rewritten) throw new Error("Empty rewrite");
+          return { index, content: rewritten, ok: true };
+        } catch (err) {
+          console.error("Tone rewrite failed for message", index, err);
+          return { index, content: m.content, ok: false };
+        }
+      })
+    );
+
+    const updated = [...messagesRef.current];
+    results.forEach(r => {
+      if (r.ok && updated[r.index]) {
+        updated[r.index] = { ...updated[r.index], content: r.content };
+      }
+    });
+    setMessages(updated);
+
+    try {
+      await saveWeeklyConversation(
+        updated.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp || new Date().toISOString(),
+        }))
+      );
+    } catch (err) {
+      console.error("Error saving rewritten conversation:", err);
+    }
+
+    toast.dismiss(loadingToast);
+    const anyFailed = results.some(r => !r.ok);
+    if (anyFailed) {
+      toast.error("Some messages couldn't be updated");
+    } else {
+      toast.success("Today's messages updated");
+    }
+  };
+
+
   const handleToneChange = async (newTone: string) => {
     if (!baseline || baseline.coaching_tone === newTone) return;
 
@@ -485,6 +562,8 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
     try {
       await updateUserSettings({ coaching_tone: newTone });
       toast.success(`Coaching style updated: ${toneInfo?.label || newTone}`);
+      await rewriteTodaysMessages(newTone);
+
     } catch (error) {
       console.error("Error updating coaching tone:", error);
       const message = error instanceof Error ? error.message : "Failed to update coaching tone.";
