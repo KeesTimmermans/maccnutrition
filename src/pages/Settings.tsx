@@ -384,7 +384,7 @@ const Settings = () => {
                 {COACHING_TONES.map((tone) => (
                   <SelectItem key={tone.value} value={tone.value}>
                     <div className="flex flex-col">
-                      <span>{tone.label}</span>
+                      <span>{tone.emoji} {tone.label}</span>
                       <span className="text-xs text-muted-foreground">{tone.description}</span>
                     </div>
                   </SelectItem>
