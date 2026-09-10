@@ -109,110 +109,135 @@ IMPORTANT: Provide the cost estimate in ${currency} using the ${currencySymbol} 
 
     console.log("Generating grocery list with currency:", currency);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "create_grocery_list",
-              description: "Create a categorized grocery list with quantities",
-              parameters: {
-                type: "object",
-                properties: {
-                  categories: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string", description: "Category name (Produce, Proteins, Dairy, Grains, Pantry, etc.)" },
-                        icon: { type: "string", description: "Emoji icon for the category" },
+    const requestBody = JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      max_tokens: 2000,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "create_grocery_list",
+            description: "Create a categorized grocery list with quantities",
+            parameters: {
+              type: "object",
+              properties: {
+                categories: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string", description: "Category name (Produce, Proteins, Dairy, Grains, Pantry, etc.)" },
+                      icon: { type: "string", description: "Emoji icon for the category" },
+                      items: {
+                        type: "array",
                         items: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              name: { type: "string", description: "Item name" },
-                              quantity: { type: "string", description: "Amount needed (e.g., 2 lbs, 1 dozen, 500g)" },
-                              notes: { type: "string", description: "Optional notes (e.g., fresh, organic)" }
-                            },
-                            required: ["name", "quantity"]
-                          }
+                          type: "object",
+                          properties: {
+                            name: { type: "string", description: "Item name" },
+                            quantity: { type: "string", description: "Amount needed (e.g., 2 lbs, 1 dozen, 500g)" },
+                            notes: { type: "string", description: "Optional notes (e.g., fresh, organic)" }
+                          },
+                          required: ["name", "quantity"]
                         }
-                      },
-                      required: ["name", "icon", "items"]
-                    }
-                  },
-                  estimatedCost: {
-                    type: "string",
-                    description: "Rough cost estimate for the groceries"
-                  },
-                  shoppingTips: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "2-3 money-saving or shopping tips"
+                      }
+                    },
+                    required: ["name", "icon", "items"]
                   }
                 },
-                required: ["categories", "estimatedCost", "shoppingTips"]
-              }
+                estimatedCost: {
+                  type: "string",
+                  description: "Rough cost estimate for the groceries"
+                },
+                shoppingTips: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "2-3 money-saving or shopping tips"
+                }
+              },
+              required: ["categories", "estimatedCost", "shoppingTips"]
             }
           }
-        ],
-        tool_choice: { type: "function", function: { name: "create_grocery_list" } }
-      }),
+        }
+      ],
+      tool_choice: { type: "function", function: { name: "create_grocery_list" } }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
+    let lastResponse: any = null;
+    let attempt = 0;
+    const maxAttempts = 2;
 
-    const data = await response.json();
-    console.log("AI response received");
+    while (attempt < maxAttempts) {
+      attempt++;
+      console.log(`Generating grocery list, attempt ${attempt}`);
 
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall && toolCall.function?.arguments) {
-      const groceryList = JSON.parse(toolCall.function.arguments);
-      
-      // Ensure the estimated cost has the correct currency symbol
-      if (groceryList.estimatedCost) {
-        // Remove any existing currency symbols and normalize
-        const numericCost = groceryList.estimatedCost.replace(/[£$€C$A$]/g, '').trim();
-        groceryList.estimatedCost = `${currencySymbol}${numericCost}`;
-      }
-      
-      console.log("Grocery list generated successfully with currency:", currency);
-      return new Response(JSON.stringify({ groceryList }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: requestBody,
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        throw new Error(`AI gateway error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("AI response received");
+      lastResponse = data;
+
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall && toolCall.function?.arguments) {
+        const groceryList = JSON.parse(toolCall.function.arguments);
+
+        // Ensure the estimated cost has the correct currency symbol
+        if (groceryList.estimatedCost) {
+          // Remove any existing currency symbols and normalize
+          const numericCost = groceryList.estimatedCost
+            .replace(/^(C\$|A\$|£|\$|€)+/, '')
+            .replace(/[£$€]/g, '')
+            .trim();
+          groceryList.estimatedCost = `${currencySymbol}${numericCost}`;
+        }
+
+        console.log("Grocery list generated successfully with currency:", currency);
+        return new Response(JSON.stringify({ groceryList }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.error(
+        "Missing valid tool call on attempt",
+        attempt,
+        "raw content:",
+        data.choices?.[0]?.message?.content
+      );
     }
 
+    console.error("Failed to generate grocery list after retries. Last response:", lastResponse);
     throw new Error("Failed to generate grocery list");
+
 
   } catch (error) {
     console.error("Error in generate-grocery-list function:", error);
