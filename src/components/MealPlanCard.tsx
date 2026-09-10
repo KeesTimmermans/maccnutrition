@@ -56,10 +56,13 @@ export const MealPlanCard = ({
   onSwap,
   onSwapIngredient,
   onLogMeal,
+  onRepeatDays,
   getMealTypeColor,
 }: MealPlanCardProps) => {
   const { t } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [repeatDaysOpen, setRepeatDaysOpen] = useState(false);
+  const [repeatDays, setRepeatDays] = useState(3);
 
   const calculateMacrosFromIngredients = (ingredients: MealIngredient[]) => {
     return ingredients.reduce(
