@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { getEdgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
 import { useLanguage } from "@/lib/i18n";
 import { jsPDF } from "jspdf";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { MealPlanCard, MealWithIngredients, MealIngredient } from "@/components/MealPlanCard";
 import { MealSwapDialog } from "@/components/MealSwapDialog";
 import { IngredientSwapDialog, IngredientOption } from "@/components/IngredientSwapDialog";
@@ -500,7 +503,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     setIngredientToSwap(null);
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     if (!mealPlan) return;
     
     const doc = new jsPDF();
@@ -579,8 +582,28 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       });
     }
     
-    doc.save("meal-plan.pdf");
-    toast.success(t('meal_plan_exported'));
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const dataUri = doc.output('datauristring');
+        const base64Data = dataUri.split(',')[1];
+        const result = await Filesystem.writeFile({
+          path: 'meal-plan.pdf',
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+        await Share.share({
+          title: 'Weekly Meal Plan',
+          url: result.uri,
+          dialogTitle: 'Save or share your meal plan',
+        });
+      } catch (error) {
+        console.error('Error sharing PDF:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to share PDF');
+      }
+    } else {
+      doc.save("meal-plan.pdf");
+      toast.success(t('meal_plan_exported'));
+    }
   };
 
   const shareAsText = async () => {
@@ -606,11 +629,23 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       });
     }
     
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(t('meal_plan_copied'));
-    } catch {
-      toast.error(t('failed_copy_clipboard'));
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Share.share({
+          title: 'Weekly Meal Plan',
+          text,
+        });
+      } catch (error) {
+        console.error('Error sharing meal plan text:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to share meal plan');
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success(t('meal_plan_copied'));
+      } catch {
+        toast.error(t('failed_copy_clipboard'));
+      }
     }
   };
 
