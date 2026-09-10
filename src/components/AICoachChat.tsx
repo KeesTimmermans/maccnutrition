@@ -173,6 +173,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         waterIntakeMl: waterIntake,
         todaysCheckIn: null, // will be set below
         accountAgeDays: getAccountAgeDays(userBaseline),
+        recentWorkouts,
       });
 
       console.log('[Coach Mac Debug] Unified context built:', {
