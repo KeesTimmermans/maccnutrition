@@ -298,6 +298,57 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     saveMealPlan(updatedPlan);
   };
 
+  // Repeat a meal across consecutive days in the same meal slot
+  const handleRepeatMealAcrossDays = async (dayIndex: number, mealIndex: number, numberOfDays: number) => {
+    if (!mealPlan) return;
+
+    const sourceDay = mealPlan.days[dayIndex];
+    const sourceMeal = sourceDay.meals[mealIndex];
+    if (!sourceMeal) return;
+
+    const newDays = [...mealPlan.days];
+    let appliedCount = 0;
+    const maxDayIndex = Math.min(dayIndex + numberOfDays - 1, newDays.length - 1);
+
+    for (let i = dayIndex + 1; i <= maxDayIndex; i++) {
+      const targetDay = newDays[i];
+      const targetMealIndex = targetDay.meals.findIndex(m => m.type === sourceMeal.type);
+      if (targetMealIndex === -1) continue;
+
+      newDays[i].meals[targetMealIndex] = { ...sourceMeal };
+      appliedCount++;
+
+      // Recalculate day totals
+      const dayMeals = newDays[i].meals;
+      newDays[i].totals = {
+        calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
+        protein: dayMeals.reduce((sum, m) => sum + m.protein, 0),
+        carbs: dayMeals.reduce((sum, m) => sum + m.carbs, 0),
+        fats: dayMeals.reduce((sum, m) => sum + m.fats, 0),
+      };
+    }
+
+    if (appliedCount === 0) {
+      toast.info('No remaining days this week have a matching meal slot.');
+      return;
+    }
+
+    const updatedPlan = { ...mealPlan, days: newDays };
+    setMealPlan(updatedPlan);
+    await saveMealPlan(updatedPlan);
+
+    if (maxDayIndex < dayIndex + numberOfDays - 1) {
+      toast(`Applied to the remaining ${appliedCount} days this week`);
+    }
+
+    toast.success(`Repeated ${sourceMeal.name} across ${appliedCount} day${appliedCount === 1 ? '' : 's'}`);
+
+    if (groceryList) {
+      setGroceryList(null);
+      toast.info('Grocery list should be regenerated for the updated plan');
+    }
+  };
+
   const getUserContext = () => ({
     dietType: baseline?.diet_type,
     allergies: baseline?.allergies,
@@ -836,6 +887,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                       toast.error("Failed to log meal");
                     }
                   }}
+                  onRepeatDays={(days) => handleRepeatMealAcrossDays(selectedDay, mealIndex, days)}
                   getMealTypeColor={getMealTypeColor}
                 />
               ))}

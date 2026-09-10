@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Minus, UtensilsCrossed, Heart, Repeat, ArrowLeftRight } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Minus, UtensilsCrossed, Heart, Repeat, ArrowLeftRight, CopyPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLanguage } from "@/lib/i18n";
 
 export interface MealIngredient {
@@ -36,6 +37,7 @@ interface MealPlanCardProps {
   onSwap: () => void;
   onSwapIngredient?: (ingredientIndex: number) => void;
   onLogMeal: () => void;
+  onRepeatDays?: (days: number) => void;
   getMealTypeColor: (type: string) => string;
 }
 
@@ -54,10 +56,13 @@ export const MealPlanCard = ({
   onSwap,
   onSwapIngredient,
   onLogMeal,
+  onRepeatDays,
   getMealTypeColor,
 }: MealPlanCardProps) => {
   const { t } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [repeatDaysOpen, setRepeatDaysOpen] = useState(false);
+  const [repeatDays, setRepeatDays] = useState(3);
 
   const calculateMacrosFromIngredients = (ingredients: MealIngredient[]) => {
     return ingredients.reduce(
@@ -156,6 +161,56 @@ export const MealPlanCard = ({
           >
             <Repeat className="w-4 h-4 text-muted-foreground hover:text-primary" />
           </Button>
+          {onRepeatDays && (
+            <Popover open={repeatDaysOpen} onOpenChange={setRepeatDaysOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="Repeat this meal for multiple days"
+                >
+                  <CopyPlus className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-3" align="end">
+                <p className="text-sm font-medium text-foreground mb-3">Repeat for how many days?</p>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setRepeatDays(prev => Math.max(1, prev - 1))}
+                    disabled={repeatDays <= 1}
+                  >
+                    <Minus className="w-3 h-3" />
+                  </Button>
+                  <span className="text-lg font-semibold tabular-nums min-w-[1.5rem] text-center">
+                    {repeatDays}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setRepeatDays(prev => Math.min(6, prev + 1))}
+                    disabled={repeatDays >= 6}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    onRepeatDays(repeatDays);
+                    setRepeatDaysOpen(false);
+                  }}
+                >
+                  Apply
+                </Button>
+              </PopoverContent>
+            </Popover>
+          )}
           <Button
             variant="ghost"
             size="sm"
