@@ -479,6 +479,42 @@ CRITICAL COMPETITION PREP COACHING RULES:
   return section;
 }
 
+const chatStyleDirectives: Record<string, string> = {
+  direct: `STYLE DIRECTIVE — DIRECT:
+You MUST follow these rules for this response:
+- Begin with ONE short human paragraph (1–2 sentences max) to make it feel personal and natural — not robotic.
+- Then provide 3–6 concise bullet points.
+- Total response: 100–200 words. Do NOT exceed 200 words.
+- No long explanations or theory.
+- Highly actionable — every bullet must be something they can do today.
+- Minimal emotional reinforcement, but not robotic.
+- Do not explain "why" unless directly asked.`,
+  supportive: `STYLE DIRECTIVE — SUPPORTIVE:
+You MUST follow these rules for this response:
+- Start with a brief encouraging intro (1–2 sentences).
+- Follow with practical advice woven with reassurance.
+- Total response: 150–300 words.
+- Tone: calm, warm, supportive — like a trusted friend.
+- Use flowing paragraphs, not bullet points.
+- Acknowledge effort before giving guidance.`,
+  educational: `STYLE DIRECTIVE — EDUCATIONAL:
+You MUST follow these rules for this response:
+- Provide a clear explanation of the reasoning behind your advice.
+- Use a structured breakdown with short headings or bold sections.
+- Total response: 300–600 words.
+- Explain the "why" behind every recommendation.
+- End with a concise actionable summary (2–4 bullet points).
+- Tone: informative but conversational, like a knowledgeable coach explaining the science.`,
+  motivational: `STYLE DIRECTIVE — MOTIVATIONAL:
+You MUST follow these rules for this response:
+- Use high-energy, action-focused tone.
+- Reinforce belief, momentum, and what's possible.
+- Total response: 150–300 words.
+- Use flowing paragraphs, not bullet points.
+- Avoid exaggerated or cringe phrasing — keep it authentic and empowering.
+- End with a punchy call-to-action or affirmation.`
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
