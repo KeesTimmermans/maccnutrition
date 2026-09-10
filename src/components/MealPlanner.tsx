@@ -503,7 +503,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     setIngredientToSwap(null);
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     if (!mealPlan) return;
     
     const doc = new jsPDF();
