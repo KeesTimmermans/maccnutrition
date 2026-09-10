@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { SafeAreaContainer } from "@/components/layout/SafeAreaContainer";
-import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, RotateCcw } from "lucide-react";
+import { X, Send, Bot, User, Loader2, Moon, Battery, Brain, Smile, TrendingUp, TrendingDown, Minus, Heart, RotateCcw, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTodaysMeals, Meal } from "@/lib/mealService";
-import { getUserBaseline, UserBaseline } from "@/lib/userService";
+import { getUserBaseline, updateUserSettings, UserBaseline } from "@/lib/userService";
+import { COACHING_TONES } from "@/lib/coachingTones";
 import { getRecentCheckIns, analyzeCheckIns, formatCheckInsForAI, buildTemporalCheckInContext, saveDailyFocusPoints, type DailyCheckIn, type CheckInAnalysis } from "@/lib/checkinService";
 
 import { loadWeeklyConversation, saveWeeklyConversation, clearWeeklyConversation, type ChatMessage } from "@/lib/coachConversationService";
@@ -12,6 +13,12 @@ import { parseDailyFocusPoints, type CoachingFocusPoint } from "@/lib/progressUp
 import { useLanguage, Language } from "@/lib/i18n";
 import { toast } from "sonner";
 import { CoachMealSuggestionCard } from "@/components/CoachMealSuggestionCard";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
