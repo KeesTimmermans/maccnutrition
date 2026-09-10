@@ -629,11 +629,23 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       });
     }
     
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(t('meal_plan_copied'));
-    } catch {
-      toast.error(t('failed_copy_clipboard'));
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Share.share({
+          title: 'Weekly Meal Plan',
+          text,
+        });
+      } catch (error) {
+        console.error('Error sharing meal plan text:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to share meal plan');
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success(t('meal_plan_copied'));
+      } catch {
+        toast.error(t('failed_copy_clipboard'));
+      }
     }
   };
 
