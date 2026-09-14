@@ -74,6 +74,27 @@ import { supabase } from "@/integrations/supabase/client";
   }
 })();
 
+(window as any).__APP_VERSION__ = __APP_VERSION__;
+
+(async function checkForNewVersion() {
+  try {
+    const res = await fetch(`/version.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const { version } = await res.json();
+    const currentVersion = (window as any).__APP_VERSION__ ?? "";
+    if (version && currentVersion && version !== currentVersion) {
+      const alreadyReloaded = sessionStorage.getItem("version_reload_attempted");
+      if (!alreadyReloaded) {
+        sessionStorage.setItem("version_reload_attempted", "true");
+        window.location.reload();
+      }
+    }
+  } catch {
+    // Silently ignore — this is a best-effort freshness check, never
+    // block app startup on it
+  }
+})();
+
 // Register service worker for push notifications
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch((err) => {
