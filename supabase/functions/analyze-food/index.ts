@@ -22,6 +22,14 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
+function parseServingGrams(text: string | undefined | null): number | null {
+  if (!text) return null;
+  const match = text.match(/(\d+(?:\.\d+)?)\s*g\b/i);
+  if (!match) return null;
+  const grams = parseFloat(match[1]);
+  return grams > 0 ? grams : null;
+}
+
 // ============================================
 // NUTRITION DATABASE LOOKUPS (inline for edge function)
 // ============================================
