@@ -46,6 +46,7 @@ export const IngredientSearchDialog = ({
   const [manualCarbs, setManualCarbs] = useState("");
   const [manualFats, setManualFats] = useState("");
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueryRef = useRef("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
