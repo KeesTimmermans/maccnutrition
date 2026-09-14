@@ -532,7 +532,7 @@ async function searchFatSecret(query: string, limit: number = 3): Promise<Nutrit
         proteinPer100g: Math.round(protein * 10) / 10,
         carbsPer100g: Math.round(carbs * 10) / 10,
         fatsPer100g: Math.round(fats * 10) / 10,
-        defaultServingSize: 100,
+        defaultServingSize: parseServingGrams(servingMatch?.[1]) ?? 100,
         source: 'fatsecret',
         nutritionSource: food.brand_name ? 'branded_verified' : 'database_generic',
         confidenceScore: 0.9,
