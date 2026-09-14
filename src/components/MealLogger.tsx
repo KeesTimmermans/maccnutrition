@@ -40,6 +40,7 @@ interface MealLoggerProps {
     protein: number;
     carbs: number;
     fats: number;
+    sugar?: number;
   }) => void;
   userDietContext?: UserDietContext;
   currentDayTotals?: DailyTotals;
