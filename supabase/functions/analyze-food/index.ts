@@ -22,6 +22,14 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
+function parseServingGrams(text: string | undefined | null): number | null {
+  if (!text) return null;
+  const match = text.match(/(\d+(?:\.\d+)?)\s*g\b/i);
+  if (!match) return null;
+  const grams = parseFloat(match[1]);
+  return grams > 0 ? grams : null;
+}
+
 // ============================================
 // NUTRITION DATABASE LOOKUPS (inline for edge function)
 // ============================================
@@ -124,13 +132,17 @@ async function searchOpenFoodFactsUK(query: string, limit: number = 5): Promise<
       if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
         const productName = product.product_name || product.product_name_en || query;
         const brandName = product.brands || undefined;
+        const servingQty = parseFloat(product.serving_quantity);
+        const servingSize = (!isNaN(servingQty) && servingQty > 0)
+          ? servingQty
+          : (parseServingGrams(product.serving_size) ?? 100);
         results.push({
           name: brandName ? `${brandName} ${productName}` : productName,
           caloriesPer100g: Math.round(calories),
           proteinPer100g: Math.round(protein * 10) / 10,
           carbsPer100g: Math.round(carbs * 10) / 10,
           fatsPer100g: Math.round(fats * 10) / 10,
-          defaultServingSize: parseFloat(product.serving_quantity) || 100,
+          defaultServingSize: servingSize,
           source: 'openfoodfacts' as const,
           nutritionSource: brandName ? 'branded_verified' : 'database_generic',
           confidenceScore: brandName ? 0.92 : 0.82,
@@ -292,7 +304,10 @@ async function lookupBarcodeOnce(barcode: string): Promise<NutritionData | null>
 
     const productName = product.product_name || product.product_name_en || 'Unknown Product';
     const brandName = product.brands || undefined;
-    const servingSize = parseFloat(product.serving_quantity) || 100;
+    const servingQty = parseFloat(product.serving_quantity);
+    const servingSize = (!isNaN(servingQty) && servingQty > 0)
+      ? servingQty
+      : (parseServingGrams(product.serving_size) ?? 100);
 
     console.log(`[OpenFoodFacts] Found: ${productName} (${brandName || 'no brand'})`);
 
@@ -517,7 +532,7 @@ async function searchFatSecret(query: string, limit: number = 3): Promise<Nutrit
         proteinPer100g: Math.round(protein * 10) / 10,
         carbsPer100g: Math.round(carbs * 10) / 10,
         fatsPer100g: Math.round(fats * 10) / 10,
-        defaultServingSize: 100,
+        defaultServingSize: parseServingGrams(servingMatch?.[1]) ?? 100,
         source: 'fatsecret',
         nutritionSource: food.brand_name ? 'branded_verified' : 'database_generic',
         confidenceScore: 0.9,
