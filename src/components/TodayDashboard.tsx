@@ -572,6 +572,21 @@ export const TodayDashboard = () => {
   const renderProgressSection = () => (
     <Collapsible open={progressOpen} onOpenChange={setProgressOpen} key="progress">
       <section className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
+        <button
+          type="button"
+          onClick={() => navigate("/meals")}
+          className="w-full bg-card rounded-3xl shadow-medium p-4 flex items-center gap-3 text-left transition-transform active:scale-[0.98] hover:bg-accent/40 mb-4"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <ChefHat className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">View your meal plan</p>
+            <p className="text-xs text-muted-foreground">Recipes, swaps and grocery list</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </button>
+
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
@@ -639,6 +654,46 @@ export const TodayDashboard = () => {
               </div>
             </div>
           )}
+
+          <div className="mt-6 space-y-6">
+            <WaterTracker
+              dailyGoalLiters={activeTargets.waterLiters}
+              upperGoalLiters={activeTargets.waterLitersTraining}
+              onWaterLogged={refreshCoachingFocusPoints}
+            />
+
+            <Collapsible open={checkInTrendsOpen} onOpenChange={setCheckInTrendsOpen} key="checkin_trends">
+              <section className="bg-card rounded-3xl shadow-medium overflow-hidden animate-scale-in">
+                <div className="p-6 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground">Check-In Trends</h2>
+                    <p className="text-sm text-muted-foreground">This week&apos;s check-ins</p>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="p-2 hover:bg-muted rounded-full transition-colors"
+                      aria-label={checkInTrendsOpen ? 'Collapse check-in trends' : 'Expand check-in trends'}
+                    >
+                      {checkInTrendsOpen ? (
+                        <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </button>
+                  </CollapsibleTrigger>
+                </div>
+                {!checkInTrendsOpen && (
+                  <div className="px-6 pb-6 text-sm text-muted-foreground">
+                    This week: {checkInTrendsCount} check-in{checkInTrendsCount === 1 ? '' : 's'} logged
+                  </div>
+                )}
+                <CollapsibleContent>
+                  <CheckInTrendsCard onDataLoaded={setCheckInTrendsCount} />
+                </CollapsibleContent>
+              </section>
+            </Collapsible>
+          </div>
         </CollapsibleContent>
         {!progressOpen && !targetsLoading && (
           <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -715,56 +770,10 @@ export const TodayDashboard = () => {
   );
 
 
-  const renderWaterSection = () => (
-    <section key="water">
-      <WaterTracker 
-        dailyGoalLiters={activeTargets.waterLiters} 
-        upperGoalLiters={activeTargets.waterLitersTraining}
-        onWaterLogged={refreshCoachingFocusPoints}
-      />
-    </section>
-  );
-
-  const renderCheckInTrendsSection = () => (
-    <Collapsible open={checkInTrendsOpen} onOpenChange={setCheckInTrendsOpen} key="checkin_trends">
-      <section className="bg-card rounded-3xl shadow-medium overflow-hidden animate-scale-in">
-        <div className="p-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Check-In Trends</h2>
-            <p className="text-sm text-muted-foreground">This week&apos;s check-ins</p>
-          </div>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="p-2 hover:bg-muted rounded-full transition-colors"
-              aria-label={checkInTrendsOpen ? 'Collapse check-in trends' : 'Expand check-in trends'}
-            >
-              {checkInTrendsOpen ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
-              )}
-            </button>
-          </CollapsibleTrigger>
-        </div>
-        {!checkInTrendsOpen && (
-          <div className="px-6 pb-6 text-sm text-muted-foreground">
-            This week: {checkInTrendsCount} check-in{checkInTrendsCount === 1 ? '' : 's'} logged
-          </div>
-        )}
-        <CollapsibleContent>
-          <CheckInTrendsCard onDataLoaded={setCheckInTrendsCount} />
-        </CollapsibleContent>
-      </section>
-    </Collapsible>
-  );
-
   const sectionRenderers: Record<string, () => JSX.Element> = {
     progress: renderProgressSection,
     meals: renderMealsSection,
     coach: renderCoachSection,
-    water: renderWaterSection,
-    checkin_trends: renderCheckInTrendsSection,
   };
 
 
@@ -800,36 +809,15 @@ export const TodayDashboard = () => {
       </header>
 
       <main className="container py-6 space-y-6">
-        {/* Weekly Habit */}
-        <WeeklyHabitCard userContext={habitUserContext} />
-
-        {/* Meal Plan entry */}
-        <button
-          type="button"
-          onClick={() => navigate("/meals")}
-          className="w-full bg-card rounded-3xl shadow-medium p-4 flex items-center gap-3 text-left transition-transform active:scale-[0.98] hover:bg-accent/40"
-        >
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <ChefHat className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">View your meal plan</p>
-            <p className="text-xs text-muted-foreground">Recipes, swaps and grocery list</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-        </button>
-
-
-
         {/* Trial Banner */}
         {isTrialing && trialDaysRemaining !== null && trialEnd && (
           <TrialBanner daysRemaining={trialDaysRemaining} trialEnd={trialEnd} />
         )}
-        
+
         {/* Check-In Prompt */}
         {!hasCheckedInToday && (
           <section>
-            <button 
+            <button
               onClick={() => setShowCheckIn(true)}
               className="w-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center gap-4 hover:shadow-medium transition-all"
             >
@@ -844,6 +832,9 @@ export const TodayDashboard = () => {
             </button>
           </section>
         )}
+
+        {/* Weekly Habit */}
+        <WeeklyHabitCard userContext={habitUserContext} />
 
         {/* Recalibration notification removed — targets auto-recalculate */}
 
