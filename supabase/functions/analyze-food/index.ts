@@ -40,6 +40,7 @@ interface NutritionData {
   protein: number;
   carbs: number;
   fats: number;
+  sugar: number;
   servingSize?: number;
   servingUnit?: string;
   source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret' | 'openfoodfacts' | 'foodrepo';
@@ -67,6 +68,7 @@ interface NutritionPer100g {
   proteinPer100g: number;
   carbsPer100g: number;
   fatsPer100g: number;
+  sugarPer100g: number;
   defaultServingSize: number;
   source: 'open_food_facts' | 'usda' | 'uk_cofid' | 'ai_estimation' | 'branded_verified' | 'fatsecret' | 'openfoodfacts' | 'foodrepo';
   nutritionSource?: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
@@ -128,6 +130,7 @@ async function searchOpenFoodFactsUK(query: string, limit: number = 5): Promise<
       const protein = nutriments.proteins_100g ?? nutriments.proteins ?? 0;
       const carbs = nutriments.carbohydrates_100g ?? nutriments.carbohydrates ?? 0;
       const fats = nutriments.fat_100g ?? nutriments.fat ?? 0;
+      const sugar = nutriments['sugars_100g'] ?? nutriments.sugars ?? 0;
 
       if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
         const productName = product.product_name || product.product_name_en || query;
@@ -142,6 +145,7 @@ async function searchOpenFoodFactsUK(query: string, limit: number = 5): Promise<
           proteinPer100g: Math.round(protein * 10) / 10,
           carbsPer100g: Math.round(carbs * 10) / 10,
           fatsPer100g: Math.round(fats * 10) / 10,
+          sugarPer100g: Math.round(sugar * 10) / 10,
           defaultServingSize: servingSize,
           source: 'openfoodfacts' as const,
           nutritionSource: brandName ? 'branded_verified' : 'database_generic',
@@ -170,6 +174,7 @@ async function lookupOpenFoodFactsUK(query: string): Promise<NutritionData | nul
     protein: Math.round(food.proteinPer100g),
     carbs: Math.round(food.carbsPer100g),
     fats: Math.round(food.fatsPer100g),
+    sugar: Math.round(food.sugarPer100g),
     servingSize: food.defaultServingSize || 100,
     servingUnit: 'g',
     source: 'openfoodfacts',
@@ -215,6 +220,7 @@ async function searchFoodRepo(query: string, limit: number = 3): Promise<Nutriti
       const protein = nutrients?.protein?.per_hundred || 0;
       const carbs = nutrients?.carbohydrates?.per_hundred || 0;
       const fats = nutrients?.fat?.per_hundred || 0;
+      const sugar = product.attributes?.nutrients?.sugars?.per_hundred ?? 0;
 
       if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
         results.push({
@@ -223,6 +229,7 @@ async function searchFoodRepo(query: string, limit: number = 3): Promise<Nutriti
           proteinPer100g: Math.round(protein * 10) / 10,
           carbsPer100g: Math.round(carbs * 10) / 10,
           fatsPer100g: Math.round(fats * 10) / 10,
+          sugarPer100g: Math.round(sugar * 10) / 10,
           defaultServingSize: 100,
           source: 'foodrepo' as const,
           nutritionSource: 'database_generic',
@@ -250,6 +257,7 @@ async function lookupFoodRepo(query: string): Promise<NutritionData | null> {
     protein: Math.round(food.proteinPer100g),
     carbs: Math.round(food.carbsPer100g),
     fats: Math.round(food.fatsPer100g),
+    sugar: Math.round(food.sugarPer100g),
     servingSize: 100,
     servingUnit: 'g',
     source: 'foodrepo',
@@ -296,6 +304,7 @@ async function lookupBarcodeOnce(barcode: string): Promise<NutritionData | null>
     const protein = nutriments.proteins_100g ?? nutriments.proteins ?? 0;
     const carbs = nutriments.carbohydrates_100g ?? nutriments.carbohydrates ?? 0;
     const fats = nutriments.fat_100g ?? nutriments.fat ?? 0;
+    const sugar = nutriments['sugars_100g'] ?? nutriments.sugars ?? 0;
 
     if (calories === 0 && protein === 0 && carbs === 0 && fats === 0) {
       console.log(`[OpenFoodFacts] No nutrition data for barcode: ${barcode}`);
@@ -317,6 +326,7 @@ async function lookupBarcodeOnce(barcode: string): Promise<NutritionData | null>
       protein: Math.round(protein),
       carbs: Math.round(carbs),
       fats: Math.round(fats),
+      sugar: Math.round(sugar),
       servingSize,
       servingUnit: 'g',
       source: 'open_food_facts',
@@ -397,6 +407,7 @@ async function searchUSDA(query: string, limit: number = 5): Promise<NutritionPe
       const protein = findNutrient(1003) || findNutrient(203);
       const carbs = findNutrient(1005) || findNutrient(205);
       const fats = findNutrient(1004) || findNutrient(204);
+      const sugar = findNutrient(2000) || findNutrient(269);
 
       if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
         results.push({
@@ -405,6 +416,7 @@ async function searchUSDA(query: string, limit: number = 5): Promise<NutritionPe
           proteinPer100g: Math.round(protein * 10) / 10,
           carbsPer100g: Math.round(carbs * 10) / 10,
           fatsPer100g: Math.round(fats * 10) / 10,
+          sugarPer100g: Math.round(sugar * 10) / 10,
           defaultServingSize: 100,
           source: 'usda'
         });
@@ -433,6 +445,7 @@ async function lookupUSDA(query: string): Promise<NutritionData | null> {
     protein: Math.round(food.proteinPer100g),
     carbs: Math.round(food.carbsPer100g),
     fats: Math.round(food.fatsPer100g),
+    sugar: Math.round(food.sugarPer100g),
     servingSize: 100,
     servingUnit: 'g',
     source: 'usda',
@@ -511,12 +524,14 @@ async function searchFatSecret(query: string, limit: number = 3): Promise<Nutrit
       const fatMatch = desc.match(/Fat:\s*([\d.]+)/);
       const carbMatch = desc.match(/Carbs:\s*([\d.]+)/);
       const protMatch = desc.match(/Protein:\s*([\d.]+)/);
+      const sugarMatch = desc.match(/Sugars?:\s*([\d.]+)/i);
       const servingMatch = desc.match(/^Per\s+(.+?)\s*-/);
 
       const calories = parseFloat(calMatch?.[1] || '0');
       const protein = parseFloat(protMatch?.[1] || '0');
       const carbs = parseFloat(carbMatch?.[1] || '0');
       const fats = parseFloat(fatMatch?.[1] || '0');
+      const sugar = parseFloat(sugarMatch?.[1] || '0');
 
       if (calories === 0 && protein === 0 && carbs === 0 && fats === 0) {
         continue;
@@ -532,6 +547,7 @@ async function searchFatSecret(query: string, limit: number = 3): Promise<Nutrit
         proteinPer100g: Math.round(protein * 10) / 10,
         carbsPer100g: Math.round(carbs * 10) / 10,
         fatsPer100g: Math.round(fats * 10) / 10,
+        sugarPer100g: Math.round(sugar * 10) / 10,
         defaultServingSize: parseServingGrams(servingMatch?.[1]) ?? 100,
         source: 'fatsecret',
         nutritionSource: food.brand_name ? 'branded_verified' : 'database_generic',
@@ -564,6 +580,7 @@ async function lookupFatSecret(query: string): Promise<NutritionData | null> {
     protein: Math.round(food.proteinPer100g),
     carbs: Math.round(food.carbsPer100g),
     fats: Math.round(food.fatsPer100g),
+    sugar: Math.round(food.sugarPer100g),
     servingSize: food.defaultServingSize || 100,
     servingUnit: 'g',
     source: 'fatsecret',
@@ -673,10 +690,12 @@ serve(async (req) => {
             protein: offResult.protein,
             carbs: offResult.carbs,
             fats: offResult.fats,
+            sugar: offResult.sugar,
             caloriesPer100g: offResult.calories,
             proteinPer100g: offResult.protein,
             carbsPer100g: offResult.carbs,
             fatsPer100g: offResult.fats,
+            sugarPer100g: offResult.sugar,
             defaultServingSize: offResult.servingSize || 100,
             confidence: 'high',
             confidenceScore: offResult.confidenceScore,
@@ -700,10 +719,12 @@ serve(async (req) => {
             protein: frResult.protein,
             carbs: frResult.carbs,
             fats: frResult.fats,
+            sugar: frResult.sugar,
             caloriesPer100g: frResult.calories,
             proteinPer100g: frResult.protein,
             carbsPer100g: frResult.carbs,
             fatsPer100g: frResult.fats,
+            sugarPer100g: frResult.sugar,
             defaultServingSize: 100,
             confidence: 'high',
             confidenceScore: frResult.confidenceScore,
@@ -830,6 +851,7 @@ serve(async (req) => {
               protein: Math.round(result.protein * factor),
               carbs: Math.round(result.carbs * factor),
               fats: Math.round(result.fats * factor),
+              sugar: Math.round(result.sugar * factor),
               confidence: 'high',
               source: result.source,
               notes: `Calculated from ${sourceLabel} (${result.calories} kcal/100g)`
@@ -879,6 +901,7 @@ serve(async (req) => {
               protein: result.protein,
               carbs: result.carbs,
               fats: result.fats,
+              sugar: result.sugar,
               confidence: 'high',
               confidenceScore: result.confidenceScore,
               source: result.source,
@@ -953,7 +976,8 @@ You MUST respond with ONLY a JSON object in this exact format:
       "caloriesPer100g": number,
       "proteinPer100g": number,
       "carbsPer100g": number,
-      "fatsPer100g": number
+      "fatsPer100g": number,
+      "sugarPer100g": number (grams of sugar per 100g - always provide your best estimate, never omit)
     }
   ],
   "confidence": "high" | "medium" | "low",
@@ -996,6 +1020,7 @@ You MUST respond with ONLY a JSON object in this exact format:
       "proteinPer100g": number,
       "carbsPer100g": number,
       "fatsPer100g": number,
+      "sugarPer100g": number (grams of sugar per 100g - always provide your best estimate, never omit),
       "defaultServingSize": number (typical serving in grams),
       "source": "ai_estimation"
     }
@@ -1025,6 +1050,7 @@ You MUST respond with ONLY a JSON object in this exact format:
   "protein": number (grams of protein),
   "carbs": number (grams of carbohydrates),
   "fats": number (grams of fat),
+  "sugar": number (grams of sugar - always provide your best estimate, never omit),
   "confidence": "medium",
   "source": "ai_estimation",
   "notes": "Brief notes about the calculation"
@@ -1052,10 +1078,12 @@ You MUST respond with ONLY a JSON object in this exact format:
   "protein": number,
   "carbs": number,
   "fats": number,
+  "sugar": number (grams of sugar - always provide your best estimate, never omit),
   "caloriesPer100g": number,
   "proteinPer100g": number,
   "carbsPer100g": number,
   "fatsPer100g": number,
+  "sugarPer100g": number (grams of sugar per 100g - always provide your best estimate, never omit),
   "defaultServingSize": 100,
   "confidence": "low",
   "source": "ai_estimation",
@@ -1105,6 +1133,7 @@ You MUST respond with ONLY a JSON object in this exact format:
       "proteinPer100g": number,
       "carbsPer100g": number,
       "fatsPer100g": number,
+      "sugarPer100g": number (grams of sugar per 100g - always provide your best estimate, never omit),
       "userProvided": boolean (true if user gave exact measurement, false if estimated)
     }
   ],
@@ -1134,6 +1163,7 @@ When given a food name or description, you MUST respond with ONLY a JSON object 
   "protein": number (grams of protein),
   "carbs": number (grams of carbohydrates),
   "fats": number (grams of fat),
+  "sugar": number (grams of sugar - always provide your best estimate, never omit),
   "confidence": "medium",
   "source": "ai_estimation",
   "notes": "Brief notes about typical serving size assumed"
@@ -1216,6 +1246,7 @@ Do not include any other text, only the JSON object.`
           protein: 10,
           carbs: 20,
           fats: 8,
+          sugar: 0,
           confidence: "low",
           confidenceScore: 0.3,
           source: "ai_estimation",
