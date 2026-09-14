@@ -14,15 +14,13 @@ export interface DashboardSection {
 }
 
 export const DEFAULT_SECTIONS: DashboardSection[] = [
-  { id: "progress", label: "Today's Progress", icon: "📊", canHide: false },
-  { id: "meals", label: "Today's Meals", icon: "🍽️", canHide: false },
   { id: "coach", label: "Coach Mac", icon: "🤖", canHide: true },
-  { id: "water", label: "Water Intake", icon: "💧", canHide: true },
-  { id: "checkin_trends", label: "Check-In Trends", icon: "📈", canHide: true },
+  { id: "meals", label: "Today's Meals", icon: "🍽️", canHide: false },
+  { id: "progress", label: "Today's Progress", icon: "📊", canHide: false },
 ];
 
 export const DEFAULT_LAYOUT = {
-  sections: ["progress", "meals", "coach", "water", "checkin_trends"],
+  sections: ["coach", "meals", "progress"],
   hidden: [] as string[],
 };
 
