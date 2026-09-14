@@ -64,6 +64,7 @@ interface NutritionPer100g {
   nutritionSource?: 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate';
   confidenceScore?: number;
   brandName?: string;
+  sourceMetadata?: Record<string, unknown>;
 }
 
 // ============================================
@@ -430,14 +431,14 @@ async function lookupUSDA(query: string): Promise<NutritionData | null> {
 // FATSECRET LOOKUP (via edge function proxy)
 // ============================================
 
-async function lookupFatSecret(query: string): Promise<NutritionData | null> {
+async function searchFatSecret(query: string, limit: number = 3): Promise<NutritionPer100g[]> {
   try {
-    console.log(`[FatSecret] Looking up: ${query}`);
+    console.log(`[FatSecret] Searching for: ${query}`);
     const clientId = Deno.env.get('FATSECRET_CLIENT_ID');
     const clientSecret = Deno.env.get('FATSECRET_CLIENT_SECRET');
     if (!clientId || !clientSecret) {
       console.log('[FatSecret] Credentials not configured, skipping');
-      return null;
+      return [];
     }
 
     // Inline token fetch to avoid cross-function calls
@@ -452,7 +453,7 @@ async function lookupFatSecret(query: string): Promise<NutritionData | null> {
 
     if (!tokenResponse.ok) {
       console.error('[FatSecret] Token error:', tokenResponse.status);
-      return null;
+      return [];
     }
 
     const tokenData = await tokenResponse.json();
@@ -475,66 +476,88 @@ async function lookupFatSecret(query: string): Promise<NutritionData | null> {
 
     if (!searchResponse.ok) {
       console.error('[FatSecret] Search error:', searchResponse.status);
-      return null;
+      return [];
     }
 
     const searchData = await searchResponse.json();
     const foods = searchData?.foods?.food;
     if (!foods) {
       console.log('[FatSecret] No results for:', query);
-      return null;
+      return [];
     }
 
     const foodList = Array.isArray(foods) ? foods : [foods];
-    const topFood = foodList[0];
-    if (!topFood) return null;
+    const results: NutritionPer100g[] = [];
 
-    // Parse description: "Per 100g - Calories: 250kcal | Fat: 10.00g | Carbs: 30.00g | Protein: 8.00g"
-    const desc = topFood.food_description || '';
-    const calMatch = desc.match(/Calories:\s*([\d.]+)/);
-    const fatMatch = desc.match(/Fat:\s*([\d.]+)/);
-    const carbMatch = desc.match(/Carbs:\s*([\d.]+)/);
-    const protMatch = desc.match(/Protein:\s*([\d.]+)/);
-    const servingMatch = desc.match(/^Per\s+(.+?)\s*-/);
+    for (const food of foodList.slice(0, limit)) {
+      // Parse description: "Per 100g - Calories: 250kcal | Fat: 10.00g | Carbs: 30.00g | Protein: 8.00g"
+      const desc = food.food_description || '';
+      const calMatch = desc.match(/Calories:\s*([\d.]+)/);
+      const fatMatch = desc.match(/Fat:\s*([\d.]+)/);
+      const carbMatch = desc.match(/Carbs:\s*([\d.]+)/);
+      const protMatch = desc.match(/Protein:\s*([\d.]+)/);
+      const servingMatch = desc.match(/^Per\s+(.+?)\s*-/);
 
-    const calories = parseFloat(calMatch?.[1] || '0');
-    const protein = parseFloat(protMatch?.[1] || '0');
-    const carbs = parseFloat(carbMatch?.[1] || '0');
-    const fats = parseFloat(fatMatch?.[1] || '0');
+      const calories = parseFloat(calMatch?.[1] || '0');
+      const protein = parseFloat(protMatch?.[1] || '0');
+      const carbs = parseFloat(carbMatch?.[1] || '0');
+      const fats = parseFloat(fatMatch?.[1] || '0');
 
-    if (calories === 0 && protein === 0 && carbs === 0 && fats === 0) {
-      return null;
+      if (calories === 0 && protein === 0 && carbs === 0 && fats === 0) {
+        continue;
+      }
+
+      const foodName = food.brand_name
+        ? `${food.brand_name} ${food.food_name}`
+        : food.food_name;
+
+      results.push({
+        name: foodName,
+        caloriesPer100g: Math.round(calories),
+        proteinPer100g: Math.round(protein * 10) / 10,
+        carbsPer100g: Math.round(carbs * 10) / 10,
+        fatsPer100g: Math.round(fats * 10) / 10,
+        defaultServingSize: 100,
+        source: 'fatsecret',
+        nutritionSource: food.brand_name ? 'branded_verified' : 'database_generic',
+        confidenceScore: 0.9,
+        brandName: food.brand_name || undefined,
+        sourceMetadata: {
+          fatsecret_food_id: food.food_id,
+          serving_description: servingMatch?.[1] || 'per serving',
+          food_type: food.food_type,
+        },
+      });
     }
 
-    const foodName = topFood.brand_name
-      ? `${topFood.brand_name} ${topFood.food_name}`
-      : topFood.food_name;
-
-    console.log(`[FatSecret] Found: ${foodName} (${calories} kcal)`);
-
-    return {
-      name: foodName,
-      calories: Math.round(calories),
-      protein: Math.round(protein),
-      carbs: Math.round(carbs),
-      fats: Math.round(fats),
-      servingSize: 100,
-      servingUnit: 'g',
-      source: 'fatsecret',
-      nutritionSource: topFood.brand_name ? 'branded_verified' : 'database_generic',
-      confidence: 'high',
-      confidenceScore: 0.9,
-      brandName: topFood.brand_name || undefined,
-      sourceMetadata: {
-        fatsecret_food_id: topFood.food_id,
-        serving_description: servingMatch?.[1] || 'per serving',
-        food_type: topFood.food_type,
-      },
-    };
+    console.log(`[FatSecret] Found ${results.length} results for: ${query}`);
+    return results;
   } catch (error) {
     console.error('[FatSecret] Error:', error);
-    return null;
+    return [];
   }
+}
+
+async function lookupFatSecret(query: string): Promise<NutritionData | null> {
+  const results = await searchFatSecret(query, 1);
+  if (results.length === 0) return null;
+
+  const food = results[0];
+  return {
+    name: food.name,
+    calories: food.caloriesPer100g,
+    protein: Math.round(food.proteinPer100g),
+    carbs: Math.round(food.carbsPer100g),
+    fats: Math.round(food.fatsPer100g),
+    servingSize: food.defaultServingSize || 100,
+    servingUnit: 'g',
+    source: 'fatsecret',
+    nutritionSource: (food.nutritionSource || 'database_generic') as 'branded_verified' | 'barcode_verified' | 'database_generic' | 'estimate',
+    confidence: 'high',
+    confidenceScore: food.confidenceScore || 0.9,
+    brandName: food.brandName,
+    sourceMetadata: food.sourceMetadata,
+  };
 }
 
 // Input validation schema
@@ -689,10 +712,10 @@ serve(async (req) => {
       console.log(`[Suggestions Mode] UK-first search for: ${searchQuery}`);
       
       // Search UK OFF, FoodRepo, FatSecret, and USDA in parallel (all have 5s timeouts)
-      const [offUKResults, frResults, fsResult, usdaResults] = await Promise.all([
+      const [offUKResults, frResults, fsResults, usdaResults] = await Promise.all([
         searchOpenFoodFactsUK(searchQuery, 4),
         searchFoodRepo(searchQuery, 3),
-        lookupFatSecret(searchQuery),
+        searchFatSecret(searchQuery, 3),
         searchUSDA(searchQuery, 3),
       ]);
       console.log(`[Suggestions Mode] All lookups completed in ${Date.now() - suggestStart}ms`);
@@ -719,23 +742,12 @@ serve(async (req) => {
         }
       }
       
-      // Add FatSecret result
-      if (fsResult) {
-        const key = fsResult.name.toLowerCase().trim();
+      // FatSecret results
+      for (const r of fsResults) {
+        const key = r.name.toLowerCase().trim();
         if (!seenNames.has(key)) {
           seenNames.add(key);
-          allResults.push({
-            name: fsResult.name,
-            caloriesPer100g: fsResult.calories,
-            proteinPer100g: fsResult.protein,
-            carbsPer100g: fsResult.carbs,
-            fatsPer100g: fsResult.fats,
-            defaultServingSize: fsResult.servingSize || 100,
-            source: 'fatsecret',
-            nutritionSource: fsResult.nutritionSource,
-            confidenceScore: 0.9,
-            brandName: fsResult.brandName,
-          });
+          allResults.push(r);
         }
       }
       
@@ -749,7 +761,7 @@ serve(async (req) => {
       }
       
       if (allResults.length > 0) {
-        console.log(`[Suggestions Mode] Found ${allResults.length} total (OFF-UK: ${offUKResults.length}, FoodRepo: ${frResults.length}, FatSecret: ${fsResult ? 1 : 0}, USDA: ${usdaResults.length})`);
+        console.log(`[Suggestions Mode] Found ${allResults.length} total (OFF-UK: ${offUKResults.length}, FoodRepo: ${frResults.length}, FatSecret: ${fsResults.length}, USDA: ${usdaResults.length})`);
         return new Response(
           JSON.stringify({ 
             suggestions: allResults.slice(0, 6)
