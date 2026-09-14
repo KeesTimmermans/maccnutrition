@@ -46,6 +46,7 @@ export const IngredientSearchDialog = ({
   const [manualCarbs, setManualCarbs] = useState("");
   const [manualFats, setManualFats] = useState("");
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueryRef = useRef("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -68,14 +69,22 @@ export const IngredientSearchDialog = ({
       setSuggestions([]);
       return;
     }
+    latestQueryRef.current = q;
     setIsSearching(true);
     try {
       const results = await searchFoodSuggestions(q);
-      setSuggestions(results);
+      if (latestQueryRef.current === q) {
+        setSuggestions(results);
+      }
     } catch (error) {
       console.error("Error searching foods:", error);
+      if (latestQueryRef.current === q) {
+        setSuggestions([]);
+      }
     } finally {
-      setIsSearching(false);
+      if (latestQueryRef.current === q) {
+        setIsSearching(false);
+      }
     }
   }, []);
 

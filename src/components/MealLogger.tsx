@@ -110,6 +110,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueryRef = useRef("");
 
   useEffect(() => {
     const loadFavorites = async () => {
@@ -127,17 +128,24 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       return;
     }
 
+    latestQueryRef.current = query;
     setIsSearching(true);
     try {
       const results = await searchFoodSuggestions(query);
-      setSuggestions(results);
-      setSearchError(null);
+      if (latestQueryRef.current === query) {
+        setSuggestions(results);
+        setSearchError(null);
+      }
     } catch (error) {
       console.error("Error searching foods:", error);
-      setSuggestions([]);
-      setSearchError((error as Error).message || "Search unavailable right now");
+      if (latestQueryRef.current === query) {
+        setSuggestions([]);
+        setSearchError((error as Error).message || "Search unavailable right now");
+      }
     } finally {
-      setIsSearching(false);
+      if (latestQueryRef.current === query) {
+        setIsSearching(false);
+      }
     }
   }, []);
 
