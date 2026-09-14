@@ -342,8 +342,8 @@ async function searchUSDA(query: string, limit: number = 5): Promise<NutritionPe
   try {
     console.log(`[USDA] Searching for: ${query}`);
     
-    // Use DEMO_KEY for basic access (rate limited but free)
-    const apiKey = 'DEMO_KEY';
+    // Use USDA_API_KEY secret if configured, otherwise fall back to DEMO_KEY
+    const apiKey = Deno.env.get('USDA_API_KEY') || 'DEMO_KEY';
     const encodedQuery = encodeURIComponent(query);
     const response = await fetchWithTimeout(
       `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodedQuery}&pageSize=${limit}&dataType=Foundation,SR%20Legacy`,
