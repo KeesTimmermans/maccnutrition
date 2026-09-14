@@ -304,7 +304,10 @@ async function lookupBarcodeOnce(barcode: string): Promise<NutritionData | null>
 
     const productName = product.product_name || product.product_name_en || 'Unknown Product';
     const brandName = product.brands || undefined;
-    const servingSize = parseFloat(product.serving_quantity) || 100;
+    const servingQty = parseFloat(product.serving_quantity);
+    const servingSize = (!isNaN(servingQty) && servingQty > 0)
+      ? servingQty
+      : (parseServingGrams(product.serving_size) ?? 100);
 
     console.log(`[OpenFoodFacts] Found: ${productName} (${brandName || 'no brand'})`);
 
