@@ -110,6 +110,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueryRef = useRef("");
 
   useEffect(() => {
     const loadFavorites = async () => {
