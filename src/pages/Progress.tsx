@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { getMealsByDateRange, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
@@ -35,8 +35,6 @@ interface WeekSummary {
 
 const Progress = () => {
   const { t } = useLanguage();
-  const [weeklyData, setWeeklyData] = useState<DayData[]>([]);
-  const [monthlyData, setMonthlyData] = useState<DayData[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [weekSummary, setWeekSummary] = useState<WeekSummary | null>(null);
@@ -53,10 +51,9 @@ const Progress = () => {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
       
-      const [userBaseline, weekMeals, monthMeals, streaks] = await Promise.all([
+      const [userBaseline, weekMeals, streaks] = await Promise.all([
         getUserBaseline(),
         getMealsByDateRange(weekStart, weekEnd),
-        getMealsByDateRange(subDays(today, 29), today),
         getStreaks(),
       ]);
 
@@ -68,9 +65,6 @@ const Progress = () => {
 
       setBaseline(userBaseline);
       const weekly = aggregateMealsByDay(weekMeals, 7);
-      const monthly = aggregateMealsByDay(monthMeals, 30);
-      setWeeklyData(weekly);
-      setMonthlyData(monthly);
 
       // Calculate weekly summary
       const daysWithData = weekly.filter(d => d.calories > 0);
@@ -226,133 +220,6 @@ const Progress = () => {
                 </Card>
               )}
 
-              {/* Combined Chart */}
-              <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold text-foreground">{t('nutrition_trends')}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <Tabs defaultValue="weekly" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 mb-4">
-                      <TabsTrigger value="weekly">{t('weekly')}</TabsTrigger>
-                      <TabsTrigger value="monthly">{t('monthly')}</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="weekly">
-                      <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={weeklyData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                            <YAxis 
-                              yAxisId="calories" 
-                              orientation="left"
-                              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                              label={{ value: t('calories'), angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
-                            />
-                            <YAxis 
-                              yAxisId="macros" 
-                              orientation="right"
-                              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                              label={{ value: 'g', angle: 90, position: 'insideRight', style: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } }}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'hsl(var(--card))', 
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '8px',
-                              }}
-                              formatter={(value: number, name: string) => {
-                                if (name === 'calories') return [`${value} ${t('cal')}`, t('calories')];
-                                return [`${value}g`, t(name)];
-                              }}
-                            />
-                            <Legend />
-                            <Bar yAxisId="calories" dataKey="calories" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
-                            <Line yAxisId="macros" type="monotone" dataKey="protein" stroke="hsl(var(--protein))" strokeWidth={2} dot={{ fill: 'hsl(var(--protein))' }} />
-                            <Line yAxisId="macros" type="monotone" dataKey="carbs" stroke="hsl(var(--carbs))" strokeWidth={2} dot={{ fill: 'hsl(var(--carbs))' }} />
-                            <Line yAxisId="macros" type="monotone" dataKey="fats" stroke="hsl(var(--fats))" strokeWidth={2} dot={{ fill: 'hsl(var(--fats))' }} />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="flex flex-wrap justify-center gap-4 mt-4">
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded bg-primary" />
-                          <span className="text-xs text-muted-foreground">{t('calories')} ({calorieGoal}/{t('days').slice(0, -1)})</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
-                          <span className="text-xs text-muted-foreground">{t('protein')} ({proteinGoal}g)</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
-                          <span className="text-xs text-muted-foreground">{t('carbs')} ({carbsGoal}g)</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
-                          <span className="text-xs text-muted-foreground">{t('fats')} ({fatsGoal}g)</span>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="monthly">
-                      <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={monthlyData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
-                            <YAxis 
-                              yAxisId="calories" 
-                              orientation="left"
-                              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <YAxis 
-                              yAxisId="macros" 
-                              orientation="right"
-                              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: 'hsl(var(--card))', 
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '8px',
-                              }}
-                              labelFormatter={(label, payload) => payload?.[0]?.payload?.fullDate || label}
-                              formatter={(value: number, name: string) => {
-                                if (name === 'calories') return [`${value} ${t('cal')}`, t('calories')];
-                                return [`${value}g`, t(name)];
-                              }}
-                            />
-                            <Legend />
-                            <Line yAxisId="calories" type="monotone" dataKey="calories" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                            <Line yAxisId="macros" type="monotone" dataKey="protein" stroke="hsl(var(--protein))" strokeWidth={2} dot={false} />
-                            <Line yAxisId="macros" type="monotone" dataKey="carbs" stroke="hsl(var(--carbs))" strokeWidth={2} dot={false} />
-                            <Line yAxisId="macros" type="monotone" dataKey="fats" stroke="hsl(var(--fats))" strokeWidth={2} dot={false} />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="flex flex-wrap justify-center gap-4 mt-4">
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-primary" />
-                          <span className="text-xs text-muted-foreground">{t('calories')}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[hsl(var(--protein))]" />
-                          <span className="text-xs text-muted-foreground">{t('protein')}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[hsl(var(--carbs))]" />
-                          <span className="text-xs text-muted-foreground">{t('carbs')}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[hsl(var(--fats))]" />
-                          <span className="text-xs text-muted-foreground">{t('fats')}</span>
-                        </div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
 
               {/* Progress History */}
               <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
