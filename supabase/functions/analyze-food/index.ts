@@ -132,13 +132,17 @@ async function searchOpenFoodFactsUK(query: string, limit: number = 5): Promise<
       if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
         const productName = product.product_name || product.product_name_en || query;
         const brandName = product.brands || undefined;
+        const servingQty = parseFloat(product.serving_quantity);
+        const servingSize = (!isNaN(servingQty) && servingQty > 0)
+          ? servingQty
+          : (parseServingGrams(product.serving_size) ?? 100);
         results.push({
           name: brandName ? `${brandName} ${productName}` : productName,
           caloriesPer100g: Math.round(calories),
           proteinPer100g: Math.round(protein * 10) / 10,
           carbsPer100g: Math.round(carbs * 10) / 10,
           fatsPer100g: Math.round(fats * 10) / 10,
-          defaultServingSize: parseFloat(product.serving_quantity) || 100,
+          defaultServingSize: servingSize,
           source: 'openfoodfacts' as const,
           nutritionSource: brandName ? 'branded_verified' : 'database_generic',
           confidenceScore: brandName ? 0.92 : 0.82,
