@@ -40,6 +40,7 @@ interface MealLoggerProps {
     protein: number;
     carbs: number;
     fats: number;
+    sugar?: number;
   }) => void;
   userDietContext?: UserDietContext;
   currentDayTotals?: DailyTotals;
@@ -52,12 +53,14 @@ interface AnalysisResult {
   protein: number;
   carbs: number;
   fats: number;
+  sugar?: number;
   confidence: string;
   notes: string;
   caloriesPer100g?: number;
   proteinPer100g?: number;
   carbsPer100g?: number;
   fatsPer100g?: number;
+  sugarPer100g?: number;
   defaultServingSize?: number;
   // Provenance tracking
   source?: string;
@@ -379,6 +382,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       protein: Math.round(analysisResult.proteinPer100g! * factor),
       carbs: Math.round(analysisResult.carbsPer100g! * factor),
       fats: Math.round(analysisResult.fatsPer100g! * factor),
+      sugar: Math.round((analysisResult.sugarPer100g || 0) * factor),
       defaultServingSize: newQuantity,
     });
     setQuantity(newQuantity.toString());
@@ -403,6 +407,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         protein: analysisResult.protein,
         carbs: analysisResult.carbs,
         fats: analysisResult.fats,
+        sugar: analysisResult.sugar || 0,
       });
     }
     // Track meal_logged with source (no food names/macros sent)
