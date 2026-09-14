@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+
 import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { getMealsByDateRange, Meal } from "@/lib/mealService";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
@@ -35,8 +35,6 @@ interface WeekSummary {
 
 const Progress = () => {
   const { t } = useLanguage();
-  const [weeklyData, setWeeklyData] = useState<DayData[]>([]);
-  const [monthlyData, setMonthlyData] = useState<DayData[]>([]);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [weekSummary, setWeekSummary] = useState<WeekSummary | null>(null);
@@ -53,10 +51,9 @@ const Progress = () => {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
       
-      const [userBaseline, weekMeals, monthMeals, streaks] = await Promise.all([
+      const [userBaseline, weekMeals, streaks] = await Promise.all([
         getUserBaseline(),
         getMealsByDateRange(weekStart, weekEnd),
-        getMealsByDateRange(subDays(today, 29), today),
         getStreaks(),
       ]);
 
@@ -68,9 +65,6 @@ const Progress = () => {
 
       setBaseline(userBaseline);
       const weekly = aggregateMealsByDay(weekMeals, 7);
-      const monthly = aggregateMealsByDay(monthMeals, 30);
-      setWeeklyData(weekly);
-      setMonthlyData(monthly);
 
       // Calculate weekly summary
       const daysWithData = weekly.filter(d => d.calories > 0);
