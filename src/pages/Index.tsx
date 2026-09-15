@@ -379,7 +379,7 @@ const Index = () => {
               className="w-full text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
               onClick={async () => {
                 await signOut();
-                navigate("/auth");
+                navigate("/auth", { state: { justSignedOut: true } });
               }}
             >
               Sign out and use a different account

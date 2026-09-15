@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ const Auth = () => {
   }>({});
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   const getCheckoutReturnUrl = () => {
@@ -58,9 +59,10 @@ const Auth = () => {
   useEffect(() => {
     const target = getNextPath();
 
-    // Check if already logged in on mount — redirect away from auth page
+    // Check if already logged in on mount — redirect away from auth page,
+    // but skip if the user just intentionally signed out from another screen.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && !location.state?.justSignedOut) {
         navigate(target, { replace: true });
       }
     });
@@ -75,7 +77,7 @@ const Auth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, isLogin]);
+  }, [navigate, isLogin, location.state]);
 
 
   const validateForm = () => {
