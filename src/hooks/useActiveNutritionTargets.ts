@@ -125,8 +125,11 @@ export function useActiveNutritionTargets(): UseActiveNutritionTargetsResult {
 
             setCompResult(result);
 
+            const todaysWorkouts = await getWorkoutsForDate(todayStr());
+            const hasWorkoutToday = todaysWorkouts.length > 0;
+
             const prepTargets: ActiveNutritionTargets = {
-              calories: result.calories,
+              calories: hasWorkoutToday ? result.trainingDayCalories : result.restDayCalories,
               protein: result.protein,
               carbs: result.carbs,
               fats: result.fats,
