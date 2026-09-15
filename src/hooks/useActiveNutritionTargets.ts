@@ -10,10 +10,12 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, UserBaseline } from "@/lib/userService";
 import { getActiveCompPrep, StoredCompPrep } from "@/lib/competitionPrep/service";
 import { calculateCompetitionPrep } from "@/lib/competitionPrep/engine";
+import { getWorkoutsForDate } from "@/lib/workoutService";
 import type { EventType, CompetitionPrepResult } from "@/lib/competitionPrep/types";
 
 export type TargetSource = "standard" | "competition_prep";
