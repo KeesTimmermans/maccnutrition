@@ -826,7 +826,6 @@ const WorkoutPage = () => {
       toast.success("Workout deleted");
       setDeleteTarget(null);
       setEditingId(null);
-      setJustLogged(null);
       await refresh();
     } catch {
       toast.error("Couldn't delete workout. Please try again.");
