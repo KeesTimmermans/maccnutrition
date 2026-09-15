@@ -763,8 +763,9 @@ const WorkoutPage = () => {
       });
       if (created) {
         setPickerOpen(false);
-        setJustLogged(created);
         await refresh();
+        setEditingId(created.id);
+        setExpandedId(null);
       }
     } catch {
       toast.error("Couldn't log workout. Please try again.");
@@ -776,8 +777,9 @@ const WorkoutPage = () => {
   const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    const target = justLogged;
-    if (!file || !target) return;
+    const targetId = photoTargetId;
+    if (!file || !targetId) return;
+    const target = { id: targetId };
 
     setPhotoProcessing(true);
     setPhotoNotice(null);
