@@ -696,6 +696,8 @@ const WorkoutPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDayWorkouts, setSelectedDayWorkouts] = useState<WorkoutRow[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerTargetDate, setPickerTargetDate] = useState<Date>(new Date());
+  const [pickerSource, setPickerSource] = useState<"today" | "calendar">("today");
   const [savingType, setSavingType] = useState<string | null>(null);
   const [justLogged, setJustLogged] = useState<WorkoutRow | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
