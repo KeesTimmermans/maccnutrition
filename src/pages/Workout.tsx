@@ -182,9 +182,21 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
       setExercises(workout.exercises?.length ? workout.exercises : []);
       setDuration(workout.duration_minutes != null ? String(workout.duration_minutes) : "");
       setNotes(workout.notes ?? "");
+      const nfb = workout.format_block;
+      setBlockOpen(!!nfb);
+      setBlockFormat(nfb?.format ?? null);
+      setBlockDescription(nfb?.description ?? "");
+      setBlockMinutes(nfb?.resultTimeSeconds != null ? String(Math.floor(nfb.resultTimeSeconds / 60)) : "");
+      setBlockSeconds(nfb?.resultTimeSeconds != null ? String(nfb.resultTimeSeconds % 60) : "");
+      setBlockTimeCap(nfb?.timeCapMinutes != null ? String(nfb.timeCapMinutes) : "");
+      setBlockRounds(nfb?.resultRounds != null ? String(nfb.resultRounds) : "");
+      setBlockExtraReps(nfb?.resultExtraReps != null ? String(nfb.resultExtraReps) : "");
+      setBlockTotalMinutes(nfb?.totalMinutes != null ? String(nfb.totalMinutes) : "");
+      setBlockRoundsCompleted(nfb?.roundsCompleted != null ? String(nfb.roundsCompleted) : "");
+      setBlockIntervalMinutes(nfb?.intervalMinutes != null ? String(nfb.intervalMinutes) : "1");
     }
     prevPhotoProcessingRef.current = photoProcessing;
-  }, [photoProcessing, workout.exercises, workout.duration_minutes, workout.notes]);
+  }, [photoProcessing, workout.exercises, workout.duration_minutes, workout.notes, workout.format_block]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
