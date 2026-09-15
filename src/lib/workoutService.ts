@@ -20,6 +20,7 @@ export type WorkoutSource = "manual" | "photo" | "checkbox_only";
 export interface WorkoutFormatBlock {
   format: "emom" | "for_time" | "amrap";
   description?: string;
+  intervalMinutes?: number;
   resultTimeSeconds?: number;
   timeCapMinutes?: number;
   resultRounds?: number;
@@ -274,6 +275,7 @@ export interface ExtractedWorkoutPhoto {
   durationMinutes: number | null;
   confidence: "high" | "medium" | "low";
   notes: string;
+  formatBlock: WorkoutFormatBlock | null;
 }
 
 /**
@@ -297,6 +299,10 @@ export async function extractWorkoutFromPhoto(
     durationMinutes: typeof data?.durationMinutes === "number" ? data.durationMinutes : null,
     confidence: data?.confidence ?? "low",
     notes: data?.notes ?? "",
+    formatBlock:
+      data?.formatBlock && typeof data.formatBlock === "object" && data.formatBlock.format
+        ? (data.formatBlock as WorkoutFormatBlock)
+        : null,
   };
 }
 
