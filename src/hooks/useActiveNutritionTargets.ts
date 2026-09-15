@@ -64,6 +64,10 @@ const DEFAULT_TARGETS: ActiveNutritionTargets = {
   source: "standard",
 };
 
+function todayStr(): string {
+  return format(new Date(), "yyyy-MM-dd");
+}
+
 export function useActiveNutritionTargets(): UseActiveNutritionTargetsResult {
   const [targets, setTargets] = useState<ActiveNutritionTargets>(DEFAULT_TARGETS);
   const [baseline, setBaseline] = useState<UserBaseline | null>(null);
