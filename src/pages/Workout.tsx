@@ -1017,7 +1017,6 @@ const WorkoutPage = () => {
                 ref={photoInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handlePhotoSelected}
               />
