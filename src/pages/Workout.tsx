@@ -699,7 +699,7 @@ const WorkoutPage = () => {
   const [pickerTargetDate, setPickerTargetDate] = useState<Date>(new Date());
   const [pickerSource, setPickerSource] = useState<"today" | "calendar">("today");
   const [savingType, setSavingType] = useState<string | null>(null);
-  const [justLogged, setJustLogged] = useState<WorkoutRow | null>(null);
+  const [photoTargetId, setPhotoTargetId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRow | null>(null);
