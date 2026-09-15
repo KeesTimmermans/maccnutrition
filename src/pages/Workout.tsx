@@ -1101,6 +1101,32 @@ const WorkoutPage = () => {
                 {selectedDayWorkouts.map((w) => renderWorkoutRow(w, false))}
               </div>
             )}
+            {pickerOpen && pickerSource === "calendar" ? (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Pick a workout type</p>
+                  <Button variant="ghost" size="sm" onClick={() => setPickerOpen(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                {typePicker}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setPickerTargetDate(selectedDate);
+                  setPickerSource("calendar");
+                  setPickerOpen(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                {selectedDayWorkouts.length > 0
+                  ? "Add another workout"
+                  : "Log a workout for this day"}
+              </Button>
+            )}
           </div>
         </section>
       </div>
