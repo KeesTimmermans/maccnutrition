@@ -91,7 +91,11 @@ const formatBlockSummary = (block: WorkoutFormatBlock): string => {
     return `${label} — ${block.resultRounds} rounds${block.resultExtraReps ? ` + ${block.resultExtraReps} reps` : ""}`;
   }
   if (block.format === "emom" && block.totalMinutes != null) {
-    return `${label} — ${block.totalMinutes} min${block.roundsCompleted != null ? ` · ${block.roundsCompleted} rounds` : ""}`;
+    const interval =
+      block.intervalMinutes != null && block.intervalMinutes !== 1
+        ? ` (every ${block.intervalMinutes} min)`
+        : "";
+    return `${label}${interval} — ${block.totalMinutes} min${block.roundsCompleted != null ? ` · ${block.roundsCompleted} rounds` : ""}`;
   }
   return label;
 };
@@ -162,6 +166,9 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
   const [blockRoundsCompleted, setBlockRoundsCompleted] = useState(
     fb?.roundsCompleted != null ? String(fb.roundsCompleted) : ""
   );
+  const [blockIntervalMinutes, setBlockIntervalMinutes] = useState(
+    fb?.intervalMinutes != null ? String(fb.intervalMinutes) : "1"
+  );
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -175,9 +182,21 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
       setExercises(workout.exercises?.length ? workout.exercises : []);
       setDuration(workout.duration_minutes != null ? String(workout.duration_minutes) : "");
       setNotes(workout.notes ?? "");
+      const nfb = workout.format_block;
+      setBlockOpen(!!nfb);
+      setBlockFormat(nfb?.format ?? null);
+      setBlockDescription(nfb?.description ?? "");
+      setBlockMinutes(nfb?.resultTimeSeconds != null ? String(Math.floor(nfb.resultTimeSeconds / 60)) : "");
+      setBlockSeconds(nfb?.resultTimeSeconds != null ? String(nfb.resultTimeSeconds % 60) : "");
+      setBlockTimeCap(nfb?.timeCapMinutes != null ? String(nfb.timeCapMinutes) : "");
+      setBlockRounds(nfb?.resultRounds != null ? String(nfb.resultRounds) : "");
+      setBlockExtraReps(nfb?.resultExtraReps != null ? String(nfb.resultExtraReps) : "");
+      setBlockTotalMinutes(nfb?.totalMinutes != null ? String(nfb.totalMinutes) : "");
+      setBlockRoundsCompleted(nfb?.roundsCompleted != null ? String(nfb.roundsCompleted) : "");
+      setBlockIntervalMinutes(nfb?.intervalMinutes != null ? String(nfb.intervalMinutes) : "1");
     }
     prevPhotoProcessingRef.current = photoProcessing;
-  }, [photoProcessing, workout.exercises, workout.duration_minutes, workout.notes]);
+  }, [photoProcessing, workout.exercises, workout.duration_minutes, workout.notes, workout.format_block]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -283,8 +302,10 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
     if (blockFormat === "emom") {
       const total = num(blockTotalMinutes);
       const rounds = num(blockRoundsCompleted);
+      const interval = num(blockIntervalMinutes);
       if (total != null) block.totalMinutes = total;
       if (rounds != null) block.roundsCompleted = rounds;
+      if (interval != null) block.intervalMinutes = interval;
     }
     return block;
   };
@@ -676,7 +697,18 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
                   </div>
                 )}
                 {blockFormat === "emom" && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Every (minutes)</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={blockIntervalMinutes}
+                        onChange={(e) => setBlockIntervalMinutes(e.target.value)}
+                        placeholder="1"
+                        className="h-9"
+                      />
+                    </div>
                     <div>
                       <label className="text-xs text-muted-foreground">Total minutes</label>
                       <Input
@@ -830,6 +862,7 @@ const WorkoutPage = () => {
         photo_url: photoUrl,
         exercises: extraction.exercises,
         duration_minutes: extraction.durationMinutes,
+        format_block: extraction.formatBlock ?? null,
         ...(extraction.workoutType ? { workout_type: extraction.workoutType } : {}),
       });
 
