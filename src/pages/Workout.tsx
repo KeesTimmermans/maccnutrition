@@ -91,7 +91,11 @@ const formatBlockSummary = (block: WorkoutFormatBlock): string => {
     return `${label} — ${block.resultRounds} rounds${block.resultExtraReps ? ` + ${block.resultExtraReps} reps` : ""}`;
   }
   if (block.format === "emom" && block.totalMinutes != null) {
-    return `${label} — ${block.totalMinutes} min${block.roundsCompleted != null ? ` · ${block.roundsCompleted} rounds` : ""}`;
+    const interval =
+      block.intervalMinutes != null && block.intervalMinutes !== 1
+        ? ` (every ${block.intervalMinutes} min)`
+        : "";
+    return `${label}${interval} — ${block.totalMinutes} min${block.roundsCompleted != null ? ` · ${block.roundsCompleted} rounds` : ""}`;
   }
   return label;
 };
@@ -161,6 +165,9 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
   );
   const [blockRoundsCompleted, setBlockRoundsCompleted] = useState(
     fb?.roundsCompleted != null ? String(fb.roundsCompleted) : ""
+  );
+  const [blockIntervalMinutes, setBlockIntervalMinutes] = useState(
+    fb?.intervalMinutes != null ? String(fb.intervalMinutes) : "1"
   );
 
   const [query, setQuery] = useState("");
