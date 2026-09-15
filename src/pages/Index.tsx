@@ -37,6 +37,7 @@ const Index = () => {
     checkSubscription,
     subscriptionChecked,
     subscriptionError,
+    signOut,
   } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -372,6 +373,17 @@ const Index = () => {
             >
               {subscriptionLoading ? "Refreshing…" : "Refresh access"}
             </Button>
+
+            <button
+              type="button"
+              className="w-full text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              onClick={async () => {
+                await signOut();
+                navigate("/auth");
+              }}
+            >
+              Sign out and use a different account
+            </button>
           </div>
 
           {checkoutUrl ? (
