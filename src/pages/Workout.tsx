@@ -168,6 +168,16 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevPhotoProcessingRef = useRef(photoProcessing);
+
+  useEffect(() => {
+    if (prevPhotoProcessingRef.current === true && photoProcessing === false) {
+      setExercises(workout.exercises?.length ? workout.exercises : []);
+      setDuration(workout.duration_minutes != null ? String(workout.duration_minutes) : "");
+      setNotes(workout.notes ?? "");
+    }
+    prevPhotoProcessingRef.current = photoProcessing;
+  }, [photoProcessing, workout.exercises, workout.duration_minutes, workout.notes]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
