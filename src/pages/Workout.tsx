@@ -862,6 +862,7 @@ const WorkoutPage = () => {
         photo_url: photoUrl,
         exercises: extraction.exercises,
         duration_minutes: extraction.durationMinutes,
+        format_block: extraction.formatBlock ?? null,
         ...(extraction.workoutType ? { workout_type: extraction.workoutType } : {}),
       });
 
