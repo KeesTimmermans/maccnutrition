@@ -981,42 +981,8 @@ const WorkoutPage = () => {
             <div className="flex justify-center py-6">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
-          ) : justLogged && editingId !== justLogged.id ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-primary font-medium">
-                <Check className="w-4 h-4" />
-                {typeMeta(justLogged.workout_type).label} logged for today
-              </div>
-              {photoProcessing ? (
-                <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Reading your workout...
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 min-w-[9rem]"
-                    onClick={() => {
-                      setEditingId(justLogged.id);
-                      setExpandedId(null);
-                    }}
-                  >
-                    Add exercise details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 min-w-[9rem]"
-                    onClick={() => photoInputRef.current?.click()}
-                  >
-                    <Camera className="w-4 h-4 mr-1" />
-                    Add photo
-                  </Button>
-                  <Button className="flex-1 min-w-[9rem]" onClick={() => setJustLogged(null)}>
-                    Done
-                  </Button>
-                </div>
-              )}
+          ) : (
+            <>
               <input
                 ref={photoInputRef}
                 type="file"
@@ -1025,9 +991,6 @@ const WorkoutPage = () => {
                 className="hidden"
                 onChange={handlePhotoSelected}
               />
-            </div>
-          ) : (
-            <>
               {photoNotice && (
                 <p className="text-xs text-muted-foreground bg-muted rounded-2xl p-3">
                   {photoNotice}
