@@ -302,8 +302,10 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
     if (blockFormat === "emom") {
       const total = num(blockTotalMinutes);
       const rounds = num(blockRoundsCompleted);
+      const interval = num(blockIntervalMinutes);
       if (total != null) block.totalMinutes = total;
       if (rounds != null) block.roundsCompleted = rounds;
+      if (interval != null) block.intervalMinutes = interval;
     }
     return block;
   };
@@ -695,7 +697,18 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
                   </div>
                 )}
                 {blockFormat === "emom" && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Every (minutes)</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={blockIntervalMinutes}
+                        onChange={(e) => setBlockIntervalMinutes(e.target.value)}
+                        placeholder="1"
+                        className="h-9"
+                      />
+                    </div>
                     <div>
                       <label className="text-xs text-muted-foreground">Total minutes</label>
                       <Input
