@@ -59,6 +59,13 @@ Rules:
 - For "workoutType", guess from context using one of: weightlifting, cardio, crossfit, yoga, hiit, swimming, cycling, sports, martial_arts, dance, walking. If you can't tell, use null.
 - If nothing is clearly legible, return an empty exercises array with confidence "low".
 - Set confidence to "low" whenever handwriting is ambiguous.
+- Recognize conditioning formats written in the photo: "AMRAP", "EMOM", "For Time"/"FT", and interval variants like "E2MOM", "Every 2 min", "Every 3 minutes". Set formatBlock.format accordingly ("amrap", "emom", "for_time").
+- For EMOM, set "intervalMinutes" from the interval written (E2MOM / Every 2 min => 2, Every 3 minutes => 3). Plain unqualified "EMOM" means every minute, so use 1.
+- Put the movements and reps as free text in formatBlock.description, e.g. "21-15-9 Thrusters 95lb / Pull-ups".
+- Only fill in result fields (resultTimeSeconds, resultRounds, resultExtraReps, roundsCompleted) if a result is actually written down, not just the prescription. Otherwise leave them null.
+- When the workout is purely a format-block style workout, leave "exercises" empty; only populate "exercises" for genuinely standard strength-training entries.
+- A single photo can contain both (e.g. a strength portion plus a metcon finisher) — populate both "exercises" and "formatBlock" when applicable.
+- If no conditioning format is present, set "formatBlock" to null.
 Do not include any other text, only the JSON object.`;
 
 serve(async (req) => {
