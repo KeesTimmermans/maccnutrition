@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/consentConstants";
 import { ReConsentModal } from "@/components/ReConsentModal";
 import { AnalyticsConsentBanner } from "@/components/AnalyticsConsentBanner";
-import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
+
 import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useAuthAnalytics } from "@/analytics/useAuthAnalytics";
 import { useAuth } from "@/hooks/useAuth";
@@ -283,7 +283,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <AnalyticsConsentBanner />
-        <UpdateAvailableBanner />
+        
         <OnboardingProvider>
           <HashRouter>
             <ScrollToTop />
