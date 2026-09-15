@@ -22,6 +22,7 @@ const FALLBACK = {
   durationMinutes: null,
   confidence: "low",
   notes: "Couldn't clearly read the photo — add exercises manually below.",
+  formatBlock: null,
 };
 
 const SYSTEM_PROMPT = `You are a fitness assistant that reads photos of handwritten or printed workout notes, training logs, and gym whiteboards, and extracts the structured workout.
@@ -37,7 +38,18 @@ You MUST respond with ONLY a JSON object in this exact format:
   "workoutType": string or null,
   "durationMinutes": number or null,
   "confidence": "high" | "medium" | "low",
-  "notes": "Brief note about anything unclear"
+  "notes": "Brief note about anything unclear",
+  "formatBlock": {
+    "format": "emom" | "for_time" | "amrap" | null,
+    "description": string,
+    "intervalMinutes": number or null,
+    "resultTimeSeconds": number or null,
+    "timeCapMinutes": number or null,
+    "resultRounds": number or null,
+    "resultExtraReps": number or null,
+    "totalMinutes": number or null,
+    "roundsCompleted": number or null
+  } or null
 }
 
 Rules:
