@@ -178,8 +178,14 @@ serve(async (req) => {
               ? parsed.confidence
               : "low",
             notes: typeof parsed.notes === "string" ? parsed.notes : "",
+            formatBlock:
+              parsed.formatBlock &&
+              typeof parsed.formatBlock === "object" &&
+              ["emom", "for_time", "amrap"].includes(parsed.formatBlock.format)
+                ? parsed.formatBlock
+                : null,
           };
-          if ((result.exercises as unknown[]).length === 0) {
+          if ((result.exercises as unknown[]).length === 0 && !result.formatBlock) {
             result = { ...result, confidence: "low", notes: result.notes || FALLBACK.notes };
           }
         }
