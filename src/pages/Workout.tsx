@@ -106,6 +106,8 @@ interface EditorProps {
   defaultUnit: "kg" | "lb";
   onSaved: (w: WorkoutRow) => void;
   onCancel: () => void;
+  onPhotoClick?: () => void;
+  photoProcessing?: boolean;
 }
 
 /** Group adjacent exercises linked via supersetWithNext into runs of indices. */
