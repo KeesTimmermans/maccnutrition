@@ -304,6 +304,28 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick,
 
   return (
     <div className="space-y-4">
+      {onPhotoClick && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={photoProcessing}
+          onClick={onPhotoClick}
+        >
+          {photoProcessing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              Reading your workout...
+            </>
+          ) : (
+            <>
+              <Camera className="w-4 h-4 mr-1" />
+              Fill from photo
+            </>
+          )}
+        </Button>
+      )}
+
 
       <div className="grid grid-cols-2 gap-2">
         <div>
