@@ -756,7 +756,7 @@ const WorkoutPage = () => {
     setSavingType(type);
     try {
       const created = await saveWorkout({
-        workout_date: todayStr(),
+        workout_date: format(pickerTargetDate, "yyyy-MM-dd"),
         workout_type: type,
         source: "checkbox_only",
         exercises: [],
