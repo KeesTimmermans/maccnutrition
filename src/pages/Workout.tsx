@@ -1043,7 +1043,7 @@ const WorkoutPage = () => {
               )}
 
 
-              {pickerOpen ? (
+              {pickerOpen && pickerSource === "today" ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Pick a workout type</p>
@@ -1054,7 +1054,14 @@ const WorkoutPage = () => {
                   {typePicker}
                 </div>
               ) : (
-                <Button className="w-full" onClick={() => setPickerOpen(true)}>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setPickerTargetDate(new Date());
+                    setPickerSource("today");
+                    setPickerOpen(true);
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-1" />
                   {todayWorkouts.length > 0 ? "Add another workout" : "Log a workout"}
                 </Button>
