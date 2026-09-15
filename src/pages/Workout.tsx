@@ -847,9 +847,13 @@ const WorkoutPage = () => {
           <ExerciseEditor
             workout={w}
             defaultUnit={defaultUnit}
+            photoProcessing={photoProcessing}
+            onPhotoClick={() => {
+              setPhotoTargetId(w.id);
+              photoInputRef.current?.click();
+            }}
             onSaved={async () => {
               setEditingId(null);
-              setJustLogged(null);
               setPhotoNotice(null);
               await refresh();
             }}
@@ -857,6 +861,7 @@ const WorkoutPage = () => {
               setEditingId(null);
               setPhotoNotice(null);
             }}
+
 
           />
         </div>
