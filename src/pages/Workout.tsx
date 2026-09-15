@@ -106,6 +106,8 @@ interface EditorProps {
   defaultUnit: "kg" | "lb";
   onSaved: (w: WorkoutRow) => void;
   onCancel: () => void;
+  onPhotoClick?: () => void;
+  photoProcessing?: boolean;
 }
 
 /** Group adjacent exercises linked via supersetWithNext into runs of indices. */
@@ -124,7 +126,7 @@ const buildSupersetGroups = (exercises: WorkoutExercise[]): number[][] => {
   return groups;
 };
 
-const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps) => {
+const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick, photoProcessing }: EditorProps) => {
   const [exercises, setExercises] = useState<WorkoutExercise[]>(
     workout.exercises?.length ? workout.exercises : []
   );
@@ -302,6 +304,28 @@ const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps
 
   return (
     <div className="space-y-4">
+      {onPhotoClick && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={photoProcessing}
+          onClick={onPhotoClick}
+        >
+          {photoProcessing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              Reading your workout...
+            </>
+          ) : (
+            <>
+              <Camera className="w-4 h-4 mr-1" />
+              Fill from photo
+            </>
+          )}
+        </Button>
+      )}
+
 
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -699,7 +723,7 @@ const WorkoutPage = () => {
   const [pickerTargetDate, setPickerTargetDate] = useState<Date>(new Date());
   const [pickerSource, setPickerSource] = useState<"today" | "calendar">("today");
   const [savingType, setSavingType] = useState<string | null>(null);
-  const [justLogged, setJustLogged] = useState<WorkoutRow | null>(null);
+  const [photoTargetId, setPhotoTargetId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutRow | null>(null);
@@ -763,8 +787,9 @@ const WorkoutPage = () => {
       });
       if (created) {
         setPickerOpen(false);
-        setJustLogged(created);
         await refresh();
+        setEditingId(created.id);
+        setExpandedId(null);
       }
     } catch {
       toast.error("Couldn't log workout. Please try again.");
@@ -776,8 +801,9 @@ const WorkoutPage = () => {
   const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    const target = justLogged;
-    if (!file || !target) return;
+    const targetId = photoTargetId;
+    if (!file || !targetId) return;
+    const target = { id: targetId };
 
     setPhotoProcessing(true);
     setPhotoNotice(null);
@@ -824,7 +850,6 @@ const WorkoutPage = () => {
       toast.success("Workout deleted");
       setDeleteTarget(null);
       setEditingId(null);
-      setJustLogged(null);
       await refresh();
     } catch {
       toast.error("Couldn't delete workout. Please try again.");
@@ -846,9 +871,13 @@ const WorkoutPage = () => {
           <ExerciseEditor
             workout={w}
             defaultUnit={defaultUnit}
+            photoProcessing={photoProcessing}
+            onPhotoClick={() => {
+              setPhotoTargetId(w.id);
+              photoInputRef.current?.click();
+            }}
             onSaved={async () => {
               setEditingId(null);
-              setJustLogged(null);
               setPhotoNotice(null);
               await refresh();
             }}
@@ -856,6 +885,7 @@ const WorkoutPage = () => {
               setEditingId(null);
               setPhotoNotice(null);
             }}
+
 
           />
         </div>
@@ -981,42 +1011,8 @@ const WorkoutPage = () => {
             <div className="flex justify-center py-6">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
-          ) : justLogged && editingId !== justLogged.id ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-primary font-medium">
-                <Check className="w-4 h-4" />
-                {typeMeta(justLogged.workout_type).label} logged for today
-              </div>
-              {photoProcessing ? (
-                <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Reading your workout...
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 min-w-[9rem]"
-                    onClick={() => {
-                      setEditingId(justLogged.id);
-                      setExpandedId(null);
-                    }}
-                  >
-                    Add exercise details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 min-w-[9rem]"
-                    onClick={() => photoInputRef.current?.click()}
-                  >
-                    <Camera className="w-4 h-4 mr-1" />
-                    Add photo
-                  </Button>
-                  <Button className="flex-1 min-w-[9rem]" onClick={() => setJustLogged(null)}>
-                    Done
-                  </Button>
-                </div>
-              )}
+          ) : (
+            <>
               <input
                 ref={photoInputRef}
                 type="file"
@@ -1025,9 +1021,6 @@ const WorkoutPage = () => {
                 className="hidden"
                 onChange={handlePhotoSelected}
               />
-            </div>
-          ) : (
-            <>
               {photoNotice && (
                 <p className="text-xs text-muted-foreground bg-muted rounded-2xl p-3">
                   {photoNotice}
