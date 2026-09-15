@@ -696,6 +696,8 @@ const WorkoutPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDayWorkouts, setSelectedDayWorkouts] = useState<WorkoutRow[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerTargetDate, setPickerTargetDate] = useState<Date>(new Date());
+  const [pickerSource, setPickerSource] = useState<"today" | "calendar">("today");
   const [savingType, setSavingType] = useState<string | null>(null);
   const [justLogged, setJustLogged] = useState<WorkoutRow | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -754,7 +756,7 @@ const WorkoutPage = () => {
     setSavingType(type);
     try {
       const created = await saveWorkout({
-        workout_date: todayStr(),
+        workout_date: format(pickerTargetDate, "yyyy-MM-dd"),
         workout_type: type,
         source: "checkbox_only",
         exercises: [],
@@ -1041,7 +1043,7 @@ const WorkoutPage = () => {
               )}
 
 
-              {pickerOpen ? (
+              {pickerOpen && pickerSource === "today" ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Pick a workout type</p>
@@ -1052,7 +1054,14 @@ const WorkoutPage = () => {
                   {typePicker}
                 </div>
               ) : (
-                <Button className="w-full" onClick={() => setPickerOpen(true)}>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setPickerTargetDate(new Date());
+                    setPickerSource("today");
+                    setPickerOpen(true);
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-1" />
                   {todayWorkouts.length > 0 ? "Add another workout" : "Log a workout"}
                 </Button>
@@ -1091,6 +1100,32 @@ const WorkoutPage = () => {
               <div className="space-y-2">
                 {selectedDayWorkouts.map((w) => renderWorkoutRow(w, false))}
               </div>
+            )}
+            {pickerOpen && pickerSource === "calendar" ? (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Pick a workout type</p>
+                  <Button variant="ghost" size="sm" onClick={() => setPickerOpen(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                {typePicker}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setPickerTargetDate(selectedDate);
+                  setPickerSource("calendar");
+                  setPickerOpen(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                {selectedDayWorkouts.length > 0
+                  ? "Add another workout"
+                  : "Log a workout for this day"}
+              </Button>
             )}
           </div>
         </section>
