@@ -126,7 +126,7 @@ const buildSupersetGroups = (exercises: WorkoutExercise[]): number[][] => {
   return groups;
 };
 
-const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel }: EditorProps) => {
+const ExerciseEditor = ({ workout, defaultUnit, onSaved, onCancel, onPhotoClick, photoProcessing }: EditorProps) => {
   const [exercises, setExercises] = useState<WorkoutExercise[]>(
     workout.exercises?.length ? workout.exercises : []
   );
