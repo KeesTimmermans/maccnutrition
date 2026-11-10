@@ -236,13 +236,14 @@ When you recommend a specific meal, recipe, or snack — include a machine-reada
 
 CRITICAL RULES:
 1. Include AT MOST ONE meal_suggestion per single message. However, the user CAN request multiple meal suggestions across different messages — there is NO daily limit. Each new message can include a fresh meal_suggestion.
-2. Place the JSON block FIRST — at the very top of your message, BEFORE any human-readable text.
+2. Write 1-3 short sentences first (the idea and why it fits their remaining numbers), then put the JSON block LAST in the message.
 3. The fenced code block MUST open with \`\`\`json and close with \`\`\` on its own line. ALWAYS close the block.
 4. The JSON inside MUST be valid and complete. If you cannot produce a complete, valid JSON block, do NOT output any JSON at all.
 5. estimated_macros fields MUST be realistic numbers — NEVER null, NEVER 0. Calculate based on the log_payload ingredients and quantities.
 6. You MUST include a "log_payload" array with structured ingredient data (name, quantity in grams, unit). This is required for macro calculation.
-7. When including a meal_suggestion, keep the human-readable explanation SHORT — under 150 words maximum. This prevents the response from being cut off.
+7. When including a meal_suggestion, the whole reply outside the JSON must be under 120 words. This prevents the response from being cut off.
 8. Skip the JSON block entirely for general advice like "eat more protein" — only include it when naming a specific meal or recipe.
+9. Keep the block small: at most 6 log_payload entries, at most 6 ingredients, at most 4 instructions (each under 12 words), and at most 1 note.
 
 Use this EXACT schema:
 
@@ -1057,7 +1058,7 @@ USER APP STATE:
     let maxTokens: number;
     if (effectiveType === 'chat' || effectiveType === 'focus_tip') {
       const baseTokens = maxTokensByStyle[coachingTone] || 1600;
-      maxTokens = isMealIntent ? Math.max(baseTokens, 1800) : Math.max(baseTokens, 1500);
+      maxTokens = isMealIntent ? Math.max(baseTokens, 3500) : Math.max(baseTokens, 1500);
     } else {
       maxTokens = 2200; // generous for check-ins and progress updates
     }
@@ -1071,33 +1072,6 @@ ${chatStyleBlock}
 
     LANGUAGE INSTRUCTION:
 ${languageInstruction}
-
-MEAL RESPONSE FORMAT (required for ANY meal/recipe/snack suggestion in regular chat):
-Keep the full answer concise (~1200 characters target). Use this EXACT structure and complete every section:
-
-**Meal idea:** [One sentence]
-
-**Ingredients / quick steps:**
-• [Ingredient or step 1]
-• [Ingredient or step 2]
-• [Ingredient or step 3]
-• [Ingredient or step 4]
-• [Max 6 bullets total]
-
-**Your portion:** [X grams]
-
-**Kids portion:** [Y grams]
-
-**What to log:**
-• [Exact item 1 — name + grams]
-• [Exact item 2 — name + grams]
-
-Rules:
-- Maximum ONE empathy sentence.
-- No long introductions or preamble.
-- Always include meal + logging instructions in the same message.
-- Never stop before completing **What to log**.
-- If a response is interrupted, continue the answer immediately without apologizing.
 
 CONSECUTIVE PATTERN DETECTION:
 If the check-in data shows "CONSECUTIVE PATTERN ALERT" with metrics logged at the SAME VALUE for 3+ days:
@@ -1149,24 +1123,38 @@ When you mention any calorie or macro number in your response, it MUST match the
       return "";
     };
 
-    const isStopped = (reason?: string) => {
-      const normalized = (reason || "").toLowerCase();
-      return normalized === "stop" || normalized === "end_turn";
+    // A meal reply is complete when it has no JSON block at all, or a closed, valid meal_suggestion block.
+    const mealBlockIsComplete = (text: string): boolean => {
+      if (!text.includes("```json")) return true;
+      for (const match of text.matchAll(/```json\s*([\s\S]*?)```/g)) {
+        try {
+          const parsed = JSON.parse(match[1].trim());
+          if (
+            parsed && typeof parsed === "object" &&
+            parsed.type === "meal_suggestion" &&
+            typeof parsed.meal?.title === "string" && parsed.meal.title.trim() &&
+            Array.isArray(parsed.meal?.log_payload) && parsed.meal.log_payload.length > 0
+          ) {
+            return true;
+          }
+        } catch {
+          // not valid JSON — keep looking
+        }
+      }
+      return false;
     };
 
-    const hasMealSections = (text: string) => {
-      const normalized = text.toLowerCase();
-      return normalized.includes("meal idea")
-        && (normalized.includes("ingredients / quick steps") || normalized.includes("quick recipe"))
-        && normalized.includes("your portion")
-        && normalized.includes("kids portion")
-        && normalized.includes("what to log");
+    // Remove closed-but-broken JSON blocks, then cut from any unclosed ```json fence to the end.
+    const stripBrokenMealBlocks = (text: string): string => {
+      let out = text.replace(/```json\s*([\s\S]*?)```/g, (full) =>
+        mealBlockIsComplete(full) ? full : ""
+      );
+      const unclosed = out.indexOf("```json");
+      if (unclosed !== -1 && !/```json[\s\S]*?```/.test(out.slice(unclosed))) {
+        out = out.slice(0, unclosed);
+      }
+      return out.trim();
     };
-
-    const stripLeadingApology = (text: string) =>
-      text
-        .replace(/^(sorry|apologies|i apologize)[^\n.!?]*[\n.!?]\s*/i, "")
-        .trim();
 
     console.log("Calling AI gateway for chat, messages count:", apiMessages.length, "max_tokens:", maxTokens);
 
@@ -1211,50 +1199,50 @@ When you mention any calorie or macro number in your response, it MUST match the
       aiResponse = "I lost the tail end of that response. Send it once more and I’ll complete it fully.";
     }
 
-    // For meal intent, continue until we have required sections and a stop finish_reason (max 3 total calls)
+    // For meal intent: one retry if the reply was cut off or the meal block is broken.
     if (isMealIntent) {
-      let attempts = 0;
-      while (attempts < 2 && (!isStopped(finishReason) || !hasMealSections(aiResponse))) {
-        attempts += 1;
-        console.log("Meal response incomplete, sending auto-continue", { attempts, finishReason });
-
-        const continueMessages = [
-          ...apiMessages,
-          { role: "assistant", content: aiResponse },
-          {
-            role: "user",
-            content: "Continue from where you left off. Start with the missing meal/recipe and logging instructions. Do not repeat earlier text. Do not apologize."
+      if (finishReason === "length" || !mealBlockIsComplete(aiResponse)) {
+        let retryText = "";
+        try {
+          const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                ...apiMessages,
+                {
+                  role: "user",
+                  content: "Answer again in under 80 words, then ONE complete meal_suggestion JSON block with at most 5 ingredients and 3 short steps. Close the code fence.",
+                },
+              ],
+              max_tokens: maxTokens,
+            }),
+          });
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            retryText = parseResponseText(retryData.choices?.[0]?.message?.content);
+            if (retryText) finishReason = retryData.choices?.[0]?.finish_reason;
+          } else {
+            console.error("Meal retry failed with status", retryResponse.status);
           }
-        ];
-
-        const continueResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: continueMessages,
-            max_tokens: 1500,
-          }),
-        });
-
-        if (!continueResponse.ok) {
-          console.error("Auto-continue failed with status", continueResponse.status);
-          break;
+        } catch (retryErr) {
+          console.error("Meal retry error:", retryErr);
         }
 
-        const continueData = await continueResponse.json();
-        const continueReason = continueData.choices?.[0]?.finish_reason;
-        const continuedText = stripLeadingApology(parseResponseText(continueData.choices?.[0]?.message?.content));
-
-        if (!continuedText) {
-          break;
+        if (retryText && mealBlockIsComplete(retryText)) {
+          aiResponse = retryText;
+          console.log("meal retry used");
+        } else {
+          const cleaned = stripBrokenMealBlocks(aiResponse);
+          aiResponse = cleaned || "Here's a quick idea: tell me what ingredients you have and I'll build it around your numbers.";
+          console.log("meal fallback text");
         }
-
-        aiResponse = `${aiResponse}\n\n${continuedText}`.trim();
-        finishReason = continueReason;
+      } else {
+        console.log("meal reply ok");
       }
     }
 

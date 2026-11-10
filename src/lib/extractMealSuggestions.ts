@@ -160,7 +160,7 @@ export function extractMealSuggestions(message: string): ExtractedMealSuggestion
   cleanText = cleanText.replace(/\n{3,}/g, "\n\n").trim();
 
   if (!cleanText && suggestions.length === 0) {
-    cleanText = "I had trouble formatting that meal suggestion — please send again.";
+    cleanText = "I couldn't build a one-tap meal for that. Ask me again, or tell me what ingredients you have.";
   }
 
   return { cleanText, suggestions };
