@@ -12,6 +12,7 @@ import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
 import { WeeklyHabitCard } from "@/components/WeeklyHabitCard";
+import { LeftTodayCard } from "@/components/LeftTodayCard";
 
 import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
@@ -58,6 +59,7 @@ export const TodayDashboard = () => {
   const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined);
   const [freshCheckInData, setFreshCheckInData] = useState<{
     mood: number;
     energy_level: number;
@@ -732,6 +734,26 @@ export const TodayDashboard = () => {
           ))
         )}
         
+        {!isLoading && !targetsLoading && (
+          <LeftTodayCard
+            remaining={{
+              calories: activeTargets.calories - totalCalories,
+              protein: activeTargets.protein - totalProtein,
+              carbs: activeTargets.carbs - totalCarbs,
+              fats: activeTargets.fats - totalFats,
+            }}
+            todaysMealNames={meals.map((m) => m.name)}
+            onLogged={loadData}
+            onAskCoach={(prefill) => {
+              setChatPrefill(prefill);
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
+          />
+        )}
+
         <AddMealCard onClick={() => setShowMealLogger(true)} />
       </div>
     </section>
@@ -870,8 +892,10 @@ export const TodayDashboard = () => {
           onClose={() => {
             setShowAIChat(false);
             setFreshCheckInData(null);
+            setChatPrefill(undefined);
           }} 
           freshCheckIn={freshCheckInData}
+          initialInput={chatPrefill}
           onDailyFocusPointsReceived={(focusPoints) => {
             setDailyCheckInFocusPoints(focusPoints);
           }}

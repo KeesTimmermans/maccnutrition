@@ -169,6 +169,52 @@ export const getRecentUniqueMeals = async (days: number = 5): Promise<Meal[]> =>
   return Array.from(uniqueMealsMap.values()).slice(0, 10);
 };
 
+export const getFrequentMeals = async (days: number = 21): Promise<Array<Meal & { count: number }>> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from("meals")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("logged_at", startDate.toISOString())
+      .lt("logged_at", today.toISOString())
+      .order("logged_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching frequent meals:", error);
+      return [];
+    }
+
+    // Group by name; rows are newest-first so the first row seen keeps the most recent macros
+    const grouped = new Map<string, Meal & { count: number }>();
+    for (const meal of (data || []) as Meal[]) {
+      const key = meal.name.toLowerCase().trim();
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        grouped.set(key, { ...meal, sugar: meal.sugar || 0, count: 1 });
+      }
+    }
+
+    return Array.from(grouped.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 30);
+  } catch (error) {
+    console.error("Error fetching frequent meals:", error);
+    return [];
+  }
+};
+
 export interface FoodSuggestion {
   name: string;
   caloriesPer100g: number;

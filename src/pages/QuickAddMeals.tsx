@@ -59,6 +59,7 @@ const QuickAddMeals = () => {
           protein: meal.protein,
           carbs: meal.carbs,
           fats: meal.fats,
+          sugar: meal.sugar,
         });
       }
 
@@ -160,6 +161,7 @@ const QuickAddMeals = () => {
                               protein: meal.protein,
                               carbs: meal.carbs,
                               fats: meal.fats,
+                              sugar: meal.sugar,
                             });
                             toast.success(`${meal.name} logged!`);
                           } catch {

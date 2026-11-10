@@ -38,6 +38,7 @@ interface AICoachChatProps {
   onClose: () => void;
   freshCheckIn?: DailyCheckIn | null;
   onDailyFocusPointsReceived?: (focusPoints: CoachingFocusPoint[]) => void;
+  initialInput?: string;
 }
 
 const EMOJI_SCALE = ['😫', '😕', '😐', '🙂', '😊'];
@@ -49,11 +50,11 @@ const generateClientMessageId = () => {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 };
 
-export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived }: AICoachChatProps) => {
+export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived, initialInput }: AICoachChatProps) => {
   const { language } = useLanguage();
   const { targets: activeTargets } = useActiveNutritionTargets();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialInput ?? "");
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
