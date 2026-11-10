@@ -132,7 +132,13 @@ const requestSchema = z.object({
   todaysMeals: z.array(mealSchema).max(20, "Too many meals").optional(),
   type: z.enum(['chat', 'meal_feedback', 'daily_checkin', 'focus_tip', 'progress_update']).optional(),
   progressUpdateData: z.object({
-    choice: z.enum(['happy', 'more_progress', 'update_measurements']),
+    // Legacy monthly check-in shape
+    choice: z.enum(['happy', 'more_progress', 'update_measurements']).optional(),
+    // Bi-weekly check-in shape (ProgressUpdateDialog)
+    progressStatus: z.enum(['on_track', 'slower_than_expected', 'faster_than_expected', 'no_change']).optional(),
+    energy: z.enum(['good', 'low']).optional(),
+    hunger: z.enum(['manageable', 'high']).optional(),
+    actionIntent: z.enum(['keep_plan', 'increase_rate', 'reduce_fatigue', 'diet_break']).optional(),
     feedback: z.string().max(1000).optional(),
     measurementsUpdated: z.boolean().optional(),
   }).optional()
@@ -755,7 +761,14 @@ RESPONSE STYLE (MOTIVATIONAL):
       
       progressUpdateContext = `
 MONTHLY PROGRESS CHECK-IN:
-The user just completed their monthly progress check-in and ${choiceLabels[progressUpdateData.choice]}.
+${progressUpdateData.choice
+  ? `The user just completed their monthly progress check-in and ${choiceLabels[progressUpdateData.choice]}.`
+  : `The user just completed their progress check-in.
+- Progress vs expectations: ${(progressUpdateData.progressStatus || 'not given').replace(/_/g, ' ')}
+- Energy: ${progressUpdateData.energy || 'not given'}
+- Hunger: ${progressUpdateData.hunger || 'not given'}
+- What they want next: ${(progressUpdateData.actionIntent || 'not given').replace(/_/g, ' ')}
+Any target changes have already been calculated by the app — acknowledge them, never recalculate them.`}
 ${progressUpdateData.feedback ? `Additional feedback from user: "${progressUpdateData.feedback}"` : ''}
 ${progressUpdateData.measurementsUpdated ? 'They have also updated their body measurements.' : ''}
 
