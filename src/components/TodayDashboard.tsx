@@ -36,7 +36,6 @@ import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { buildUnifiedCoachContext, buildEdgeFunctionUserContext } from "@/lib/unifiedCoachContext";
-import { getRecentWorkouts, type Workout } from "@/lib/workoutService";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
 
@@ -83,7 +82,6 @@ export const TodayDashboard = () => {
   const [totalWaterMl, setTotalWaterMl] = useState(0);
   const [mealPatterns, setMealPatterns] = useState<MealPatternAnalysis | null>(null);
   const [accountAgeDays, setAccountAgeDays] = useState(0);
-  const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
   const [customFocusPoints, setCustomFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
   const [dailyCheckInFocusPoints, setDailyCheckInFocusPoints] = useState<CoachingFocusPoint[] | null>(null);
@@ -126,12 +124,11 @@ export const TodayDashboard = () => {
       waterIntakeMl: totalWaterMl,
       todaysCheckIn: null,
       accountAgeDays,
-      recentWorkouts,
     });
     return buildEdgeFunctionUserContext(unified);
     // Only rebuild when the inputs the habit generator cares about change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetsLoading, baseline, activeTargets, accountAgeDays, recentWorkouts]);
+  }, [targetsLoading, baseline, activeTargets, accountAgeDays]);
 
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
@@ -339,7 +336,7 @@ export const TodayDashboard = () => {
 
   const loadData = async () => {
     try {
-      const [dbMeals, userBaseline, streaks, checkInData, recentCheckIns, waterData, monthlyFocusPoints, dailyFocusPoints, workouts] = await Promise.all([
+      const [dbMeals, userBaseline, streaks, checkInData, recentCheckIns, waterData, monthlyFocusPoints, dailyFocusPoints] = await Promise.all([
         getTodaysMeals(),
         getUserBaseline(),
         getStreaks(),
@@ -348,10 +345,7 @@ export const TodayDashboard = () => {
         getTodaysWaterIntake(),
         getActiveCoachingFocusPoints(),
         getTodaysDailyFocusPoints(),
-        getRecentWorkouts(7).catch(() => [] as Workout[]),
       ]);
-
-      setRecentWorkouts(workouts);
       
       
       setCustomFocusPoints(monthlyFocusPoints);

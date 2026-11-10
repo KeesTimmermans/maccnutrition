@@ -24,7 +24,6 @@ import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/comp
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { buildUnifiedCoachContext, buildEdgeFunctionUserContext, type UnifiedCoachContext } from "@/lib/unifiedCoachContext";
 import { getAccountAgeDays } from "@/lib/coachingAnalytics";
-import { getRecentWorkouts, type Workout } from "@/lib/workoutService";
 
 interface Message {
   role: "user" | "assistant";
@@ -139,13 +138,12 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
 
   const initializeChat = async () => {
     try {
-      const [userBaseline, meals, recentCheckIns, savedConversation, compPrep, recentWorkouts] = await Promise.all([
+      const [userBaseline, meals, recentCheckIns, savedConversation, compPrep] = await Promise.all([
         getUserBaseline(),
         getTodaysMeals(),
         getRecentCheckIns(7),
         loadWeeklyConversation(),
         buildCompPrepCoachContext(null, null),
-        getRecentWorkouts(7).catch(() => [] as Workout[]),
       ]);
 
       setBaseline(userBaseline);
@@ -190,7 +188,6 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived 
         waterIntakeMl: waterIntake,
         todaysCheckIn: null, // will be set below
         accountAgeDays: getAccountAgeDays(userBaseline),
-        recentWorkouts,
       });
 
       console.log('[Coach Mac Debug] Unified context built:', {
