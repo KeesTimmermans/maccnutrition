@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { MeasurementsStep, MeasurementsData } from "@/components/MeasurementsStep";
 import { updateUserMeasurements, UserBaseline } from "@/lib/userService";
 import {
@@ -514,20 +513,23 @@ export const ProgressUpdateDialog = ({
                   <MessageCircle className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium">Coach Mac</span>
                 </div>
-                <ScrollArea className="max-h-[300px]">
-                  <div className="prose prose-sm max-w-none text-foreground">
-                    {coachResponse?.split("\n").map((paragraph, i) => (
+                <div className="prose prose-sm max-w-none text-foreground">
+                  {coachResponse
+                    ?.split("\n")
+                    .filter((paragraph) => paragraph.trim() !== "")
+                    .map((paragraph, i) => (
                       <p key={i} className="mb-2 last:mb-0 text-sm leading-relaxed">
                         {paragraph}
                       </p>
                     ))}
-                  </div>
-                </ScrollArea>
+                </div>
               </div>
 
-              <Button onClick={handleFinish} className="w-full">
-                Done <Sparkles className="w-4 h-4 ml-2" />
-              </Button>
+              <div className="sticky bottom-0 z-10 bg-background pt-3">
+                <Button onClick={handleFinish} className="w-full">
+                  Done <Sparkles className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </div>
           )}
         </div>
