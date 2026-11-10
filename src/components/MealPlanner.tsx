@@ -8,6 +8,7 @@ import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { GroceryList } from "@/components/GroceryList";
 import { saveFavoriteMeal } from "@/lib/favoriteMealService";
 import { saveMeal } from "@/lib/mealService";
+import { getWeekStart } from "@/lib/mealPlanService";
 import { toast } from "sonner";
 import { getEdgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
 import { useLanguage } from "@/lib/i18n";
@@ -60,15 +61,6 @@ interface MealPlannerProps {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-// Helper to get the start of the current week (Monday)
-const getWeekStart = () => {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when Sunday
-  const monday = new Date(now.setDate(diff));
-  return monday.toISOString().split('T')[0];
-};
 
 export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const { t } = useLanguage();

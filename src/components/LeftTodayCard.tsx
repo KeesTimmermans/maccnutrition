@@ -3,6 +3,7 @@ import { Check, Plus, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getFrequentMeals, saveMeal, Meal } from "@/lib/mealService";
+import { getThisWeeksPlanMeals, PlanMeal } from "@/lib/mealPlanService";
 
 interface LeftTodayCardProps {
   remaining: { calories: number; protein: number; carbs: number; fats: number };
@@ -12,6 +13,18 @@ interface LeftTodayCardProps {
 }
 
 type FrequentMeal = Meal & { count: number };
+
+/** Any meal that can be scaled: a previously logged meal or a meal-plan meal. */
+export interface Candidate {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  sugar?: number;
+  count?: number;
+  type?: string;
+}
 
 export interface Budget {
   calories: number;
@@ -28,8 +41,8 @@ export interface ScaledMacros {
   sugar: number;
 }
 
-export interface ScaledSuggestion {
-  meal: FrequentMeal;
+export interface ScaledSuggestion<T extends Candidate = Candidate> {
+  meal: T;
   k: number;
   scaled: ScaledMacros;
   score: number;
@@ -59,12 +72,12 @@ export const computeScaleFactor = (meal: { calories: number; protein: number }, 
   return Math.max(0.5, Math.round(k * 4) / 4);
 };
 
-export const rankScaledSuggestions = (
-  history: FrequentMeal[],
+export const rankScaledSuggestions = <T extends Candidate>(
+  history: T[],
   todaysMealNames: string[],
   budget: Budget,
   limit = 3,
-): ScaledSuggestion[] => {
+): ScaledSuggestion<T>[] => {
   const todayNames = new Set(todaysMealNames.map((n) => n.toLowerCase().trim()));
 
   return history
@@ -82,7 +95,7 @@ export const rankScaledSuggestions = (
         1 -
         (0.6 * Math.abs(scaled.protein - budget.protein)) / Math.max(budget.protein, 1) -
         (0.4 * Math.abs(scaled.calories - budget.calories)) / Math.max(budget.calories, 1) +
-        0.02 * Math.min(meal.count, 5);
+        0.02 * Math.min(meal.count ?? 0, 5);
       return { meal, k, scaled, score };
     })
     .filter((s) => s.scaled.calories <= budget.calories * 1.15 && s.scaled.calories >= 80)
@@ -90,10 +103,44 @@ export const rankScaledSuggestions = (
     .slice(0, limit);
 };
 
+/** Meal types that suit the local time of day. */
+export const preferredMealTypes = (hour: number): string[] =>
+  hour < 11 ? ["breakfast", "snack"] : hour < 16 ? ["lunch", "snack"] : ["dinner", "snack"];
+
+/** Option A: the single best-ranked scaled logged meal. */
+export const pickOptionA = <T extends Candidate>(
+  history: T[],
+  todaysMealNames: string[],
+  budget: Budget,
+): ScaledSuggestion<T> | null => rankScaledSuggestions(history, todaysMealNames, budget, 1)[0] ?? null;
+
+/**
+ * Option B: the single best-ranked scaled plan meal. Excludes meals logged today and Option A's meal,
+ * prefers time-of-day meal types, and falls back to all plan meals if no preferred type fits.
+ */
+export const pickOptionB = (
+  planMeals: PlanMeal[],
+  todaysMealNames: string[],
+  budget: Budget,
+  hour: number,
+  optionAName?: string | null,
+): ScaledSuggestion<PlanMeal> | null => {
+  const excluded = optionAName ? [...todaysMealNames, optionAName] : todaysMealNames;
+  const prefs = preferredMealTypes(hour);
+  const matching = planMeals.filter((m) => {
+    const t = (m.type || "").toLowerCase();
+    return prefs.some((p) => t.includes(p));
+  });
+  const preferred = rankScaledSuggestions(matching, excluded, budget, 1)[0];
+  if (preferred) return preferred;
+  return rankScaledSuggestions(planMeals, excluded, budget, 1)[0] ?? null;
+};
+
 export const portionTag = (k: number) => (k === 1 ? "usual portion" : `${k}× your last portion`);
 
 export const LeftTodayCard = ({ remaining, todaysMealNames, onLogged, onAskCoach }: LeftTodayCardProps) => {
   const [history, setHistory] = useState<FrequentMeal[]>([]);
+  const [planMeals, setPlanMeals] = useState<PlanMeal[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [lastLoggedName, setLastLoggedName] = useState<string | null>(null);
   const [mealsLeft, setMealsLeft] = useState<number>(() => defaultMealsLeft(new Date().getHours()));
@@ -102,6 +149,9 @@ export const LeftTodayCard = ({ remaining, todaysMealNames, onLogged, onAskCoach
     let cancelled = false;
     getFrequentMeals().then((meals) => {
       if (!cancelled) setHistory(meals);
+    });
+    getThisWeeksPlanMeals().then((meals) => {
+      if (!cancelled) setPlanMeals(meals);
     });
     return () => {
       cancelled = true;
@@ -115,28 +165,35 @@ export const LeftTodayCard = ({ remaining, todaysMealNames, onLogged, onAskCoach
     fats: clamp0(remaining.fats),
   };
 
-  const suggestions = useMemo(
-    () => rankScaledSuggestions(history, todaysMealNames, computeBudget(remaining, mealsLeft)),
+  const { optionA, optionB } = useMemo(() => {
+    const budget = computeBudget(remaining, mealsLeft);
+    const a = pickOptionA(history, todaysMealNames, budget);
+    const b = pickOptionB(planMeals, todaysMealNames, budget, new Date().getHours(), a?.meal.name ?? null);
+    return { optionA: a, optionB: b };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [history, todaysMealNames, remaining.calories, remaining.protein, remaining.carbs, remaining.fats, mealsLeft],
-  );
+  }, [history, planMeals, todaysMealNames, remaining.calories, remaining.protein, remaining.carbs, remaining.fats, mealsLeft]);
 
-  const handleLog = async (s: ScaledSuggestion) => {
+  const logScaled = async (
+    rowKey: string,
+    name: string,
+    macros: { calories: number; protein: number; carbs: number; fats: number; sugar?: number },
+    notes?: string,
+  ) => {
     if (savingId) return;
-    setSavingId(s.meal.id);
+    setSavingId(rowKey);
     try {
       await saveMeal({
-        name: s.meal.name,
-        calories: s.scaled.calories,
-        protein: s.scaled.protein,
-        carbs: s.scaled.carbs,
-        fats: s.scaled.fats,
-        sugar: s.scaled.sugar,
-        ...(s.k !== 1 ? { notes: `Portion adjusted to ${s.k}× from your last logged portion` } : {}),
+        name,
+        calories: macros.calories,
+        protein: macros.protein,
+        carbs: macros.carbs,
+        fats: macros.fats,
+        ...(macros.sugar !== undefined ? { sugar: macros.sugar } : {}),
+        ...(notes ? { notes } : {}),
       });
-      setLastLoggedName(s.meal.name);
+      setLastLoggedName(name);
       setMealsLeft((prev) => Math.max(1, prev - 1));
-      toast.success(`${s.meal.name} logged!`);
+      toast.success(`${name} logged!`);
       onLogged();
     } catch {
       toast.error("Failed to log meal");
@@ -144,6 +201,22 @@ export const LeftTodayCard = ({ remaining, todaysMealNames, onLogged, onAskCoach
       setSavingId(null);
     }
   };
+
+  const handleLogA = (s: ScaledSuggestion<FrequentMeal>) =>
+    logScaled(
+      "a",
+      s.meal.name,
+      s.scaled,
+      s.k !== 1 ? `Portion adjusted to ${s.k}× from your last logged portion` : undefined,
+    );
+
+  const handleLogB = (s: ScaledSuggestion<PlanMeal>) =>
+    logScaled(
+      "b",
+      s.meal.name,
+      { calories: s.scaled.calories, protein: s.scaled.protein, carbs: s.scaled.carbs, fats: s.scaled.fats },
+      s.k === 1 ? "From your meal plan" : `From your meal plan, adjusted to ${s.k}×`,
+    );
 
   const askPrefill = `I have ${display.calories} kcal and ${display.protein}g protein left today. What should I eat?`;
   const askButton = (
@@ -216,42 +289,52 @@ export const LeftTodayCard = ({ remaining, todaysMealNames, onLogged, onAskCoach
   } else if (overCaloriesProteinShort) {
     body = <div>{askButton}</div>;
   } else if (remaining.calories >= 100) {
-    if (suggestions.length > 0) {
+    const renderRow = (label: string, rowKey: string, s: ScaledSuggestion, onLog: () => void) => (
+      <div key={rowKey} className="space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">{s.meal.name}</p>
+            <p className="text-[11px] text-muted-foreground">{portionTag(s.k)}</p>
+            <p className="text-xs text-muted-foreground">
+              {s.scaled.calories} kcal · {s.scaled.protein}g protein
+            </p>
+          </div>
+          <button
+            onClick={onLog}
+            disabled={savingId === rowKey || !!savingId}
+            aria-label={`Log ${s.meal.name}`}
+            className="shrink-0 p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-60"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+
+    if (optionA || optionB) {
       body = (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {mealsLeftSelector}
-          {suggestions.map((s) => {
-            const isSaving = savingId === s.meal.id;
-            return (
-              <div
-                key={s.meal.id}
-                className="flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{s.meal.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{portionTag(s.k)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {s.scaled.calories} kcal · {s.scaled.protein}g protein
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleLog(s)}
-                  disabled={isSaving || !!savingId}
-                  aria-label={`Log ${s.meal.name}`}
-                  className="shrink-0 p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-60"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            );
-          })}
+          {optionA && renderRow("From your meals", "a", optionA, () => handleLogA(optionA))}
+          {optionB ? (
+            renderRow("From your meal plan", "b", optionB, () => handleLogB(optionB))
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">Want a meal built around your numbers?</p>
+              {askButton}
+            </div>
+          )}
         </div>
       );
     } else {
       body = (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">Not sure what to eat?</p>
-          {askButton}
+        <div className="space-y-3">
+          {mealsLeftSelector}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Not sure what to eat?</p>
+            {askButton}
+          </div>
         </div>
       );
     }

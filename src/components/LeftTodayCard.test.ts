@@ -1,14 +1,18 @@
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/lib/mealService", () => ({ getFrequentMeals: vi.fn(), saveMeal: vi.fn() }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
 import {
   computeBudget,
   computeScaleFactor,
   defaultMealsLeft,
+  pickOptionA,
+  pickOptionB,
   portionTag,
   rankScaledSuggestions,
 } from "./LeftTodayCard";
+import { flattenPlanMeals, PlanMeal } from "@/lib/mealPlanService";
 
 const meal = (id: string, name: string, calories: number, protein: number, count = 1) =>
   ({
@@ -78,5 +82,66 @@ describe("LeftTodayCard scaling rules", () => {
     expect(portionTag(1)).toBe("usual portion");
     expect(portionTag(1.5)).toBe("1.5× your last portion");
     expect(portionTag(0.75)).toBe("0.75× your last portion");
+  });
+});
+
+const plan = (name: string, type: string, calories: number, protein: number): PlanMeal => ({
+  name,
+  type,
+  calories,
+  protein,
+  carbs: 40,
+  fats: 15,
+});
+
+describe("LeftTodayCard meal plan option", () => {
+  const budget = { calories: 500, protein: 35, carbs: 0, fats: 0 };
+
+  it("de-duplicates plan meals by lowercased trimmed name, keeping the first", () => {
+    const result = flattenPlanMeals({
+      days: [
+        { meals: [{ name: "Chicken Salad", type: "lunch", calories: 450, protein: 40, carbs: 20, fats: 15 }] },
+        {
+          meals: [
+            { name: "  chicken salad ", type: "dinner", calories: 600, protein: 50, carbs: 30, fats: 20 },
+            { name: "Bad meal", type: "dinner", calories: "lots", protein: 10 },
+            { type: "dinner", calories: 300, protein: 10 },
+          ],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      { name: "Chicken Salad", type: "lunch", calories: 450, protein: 40, carbs: 20, fats: 15 },
+    ]);
+  });
+
+  it("excludes a plan meal logged today and Option A's meal", () => {
+    const meals = [
+      plan("Porridge", "breakfast", 500, 35),
+      plan("Greek yoghurt bowl", "breakfast", 500, 35),
+      plan("Egg muffins", "breakfast", 500, 35),
+    ];
+    const b = pickOptionB(meals, ["porridge"], budget, 8, "Greek Yoghurt Bowl");
+    expect(b?.meal.name).toBe("Egg muffins");
+  });
+
+  it("prefers breakfast over dinner before 11:00", () => {
+    const meals = [plan("Steak and rice", "Dinner", 500, 35), plan("Protein oats", "Breakfast", 500, 30)];
+    expect(pickOptionB(meals, [], budget, 9)?.meal.name).toBe("Protein oats");
+  });
+
+  it("falls back to all plan meal types when no preferred type fits", () => {
+    const meals = [plan("Steak and rice", "Dinner", 500, 35), plan("Tiny oats", "Breakfast", 20, 1)];
+    expect(pickOptionB(meals, [], budget, 9)?.meal.name).toBe("Steak and rice");
+  });
+
+  it("returns no plan option when the plan is empty", () => {
+    expect(pickOptionB([], [], budget, 12)).toBeNull();
+    expect(flattenPlanMeals(null)).toEqual([]);
+  });
+
+  it("Option A is the single best logged meal", () => {
+    const a = pickOptionA([meal("x", "Wrap", 500, 35, 3), meal("y", "Toast", 500, 5, 3)], [], budget);
+    expect(a?.meal.name).toBe("Wrap");
   });
 });
