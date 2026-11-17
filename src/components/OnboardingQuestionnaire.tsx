@@ -203,9 +203,9 @@ const initialData: OnboardingData = {
 
 // Signup asks only the essentials. The other step components (medical, eating_behavior,
 // challenges, competition_prep, preferences, measurements) stay in this file for reuse later.
-const getSteps = (): { id: StepType; title: string; icon: React.ReactNode }[] => [
-  { id: "demographics", title: "About you", icon: <User className="w-6 h-6" /> },
-  { id: "goals", title: "Your goal", icon: <Target className="w-6 h-6" /> },
+const getSteps = (t: (key: string) => string): { id: StepType; title: string; icon: React.ReactNode }[] => [
+  { id: "demographics", title: t('about_you'), icon: <User className="w-6 h-6" /> },
+  { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
   { id: "lifestyle", title: "Your week", icon: <Activity className="w-6 h-6" /> },
   { id: "food", title: "Food & health", icon: <Utensils className="w-6 h-6" /> },
 ];
@@ -274,7 +274,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
     onComplete(finalData);
   };
   
-  const steps = getSteps();
+  const steps = getSteps(t);
   
   // Female step goes last when applicable
   const allSteps = data.sex === "female" 
@@ -758,12 +758,15 @@ const MedicalStep = ({ data, updateData, toggleArrayItem, t }: {
   );
 };
 
-const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = false }: { 
+export const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = false, extrasOnly = false }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
+  /** Signup: only activity level, training days and sleep. */
   essentialsOnly?: boolean;
+  /** Profile completion: only the fields hidden at signup. */
+  extrasOnly?: boolean;
 }) => {
   const activityLevels = [
     { label: t('not_active'), desc: t('not_active_desc'), value: "not_active" },
@@ -858,6 +861,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = 
       )}
 
       {/* Overall Activity Level */}
+      {!extrasOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('daily_activity_level')}</Label>
         <p className="text-xs text-muted-foreground -mt-1">Including work + leisure</p>
@@ -880,8 +884,10 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = 
           ))}
         </div>
       </div>
+      )}
 
       {/* Training Days */}
+      {!extrasOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('training_days_week')}</Label>
         <div className="grid grid-cols-4 gap-2">
@@ -900,6 +906,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = 
           ))}
         </div>
       </div>
+      )}
 
       {/* Workout Types - NEW */}
       {!essentialsOnly && (
@@ -976,6 +983,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = 
       </div>
       )}
 
+      {!extrasOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('avg_sleep_night')}</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -994,6 +1002,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = 
           ))}
         </div>
       </div>
+      )}
 
       {/* Stress Level */}
       {!essentialsOnly && (
@@ -1021,7 +1030,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = 
 };
 
 // NEW: Eating Behavior Step
-const EatingBehaviorStep = ({ data, updateData, toggleArrayItem, t }: { 
+export const EatingBehaviorStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
@@ -1158,7 +1167,7 @@ const EatingBehaviorStep = ({ data, updateData, toggleArrayItem, t }: {
 };
 
 // NEW: Challenges & History Step
-const ChallengesStep = ({ data, updateData, toggleArrayItem, t }: { 
+export const ChallengesStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
@@ -1344,15 +1353,18 @@ const ChallengesStep = ({ data, updateData, toggleArrayItem, t }: {
   );
 };
 
-const GoalsStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = false }: { 
+export const GoalsStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = false, extrasOnly = false }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
+  /** Signup: only primary and secondary goals. */
   essentialsOnly?: boolean;
+  /** Profile completion: only motivation style and accountability. */
+  extrasOnly?: boolean;
 }) => {
-  // In essentialsOnly mode the event question is hidden, so nothing event-specific is shown.
-  const eventKey = !essentialsOnly && data.preparingForEvent === "yes" && data.compEventType
+  // In essentialsOnly/extrasOnly mode the event question is hidden, so nothing event-specific is shown.
+  const eventKey = !essentialsOnly && !extrasOnly && data.preparingForEvent === "yes" && data.compEventType
     ? data.compEventType as EventType
     : null;
   const eventLabel = eventKey && EVENT_LABELS[eventKey] ? EVENT_LABELS[eventKey] : null;
@@ -1397,13 +1409,15 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = fals
   return (
     <div className="space-y-6 animate-slide-up">
       {/* Event-specific guidance banner */}
-      {guidance && (
+      {!extrasOnly && guidance && (
         <div className="bg-accent/50 rounded-xl p-4 flex gap-3">
           <Trophy className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <p className="text-sm text-foreground">{guidance.tagline}</p>
         </div>
       )}
 
+      {!extrasOnly && (
+      <>
       <div className="space-y-3">
         <Label className="text-sm font-semibold">
           {eventLabel ? `What is your main goal for your ${eventLabel} race?` : t('primary_goal')}
@@ -1492,7 +1506,11 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = fals
           </div>
         )}
       </div>
+      </>
+      )}
 
+      {!essentialsOnly && (
+      <>
       <div className="space-y-3">
         <Label className="text-sm font-semibold">What motivates you most?</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -1537,9 +1555,11 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = fals
           ))}
         </div>
       </div>
+      </>
+      )}
 
       {/* Preparing for event question */}
-      {!essentialsOnly && (
+      {!essentialsOnly && !extrasOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">
           {eventLabel ? `Are you preparing for a ${eventLabel} event?` : "Are you preparing for an event or competition?"}
@@ -1570,11 +1590,14 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = fals
   );
 };
 
-const PreferencesStep = ({ data, updateData, t, essentialsOnly = false }: { 
+export const PreferencesStep = ({ data, updateData, t, essentialsOnly = false, extrasOnly = false }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   t: (key: string) => string;
+  /** Signup: only diet type, meals per day and coaching tone. */
   essentialsOnly?: boolean;
+  /** Profile completion: only the fields hidden at signup. */
+  extrasOnly?: boolean;
 }) => {
   const dietTypes = [
     { label: t('omnivore'), desc: t('omnivore_desc'), value: "omnivore" },
@@ -1627,6 +1650,8 @@ const PreferencesStep = ({ data, updateData, t, essentialsOnly = false }: {
 
   return (
     <div className="space-y-6 animate-slide-up">
+      {!extrasOnly && (
+      <>
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('diet_type')}</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -1667,6 +1692,8 @@ const PreferencesStep = ({ data, updateData, t, essentialsOnly = false }: {
           ))}
         </div>
       </div>
+      </>
+      )}
 
       {!essentialsOnly && (
       <>
@@ -1762,6 +1789,7 @@ const PreferencesStep = ({ data, updateData, t, essentialsOnly = false }: {
       </>
       )}
 
+      {!extrasOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('coaching_tone')}</Label>
         <div className="space-y-2">
@@ -1783,6 +1811,7 @@ const PreferencesStep = ({ data, updateData, t, essentialsOnly = false }: {
           ))}
         </div>
       </div>
+      )}
 
       {!essentialsOnly && (
       <div className="space-y-2">

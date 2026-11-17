@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineResults, calculateHydration, calculateNutritionTargets } from "@/lib/baselineCalculations";
+import { affectsTargets } from "@/lib/profileSections";
 
 export interface UserBaseline {
   id: string;
@@ -389,7 +390,7 @@ export const sendBaselineEmail = async (
  * Build a pseudo-OnboardingData object from stored baseline fields.
  * Reused by both nutrition and hydration recalculation.
  */
-function baselineToOnboardingData(baseline: UserBaseline): import("@/components/OnboardingQuestionnaire").OnboardingData {
+export function baselineToOnboardingData(baseline: UserBaseline): import("@/components/OnboardingQuestionnaire").OnboardingData {
   return {
     name: baseline.name || "",
     age: baseline.age?.toString() || "",
@@ -531,3 +532,30 @@ export const updateProfileAndRecalculate = async (fields: {
 
 /** @deprecated Use updateProfileAndRecalculate instead */
 export const updateHydrationInputs = updateProfileAndRecalculate;
+
+/**
+ * Save ONE "Complete your profile" section as a partial update (never the whole row).
+ * Recalculates nutrition targets when the section contains target-affecting fields.
+ */
+export const saveProfileSection = async (fields: Record<string, unknown>): Promise<UserBaseline | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("user_baselines")
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error saving profile section:", error);
+    throw error;
+  }
+
+  const updated = data as unknown as UserBaseline;
+  if (affectsTargets(fields)) {
+    return await recalculateNutritionFromBaseline(updated);
+  }
+  return updated;
+};

@@ -12,6 +12,7 @@ import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
 import { WeeklyHabitCard } from "@/components/WeeklyHabitCard";
+import { ProfileCompletionCard } from "@/components/ProfileCompletionCard";
 import { LeftTodayCard } from "@/components/LeftTodayCard";
 import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
 
@@ -57,7 +58,7 @@ export const TodayDashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
-  const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
+  const { targets: activeTargets, loading: targetsLoading, refresh: refreshTargets } = useActiveNutritionTargets();
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined);
@@ -879,6 +880,18 @@ export const TodayDashboard = () => {
 
         {/* Weekly Habit */}
         <WeeklyHabitCard userContext={habitUserContext} />
+
+        {/* Complete your profile (questions no longer asked at signup) */}
+        {!targetsLoading && baseline && (
+          <ProfileCompletionCard
+            baseline={baseline}
+            onSaved={() => {
+              // Pick up recalculated targets (rings, Left today) and the updated answers
+              refreshTargets();
+              loadData();
+            }}
+          />
+        )}
 
         {/* Recalibration notification removed — targets auto-recalculate */}
 
