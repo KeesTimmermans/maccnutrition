@@ -13,6 +13,7 @@ import { WaterTracker } from "@/components/WaterTracker";
 import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
 import { WeeklyHabitCard } from "@/components/WeeklyHabitCard";
 import { LeftTodayCard } from "@/components/LeftTodayCard";
+import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
 
 import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
@@ -860,6 +861,20 @@ export const TodayDashboard = () => {
               <div className="text-2xl">👋</div>
             </button>
           </section>
+        )}
+
+        {/* Weekly recap (Sundays and Mondays only) */}
+        {!targetsLoading && (
+          <WeeklyRecapCard
+            targets={{ calories: activeTargets.calories, protein: activeTargets.protein }}
+            onAskCoach={(prefill) => {
+              setChatPrefill(prefill);
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
+          />
         )}
 
         {/* Weekly Habit */}
