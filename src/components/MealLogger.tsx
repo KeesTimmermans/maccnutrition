@@ -41,10 +41,12 @@ interface MealLoggerProps {
     carbs: number;
     fats: number;
     sugar?: number;
-  }) => void;
+  }, options?: { loggedAt?: Date }) => void;
   userDietContext?: UserDietContext;
   currentDayTotals?: DailyTotals;
   dailyTargets?: DailyTotals;
+  /** Show a Today | Yesterday switch so a meal can be logged for yesterday. */
+  allowYesterday?: boolean;
 }
 
 interface AnalysisResult {
@@ -86,9 +88,21 @@ interface AdjustableIngredient extends ParsedIngredient {
 type TrackingMethod = 'select' | 'barcode' | 'describe' | 'photo' | 'upload';
 type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'upload' | 'quantity' | 'adjust' | 'adjust_ingredients' | 'confirm';
 
-export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotals, dailyTargets }: MealLoggerProps) => {
+export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotals, dailyTargets, allowYesterday = false }: MealLoggerProps) => {
   const { t } = useLanguage();
   const [step, setStep] = useState<LoggerStep>('method');
+  // Which day this meal is logged for; starts at "today" each time the logger opens (it mounts fresh).
+  const [logDay, setLogDay] = useState<"today" | "yesterday">("today");
+  const isYesterday = allowYesterday && logDay === "yesterday";
+
+  // Yesterday at local noon (same convention as Meal History) so time zones can't shift the day.
+  const getSubmitOptions = (): { loggedAt?: Date } | undefined => {
+    if (!isYesterday) return undefined;
+    const loggedAt = new Date();
+    loggedAt.setDate(loggedAt.getDate() - 1);
+    loggedAt.setHours(12, 0, 0, 0);
+    return { loggedAt };
+  };
   const [trackingMethod, setTrackingMethod] = useState<TrackingMethod>('select');
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -398,7 +412,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         protein: totals.protein,
         carbs: totals.carbs,
         fats: totals.fats,
-      });
+      }, getSubmitOptions());
     } else if (analysisResult) {
       onSubmit({
         name: analysisResult.name,
@@ -408,7 +422,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         carbs: analysisResult.carbs,
         fats: analysisResult.fats,
         sugar: analysisResult.sugar || 0,
-      });
+      }, getSubmitOptions());
     }
     // Track meal_logged with source (no food names/macros sent)
     trackMealLogged(trackingMethod === 'select' ? 'search' : trackingMethod);
@@ -422,7 +436,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
       protein: fav.protein,
       carbs: fav.carbs,
       fats: fav.fats,
-    });
+    }, getSubmitOptions());
     trackMealLogged('favorite');
     onClose();
   };
@@ -527,8 +541,29 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
   // Method selection screen
   const renderMethodSelection = () => (
     <div className="space-y-4">
-      {/* Quick Meals Navigation Button */}
-      <QuickMeals />
+      {allowYesterday && (
+        <div className="flex justify-center">
+          <div role="radiogroup" aria-label="Log meal for" className="inline-flex rounded-xl bg-muted p-1">
+            {(["today", "yesterday"] as const).map((day) => (
+              <button
+                key={day}
+                type="button"
+                role="radio"
+                aria-checked={logDay === day}
+                onClick={() => setLogDay(day)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  logDay === day ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {day === "today" ? "Today" : "Yesterday"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Meals Navigation Button (opens a page that always logs for today) */}
+      {!isYesterday && <QuickMeals />}
 
       <p className="text-muted-foreground text-center mb-6">
         Choose how you'd like to log your meal
@@ -1121,8 +1156,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
             <p className="text-xs text-muted-foreground mt-4">{analysisResult.notes}</p>
           )}
 
-          {/* Daily total preview - only show if we have current day totals */}
-          {currentDayTotals && (
+          {/* Daily total preview - only show if we have current day totals (they are today's) */}
+          {currentDayTotals && !isYesterday && (
             <div className="mt-4 pt-4 border-t border-border">
               <p className="text-sm font-medium text-foreground mb-3">Today's total (after logging):</p>
               <div className="grid grid-cols-4 gap-2 text-center">
@@ -1303,8 +1338,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
           </div>
         </div>
 
-        {/* Daily total preview - only show if we have current day totals */}
-        {currentDayTotals && (
+        {/* Daily total preview - only show if we have current day totals (they are today's) */}
+        {currentDayTotals && !isYesterday && (
           <div className="bg-accent/50 border border-border rounded-xl p-4">
             <p className="text-sm font-medium text-foreground mb-3">Today's total (after logging):</p>
             <div className="grid grid-cols-4 gap-2 text-center">
@@ -1444,6 +1479,13 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
+        {isYesterday && (step !== 'method' || showFavorites) && (
+          <div className="flex justify-center mb-4">
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              Logging for yesterday
+            </span>
+          </div>
+        )}
         {showFavorites ? (
           <div className="space-y-3">
             <h3 className="font-semibold text-foreground mb-3">{t('favorite_meals')}</h3>

@@ -459,7 +459,20 @@ export const TodayDashboard = () => {
     }
   };
 
-  const handleAddMeal = async (meal: MealInput) => {
+  const handleAddMeal = async (meal: MealInput, options?: { loggedAt?: Date }) => {
+    // A meal for another day (yesterday) is saved, then skips every today-only update below.
+    if (options?.loggedAt && options.loggedAt.toDateString() !== new Date().toDateString()) {
+      try {
+        await saveMeal(meal, options.loggedAt);
+        toast.success("Logged for yesterday");
+        setShowMealLogger(false);
+      } catch (error) {
+        console.error("Error saving meal:", error);
+        toast.error(t('error'));
+      }
+      return;
+    }
+
     try {
       const savedMeal = await saveMeal(meal);
       if (savedMeal) {
@@ -866,6 +879,7 @@ export const TodayDashboard = () => {
         <MealLogger 
           onClose={() => setShowMealLogger(false)}
           onSubmit={handleAddMeal}
+          allowYesterday
           userDietContext={{
             dietType: baseline?.diet_type || undefined,
             allergies: baseline?.allergies || undefined,
