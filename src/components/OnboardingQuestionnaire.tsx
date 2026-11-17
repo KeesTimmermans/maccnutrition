@@ -34,7 +34,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-type StepType = "demographics" | "medical" | "lifestyle" | "eating_behavior" | "challenges" | "goals" | "competition_prep" | "preferences" | "female" | "measurements";
+type StepType = "demographics" | "medical" | "lifestyle" | "eating_behavior" | "challenges" | "goals" | "competition_prep" | "preferences" | "female" | "measurements" | "food";
 
 export interface OnboardingData {
   // Demographics
@@ -201,24 +201,14 @@ const initialData: OnboardingData = {
   },
 };
 
-const getSteps = (t: (key: string) => string, showCompPrep: boolean): { id: StepType; title: string; icon: React.ReactNode }[] => {
-  const base: { id: StepType; title: string; icon: React.ReactNode }[] = [
-    { id: "demographics", title: t('about_you'), icon: <User className="w-6 h-6" /> },
-    { id: "medical", title: t('health_info'), icon: <Heart className="w-6 h-6" /> },
-    { id: "lifestyle", title: t('lifestyle'), icon: <Activity className="w-6 h-6" /> },
-    { id: "eating_behavior", title: "Eating Habits", icon: <Coffee className="w-6 h-6" /> },
-    { id: "challenges", title: "Your Journey", icon: <Brain className="w-6 h-6" /> },
-    { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
-  ];
-  if (showCompPrep) {
-    base.push({ id: "competition_prep", title: "Event Prep", icon: <Trophy className="w-6 h-6" /> });
-  }
-  base.push(
-    { id: "preferences", title: t('preferences'), icon: <Utensils className="w-6 h-6" /> },
-    { id: "measurements", title: "Measurements", icon: <RulerIcon className="w-6 h-6" /> },
-  );
-  return base;
-};
+// Signup asks only the essentials. The other step components (medical, eating_behavior,
+// challenges, competition_prep, preferences, measurements) stay in this file for reuse later.
+const getSteps = (): { id: StepType; title: string; icon: React.ReactNode }[] => [
+  { id: "demographics", title: "About you", icon: <User className="w-6 h-6" /> },
+  { id: "goals", title: "Your goal", icon: <Target className="w-6 h-6" /> },
+  { id: "lifestyle", title: "Your week", icon: <Activity className="w-6 h-6" /> },
+  { id: "food", title: "Food & health", icon: <Utensils className="w-6 h-6" /> },
+];
 
 interface OnboardingQuestionnaireProps {
   onComplete: (data: OnboardingData) => void;
@@ -284,19 +274,17 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
     onComplete(finalData);
   };
   
-  const showCompPrepStep = data.preparingForEvent === "yes";
-  const steps = getSteps(t, showCompPrepStep);
+  const steps = getSteps();
   
-  // Insert female step before measurements if applicable
+  // Female step goes last when applicable
   const allSteps = data.sex === "female" 
     ? [
-        ...steps.slice(0, -1),
+        ...steps,
         { id: "female" as StepType, title: t('cycle_info'), icon: <Moon className="w-6 h-6" /> },
-        steps[steps.length - 1]
       ]
     : steps;
 
-  // Clamp restored step index to valid range (steps may differ if sex/compPrep changed)
+  // Clamp restored step index to valid range (steps may differ if sex changed or an older, longer draft was restored)
   const safeStepIndex = Math.min(currentStepIndex, allSteps.length - 1);
   if (safeStepIndex !== currentStepIndex) {
     setCurrentStepIndex(safeStepIndex);
@@ -349,7 +337,9 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       case "challenges":
         return data.biggestChallenge && data.mealPrepTime;
       case "goals":
-        return data.primaryGoal;
+        return !!data.primaryGoal;
+      case "food":
+        return data.dietType && data.coachingTone;
       case "competition_prep":
         // If they said yes, they need event type and date; otherwise always valid
         if (data.preparingForEvent === "yes") {
@@ -375,13 +365,20 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       case "medical":
         return <MedicalStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "lifestyle":
-        return <LifestyleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
+        return <LifestyleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} essentialsOnly />;
+      case "food":
+        return (
+          <div className="space-y-8">
+            <MedicalStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />
+            <PreferencesStep data={data} updateData={updateData} t={t} essentialsOnly />
+          </div>
+        );
       case "eating_behavior":
         return <EatingBehaviorStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "challenges":
         return <ChallengesStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
       case "goals":
-        return <GoalsStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
+        return <GoalsStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} essentialsOnly />;
       case "competition_prep":
         return <CompetitionPrepOnboardingStep data={data} updateData={updateData} />;
       case "preferences":
@@ -761,11 +758,12 @@ const MedicalStep = ({ data, updateData, toggleArrayItem, t }: {
   );
 };
 
-const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: { 
+const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = false }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
+  essentialsOnly?: boolean;
 }) => {
   const activityLevels = [
     { label: t('not_active'), desc: t('not_active_desc'), value: "not_active" },
@@ -832,6 +830,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
   return (
     <div className="space-y-6 animate-slide-up">
       {/* Job Activity Level - NEW */}
+      {!essentialsOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">How active is your job?</Label>
         <div className="space-y-2">
@@ -856,6 +855,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
           ))}
         </div>
       </div>
+      )}
 
       {/* Overall Activity Level */}
       <div className="space-y-3">
@@ -902,6 +902,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
       </div>
 
       {/* Workout Types - NEW */}
+      {!essentialsOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">What type of workouts do you do?</Label>
         <p className="text-xs text-muted-foreground -mt-1">Select all that apply</p>
@@ -922,9 +923,10 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
           ))}
         </div>
       </div>
+      )}
 
       {/* Training Duration per Session */}
-      {data.trainingDays && data.trainingDays !== "0-1" && (
+      {!essentialsOnly && data.trainingDays && data.trainingDays !== "0-1" && (
         <div className="space-y-3">
           <Label className="text-sm font-semibold">Average session duration?</Label>
           <div className="grid grid-cols-2 gap-2">
@@ -947,6 +949,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
       )}
 
       {/* Climate */}
+      {!essentialsOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">What's your typical climate?</Label>
         <div className="space-y-2">
@@ -971,6 +974,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
           ))}
         </div>
       </div>
+      )}
 
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('avg_sleep_night')}</Label>
@@ -992,6 +996,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
       </div>
 
       {/* Stress Level */}
+      {!essentialsOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('current_stress_level')}</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1010,6 +1015,7 @@ const LifestyleStep = ({ data, updateData, toggleArrayItem, t }: {
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 };
@@ -1338,13 +1344,15 @@ const ChallengesStep = ({ data, updateData, toggleArrayItem, t }: {
   );
 };
 
-const GoalsStep = ({ data, updateData, toggleArrayItem, t }: { 
+const GoalsStep = ({ data, updateData, toggleArrayItem, t, essentialsOnly = false }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
+  essentialsOnly?: boolean;
 }) => {
-  const eventKey = data.preparingForEvent === "yes" && data.compEventType
+  // In essentialsOnly mode the event question is hidden, so nothing event-specific is shown.
+  const eventKey = !essentialsOnly && data.preparingForEvent === "yes" && data.compEventType
     ? data.compEventType as EventType
     : null;
   const eventLabel = eventKey && EVENT_LABELS[eventKey] ? EVENT_LABELS[eventKey] : null;
@@ -1531,6 +1539,7 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
       </div>
 
       {/* Preparing for event question */}
+      {!essentialsOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">
           {eventLabel ? `Are you preparing for a ${eventLabel} event?` : "Are you preparing for an event or competition?"}
@@ -1556,14 +1565,16 @@ const GoalsStep = ({ data, updateData, toggleArrayItem, t }: {
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 };
 
-const PreferencesStep = ({ data, updateData, t }: { 
+const PreferencesStep = ({ data, updateData, t, essentialsOnly = false }: { 
   data: OnboardingData; 
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   t: (key: string) => string;
+  essentialsOnly?: boolean;
 }) => {
   const dietTypes = [
     { label: t('omnivore'), desc: t('omnivore_desc'), value: "omnivore" },
@@ -1657,6 +1668,8 @@ const PreferencesStep = ({ data, updateData, t }: {
         </div>
       </div>
 
+      {!essentialsOnly && (
+      <>
       <div className="space-y-3">
         <Label className="text-sm font-semibold">How do you feel about protein shakes?</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -1746,6 +1759,8 @@ const PreferencesStep = ({ data, updateData, t }: {
           ))}
         </div>
       </div>
+      </>
+      )}
 
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('coaching_tone')}</Label>
@@ -1769,6 +1784,7 @@ const PreferencesStep = ({ data, updateData, t }: {
         </div>
       </div>
 
+      {!essentialsOnly && (
       <div className="space-y-2">
         <Label className="text-sm font-semibold">{t('foods_dislike')}</Label>
         <Input
@@ -1778,6 +1794,7 @@ const PreferencesStep = ({ data, updateData, t }: {
           className="h-12 rounded-xl"
         />
       </div>
+      )}
     </div>
   );
 };
