@@ -22,6 +22,7 @@ import {
 import { extractMealSuggestions } from "@/lib/extractMealSuggestions";
 import { buildCompPrepCoachContext, type CompPrepCoachContext } from "@/lib/competitionPrep/coachContext";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { CoachFormattedText } from "@/components/CoachFormattedText";
 import { buildUnifiedCoachContext, buildEdgeFunctionUserContext, type UnifiedCoachContext } from "@/lib/unifiedCoachContext";
 import { getAccountAgeDays } from "@/lib/coachingAnalytics";
 
@@ -52,7 +53,7 @@ const generateClientMessageId = () => {
 
 export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived, initialInput }: AICoachChatProps) => {
   const { language } = useLanguage();
-  const { targets: activeTargets } = useActiveNutritionTargets();
+  const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(initialInput ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +71,7 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived,
   const lastAssistantRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const isSendingRef = useRef(false);
+  const initializedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
 
   useEffect(() => {
@@ -94,9 +96,38 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived,
     }
   }, []);
 
+  // Wait for the real targets before building the coach context (the hook returns defaults while loading).
+  // isInitializing stays true until then, so the existing "Loading your data..." state is shown.
   useEffect(() => {
+    if (targetsLoading || initializedRef.current) return;
+    initializedRef.current = true;
     initializeChat();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetsLoading]);
+
+  // Safety net: always send the CURRENT targets, without mutating the cached context.
+  // The comp-prep layer reads its macros from the nutrition layer, so this override covers it too.
+  const withCurrentTargets = (ctx: UnifiedCoachContext): UnifiedCoachContext => {
+    const fromActiveTargets = {
+      calories: activeTargets.calories,
+      protein: activeTargets.protein,
+      carbs: activeTargets.carbs,
+      fats: activeTargets.fats,
+      sugar: activeTargets.sugar,
+      waterLiters: activeTargets.waterLiters,
+      waterLitersTraining: activeTargets.waterLitersTraining,
+      priorities: activeTargets.priorities,
+      source: activeTargets.source,
+    };
+    console.log('[Coach Mac Debug] sending targets', {
+      calories: fromActiveTargets.calories,
+      protein: fromActiveTargets.protein,
+      carbs: fromActiveTargets.carbs,
+      fats: fromActiveTargets.fats,
+      source: fromActiveTargets.source,
+    });
+    return { ...ctx, nutrition: { ...ctx.nutrition, ...fromActiveTargets } };
+  };
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -259,7 +290,7 @@ ${freshCheckIn.sleep_hours ? `- Sleep hours: ${freshCheckIn.sleep_hours}` : ''}
 ${freshCheckIn.notes ? `- Notes: ${freshCheckIn.notes}` : ''}
 
 Please give me a comprehensive game plan for my day based on how I'm feeling.`,
-              userContext: buildEdgeFunctionUserContext(uCtx, {
+              userContext: buildEdgeFunctionUserContext(withCurrentTargets(uCtx), {
                 checkInContext,
                 cyclePhaseTodayCheckin: (todayCheck as any)?.cycle_phase_today || undefined,
                 preferredLanguage: language as Language,
@@ -392,7 +423,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
               messages: outboundMessages,
               client_message_id: clientMsgId,
               userContext: unifiedCtxRef.current
-                ? buildEdgeFunctionUserContext(unifiedCtxRef.current, {
+                ? buildEdgeFunctionUserContext(withCurrentTargets(unifiedCtxRef.current), {
                     checkInContext,
                     checkInAnalysis: analysis.recommendations.length > 0 ? analysis : null,
                     cyclePhaseTodayCheckin: (todaysCheckIn as any)?.cycle_phase_today || undefined,
@@ -757,7 +788,11 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                   {msg.pending ? (
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+                    isAssistant ? (
+                      <CoachFormattedText text={displayContent} />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{displayContent}</p>
+                    )
                   )}
                 </div>
               </div>

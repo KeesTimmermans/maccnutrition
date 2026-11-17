@@ -1087,6 +1087,7 @@ RESPONSE GUIDELINES:
 - Keep responses conversational — no walls of text
 - Reference their context naturally, not as data dumps
 - ONE clear action item is better than five generic ones
+- Write in plain conversational text. Never use markdown headings (#, ##, ###). Use bullets only when listing 3 or more items, and **bold** only for key numbers.
 - If check-in shows changes from yesterday, acknowledge the trajectory
 - Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step
 - Mention job activity level, training duration, climate, or workout types ONLY when directly relevant to the advice being given (e.g. hydration guidance in a hot climate, meal timing around a physically demanding job). Do not force these details into every response.
