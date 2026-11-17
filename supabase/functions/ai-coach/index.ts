@@ -583,6 +583,8 @@ serve(async (req) => {
           ],
           // Gemini's hidden thinking tokens count against max_tokens; keep headroom so the rewrite isn't cut off.
           max_tokens: 3000,
+          // Supported by the gateway's chat contract for this model; keeps hidden thinking from eating the budget.
+          reasoning_effort: "low",
         }),
       });
 
@@ -1188,6 +1190,7 @@ When you mention any calorie or macro number in your response, it MUST match the
         model: "google/gemini-2.5-flash",
         messages: apiMessages,
         max_tokens: maxTokens,
+        reasoning_effort: "low",
       }),
     });
 
@@ -1243,6 +1246,7 @@ When you mention any calorie or macro number in your response, it MUST match the
                 },
               ],
               max_tokens: maxTokens,
+              reasoning_effort: "low",
             }),
           });
           if (retryResponse.ok) {
@@ -1284,6 +1288,7 @@ When you mention any calorie or macro number in your response, it MUST match the
             model: "google/gemini-2.5-flash",
             messages: apiMessages,
             max_tokens: Math.min(maxTokens * 2, 8000),
+            reasoning_effort: "low",
           }),
         });
         if (retryResponse.ok) {
