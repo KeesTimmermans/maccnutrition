@@ -25,6 +25,7 @@ import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { CoachFormattedText } from "@/components/CoachFormattedText";
 import { buildUnifiedCoachContext, buildEdgeFunctionUserContext, type UnifiedCoachContext } from "@/lib/unifiedCoachContext";
 import { getAccountAgeDays } from "@/lib/coachingAnalytics";
+import { splitJsonBlocks } from "@/lib/splitJsonBlocks";
 
 interface Message {
   role: "user" | "assistant";
@@ -529,14 +530,20 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
     const results = await Promise.all(
       targets.map(async ({ m, index }) => {
+        // Only the prose is rewritten; meal-card JSON blocks are kept exactly as they were.
+        const { text, blocks } = splitJsonBlocks(m.content);
+        if (!text) {
+          return { index, content: m.content, ok: true, skipped: true };
+        }
         try {
           const { data, error } = await supabase.functions.invoke("ai-coach", {
-            body: { type: "rewrite_tone", originalMessage: m.content, coachingTone: newTone },
+            body: { type: "rewrite_tone", originalMessage: text, coachingTone: newTone },
           });
           if (error) throw error;
           const rewritten = typeof data?.response === "string" ? data.response.trim() : "";
           if (!rewritten) throw new Error("Empty rewrite");
-          return { index, content: rewritten, ok: true };
+          const content = blocks.length > 0 ? `${rewritten}\n\n${blocks.join("\n\n")}` : rewritten;
+          return { index, content, ok: true };
         } catch (err) {
           console.error("Tone rewrite failed for message", index, err);
           return { index, content: m.content, ok: false };
@@ -546,7 +553,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
 
     const updated = [...messagesRef.current];
     results.forEach(r => {
-      if (r.ok && updated[r.index]) {
+      if (r.ok && !("skipped" in r && r.skipped) && updated[r.index]) {
         updated[r.index] = { ...updated[r.index], content: r.content };
       }
     });

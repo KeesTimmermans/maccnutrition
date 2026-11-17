@@ -581,7 +581,8 @@ serve(async (req) => {
             { role: "system", content: rewriteSystemPrompt },
             { role: "user", content: "Rewrite the message now. Return only the rewritten message." },
           ],
-          max_tokens: 1600,
+          // Gemini's hidden thinking tokens count against max_tokens; keep headroom so the rewrite isn't cut off.
+          max_tokens: 3000,
         }),
       });
 
@@ -608,8 +609,12 @@ serve(async (req) => {
       const rewriteData = await rewriteResponse.json();
       const rawContent = rewriteData.choices?.[0]?.message?.content;
       const rewrittenText = typeof rawContent === 'string' ? rawContent.trim() : '';
+      const rewriteFinish = rewriteData.choices?.[0]?.finish_reason;
+      // A cut-off or empty rewrite would replace a good message with a broken one — keep the original instead.
+      const safeRewrite = rewriteFinish === 'length' || !rewrittenText ? originalMessage : rewrittenText;
+      console.log(`[ai-coach] rewrite_tone finish_reason=${rewriteFinish} kept_original=${safeRewrite === originalMessage ? 'yes' : 'no'}`);
 
-      return new Response(JSON.stringify({ response: rewrittenText || originalMessage }), {
+      return new Response(JSON.stringify({ response: safeRewrite }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -1041,7 +1046,8 @@ USER APP STATE:
       ? chatStyleDirectives[coachingTone] || chatStyleDirectives['supportive']
       : '';
 
-    // Token budgets: keep at least 1500 for chat outputs to avoid truncation
+    // Token budgets per style. Gemini's hidden thinking tokens count against max_tokens, so the
+    // effective floors below are much higher; reply length is controlled by the style directives.
     const maxTokensByStyle: Record<string, number> = {
       direct: 1500,
       supportive: 1600,
@@ -1058,9 +1064,9 @@ USER APP STATE:
     let maxTokens: number;
     if (effectiveType === 'chat' || effectiveType === 'focus_tip') {
       const baseTokens = maxTokensByStyle[coachingTone] || 1600;
-      maxTokens = isMealIntent ? Math.max(baseTokens, 3500) : Math.max(baseTokens, 1500);
+      maxTokens = isMealIntent ? 6000 : Math.max(baseTokens, 4000);
     } else {
-      maxTokens = 2200; // generous for check-ins and progress updates
+      maxTokens = 4000; // check-ins and progress updates
     }
 
     const systemPrompt = `${CJT_CORE_SYSTEM}
@@ -1122,6 +1128,19 @@ When you mention any calorie or macro number in your response, it MUST match the
           .trim();
       }
       return "";
+    };
+
+    // Cut text back to its last full sentence; keep the original if that would leave under 40 characters.
+    const trimToLastSentence = (text: string): string => {
+      const trimmed = text.trim();
+      const re = /[.!?…](?:["'”’)\]]*)(?=\s|$)/g;
+      let lastEnd = -1;
+      for (const m of trimmed.matchAll(re)) {
+        lastEnd = (m.index ?? 0) + m[0].length;
+      }
+      if (lastEnd === -1) return trimmed;
+      const cut = trimmed.slice(0, lastEnd).trim();
+      return cut.length >= 40 ? cut : trimmed;
     };
 
     // A meal reply is complete when it has no JSON block at all, or a closed, valid meal_suggestion block.
@@ -1200,9 +1219,12 @@ When you mention any calorie or macro number in your response, it MUST match the
       aiResponse = "I lost the tail end of that response. Send it once more and I’ll complete it fully.";
     }
 
+    let retried = false;
+
     // For meal intent: one retry if the reply was cut off or the meal block is broken.
     if (isMealIntent) {
       if (finishReason === "length" || !mealBlockIsComplete(aiResponse)) {
+        retried = true;
         let retryText = "";
         try {
           const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -1245,9 +1267,46 @@ When you mention any calorie or macro number in your response, it MUST match the
       } else {
         console.log("meal reply ok");
       }
+    } else if (finishReason === "length") {
+      // Any other reply cut off by the token limit: one retry with the same messages and double the budget.
+      retried = true;
+      const firstText = aiResponse;
+      let retryText = "";
+      let retryFinish: string | undefined;
+      try {
+        const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: apiMessages,
+            max_tokens: Math.min(maxTokens * 2, 8000),
+          }),
+        });
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          retryText = parseResponseText(retryData.choices?.[0]?.message?.content);
+          retryFinish = retryData.choices?.[0]?.finish_reason;
+        } else {
+          console.error("Length retry failed with status", retryResponse.status);
+        }
+      } catch (retryErr) {
+        console.error("Length retry error:", retryErr);
+      }
+
+      if (retryText && retryFinish !== "length") {
+        aiResponse = retryText;
+        finishReason = retryFinish;
+      } else {
+        const longer = retryText.length > firstText.length ? retryText : firstText;
+        aiResponse = trimToLastSentence(longer) || firstText;
+      }
     }
 
-    console.log("AI chat response generated, finish_reason:", finishReason);
+    console.log(`[ai-coach] finish_reason=${finishReason} retry=${retried ? "yes" : "no"}`);
 
     if (client_message_id) {
       const { error: persistErr } = await supabase
