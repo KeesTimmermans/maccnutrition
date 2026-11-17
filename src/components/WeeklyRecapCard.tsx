@@ -93,8 +93,8 @@ export const WeeklyRecapCard = ({ targets, onAskCoach }: WeeklyRecapCardProps) =
   };
 
   const moodParts: string[] = [];
-  if (recap.energy) moodParts.push(`Energy ${recap.energy.avg}/5${arrow(recap.energy.direction)}`);
-  if (recap.sleep) moodParts.push(`Sleep ${recap.sleep.avg}/5${arrow(recap.sleep.direction)}`);
+  if (recap.energy) moodParts.push(`Energy ${recap.energy.avg.toFixed(1)}/5${arrow(recap.energy.direction)}`);
+  if (recap.sleep) moodParts.push(`Sleep ${recap.sleep.avg.toFixed(1)}/5${arrow(recap.sleep.direction)}`);
 
   const stats = [
     { label: "Days logged", value: `${recap.daysLogged}/7` },
