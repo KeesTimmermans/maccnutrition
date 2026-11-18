@@ -129,7 +129,7 @@ export const FALLBACK_LIBRARY: Record<ChecklistMode, FallbackEntry[]> = {
     { key: "h-screens-off", title: "Screens off 30 minutes before bed", why: "Better sleep makes tomorrow's food choices easier.", when: "evening", kind: "manual" },
   ],
   calories: [
-    { key: "c-log-breakfast", title: "Log breakfast before 10 am", why: "An early log sets up the rest of the day.", when: "breakfast", kind: "auto", rule: { type: "meal_logged", meal: "breakfast" } },
+    { key: "c-log-breakfast", title: "Log breakfast before 11 am", why: "An early log sets up the rest of the day.", when: "breakfast", kind: "auto", rule: { type: "meal_logged", meal: "breakfast" } },
     { key: "c-breakfast-protein", title: "Have eggs or Greek yoghurt with breakfast", why: "A protein-rich start keeps hunger steady.", when: "breakfast", kind: "manual", contains: ["eggs", "dairy"] },
     { key: "c-log-lunch", title: "Log your lunch in the app", why: "Logging straight away keeps your numbers accurate.", when: "lunch", kind: "auto", rule: { type: "meal_logged", meal: "lunch" } },
     { key: "c-water-meals", title: "Drink a glass of water before each meal", why: "Helps you tell thirst from hunger.", when: "anytime", kind: "manual" },
