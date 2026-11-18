@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 export interface MealIngredient {
   name: string;
@@ -60,6 +63,8 @@ export const MealPlanCard = ({
   getMealTypeColor,
 }: MealPlanCardProps) => {
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [isExpanded, setIsExpanded] = useState(false);
   const [repeatDaysOpen, setRepeatDaysOpen] = useState(false);
   const [repeatDays, setRepeatDays] = useState(3);
@@ -223,13 +228,15 @@ export const MealPlanCard = ({
         </div>
       </div>
 
-      {/* Macros summary */}
-      <div className="flex gap-3 text-xs mb-2">
-        <span className="text-primary font-medium">{meal.calories} {t('cal')}</span>
-        <span className="text-muted-foreground">P: {meal.protein}g</span>
-        <span className="text-muted-foreground">C: {meal.carbs}g</span>
-        <span className="text-muted-foreground">F: {meal.fats}g</span>
-      </div>
+      {/* Macros summary (calorie tracking only; quantity edits still recalculate the stored numbers) */}
+      {numbersVisible && (
+        <div className="flex gap-3 text-xs mb-2">
+          <span className="text-primary font-medium">{meal.calories} {t('cal')}</span>
+          <span className="text-muted-foreground">P: {meal.protein}g</span>
+          <span className="text-muted-foreground">C: {meal.carbs}g</span>
+          <span className="text-muted-foreground">F: {meal.fats}g</span>
+        </div>
+      )}
 
       {/* Expandable ingredients section */}
       {hasIngredients ? (
@@ -320,6 +327,7 @@ export const MealPlanCard = ({
               ))}
               
               {/* Per-ingredient macros breakdown */}
+              {numbersVisible && (
               <div className="pt-2 border-t border-border/50 mt-2">
                 <p className="text-xs text-muted-foreground mb-1">Per ingredient:</p>
                 <div className="space-y-1 text-xs">
@@ -337,11 +345,14 @@ export const MealPlanCard = ({
                   })}
                 </div>
               </div>
+              )}
             </div>
           )}
         </>
       ) : (
-        <p className="text-xs text-muted-foreground">{meal.description}</p>
+        (numbersVisible || !mentionsNutritionNumbers(meal.description)) && (
+          <p className="text-xs text-muted-foreground">{meal.description}</p>
+        )
       )}
     </div>
   );

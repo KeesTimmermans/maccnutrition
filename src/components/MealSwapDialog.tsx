@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { MealWithIngredients } from "@/components/MealPlanCard";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 interface SwapOption {
   type: string;
@@ -46,6 +49,8 @@ export const MealSwapDialog = ({
   getMealTypeColor,
 }: MealSwapDialogProps) => {
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [swapOptions, setSwapOptions] = useState<SwapOption[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customPreference, setCustomPreference] = useState("");
@@ -118,12 +123,14 @@ export const MealSwapDialog = ({
           <div className="bg-muted/50 rounded-lg p-3">
             <p className="text-xs text-muted-foreground mb-1">{t('current_meal') || 'Current meal'}</p>
             <p className="font-medium text-foreground">{meal.name}</p>
-            <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
-              <span>{meal.calories} cal</span>
-              <span>P: {meal.protein}g</span>
-              <span>C: {meal.carbs}g</span>
-              <span>F: {meal.fats}g</span>
-            </div>
+            {numbersVisible && (
+              <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
+                <span>{meal.calories} cal</span>
+                <span>P: {meal.protein}g</span>
+                <span>C: {meal.carbs}g</span>
+                <span>F: {meal.fats}g</span>
+              </div>
+            )}
           </div>
 
           {/* Initial choice: Generate options or custom */}
@@ -189,15 +196,19 @@ export const MealSwapDialog = ({
                         {option.type}
                       </Badge>
                       <h4 className="font-semibold text-foreground text-sm">{option.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {option.description}
-                      </p>
-                      <div className="flex gap-2 mt-2 text-xs">
-                        <span className="text-primary font-medium">{option.calories} cal</span>
-                        <span className="text-muted-foreground">P: {option.protein}g</span>
-                        <span className="text-muted-foreground">C: {option.carbs}g</span>
-                        <span className="text-muted-foreground">F: {option.fats}g</span>
-                      </div>
+                      {(numbersVisible || !mentionsNutritionNumbers(option.description)) && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {option.description}
+                        </p>
+                      )}
+                      {numbersVisible && (
+                        <div className="flex gap-2 mt-2 text-xs">
+                          <span className="text-primary font-medium">{option.calories} cal</span>
+                          <span className="text-muted-foreground">P: {option.protein}g</span>
+                          <span className="text-muted-foreground">C: {option.carbs}g</span>
+                          <span className="text-muted-foreground">F: {option.fats}g</span>
+                        </div>
+                      )}
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors mt-2" />
                   </div>

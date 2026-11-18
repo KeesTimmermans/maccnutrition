@@ -15,6 +15,12 @@ import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { ProgressHistory } from "@/components/ProgressHistory";
 import { AppLayout } from "@/components/layout/AppLayout";
 import CompetitionPrepTab from "@/components/CompetitionPrepTab";
+import { getWaterIntakeByDateRange, WaterIntake } from "@/lib/waterService";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { showNumbers } from "@/lib/trackingMode";
+import { daysWithMealsLogged, daysWaterGoalMet } from "@/lib/habitProgress";
+import { CalendarCheck, Droplets } from "lucide-react";
 interface DayData {
   date: string;
   fullDate: string;
@@ -41,6 +47,12 @@ const Progress = () => {
   const [loginStreak, setLoginStreak] = useState<UserStreak | null>(null);
   const [coachingStreak, setCoachingStreak] = useState<UserStreak | null>(null);
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
+  // Raw week data for the number-free "This week" card (habits mode)
+  const [weekMealsRaw, setWeekMealsRaw] = useState<Meal[]>([]);
+  const [weekWater, setWeekWater] = useState<WaterIntake[]>([]);
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
+  const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
   useEffect(() => {
     loadChartData();
   }, []);
@@ -51,11 +63,14 @@ const Progress = () => {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
       
-      const [userBaseline, weekMeals, streaks] = await Promise.all([
+      const [userBaseline, weekMeals, streaks, waterIntakes] = await Promise.all([
         getUserBaseline(),
         getMealsByDateRange(weekStart, weekEnd),
         getStreaks(),
+        getWaterIntakeByDateRange(weekStart, weekEnd),
       ]);
+      setWeekMealsRaw(weekMeals);
+      setWeekWater(waterIntakes);
 
       // Set streaks
       const login = streaks.find(s => s.streak_type === 'login');
@@ -130,6 +145,15 @@ const Progress = () => {
   const carbsGoal = baseline?.carbs_grams || 200;
   const fatsGoal = baseline?.fats_grams || 65;
 
+  const thisWeekDays = eachDayOfInterval({
+    start: startOfWeek(new Date(), { weekStartsOn: 1 }),
+    end: endOfWeek(new Date(), { weekStartsOn: 1 }),
+  });
+  const habitDaysLogged = daysWithMealsLogged(weekMealsRaw, thisWeekDays);
+  const habitWaterDays = targetsLoading
+    ? null
+    : daysWaterGoalMet(weekWater, thisWeekDays, activeTargets.waterLiters * 1000);
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -173,8 +197,37 @@ const Progress = () => {
 
               {/* Weekly Achievements */}
               <WeeklyAchievements />
-              {/* Weekly Summary */}
-              {weekSummary && (
+              {/* This week (habits mode): logging consistency only, nothing nutrition-numeric */}
+              {trackingMode === "habits" && !trackingModeLoading && (
+                <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                      <CalendarCheck className="w-5 h-5 text-primary" />
+                      This week
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-muted/50 rounded-xl p-4 text-center">
+                        <p className="text-3xl font-bold text-primary">{habitDaysLogged}</p>
+                        <p className="text-xs text-muted-foreground">of 7 days with a meal logged</p>
+                      </div>
+                      {habitWaterDays !== null && (
+                        <div className="bg-muted/50 rounded-xl p-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Droplets className="w-5 h-5 text-blue-500" />
+                            <p className="text-3xl font-bold text-blue-500">{habitWaterDays}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">of 7 days water goal met</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Weekly Summary (calorie tracking only) */}
+              {weekSummary && numbersVisible && (
                 <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">

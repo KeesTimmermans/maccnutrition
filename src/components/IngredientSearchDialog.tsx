@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { searchFoodSuggestions, type FoodSuggestion } from "@/lib/mealService";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 
 export interface IngredientSearchResult {
   name: string;
@@ -33,6 +35,8 @@ export const IngredientSearchDialog = ({
   initialQuery = "",
 }: IngredientSearchDialogProps) => {
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<FoodSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -125,12 +129,14 @@ export const IngredientSearchDialog = ({
   const handleConfirm = () => {
     if (manualMode) {
       const q = parseFloat(quantity) || 100;
+      // Habits mode: "Add your own ingredient" asks only name + amount and saves 0 for every macro.
+      const perHundred = (value: string) => (numbersVisible ? (parseFloat(value) || 0) / (q / 100) : 0);
       onSelect({
         name: manualName || query || "Unknown",
-        caloriesPer100g: (parseFloat(manualCal) || 0) / (q / 100),
-        proteinPer100g: (parseFloat(manualProtein) || 0) / (q / 100),
-        carbsPer100g: (parseFloat(manualCarbs) || 0) / (q / 100),
-        fatsPer100g: (parseFloat(manualFats) || 0) / (q / 100),
+        caloriesPer100g: perHundred(manualCal),
+        proteinPer100g: perHundred(manualProtein),
+        carbsPer100g: perHundred(manualCarbs),
+        fatsPer100g: perHundred(manualFats),
         quantity: q,
         unit,
         servingGrams: q,
@@ -216,9 +222,11 @@ export const IngredientSearchDialog = ({
                     >
                       <div>
                         <p className="font-medium text-foreground text-sm">{food.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {food.caloriesPer100g} cal/100g · P:{food.proteinPer100g}g C:{food.carbsPer100g}g F:{food.fatsPer100g}g
-                        </p>
+                        {numbersVisible && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {food.caloriesPer100g} cal/100g · P:{food.proteinPer100g}g C:{food.carbsPer100g}g F:{food.fatsPer100g}g
+                          </p>
+                        )}
                       </div>
                       <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     </button>
@@ -237,7 +245,7 @@ export const IngredientSearchDialog = ({
                     }}
                     className="text-sm text-primary font-medium hover:underline"
                   >
-                    Enter macros manually
+                    {numbersVisible ? "Enter macros manually" : "Add your own ingredient"}
                   </button>
                 </div>
               )}
@@ -247,9 +255,11 @@ export const IngredientSearchDialog = ({
                 <div className="space-y-4">
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                     <p className="font-medium text-foreground text-sm">{selectedFood.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {selectedFood.caloriesPer100g} cal · P:{selectedFood.proteinPer100g}g C:{selectedFood.carbsPer100g}g F:{selectedFood.fatsPer100g}g per 100g
-                    </p>
+                    {numbersVisible && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {selectedFood.caloriesPer100g} cal · P:{selectedFood.proteinPer100g}g C:{selectedFood.carbsPer100g}g F:{selectedFood.fatsPer100g}g per 100g
+                      </p>
+                    )}
                   </div>
 
                   {/* Quantity + Unit */}
@@ -308,7 +318,7 @@ export const IngredientSearchDialog = ({
                   )}
 
                   {/* Computed macros (read-only) */}
-                  {computedMacros && (
+                  {computedMacros && numbersVisible && (
                     <div className="grid grid-cols-4 gap-2 text-center">
                       <div className="p-2 bg-accent rounded-lg">
                         <p className="text-lg font-bold text-calories">{computedMacros.calories}</p>
@@ -329,7 +339,8 @@ export const IngredientSearchDialog = ({
                     </div>
                   )}
 
-                  {/* Manual edit fallback */}
+                  {/* Manual edit fallback (macro editing — calorie tracking only) */}
+                  {numbersVisible && (
                   <button
                     onClick={() => {
                       setManualMode(true);
@@ -346,6 +357,7 @@ export const IngredientSearchDialog = ({
                     <Pencil className="w-3 h-3" />
                     Edit manually
                   </button>
+                  )}
                 </div>
               )}
             </>
@@ -353,7 +365,9 @@ export const IngredientSearchDialog = ({
             /* Manual mode */
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">Manual Entry</p>
+                <p className="text-sm font-medium text-foreground">
+                  {numbersVisible ? "Manual Entry" : "Your own ingredient"}
+                </p>
                 <button
                   onClick={() => setManualMode(false)}
                   className="text-xs text-primary hover:underline"
@@ -383,6 +397,7 @@ export const IngredientSearchDialog = ({
                   <Input value="g" disabled className="bg-muted text-center" />
                 </div>
               </div>
+              {numbersVisible && (
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-muted-foreground">{t('calories')}</label>
@@ -429,6 +444,7 @@ export const IngredientSearchDialog = ({
                   />
                 </div>
               </div>
+              )}
             </div>
           )}
         </div>

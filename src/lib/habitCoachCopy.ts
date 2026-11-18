@@ -103,3 +103,13 @@ export const mentionsNutritionNumbers = (text: string | null | undefined): boole
     text,
   );
 };
+
+/**
+ * Splits a coach reply into non-blank paragraphs; when `hideNumbers` is true,
+ * drops the paragraphs that mention calories, macros, grams, targets or percentages.
+ */
+export const coachParagraphs = (text: string | null | undefined, hideNumbers: boolean): string[] =>
+  (text ?? "")
+    .split("\n")
+    .filter((paragraph) => paragraph.trim() !== "")
+    .filter((paragraph) => !hideNumbers || !mentionsNutritionNumbers(paragraph));

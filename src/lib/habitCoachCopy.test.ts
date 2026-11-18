@@ -4,6 +4,7 @@ import {
   generateHabitCoachInsights,
   generateHabitCoachTip,
   mentionsNutritionNumbers,
+  coachParagraphs,
   type HabitCoachInput,
 } from "@/lib/habitCoachCopy";
 
@@ -79,5 +80,21 @@ describe("mentionsNutritionNumbers", () => {
     expect(mentionsNutritionNumbers("Drink 2 glasses of water")).toBe(false);
     expect(mentionsNutritionNumbers("Prep protein snacks NOW (nuts, cheese, boiled eggs).")).toBe(false);
     expect(mentionsNutritionNumbers(null)).toBe(false);
+  });
+});
+
+describe("coachParagraphs", () => {
+  const reply = "Great work this fortnight.\n\nI've nudged your target to 2100 kcal.\nKeep your evening walks going.";
+
+  it("keeps every non-blank paragraph when numbers may show", () => {
+    expect(coachParagraphs(reply, false)).toEqual([
+      "Great work this fortnight.",
+      "I've nudged your target to 2100 kcal.",
+      "Keep your evening walks going.",
+    ]);
+  });
+
+  it("drops paragraphs that mention calories or targets when numbers are hidden", () => {
+    expect(coachParagraphs(reply, true)).toEqual(["Great work this fortnight.", "Keep your evening walks going."]);
   });
 });

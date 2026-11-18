@@ -24,6 +24,10 @@ import { parseFocusPoints, CoachingFocusPoint } from "@/lib/progressUpdateServic
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { unchangedTargetsAdjustment } from "@/lib/habitProgress";
+import { coachParagraphs } from "@/lib/habitCoachCopy";
 import {
   TrendingUp,
   ChevronRight,
@@ -67,6 +71,11 @@ export const ProgressUpdateDialog = ({
   onComplete,
 }: ProgressUpdateDialogProps) => {
   const { targets: activeTargets } = useActiveNutritionTargets();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
+  const isHabitMode = trackingMode === "habits" && !trackingModeLoading;
+  // Habits mode: the diet-break option talks about maintenance calories, so it is not offered.
+  const actionOptions = numbersVisible ? ACTION_OPTIONS : ACTION_OPTIONS.filter((opt) => opt.value !== "diet_break");
   const [step, setStep] = useState<DialogStep>("status");
   const [progressStatus, setProgressStatus] = useState<ProgressStatus | null>(null);
   const [energy, setEnergy] = useState<EnergyLevel | null>(null);
@@ -198,8 +207,14 @@ export const ProgressUpdateDialog = ({
         });
       }
 
-      // Apply coaching adjustment
-      const adjustment = applyProgressAdjustment(
+      // Apply coaching adjustment — habits mode never changes targets (zero change, nothing new written)
+      const currentTargets = {
+        calories: activeTargets.calories,
+        protein: activeTargets.protein,
+        carbs: activeTargets.carbs,
+        fats: activeTargets.fats,
+      };
+      const adjustment = isHabitMode ? unchangedTargetsAdjustment(currentTargets) : applyProgressAdjustment(
         {
           calories: activeTargets.calories,
           protein: activeTargets.protein,
@@ -236,7 +251,7 @@ export const ProgressUpdateDialog = ({
         hasNewMeasurements ? currentMeasurements : undefined
       );
 
-      if (adjustment.deltaCalories !== 0) {
+      if (adjustment.deltaCalories !== 0 && numbersVisible) {
         toast.success(`Targets adjusted: ${adjustment.deltaCalories > 0 ? "+" : ""}${adjustment.deltaCalories} kcal`);
       }
 
@@ -421,7 +436,7 @@ export const ProgressUpdateDialog = ({
                 <Target className="w-4 h-4 text-primary" />
                 <Label className="font-medium">What would you like to do?</Label>
               </div>
-              {ACTION_OPTIONS.map((opt) => (
+              {actionOptions.map((opt) => (
                 <OptionCard
                   key={opt.value}
                   selected={actionIntent === opt.value}
@@ -493,7 +508,7 @@ export const ProgressUpdateDialog = ({
           {/* ── Step 6: Coach Response ─────────────────────── */}
           {step === "response" && (
             <div className="space-y-4">
-              {adjustmentResult && adjustmentResult.deltaCalories !== 0 && (
+              {numbersVisible && adjustmentResult && adjustmentResult.deltaCalories !== 0 && (
                 <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="w-4 h-4 text-primary" />
@@ -514,9 +529,11 @@ export const ProgressUpdateDialog = ({
                   <span className="text-sm font-medium">Coach Mac</span>
                 </div>
                 <div className="prose prose-sm max-w-none text-foreground">
-                  {coachResponse
-                    ?.split("\n")
-                    .filter((paragraph) => paragraph.trim() !== "")
+                  {(() => {
+                    const paragraphs = coachParagraphs(coachResponse, !numbersVisible);
+                    // Habits mode: if every paragraph quoted numbers, keep a short number-free line
+                    return paragraphs.length > 0 ? paragraphs : ["Thanks for checking in — keep going with your habits."];
+                  })()
                     .map((paragraph, i) => (
                       <p key={i} className="mb-2 last:mb-0 text-sm leading-relaxed">
                         {paragraph}

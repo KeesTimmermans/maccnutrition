@@ -19,6 +19,9 @@ import { Share } from "@capacitor/share";
 import { MealPlanCard, MealWithIngredients, MealIngredient } from "@/components/MealPlanCard";
 import { MealSwapDialog } from "@/components/MealSwapDialog";
 import { IngredientSwapDialog, IngredientOption } from "@/components/IngredientSwapDialog";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 type Meal = MealWithIngredients;
 
@@ -65,6 +68,11 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 export const MealPlanner = ({ baseline }: MealPlannerProps) => {
   const { t } = useLanguage();
   const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Display-only: plan generation still receives the calorie targets and meals keep their numbers.
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
+  /** Hides plan text (descriptions, tips) that quotes calories/macros when numbers are hidden. */
+  const showPlanText = (text: string | null | undefined) => numbersVisible || !mentionsNutritionNumbers(text);
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [groceryList, setGroceryList] = useState<GroceryListData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -572,7 +580,9 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       doc.text(day.day, 14, yPos);
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`${day.totals.calories} ${t('cal')} | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g`, 14, yPos + 5);
+      if (numbersVisible) {
+        doc.text(`${day.totals.calories} ${t('cal')} | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g`, 14, yPos + 5);
+      }
       yPos += 12;
       
       // Meals
@@ -589,11 +599,13 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         doc.setFont("helvetica", "normal");
         
         // Wrap description text
-        const descLines = doc.splitTextToSize(meal.description, pageWidth - 40);
+        const descLines = showPlanText(meal.description) ? doc.splitTextToSize(meal.description, pageWidth - 40) : [];
         doc.text(descLines, 18, yPos + 4);
         yPos += 4 + (descLines.length * 4);
         
-        doc.text(`${meal.calories} ${t('cal')} | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g`, 18, yPos);
+        if (numbersVisible) {
+          doc.text(`${meal.calories} ${t('cal')} | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g`, 18, yPos);
+        }
         yPos += 8;
       });
       
@@ -601,7 +613,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     });
     
     // Tips on last page
-    if (mealPlan.tips && mealPlan.tips.length > 0) {
+    if (mealPlan.tips && mealPlan.tips.filter(showPlanText).length > 0) {
       if (yPos > 230) {
         doc.addPage();
         yPos = 20;
@@ -614,7 +626,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
       
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      mealPlan.tips.forEach((tip) => {
+      mealPlan.tips.filter(showPlanText).forEach((tip) => {
         if (yPos > 280) {
           doc.addPage();
           yPos = 20;
@@ -656,18 +668,24 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
     
     mealPlan.days.forEach((day) => {
       text += `📅 ${day.day.toUpperCase()}\n`;
-      text += `Total: ${day.totals.calories} ${t('cal')} | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g\n\n`;
+      if (numbersVisible) {
+        text += `Total: ${day.totals.calories} ${t('cal')} | P: ${day.totals.protein}g | C: ${day.totals.carbs}g | F: ${day.totals.fats}g\n\n`;
+      } else {
+        text += "\n";
+      }
       
       day.meals.forEach((meal) => {
         text += `${meal.type}: ${meal.name}\n`;
-        text += `  ${meal.calories} ${t('cal')} | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g\n`;
+        if (numbersVisible) {
+          text += `  ${meal.calories} ${t('cal')} | P: ${meal.protein}g | C: ${meal.carbs}g | F: ${meal.fats}g\n`;
+        }
       });
       text += "\n";
     });
     
-    if (mealPlan.tips && mealPlan.tips.length > 0) {
+    if (mealPlan.tips && mealPlan.tips.filter(showPlanText).length > 0) {
       text += `💡 ${t('meal_prep_tips').toUpperCase()}\n`;
-      mealPlan.tips.forEach((tip) => {
+      mealPlan.tips.filter(showPlanText).forEach((tip) => {
         text += `• ${tip}\n`;
       });
     }
@@ -815,6 +833,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         {/* Daily totals */}
         {currentDay && (
           <>
+            {numbersVisible && (
             <div className="bg-muted/50 rounded-xl p-3 mb-4">
               <p className="text-sm font-medium text-foreground mb-2">{t('day_totals').replace('{day}', currentDay.day)}</p>
               <div className="grid grid-cols-4 gap-2 text-center">
@@ -836,6 +855,7 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Meals */}
             <div className="space-y-3 mb-4">
@@ -888,14 +908,14 @@ export const MealPlanner = ({ baseline }: MealPlannerProps) => {
         )}
 
         {/* Tips */}
-        {mealPlan.tips && mealPlan.tips.length > 0 && (
+        {mealPlan.tips && mealPlan.tips.filter(showPlanText).length > 0 && (
           <div className="bg-primary/5 rounded-xl p-3 mb-4">
             <div className="flex items-center gap-2 mb-2">
               <Lightbulb className="w-4 h-4 text-primary" />
               <p className="text-sm font-medium text-foreground">{t('meal_prep_tips')}</p>
             </div>
             <ul className="space-y-1">
-              {mealPlan.tips.slice(0, 3).map((tip, index) => (
+              {mealPlan.tips.filter(showPlanText).slice(0, 3).map((tip, index) => (
                 <li key={index} className="text-xs text-muted-foreground flex items-start gap-1">
                   <span className="text-primary">•</span>
                   {tip}

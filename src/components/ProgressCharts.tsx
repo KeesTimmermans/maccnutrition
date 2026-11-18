@@ -5,6 +5,8 @@ import { getMealsByDateRange, Meal } from "@/lib/mealService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { mealsPerDay, type MealsPerDay } from "@/lib/habitProgress";
 
 interface DayData {
   date: string;
@@ -19,6 +21,10 @@ export const ProgressCharts = () => {
   const [monthlyData, setMonthlyData] = useState<DayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Habits mode: meal counts per day instead of calorie/macro charts
+  const [weeklyMealCounts, setWeeklyMealCounts] = useState<MealsPerDay[]>([]);
+  const [monthlyMealCounts, setMonthlyMealCounts] = useState<MealsPerDay[]>([]);
 
   useEffect(() => {
     loadChartData();
@@ -37,12 +43,17 @@ export const ProgressCharts = () => {
 
       setWeeklyData(aggregateMealsByDay(weekMeals, 7));
       setMonthlyData(aggregateMealsByDay(monthMeals, 30));
+      setWeeklyMealCounts(mealsPerDay(weekMeals, lastDays(7), "EEE"));
+      setMonthlyMealCounts(mealsPerDay(monthMeals, lastDays(30), "MMM d"));
     } catch (error) {
       console.error("Error loading chart data:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const lastDays = (days: number) =>
+    eachDayOfInterval({ start: subDays(new Date(), days - 1), end: new Date() });
 
   const aggregateMealsByDay = (meals: Meal[], days: number): DayData[] => {
     const endDate = new Date();
@@ -63,7 +74,7 @@ export const ProgressCharts = () => {
     });
   };
 
-  if (isLoading || targetsLoading) {
+  if (isLoading || targetsLoading || trackingModeLoading) {
     return (
       <Card className="bg-card rounded-3xl shadow-medium">
         <CardContent className="py-8 text-center text-muted-foreground">
@@ -74,6 +85,57 @@ export const ProgressCharts = () => {
   }
 
   const calorieGoal = activeTargets.calories;
+
+  if (trackingMode === "habits") {
+    const mealsChart = (data: MealsPerDay[], tickSize: number) => (
+      <div>
+        <p className="text-sm font-medium text-muted-foreground mb-2">Meals logged per day</p>
+        <div className="h-[180px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: tickSize, fill: 'hsl(var(--muted-foreground))' }}
+                interval="preserveStartEnd"
+              />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                }}
+              />
+              <Bar dataKey="meals" name="Meals" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+
+    return (
+      <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-bold text-foreground">Progress Trends</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <Tabs defaultValue="weekly" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="weekly">Weekly</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            </TabsList>
+            <TabsContent value="weekly" className="space-y-4">
+              {mealsChart(weeklyMealCounts, 12)}
+            </TabsContent>
+            <TabsContent value="monthly" className="space-y-4">
+              {mealsChart(monthlyMealCounts, 10)}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-card rounded-3xl shadow-medium overflow-hidden">

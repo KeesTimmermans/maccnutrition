@@ -7,6 +7,9 @@ import { Flame, Droplets, Target, Dumbbell, Loader2, ChevronDown, Trophy } from 
 import { useLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 interface ProfileBaselineSummaryProps {
   baseline: UserBaseline | null;
@@ -26,7 +29,12 @@ const GOAL_OPTIONS = [
 export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileBaselineSummaryProps) => {
   const { t } = useLanguage();
   const { targets: activeTargets } = useActiveNutritionTargets();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [saving, setSaving] = useState(false);
+  // Habits mode: focus points that quote calories/macros are left out
+  const visibleFocus = (points: string[]) =>
+    numbersVisible ? points : points.filter((point) => !mentionsNutritionNumbers(point));
 
   if (!baseline) return null;
 
@@ -54,7 +62,7 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           <Target className="w-5 h-5 text-primary" />
-          {t('your_targets') || 'Your Targets'}
+          {numbersVisible ? (t('your_targets') || 'Your Targets') : (t('your_profile') || 'Your Profile')}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-4">
@@ -85,7 +93,7 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
         </div>
 
         {/* Active Target Source */}
-        {activeTargets.source === 'competition_prep' && (
+        {numbersVisible && activeTargets.source === 'competition_prep' && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 px-3 py-1.5 rounded-full">
             <Trophy className="w-3.5 h-3.5" />
             Targets driven by Competition Prep
@@ -93,7 +101,8 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
         )}
 
         {/* Calorie & Macro Targets */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className={`grid gap-3 ${numbersVisible ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {numbersVisible && (
           <div className="bg-muted/50 rounded-xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Flame className="w-4 h-4 text-orange-500" />
@@ -103,6 +112,7 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
             </p>
             <p className="text-xs text-muted-foreground">{t('cal_day') || 'cal/day'}</p>
           </div>
+          )}
           <div className="bg-muted/50 rounded-xl p-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Droplets className="w-4 h-4 text-blue-500" />
@@ -114,7 +124,8 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
           </div>
         </div>
 
-        {/* Macros */}
+        {/* Macros (calorie tracking only) */}
+        {numbersVisible && (
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-[hsl(var(--protein))]/10 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-[hsl(var(--protein))]">
@@ -135,15 +146,16 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
             <p className="text-xs text-muted-foreground">{t('fats') || 'Fats'}</p>
           </div>
         </div>
+        )}
 
         {/* Focus Points */}
-        {activeTargets.priorities && activeTargets.priorities.length > 0 ? (
+        {activeTargets.priorities && visibleFocus(activeTargets.priorities).length > 0 ? (
           <div className="pt-2">
             <p className="text-sm font-medium text-muted-foreground mb-2">
               {t('current_focus') || 'Current Focus'}
             </p>
             <div className="space-y-2">
-              {activeTargets.priorities.slice(0, 3).map((point, idx) => (
+              {visibleFocus(activeTargets.priorities).slice(0, 3).map((point, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-sm">
                   <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                     {idx + 1}
@@ -153,13 +165,13 @@ export const ProfileBaselineSummary = ({ baseline, onBaselineUpdated }: ProfileB
               ))}
             </div>
           </div>
-        ) : baseline?.focus_points && baseline.focus_points.length > 0 && (
+        ) : baseline?.focus_points && visibleFocus(baseline.focus_points).length > 0 && (
           <div className="pt-2">
             <p className="text-sm font-medium text-muted-foreground mb-2">
               {t('current_focus') || 'Current Focus'}
             </p>
             <div className="space-y-2">
-              {baseline.focus_points.slice(0, 3).map((point, idx) => (
+              {visibleFocus(baseline.focus_points).slice(0, 3).map((point, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-sm">
                   <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                     {idx + 1}

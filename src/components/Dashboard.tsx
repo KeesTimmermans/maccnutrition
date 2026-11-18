@@ -35,6 +35,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import {
+  generateHabitCoachGreeting,
+  generateHabitCoachInsights,
+  generateHabitCoachTip,
+  type HabitCoachInput,
+} from "@/lib/habitCoachCopy";
 
 interface DashboardMeal {
   id: string;
@@ -53,6 +61,9 @@ export const Dashboard = () => {
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
   const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Calorie/macro figures only once the mode is known and it is calorie tracking
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [freshCheckInData, setFreshCheckInData] = useState<{
@@ -109,8 +120,18 @@ export const Dashboard = () => {
   // Get user's first name for personalization
   const firstName = baseline?.name?.split(' ')[0] || '';
 
+  const habitCoachInput = (): HabitCoachInput => ({
+    hour: new Date().getHours(),
+    firstName,
+    mealsLogged: meals.length,
+    waterMl: totalWaterMl,
+    waterGoalMl: activeTargets.waterLiters * 1000,
+    checkedInToday: hasCheckedInToday,
+  });
+
   // Dynamic Coach Mac greeting based on current data
   const generateCoachGreeting = () => {
+    if (!numbersVisible) return generateHabitCoachGreeting(habitCoachInput());
     const calorieGoal = activeTargets.calories;
     const proteinGoal = activeTargets.protein;
     const waterGoal = activeTargets.waterLiters * 1000;
@@ -186,6 +207,7 @@ export const Dashboard = () => {
 
   // Dynamic insights based on logged data - more specific and actionable
   const generateCoachInsights = (): string[] => {
+    if (!numbersVisible) return generateHabitCoachInsights(habitCoachInput());
     const insights: string[] = [];
     const calorieGoal = activeTargets.calories;
     const proteinGoal = activeTargets.protein;
@@ -264,6 +286,7 @@ export const Dashboard = () => {
 
   // Dynamic tip based on current progress and check-in data
   const generateCoachTip = (): string => {
+    if (!numbersVisible) return generateHabitCoachTip(habitCoachInput());
     const calorieGoal = activeTargets.calories;
     const proteinGoal = activeTargets.protein;
     const waterGoal = activeTargets.waterLiters * 1000;
@@ -496,6 +519,13 @@ export const Dashboard = () => {
         
         const updatedMeals = [...meals, newMeal];
         setMeals(updatedMeals);
+
+        // Habits mode (or mode not known yet): no goal toasts, just a neutral confirmation.
+        if (!numbersVisible) {
+          toast.success("Meal logged");
+          refreshCoachingFocusPoints();
+          return;
+        }
         
         // Calculate new totals after adding meal
         const newTotalCalories = updatedMeals.reduce((sum, m) => sum + m.calories, 0);
@@ -580,16 +610,17 @@ export const Dashboard = () => {
   const visibleSections = layout.sections.filter(s => !layout.hidden.includes(s));
 
   // Section rendering helpers
-  const renderProgressSection = () => (
+  // Habits mode: the section is only calorie/macro rings, so it is left out entirely.
+  const renderProgressSection = () => trackingMode === "habits" && !trackingModeLoading ? null : (
     <section key="progress" className="bg-card rounded-3xl shadow-medium p-6 animate-scale-in">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
           <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
-          <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
+          {numbersVisible && <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />}
         </div>
       </div>
-      {targetsLoading ? (
+      {trackingMode === "habits" && !trackingModeLoading ? null : targetsLoading || trackingModeLoading ? (
         <MacroRingGroupSkeleton />
       ) : (
         <div className="flex justify-around items-center">
@@ -707,7 +738,7 @@ export const Dashboard = () => {
     </section>
   );
 
-  const sectionRenderers: Record<string, () => JSX.Element> = {
+  const sectionRenderers: Record<string, () => JSX.Element | null> = {
     progress: renderProgressSection,
     meals: renderMealsSection,
     coach: renderCoachSection,

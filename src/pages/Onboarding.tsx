@@ -146,7 +146,7 @@ const Onboarding = () => {
   };
 
   if (showBaseline && userData && savedBaseline) {
-    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} />;
+    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} trackingMode={userData.trackingMode} />;
   }
 
   return <OnboardingQuestionnaire onComplete={handleQuestionnaireComplete} />;

@@ -6,6 +6,8 @@ import { getMealsByDateRange, Meal } from "@/lib/mealService";
 import { getWaterIntakeByDateRange, WaterIntake } from "@/lib/waterService";
 import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 
 interface DayAchievement {
   date: Date;
@@ -15,6 +17,8 @@ interface DayAchievement {
   carbs: { value: number; goal: number; met: boolean };
   fats: { value: number; goal: number; met: boolean };
   water: { value: number; goal: number; met: boolean };
+  /** Number of meals logged that day (used for the number-free habits view) */
+  mealsLogged: number;
   allGoalsMet: boolean;
 }
 
@@ -34,6 +38,10 @@ export const WeeklyAchievements = () => {
   const [achievements, setAchievements] = useState<DayAchievement[]>([]);
   const [stats, setStats] = useState<WeeklyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
+  // Habits mode: only logging consistency and water — no calorie/macro goals or percentages
+  const habitsView = trackingMode === "habits" && !trackingModeLoading;
 
   useEffect(() => {
     if (!targetsLoading) {
@@ -85,6 +93,7 @@ export const WeeklyAchievements = () => {
           carbs: { value: totalCarbs, goal: carbsGoal, met: carbsMet },
           fats: { value: totalFats, goal: fatsGoal, met: fatsMet },
           water: { value: totalWater, goal: waterGoalMl, met: waterMet },
+          mealsLogged: dayMeals.length,
           allGoalsMet: caloriesMet && proteinMet && carbsMet && fatsMet && waterMet,
         };
       });
@@ -109,7 +118,7 @@ export const WeeklyAchievements = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || trackingModeLoading) {
     return (
       <Card className="bg-card rounded-3xl shadow-medium">
         <CardContent className="py-8 text-center text-muted-foreground">
@@ -129,7 +138,7 @@ export const WeeklyAchievements = () => {
       </CardHeader>
       <CardContent className="p-4 space-y-4">
         {/* Perfect Days Highlight */}
-        {stats && stats.perfectDays > 0 && (
+        {numbersVisible && stats && stats.perfectDays > 0 && (
           <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-2xl p-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <span className="text-3xl">🏆</span>
@@ -144,7 +153,22 @@ export const WeeklyAchievements = () => {
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">Daily Breakdown</p>
           <div className="grid grid-cols-7 gap-1">
-            {achievements.map((day, idx) => (
+            {habitsView && achievements.map((day, idx) => {
+              const tracked = day.mealsLogged > 0 || day.water.value > 0;
+              return (
+                <div key={idx} className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">{day.dayName}</p>
+                  <div
+                    className={`w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-all ${
+                      tracked ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {tracked ? <Check className="w-4 h-4" /> : <span className="text-xs">-</span>}
+                  </div>
+                </div>
+              );
+            })}
+            {!habitsView && achievements.map((day, idx) => (
               <div key={idx} className="text-center">
                 <p className="text-xs text-muted-foreground mb-1">{day.dayName}</p>
                 <div 
@@ -182,6 +206,8 @@ export const WeeklyAchievements = () => {
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Goals Met This Week</p>
             <div className="grid grid-cols-2 gap-2">
+              {numbersVisible && (
+              <>
               <GoalStat 
                 icon={<Flame className="w-4 h-4" />}
                 label="Calories"
@@ -206,6 +232,8 @@ export const WeeklyAchievements = () => {
                 color="text-[hsl(var(--carbs))]"
                 bgColor="bg-[hsl(var(--carbs))]/10"
               />
+              </>
+              )}
               <GoalStat 
                 icon={<Droplets className="w-4 h-4" />}
                 label="Water"
@@ -221,7 +249,13 @@ export const WeeklyAchievements = () => {
         {/* Encouragement message */}
         {stats && (
           <div className="text-center pt-2">
-            {stats.perfectDays >= 5 ? (
+            {habitsView ? (
+              achievements.some(d => d.mealsLogged > 0 || d.water.value > 0) ? (
+                <p className="text-sm text-muted-foreground">📈 Every day counts. Keep logging to see your progress!</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Start logging your meals and water to see your achievements!</p>
+              )
+            ) : stats.perfectDays >= 5 ? (
               <p className="text-sm text-green-600 font-medium">🌟 Outstanding week! Keep crushing it!</p>
             ) : stats.perfectDays >= 3 ? (
               <p className="text-sm text-amber-600 font-medium">💪 Great progress! You're building momentum!</p>

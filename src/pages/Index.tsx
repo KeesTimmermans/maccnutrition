@@ -412,7 +412,7 @@ const Index = () => {
   }
 
   if (appState === "baseline" && userData && savedBaseline) {
-    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} />;
+    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} trackingMode={userData.trackingMode} />;
   }
 
   if (appState === "questionnaire") {

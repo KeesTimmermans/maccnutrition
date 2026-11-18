@@ -15,15 +15,26 @@ import { OnboardingData } from "./OnboardingQuestionnaire";
 import { BaselineResults } from "@/lib/baselineCalculations";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers, normalizeTrackingMode, type TrackingMode } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 interface BaselineSummaryProps {
   userData: OnboardingData;
   baseline: BaselineResults;
   onContinue: () => void;
+  /**
+   * The food approach just chosen in the questionnaire. Shown right after signup,
+   * before the shared mode may have reloaded, so it wins over the saved mode when given.
+   */
+  trackingMode?: TrackingMode;
 }
 
-export const BaselineSummary = ({ userData, baseline, onContinue }: BaselineSummaryProps) => {
+export const BaselineSummary = ({ userData, baseline, onContinue, trackingMode }: BaselineSummaryProps) => {
   const { t } = useLanguage();
+  const { mode: savedMode, loading: modeLoading } = useTrackingMode();
+  const numbersVisible =
+    trackingMode !== undefined ? normalizeTrackingMode(trackingMode) !== "habits" : showNumbers(savedMode, modeLoading);
   const [activeTab, setActiveTab] = useState<"overview" | "meals" | "focus">("overview");
 
   const tabs = [
@@ -70,13 +81,13 @@ export const BaselineSummary = ({ userData, baseline, onContinue }: BaselineSumm
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeTab === "overview" && (
-          <OverviewTab baseline={baseline} userData={userData} t={t} />
+          <OverviewTab baseline={baseline} userData={userData} t={t} numbersVisible={numbersVisible} />
         )}
         {activeTab === "meals" && (
-          <MealsTab baseline={baseline} t={t} />
+          <MealsTab baseline={baseline} t={t} numbersVisible={numbersVisible} />
         )}
         {activeTab === "focus" && (
-          <FocusTab baseline={baseline} t={t} />
+          <FocusTab baseline={baseline} t={t} numbersVisible={numbersVisible} />
         )}
       </div>
 
@@ -95,7 +106,7 @@ export const BaselineSummary = ({ userData, baseline, onContinue }: BaselineSumm
 };
 
 // Overview Tab
-const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; userData: OnboardingData; t: (key: string) => string }) => {
+const OverviewTab = ({ baseline, userData, t, numbersVisible }: { baseline: BaselineResults; userData: OnboardingData; t: (key: string) => string; numbersVisible: boolean }) => {
   const goalLabels: Record<string, string> = {
     fat_loss: t('fat_loss'),
     muscle_gain: t('muscle_gain'),
@@ -108,7 +119,9 @@ const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; use
 
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Calorie Target */}
+      {/* Calorie target and macro breakdown (calorie tracking only) */}
+      {numbersVisible && (
+      <>
       <div className="bg-card rounded-2xl p-5 shadow-soft">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -175,6 +188,8 @@ const OverviewTab = ({ baseline, userData, t }: { baseline: BaselineResults; use
           />
         </div>
       </div>
+      </>
+      )}
 
       {/* Hydration Window */}
       <div className="bg-card rounded-2xl p-5 shadow-soft">
@@ -338,13 +353,16 @@ const MacroCard = ({ label, grams, percentage, color }: {
 );
 
 // Meals Tab
-const MealsTab = ({ baseline, t }: { baseline: BaselineResults; t: (key: string) => string }) => (
+const MealsTab = ({ baseline, t, numbersVisible }: { baseline: BaselineResults; t: (key: string) => string; numbersVisible: boolean }) => (
   <div className="space-y-4 animate-slide-up">
-    <div className="bg-accent/30 rounded-xl p-4 mb-6">
-      <p className="text-sm text-foreground">
-        {t('meal_times_suggestion')}
-      </p>
-    </div>
+    {/* The suggestion text mentions daily targets, so habits mode leaves it out */}
+    {numbersVisible && (
+      <div className="bg-accent/30 rounded-xl p-4 mb-6">
+        <p className="text-sm text-foreground">
+          {t('meal_times_suggestion')}
+        </p>
+      </div>
+    )}
 
     {baseline.mealPattern.map((meal, index) => (
       <div 
@@ -359,7 +377,9 @@ const MealsTab = ({ baseline, t }: { baseline: BaselineResults; t: (key: string)
             <h4 className="font-semibold text-foreground">{meal.meal}</h4>
             <span className="text-sm text-muted-foreground">{meal.time}</span>
           </div>
-          <p className="text-sm text-muted-foreground">{meal.purpose}</p>
+          {(numbersVisible || !mentionsNutritionNumbers(meal.purpose)) && (
+            <p className="text-sm text-muted-foreground">{meal.purpose}</p>
+          )}
         </div>
       </div>
     ))}
@@ -367,7 +387,7 @@ const MealsTab = ({ baseline, t }: { baseline: BaselineResults; t: (key: string)
 );
 
 // Focus Tab
-const FocusTab = ({ baseline, t }: { baseline: BaselineResults; t: (key: string) => string }) => (
+const FocusTab = ({ baseline, t, numbersVisible }: { baseline: BaselineResults; t: (key: string) => string; numbersVisible: boolean }) => (
   <div className="space-y-4 animate-slide-up">
     <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-5 mb-6">
       <h3 className="font-bold text-foreground mb-2">{t('this_weeks_focus')}</h3>
@@ -376,7 +396,7 @@ const FocusTab = ({ baseline, t }: { baseline: BaselineResults; t: (key: string)
       </p>
     </div>
 
-    {baseline.focusPoints.map((point, index) => (
+    {baseline.focusPoints.filter((point) => numbersVisible || !mentionsNutritionNumbers(point)).map((point, index) => (
       <div 
         key={index}
         className="bg-card rounded-2xl p-4 shadow-soft flex items-start gap-4"

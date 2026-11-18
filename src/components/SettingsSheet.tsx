@@ -17,6 +17,8 @@ import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { MeasurementsSettings } from "@/components/MeasurementsSettings";
 import { ProgressUpdateDialog } from "@/components/ProgressUpdateDialog";
 import { ProgressHistory } from "@/components/ProgressHistory";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 
 interface SettingsSheetProps {
   baseline: UserBaseline | null;
@@ -37,6 +39,8 @@ export const SettingsSheet = ({
 }: SettingsSheetProps) => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [isMetric, setIsMetric] = useState(baseline?.unit_system === "metric");
   const [currency, setCurrency] = useState(baseline?.preferred_currency || "GBP");
   const [coachingTone, setCoachingTone] = useState(baseline?.coaching_tone || "supportive");
@@ -330,12 +334,14 @@ export const SettingsSheet = ({
                           {baseline.primary_goal?.replace(/_/g, " ") || t('not_set')}
                         </span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{t('daily_calories')}</span>
-                        <span className="text-foreground">
-                          {baseline.target_calories?.toLocaleString() || t('not_set')} kcal
-                        </span>
-                      </div>
+                      {numbersVisible && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{t('daily_calories')}</span>
+                          <span className="text-foreground">
+                            {baseline.target_calories?.toLocaleString() || t('not_set')} kcal
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t('activity_level')}</span>
                         <span className="text-foreground capitalize">

@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { getProgressUpdates, ProgressUpdate } from "@/lib/progressUpdateService";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { coachParagraphs } from "@/lib/habitCoachCopy";
 import { ThumbsUp, Target, Ruler, TrendingUp, MessageCircle, Scale, Activity, Loader2 } from "lucide-react";
 
 interface ProgressHistoryProps {
@@ -14,6 +17,8 @@ interface ProgressHistoryProps {
 export const ProgressHistory = ({ unitSystem = "metric" }: ProgressHistoryProps) => {
   const [updates, setUpdates] = useState<ProgressUpdate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -123,8 +128,8 @@ export const ProgressHistory = ({ unitSystem = "metric" }: ProgressHistoryProps)
               </div>
             </AccordionTrigger>
             <AccordionContent className="pb-4 space-y-4">
-              {/* Adjustments made */}
-              {update.adjustments && (
+              {/* Adjustments made (calorie tracking only) */}
+              {numbersVisible && update.adjustments && (
                 <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="w-4 h-4 text-primary" />
@@ -151,7 +156,7 @@ export const ProgressHistory = ({ unitSystem = "metric" }: ProgressHistoryProps)
               )}
 
               {/* Targets at time of check-in */}
-              {(update.target_calories || update.protein_grams) && (
+              {numbersVisible && (update.target_calories || update.protein_grams) && (
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {update.target_calories && (
                     <div className="p-2 rounded bg-muted/50">
@@ -216,10 +221,16 @@ export const ProgressHistory = ({ unitSystem = "metric" }: ProgressHistoryProps)
                     <span className="text-sm font-medium">Coach Mac's Response</span>
                   </div>
                   <div className="text-sm text-muted-foreground leading-relaxed">
-                    {update.coach_response.split("\n").slice(0, 3).map((p, i) => (
+                    {(numbersVisible
+                      ? update.coach_response.split("\n")
+                      : coachParagraphs(update.coach_response, true)
+                    ).slice(0, 3).map((p, i) => (
                       <p key={i} className="mb-1">{p}</p>
                     ))}
-                    {update.coach_response.split("\n").length > 3 && (
+                    {(numbersVisible
+                      ? update.coach_response.split("\n")
+                      : coachParagraphs(update.coach_response, true)
+                    ).length > 3 && (
                       <p className="text-xs text-muted-foreground/70">...</p>
                     )}
                   </div>

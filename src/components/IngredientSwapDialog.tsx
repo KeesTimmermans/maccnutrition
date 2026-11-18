@@ -10,6 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MealIngredient } from "@/components/MealPlanCard";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 import { useLanguage } from "@/lib/i18n";
 
 export interface IngredientOption extends MealIngredient {
@@ -36,6 +39,8 @@ export const IngredientSwapDialog = ({
   isLoading,
 }: IngredientSwapDialogProps) => {
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [options, setOptions] = useState<IngredientOption[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customPreference, setCustomPreference] = useState("");
@@ -107,10 +112,14 @@ export const IngredientSwapDialog = ({
             <p className="font-medium text-foreground">{ingredient.name}</p>
             <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
               <span>{ingredient.quantity} {ingredient.unit}</span>
-              <span>•</span>
-              <span>{currentCals} cal</span>
-              <span>•</span>
-              <span>P: {currentProtein}g</span>
+              {numbersVisible && (
+                <>
+                  <span>•</span>
+                  <span>{currentCals} cal</span>
+                  <span>•</span>
+                  <span>P: {currentProtein}g</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -179,12 +188,16 @@ export const IngredientSwapDialog = ({
                         <h4 className="font-semibold text-foreground text-sm">{option.name}</h4>
                         <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
                           <span>{option.quantity} {option.unit}</span>
-                          <span>•</span>
-                          <span className="text-primary">{optionCals} cal</span>
-                          <span>•</span>
-                          <span>P: {optionProtein}g</span>
+                          {numbersVisible && (
+                            <>
+                              <span>•</span>
+                              <span className="text-primary">{optionCals} cal</span>
+                              <span>•</span>
+                              <span>P: {optionProtein}g</span>
+                            </>
+                          )}
                         </div>
-                        {option.reason && (
+                        {option.reason && (numbersVisible || !mentionsNutritionNumbers(option.reason)) && (
                           <p className="text-xs text-muted-foreground mt-1.5 italic">
                             {option.reason}
                           </p>
