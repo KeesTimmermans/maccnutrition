@@ -413,6 +413,44 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_checklists: {
+        Row: {
+          checklist_date: string
+          completed: Json
+          created_at: string
+          id: string
+          items: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checklist_date: string
+          completed?: Json
+          created_at?: string
+          id?: string
+          items: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checklist_date?: string
+          completed?: Json
+          created_at?: string
+          id?: string
+          items?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_checklists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       email_confirmations: {
         Row: {
           confirmed_at: string

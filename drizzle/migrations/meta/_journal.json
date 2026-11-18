@@ -8,6 +8,13 @@
       "when": 1794998316417,
       "tag": "0000_add_tracking_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795002828310,
+      "tag": "0001_create_daily_checklists",
+      "breakpoints": true
     }
   ]
 }

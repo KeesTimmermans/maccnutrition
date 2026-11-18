@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import {
   getOrGenerateWeeklyHabit,
   toggleHabitDay,
+  notifyWeeklyHabitChanged,
+  WEEKLY_HABIT_CHANGED_EVENT,
   type WeeklyHabit,
 } from "@/lib/weeklyHabitService";
 
@@ -46,6 +48,18 @@ export const WeeklyHabitCard = ({ userContext }: WeeklyHabitCardProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userContext]);
 
+  // Today's checklist can tick the habit too: refetch when it (or anything else) changes it.
+  useEffect(() => {
+    const onChanged = () => {
+      if (!userContext) return;
+      getOrGenerateWeeklyHabit(userContext)
+        .then(setHabit)
+        .catch((e) => console.error("Weekly habit refetch failed:", e));
+    };
+    window.addEventListener(WEEKLY_HABIT_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(WEEKLY_HABIT_CHANGED_EVENT, onChanged);
+  }, [userContext]);
+
   const completed = habit?.completed_dates ?? [];
 
   const handleToggle = async (dateStr: string) => {
@@ -60,6 +74,7 @@ export const WeeklyHabitCard = ({ userContext }: WeeklyHabitCardProps) => {
     try {
       const updated = await toggleHabitDay(habit.id, dateStr, previous);
       setHabit(updated);
+      notifyWeeklyHabitChanged(updated);
     } catch (e) {
       setHabit({ ...habit, completed_dates: previous });
       toast.error(e instanceof Error ? e.message : "Couldn't update your habit. Please try again.");

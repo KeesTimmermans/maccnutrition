@@ -71,3 +71,10 @@ export const toggleHabitDay = async (
 
   return data as WeeklyHabit;
 };
+
+/** Fired after any weekly-habit tick so every card showing the habit stays in sync. detail: { habit } */
+export const WEEKLY_HABIT_CHANGED_EVENT = "weekly-habit-changed";
+
+export const notifyWeeklyHabitChanged = (habit: WeeklyHabit) => {
+  window.dispatchEvent(new CustomEvent<{ habit: WeeklyHabit }>(WEEKLY_HABIT_CHANGED_EVENT, { detail: { habit } }));
+};

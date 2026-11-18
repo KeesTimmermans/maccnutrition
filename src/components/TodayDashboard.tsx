@@ -12,6 +12,7 @@ import { StreakCelebration } from "@/components/StreakCelebration";
 import { WaterTracker } from "@/components/WaterTracker";
 import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
 import { WeeklyHabitCard } from "@/components/WeeklyHabitCard";
+import { TodayChecklistCard } from "@/components/TodayChecklistCard";
 import { ProfileCompletionCard } from "@/components/ProfileCompletionCard";
 import { LeftTodayCard } from "@/components/LeftTodayCard";
 import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
@@ -60,6 +61,8 @@ interface DashboardMeal {
   fats: number;
   sugar: number;
   imageUrl?: string;
+  /** Local hour the meal was logged (drives the checklist's "log your lunch" items). */
+  loggedAtHour: number;
 }
 
 export const TodayDashboard = () => {
@@ -439,6 +442,7 @@ export const TodayDashboard = () => {
         fats: meal.fats,
         sugar: meal.sugar || 0,
         imageUrl: meal.image_url || undefined,
+        loggedAtHour: new Date(meal.logged_at).getHours(),
       }));
       setMeals(formattedMeals);
       
@@ -514,6 +518,7 @@ export const TodayDashboard = () => {
           fats: savedMeal.fats,
           sugar: savedMeal.sugar || 0,
           imageUrl: savedMeal.image_url || undefined,
+          loggedAtHour: new Date(savedMeal.logged_at).getHours(),
         };
         
         const updatedMeals = [...meals, newMeal];
@@ -700,7 +705,13 @@ export const TodayDashboard = () => {
             <WaterTracker
               dailyGoalLiters={activeTargets.waterLiters}
               upperGoalLiters={activeTargets.waterLitersTraining}
-              onWaterLogged={refreshCoachingFocusPoints}
+              onWaterLogged={() => {
+                refreshCoachingFocusPoints();
+                // Keep the water total live for the checklist's water goal item.
+                getTodaysWaterIntake()
+                  .then((entries) => setTotalWaterMl(entries.reduce((sum, w) => sum + w.amount_ml, 0)))
+                  .catch((e) => console.error("Refreshing water total failed:", e));
+              }}
             />
 
             <Collapsible open={checkInTrendsOpen} onOpenChange={setCheckInTrendsOpen} key="checkin_trends">
@@ -804,6 +815,11 @@ export const TodayDashboard = () => {
     </section>
   );
 
+  const checklistMeals = useMemo(
+    () => meals.map((m) => ({ name: m.name, loggedAtHour: m.loggedAtHour, proteinGrams: m.protein })),
+    [meals],
+  );
+
   const renderCoachSection = () => (
     <section key="coach">
       <AICoachCard 
@@ -827,6 +843,17 @@ export const TodayDashboard = () => {
         customFocusPoints={customFocusPoints}
         dailyCheckInFocusPoints={dailyCheckInFocusPoints}
       />
+      <div className="mt-4">
+        <TodayChecklistCard
+          ready={!isLoading}
+          meals={checklistMeals}
+          waterMl={totalWaterMl}
+          waterGoalMl={Math.round((activeTargets.waterLiters || 0) * 1000)}
+          hasCheckedInToday={hasCheckedInToday}
+          dailyFocusPoints={dailyCheckInFocusPoints}
+          habitUserContext={habitUserContext}
+        />
+      </div>
     </section>
   );
 
