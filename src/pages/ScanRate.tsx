@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ScanBarcode, Package, WifiOff, SearchX } from "lucide-react";
+import { ArrowLeft, ScanBarcode, Package, WifiOff, SearchX, CameraOff, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,32 @@ const BAND_STYLES: Record<ScoreBand, { text: string; bg: string; key: string }> 
   occasional: { text: "text-score-occasional", bg: "bg-score-occasional/10", key: "score_band_occasional" },
 };
 
+type CameraProblem = "denied" | "none" | "unavailable";
+
+/**
+ * Asks for the camera once before opening the scanner, so a missing camera or a
+ * denied permission becomes a friendly message instead of a black screen.
+ */
+async function checkCamera(): Promise<CameraProblem | null> {
+  if (!navigator.mediaDevices?.getUserMedia) return "unavailable";
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    stream.getTracks().forEach((track) => track.stop());
+    return null;
+  } catch (err) {
+    const name = (err as { name?: string })?.name;
+    if (name === "NotAllowedError" || name === "SecurityError") return "denied";
+    if (name === "NotFoundError" || name === "OverconstrainedError" || name === "DevicesNotFoundError") return "none";
+    return "unavailable";
+  }
+}
+
+const CAMERA_MESSAGE_KEYS: Record<CameraProblem, string> = {
+  denied: "scan_rate_camera_denied",
+  none: "scan_rate_camera_none",
+  unavailable: "scan_rate_camera_unavailable",
+};
+
 /** True when the failure is the connection or the product database, not our app. */
 function isNetworkError(error: unknown): boolean {
   const e = error as { name?: string; context?: { status?: number } } | null;
@@ -48,6 +74,8 @@ const ScanRate = () => {
   const [manual, setManual] = useState("");
   const [manualError, setManualError] = useState<string | null>(null);
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
+  const [cameraProblem, setCameraProblem] = useState<CameraProblem | null>(null);
+  const [checkingCamera, setCheckingCamera] = useState(false);
 
   const lookup = useMutation<ScanOutcome, unknown, string>({
     mutationFn: async (barcode) => {
@@ -92,9 +120,17 @@ const ScanRate = () => {
     setLastBarcode(null);
   };
 
+  const openScanner = async () => {
+    setCheckingCamera(true);
+    const problem = await checkCamera();
+    setCheckingCamera(false);
+    setCameraProblem(problem);
+    if (!problem) setScanning(true);
+  };
+
   const scanAnother = () => {
     reset();
-    setScanning(true);
+    void openScanner();
   };
 
   if (scanning) {
@@ -150,10 +186,26 @@ const ScanRate = () => {
 
         {lookup.isIdle && (
           <Card className="bg-card rounded-3xl shadow-medium p-5 space-y-5">
-            <Button size="lg" className="w-full h-14 text-base rounded-2xl" onClick={() => setScanning(true)}>
-              <ScanBarcode className="w-5 h-5 mr-2" />
+            <Button
+              size="lg"
+              className="w-full h-14 text-base rounded-2xl"
+              onClick={() => void openScanner()}
+              disabled={checkingCamera}
+            >
+              {checkingCamera ? (
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <ScanBarcode className="w-5 h-5 mr-2" />
+              )}
               {t("scan_rate_scan_button")}
             </Button>
+
+            {cameraProblem && (
+              <div role="alert" className="flex gap-3 rounded-2xl bg-muted p-3 text-sm text-foreground">
+                <CameraOff className="w-5 h-5 shrink-0 text-muted-foreground" />
+                <p>{t(CAMERA_MESSAGE_KEYS[cameraProblem])}</p>
+              </div>
+            )}
 
             <form onSubmit={handleManualSubmit} className="space-y-2">
               <Label htmlFor="manual-barcode" className="text-sm text-muted-foreground">
