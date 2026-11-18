@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare, Trash2, BarChart2, Users } from "lucide-react";
+import { ArrowLeft, Globe, Ruler, Crown, LayoutGrid, MessageSquare, Trash2, BarChart2, Users, Utensils } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { getUserBaseline, updateUserSettings, UserBaseline } from "@/lib/userService";
 import { COACHING_TONES } from "@/lib/coachingTones";
+import { normalizeTrackingMode, type TrackingMode } from "@/lib/trackingMode";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
@@ -36,6 +37,7 @@ const Settings = () => {
   const [isMetric, setIsMetric] = useState(false);
   const [currency, setCurrency] = useState("GBP");
   const [coachingTone, setCoachingTone] = useState("supportive");
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>("calories");
   const [householdSize, setHouseholdSize] = useState(1);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +93,7 @@ const Settings = () => {
         setIsMetric(baselineData.unit_system === "metric");
         setCurrency(baselineData.preferred_currency || "GBP");
         setCoachingTone(baselineData.coaching_tone || "supportive");
+        setTrackingMode(normalizeTrackingMode(baselineData.tracking_mode));
         setHouseholdSize(baselineData.household_size || 1);
         setAnalyticsConsent((baselineData as any).analytics_consent ?? false);
       }
@@ -191,6 +194,29 @@ const Settings = () => {
     } catch (error) {
       console.error("Error updating language:", error);
       toast.error(t('error'));
+    }
+  };
+
+  const trackingModes: { value: TrackingMode; label: string; description: string }[] = [
+    { value: "calories", label: t('food_approach_calories'), description: t('food_approach_calories_desc') },
+    { value: "habits", label: t('food_approach_habits'), description: t('food_approach_habits_desc') },
+  ];
+
+  // Food approach never recalculates targets — it only changes what the app shows (later).
+  const handleTrackingModeChange = async (value: string) => {
+    const previous = trackingMode;
+    const next = normalizeTrackingMode(value);
+    setTrackingMode(next);
+    setIsUpdating(true);
+    try {
+      await updateUserSettings({ tracking_mode: next });
+      toast.success(t('food_approach_updated'));
+    } catch (error) {
+      console.error("Error updating food approach:", error);
+      toast.error(t('error'));
+      setTrackingMode(previous);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -361,6 +387,37 @@ const Settings = () => {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Food Approach Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Utensils className="w-4 h-4 text-primary" />
+              {t('food_approach')}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {t('food_approach_desc')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={trackingMode} onValueChange={handleTrackingModeChange} disabled={isUpdating}>
+              <SelectTrigger className="w-full" aria-label={t('food_approach')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {trackingModes.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    <div className="flex flex-col">
+                      <span>{m.label}</span>
+                      <span className="text-xs text-muted-foreground">{m.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">{t('food_approach_note')}</p>
           </CardContent>
         </Card>
 
