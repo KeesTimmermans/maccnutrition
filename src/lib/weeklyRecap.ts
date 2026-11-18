@@ -61,7 +61,7 @@ export interface Recap {
 
 const mean = (values: number[]) => values.reduce((s, v) => s + v, 0) / values.length;
 
-function metricFor(
+export function metricFor(
   current: number[],
   previous: number[]
 ): RecapMetric | null {

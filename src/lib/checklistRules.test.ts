@@ -3,7 +3,7 @@ import {
   validateChecklistItem,
   FALLBACK_LIBRARY,
   CHECKLIST_CATEGORIES,
-  EXERCISE_PATTERN,
+  HARD_EXERCISE_PATTERN,
   pickFallbacks,
   applyCategoryMix,
   deterministicItems,
@@ -92,10 +92,29 @@ describe("validateChecklistItem", () => {
 
   it("allows eating or drinking around training", () => {
     expect(
-      validateChecklistItem(item({ title: "Eat a banana and drink water an hour before your workout", category: "nutrition", when: "afternoon" }), "calories").valid,
+      validateChecklistItem(item({ title: "Eat a banana and drink water an hour before you train", category: "nutrition", when: "afternoon" }), "calories").valid,
     ).toBe(true);
     expect(isExerciseItem("Have oats before your training session")).toBe(false);
     expect(isExerciseItem("Do three sets before bed")).toBe(true);
+  });
+
+  it.each([
+    "Take a walk and stretch after dinner",
+    "Do three sets of squats",
+    "Go for a run after lunch",
+  ])("rejects exercise even next to a meal: %s", (title) => {
+    expect(isExerciseItem(title)).toBe(true);
+  });
+
+  it.each([
+    "Have a banana and water an hour before you train",
+    "Eat a palm of protein at lunch",
+  ])("accepts eating or drinking around training: %s", (title) => {
+    expect(isExerciseItem(title)).toBe(false);
+  });
+
+  it("still checks the why line for hard exercise words", () => {
+    expect(isExerciseItem("Eat a palm of protein at lunch", "It helps your workout later.")).toBe(true);
   });
 });
 
@@ -107,7 +126,8 @@ describe("fallback library", () => {
     for (const entry of FALLBACK_LIBRARY[mode]) {
       const res = validateChecklistItem(entry, mode);
       expect(res, `${entry.title}: ${res.reason}`).toEqual({ valid: true });
-      expect(EXERCISE_PATTERN.test(entry.title) || EXERCISE_PATTERN.test(entry.why), entry.title).toBe(false);
+      expect(isExerciseItem(entry.title, entry.why), entry.title).toBe(false);
+      expect(HARD_EXERCISE_PATTERN.test(entry.title) || HARD_EXERCISE_PATTERN.test(entry.why), entry.title).toBe(false);
       expect(/\bwalk/i.test(entry.title), entry.title).toBe(false);
     }
   });

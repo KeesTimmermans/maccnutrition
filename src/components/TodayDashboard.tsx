@@ -16,6 +16,8 @@ import { TodayChecklistCard } from "@/components/TodayChecklistCard";
 import { ProfileCompletionCard } from "@/components/ProfileCompletionCard";
 import { LeftTodayCard } from "@/components/LeftTodayCard";
 import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
+import { HabitWeeklyRecapCard } from "@/components/HabitWeeklyRecapCard";
+import { WhatNextCard } from "@/components/WhatNextCard";
 
 import { ActiveTargetSourceBadge } from "@/components/ActiveTargetSourceBadge";
 
@@ -73,6 +75,8 @@ export const TodayDashboard = () => {
   const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
   // Calorie/macro numbers only once the mode is known to be calorie tracking.
   const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
+  // Habits-only cards render once the mode is known (never during loading).
+  const habitsModeKnown = !trackingModeLoading && trackingMode === 'habits';
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined);
@@ -810,6 +814,19 @@ export const TodayDashboard = () => {
           />
         )}
 
+        {!isLoading && habitsModeKnown && (
+          <WhatNextCard
+            loggedHours={meals.map((m) => m.loggedAtHour)}
+            onAskCoach={(prefill) => {
+              setChatPrefill(prefill);
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
+          />
+        )}
+
         <AddMealCard onClick={() => setShowMealLogger(true)} />
       </div>
     </section>
@@ -925,6 +942,20 @@ export const TodayDashboard = () => {
         {!targetsLoading && numbersVisible && (
           <WeeklyRecapCard
             targets={{ calories: activeTargets.calories, protein: activeTargets.protein }}
+            onAskCoach={(prefill) => {
+              setChatPrefill(prefill);
+              setShowAIChat(true);
+              updateStreak('coaching').then(streak => {
+                if (streak) setCoachingStreak(streak);
+              });
+            }}
+          />
+        )}
+
+        {/* Habits-mode weekly recap (Sundays and Mondays only) */}
+        {!targetsLoading && habitsModeKnown && (
+          <HabitWeeklyRecapCard
+            waterGoalMl={Math.round((activeTargets.waterLiters || 0) * 1000)}
             onAskCoach={(prefill) => {
               setChatPrefill(prefill);
               setShowAIChat(true);

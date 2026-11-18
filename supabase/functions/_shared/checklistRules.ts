@@ -32,15 +32,20 @@ export const CHECKLIST_CATEGORIES: ChecklistCategory[] = ["nutrition", "sleep", 
 
 // ── Categories and the no-exercise rule ─────────────────────────────
 
-/** Workout/exercise wording. Items may only mention training when they are about eating or drinking around it. */
-export const EXERCISE_PATTERN =
-  /\b(workout|work out|exercise|lift(?:ing)?|squats?|deadlifts?|bench|reps?|sets?|run(?:ning)?|jog(?:ging)?|gym|cardio|steps|stretch(?:ing)?|train(?:ing)? session|hiit|yoga)\b/i;
-export const EATING_PATTERN =
-  /\b(eat|meal|snack|drink|water|protein|carbs?|breakfast|lunch|dinner|fuel|hydrate|banana|oats)\b/i;
+/** Exercise words that are always rejected, even when the title also mentions food or a meal. */
+export const HARD_EXERCISE_PATTERN =
+  /\b(walk(?:s|ing)?|stroll(?:s|ing)?|stretch(?:es|ing)?|yoga|pilates|gym|cardio|hiit|steps|reps|sets|workouts?|work out|exercis(?:e|es|ing)|squats?|deadlifts?|bench|jog(?:s|ging)?)\b/i;
+/** Training words that are fine only when the title is about eating or drinking around them. */
+export const SOFT_EXERCISE_PATTERN = /\b(train(?:s|ing)?|run(?:s|ning)?|lift(?:s|ing)?)\b/i;
+/** Eating/drinking actions that excuse a soft word. Meal-time nouns (breakfast, lunch, dinner) deliberately don't count. */
+export const EATING_ACTION_PATTERN =
+  /\b(eat(?:s|ing)?|drink(?:s|ing)?|snacks?|bananas?|oats|protein|carbs?|water|fuel(?:s|ling|ing)?|hydrat(?:e|ed|ing|ion))\b/i;
 
-/** True when the title (or why) asks for exercise and the title isn't about eating/drinking around it. */
+/** True when the item asks for exercise: a hard word in the title or why, or a soft word in a title that isn't about eating/drinking. */
 export const isExerciseItem = (title: string, why = ""): boolean =>
-  (EXERCISE_PATTERN.test(title) || EXERCISE_PATTERN.test(why)) && !EATING_PATTERN.test(title);
+  HARD_EXERCISE_PATTERN.test(title) ||
+  HARD_EXERCISE_PATTERN.test(why) ||
+  (SOFT_EXERCISE_PATTERN.test(title) && !EATING_ACTION_PATTERN.test(title));
 
 export const isChecklistCategory = (value: unknown): value is ChecklistCategory =>
   typeof value === "string" && (CHECKLIST_CATEGORIES as string[]).includes(value);
