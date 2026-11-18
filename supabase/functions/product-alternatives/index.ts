@@ -168,6 +168,24 @@ async function searchCategory(tag: string, store: StoreKey | null): Promise<any[
   return products;
 }
 
+const isPromising = (p: ProductScoreData) => p.nutriscore_grade === "a" || p.nutriscore_grade === "b";
+
+/**
+ * Keeps at most MAX_CANDIDATES. When there are too many, store-tagged and
+ * promising products are kept over the rest; the original order is preserved.
+ */
+function trimCandidates<T extends ProductScoreData & { inStore: boolean }>(list: T[]): T[] {
+  if (list.length <= MAX_CANDIDATES) return list;
+  const keep = new Set<T>();
+  for (const pass of [(c: T) => c.inStore, (c: T) => isPromising(c), () => true]) {
+    for (const c of list) {
+      if (keep.size >= MAX_CANDIDATES) break;
+      if (pass(c)) keep.add(c);
+    }
+  }
+  return list.filter((c) => keep.has(c));
+}
+
 type Candidate = ProductScoreData & { inStore: boolean };
 
 Deno.serve(async (req) => {
@@ -208,8 +226,10 @@ Deno.serve(async (req) => {
     const candidates: Candidate[] = [];
     let matchedCategory: string | null = null;
     let generalSearchWorked = false;
-    // Counts only general-search results, so picking a store never narrows the search.
-    let generalCount = 0;
+    // Counts only promising general-search results (Nutri-Score A/B), so picking a
+    // store never narrows the search and a category full of near-copies of the
+    // scanned product (e.g. 40 diet colas) doesn't stop it before broader ones.
+    let promisingCount = 0;
 
     for (const tag of tags) {
       // Store search first (best effort), then the general UK search, in parallel.
@@ -230,18 +250,18 @@ Deno.serve(async (req) => {
           skip.add(code);
           const clean = toProductScoreData(raw);
           candidates.push({ ...clean, inStore: isInStore(clean.stores_tags, store) });
-          if (i === 1) generalCount++;
+          if (i === 1 && isPromising(clean)) promisingCount++;
           if (!matchedCategory) matchedCategory = tag;
         }
       }
-      if (generalCount >= ENOUGH_CANDIDATES) break;
+      if (promisingCount >= ENOUGH_CANDIDATES) break;
     }
 
     // Store results alone are not enough to say "no better options": report an error.
     if (tags.length > 0 && !generalSearchWorked) {
       return json({ candidates: [], matchedCategory: null, error: true });
     }
-    return json({ candidates: candidates.slice(0, MAX_CANDIDATES), matchedCategory, error: false });
+    return json({ candidates: trimCandidates(candidates), matchedCategory, error: false });
   } catch (err) {
     console.error("[product-alternatives] failed:", err);
     return json({ candidates: [], matchedCategory: null, error: true });

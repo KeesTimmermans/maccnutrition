@@ -66,6 +66,8 @@ export function BetterOptions({ barcode, score, categoriesTags, store, onSelect 
   }, [pick, query.data, barcode, store]);
 
   const storeName = store ? t(`store_${store}`) : "";
+  // A retry after an error shows the skeleton again instead of the old error text.
+  const loading = query.isPending || (query.isError && query.isFetching);
 
   return (
     <section className="space-y-3" aria-labelledby="better-options-title">
@@ -73,7 +75,7 @@ export function BetterOptions({ barcode, score, categoriesTags, store, onSelect 
         {t("better_options_title")}
       </h2>
 
-      {query.isPending && (
+      {loading && (
         <div className="space-y-2" aria-busy="true">
           {[0, 1, 2].map((i) => (
             <Card key={i} className="rounded-2xl p-3 flex items-center gap-3">
@@ -88,7 +90,7 @@ export function BetterOptions({ barcode, score, categoriesTags, store, onSelect 
         </div>
       )}
 
-      {query.isError && (
+      {query.isError && !query.isFetching && (
         <p className="text-sm text-muted-foreground">
           {t("better_options_error")}.{" "}
           <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => void query.refetch()}>
