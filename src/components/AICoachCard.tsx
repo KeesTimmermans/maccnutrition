@@ -27,6 +27,9 @@ import { CheckInAnalysis, DailyCheckIn } from "@/lib/checkinService";
 import { UserBaseline } from "@/lib/userService";
 import { MealPatternAnalysis } from "@/lib/coachingAnalytics";
 import { CoachingFocusPoint } from "@/lib/progressUpdateService";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 interface InsightCard {
   type: "positive" | "warning" | "action" | "info";
@@ -90,6 +93,11 @@ export const AICoachCard = ({
   dailyCheckInFocusPoints
 }: AICoachCardProps) => {
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Habits mode (or mode not known yet): no item may mention calories, macros, grams or targets.
+  const hideNumbers = !showNumbers(trackingMode, trackingModeLoading);
+  const isNumberFree = (...parts: (string | null | undefined)[]) =>
+    !mentionsNutritionNumbers(parts.filter(Boolean).join(" "));
   
   const displayGreeting = greeting || t('good_morning');
 
@@ -823,8 +831,13 @@ export const AICoachCard = ({
       return 'other';
     };
 
+    // Habits mode keeps only items free of calories, macros, grams, targets and percentages
+    const pool = hideNumbers
+      ? recommendations.filter((rec) => isNumberFree(rec.title, rec.description, rec.details, rec.action))
+      : recommendations;
+
     // Sort by priority first
-    const sorted = recommendations.sort((a, b) => a.priority - b.priority);
+    const sorted = pool.sort((a, b) => a.priority - b.priority);
     
     // Select up to 4 recommendations, ensuring each is from a different category
     const selected: InsightCard[] = [];
@@ -856,9 +869,21 @@ export const AICoachCard = ({
   const actionableRecommendations = generateActionableRecommendations();
   const hasRecommendations = actionableRecommendations.length > 0;
 
+  // Focus points: in habits mode drop any that talk numbers, and show them as written
+  // (the live rewrite below adds targets in grams/kcal).
+  const visibleDailyFocusPoints = hideNumbers
+    ? (dailyCheckInFocusPoints || []).filter((p) => isNumberFree(p.text, p.tip))
+    : dailyCheckInFocusPoints;
+  const visibleMonthlyFocusPoints = hideNumbers
+    ? (customFocusPoints || []).filter((p) => isNumberFree(p.text, p.tip))
+    : customFocusPoints;
+  const hasFocusPoints =
+    (visibleDailyFocusPoints?.length ?? 0) > 0 || (visibleMonthlyFocusPoints?.length ?? 0) > 0;
+
   const formatLiters = (liters: number) => liters.toFixed(1).replace(/\.0$/, "");
 
   const resolveLiveFocusPointCopy = (text: string, tip?: string | null) => {
+    if (hideNumbers) return { text, tip };
     const combined = `${text} ${tip || ""}`.toLowerCase();
 
     if (combined.includes("protein") || combined.includes("g protein")) {
@@ -998,8 +1023,13 @@ export const AICoachCard = ({
           </div>
         )}
 
+        {/* Habits mode with nothing else to show: the gentle tip */}
+        {hideNumbers && !hasRecommendations && !hasFocusPoints && tip && (
+          <p className="text-sm text-muted-foreground mb-4">{tip}</p>
+        )}
+
         {/* Daily Focus Points from today's check-in AI response (takes highest priority) */}
-        {dailyCheckInFocusPoints && dailyCheckInFocusPoints.length > 0 ? (
+        {visibleDailyFocusPoints && visibleDailyFocusPoints.length > 0 ? (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
               <Flame className="w-5 h-5 text-secondary" />
@@ -1008,14 +1038,14 @@ export const AICoachCard = ({
               </span>
             </div>
             <div className="space-y-2">
-              {dailyCheckInFocusPoints.slice(0, 4).map((point, index) => {
+              {visibleDailyFocusPoints.slice(0, 4).map((point, index) => {
                 const resolvedPoint = resolveLiveFocusPointCopy(point.text, point.tip);
                 // Add real-time progress indicators for focus points
                 const textLower = `${resolvedPoint.text} ${resolvedPoint.tip || ''}`.toLowerCase();
                 let progressIndicator: React.ReactNode = null;
                 
                 // Detect protein-related focus points
-                if (textLower.includes('protein') || textLower.includes('g protein')) {
+                if (!hideNumbers && (textLower.includes('protein') || textLower.includes('g protein'))) {
                   const percent = Math.min(100, proteinPercent);
                   progressIndicator = (
                     <div className="mt-2">
@@ -1058,7 +1088,7 @@ export const AICoachCard = ({
                 }
                 
                 // Detect calorie-related focus points
-                if (textLower.includes('calori') || textLower.includes('kcal') || textLower.includes('energy intake')) {
+                if (!hideNumbers && (textLower.includes('calori') || textLower.includes('kcal') || textLower.includes('energy intake'))) {
                   const percent = Math.min(100, calPercent);
                   progressIndicator = (
                     <div className="mt-2">
@@ -1099,7 +1129,7 @@ export const AICoachCard = ({
               })}
             </div>
           </div>
-        ) : customFocusPoints && customFocusPoints.length > 0 ? (
+        ) : visibleMonthlyFocusPoints && visibleMonthlyFocusPoints.length > 0 ? (
           /* Monthly Focus Points from Progress Update */
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
@@ -1109,7 +1139,7 @@ export const AICoachCard = ({
               </span>
             </div>
             <div className="space-y-2">
-              {customFocusPoints.slice(0, 4).map((point, index) => {
+              {visibleMonthlyFocusPoints.slice(0, 4).map((point, index) => {
                 const resolvedPoint = resolveLiveFocusPointCopy(point.text, point.tip);
 
                 return (

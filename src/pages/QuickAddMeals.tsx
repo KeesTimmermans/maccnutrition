@@ -5,10 +5,15 @@ import { Button } from "@/components/ui/button";
 import { getRecentUniqueMeals, saveMeal, Meal } from "@/lib/mealService";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 
 const QuickAddMeals = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  // Habits mode hides calories/macros; re-logging still copies every stored number.
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [recentMeals, setRecentMeals] = useState<Meal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMeals, setSelectedMeals] = useState<Set<string>>(new Set());
@@ -142,12 +147,14 @@ const QuickAddMeals = () => {
                       {/* Meal info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-foreground truncate">{meal.name}</h3>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-sm font-medium text-calories">{meal.calories} cal</span>
-                          <span className="text-xs text-muted-foreground">
-                            P: {meal.protein}g · C: {meal.carbs}g · F: {meal.fats}g
-                          </span>
-                        </div>
+                        {numbersVisible && (
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-sm font-medium text-calories">{meal.calories} cal</span>
+                            <span className="text-xs text-muted-foreground">
+                              P: {meal.protein}g · C: {meal.carbs}g · F: {meal.fats}g
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Quick add single meal button */}
@@ -186,11 +193,13 @@ const QuickAddMeals = () => {
                     <span className="text-sm text-muted-foreground">
                       {selectedMeals.size} meal{selectedMeals.size > 1 ? 's' : ''} selected
                     </span>
-                    <span className="text-sm font-medium text-foreground">
-                      {recentMeals
-                        .filter(m => selectedMeals.has(m.id))
-                        .reduce((sum, m) => sum + m.calories, 0)} cal total
-                    </span>
+                    {numbersVisible && (
+                      <span className="text-sm font-medium text-foreground">
+                        {recentMeals
+                          .filter(m => selectedMeals.has(m.id))
+                          .reduce((sum, m) => sum + m.calories, 0)} cal total
+                      </span>
+                    )}
                   </div>
                   <Button 
                     onClick={handleLogSelectedMeals}

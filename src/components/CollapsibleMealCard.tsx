@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 import { cn } from "@/lib/utils";
 
 interface MealData {
@@ -39,6 +41,9 @@ interface CollapsibleMealCardProps {
 
 export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealCardProps) => {
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Habits mode shows name, time and photo only; edits keep the stored numbers untouched.
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -46,7 +51,8 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
 
   const handleSaveEdit = () => {
     if (onEdit) {
-      onEdit(editedMeal);
+      // Numbers are hidden in habits mode: send the stored values exactly as they are, only the name changes.
+      onEdit(numbersVisible ? editedMeal : { ...meal, name: editedMeal.name });
     }
     setIsEditing(false);
   };
@@ -97,6 +103,7 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
             placeholder={t('meal_name')}
             className="bg-muted"
           />
+          {numbersVisible && (
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground">{t('calories')}</label>
@@ -139,6 +146,7 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
               />
             </div>
           </div>
+          )}
         </div>
       </div>
     );
@@ -159,12 +167,16 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
           
           {/* Compact Macro Summary */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm font-semibold text-calories">
-              {meal.calories} cal
-            </span>
-            <span className="text-xs text-muted-foreground">
-              P:{meal.protein}g C:{meal.carbs}g F:{meal.fats}g
-            </span>
+            {numbersVisible && (
+              <>
+                <span className="text-sm font-semibold text-calories">
+                  {meal.calories} cal
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  P:{meal.protein}g C:{meal.carbs}g F:{meal.fats}g
+                </span>
+              </>
+            )}
             {isExpanded ? (
               <ChevronUp className="w-4 h-4 text-muted-foreground" />
             ) : (
@@ -203,9 +215,13 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
               {/* Macro Details */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-lg font-bold text-calories">
-                    {meal.calories} cal
-                  </span>
+                  {numbersVisible ? (
+                    <span className="text-lg font-bold text-calories">
+                      {meal.calories} cal
+                    </span>
+                  ) : (
+                    <span />
+                  )}
                   {(onEdit || onDelete) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -238,6 +254,7 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
                 </div>
                 
                 {/* Macro Pills */}
+                {numbersVisible && (
                 <div className="flex gap-2 flex-wrap">
                   <span className="text-xs font-medium text-protein bg-protein/10 px-2 py-1 rounded-full">
                     {t('protein')}: {meal.protein}g
@@ -249,6 +266,7 @@ export const CollapsibleMealCard = ({ meal, onEdit, onDelete }: CollapsibleMealC
                     {t('fats')}: {meal.fats}g
                   </span>
                 </div>
+                )}
               </div>
             </div>
           </div>

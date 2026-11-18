@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeTrackingMode } from "@/lib/trackingMode";
+import { normalizeTrackingMode, showNumbers } from "@/lib/trackingMode";
 
 describe("normalizeTrackingMode", () => {
   it("treats missing values as calories", () => {
@@ -15,5 +15,18 @@ describe("normalizeTrackingMode", () => {
     expect(normalizeTrackingMode("Habits")).toBe("calories");
     expect(normalizeTrackingMode("")).toBe("calories");
     expect(normalizeTrackingMode(42)).toBe("calories");
+  });
+});
+
+describe("showNumbers", () => {
+  it("shows numbers for calorie tracking once loaded", () => {
+    expect(showNumbers("calories", false)).toBe(true);
+  });
+  it("hides numbers in habits mode", () => {
+    expect(showNumbers("habits", false)).toBe(false);
+  });
+  it("hides numbers while the mode is still loading, whatever the mode", () => {
+    expect(showNumbers("calories", true)).toBe(false);
+    expect(showNumbers("habits", true)).toBe(false);
   });
 });

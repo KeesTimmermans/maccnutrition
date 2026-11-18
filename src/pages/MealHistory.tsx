@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { MealLogger } from "@/components/MealLogger";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 
 interface DayData {
   date: Date;
@@ -24,6 +26,9 @@ interface DayData {
 const MealHistory = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Habits mode shows how many meals each day has instead of calorie/macro totals.
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [days, setDays] = useState<DayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState(() => subDays(new Date(), 6));
@@ -208,13 +213,18 @@ const MealHistory = () => {
                       {format(day.date, "MMMM d, yyyy")}
                     </p>
                   </div>
-                  {day.meals.length > 0 && (
+                  {day.meals.length > 0 && numbersVisible && (
                     <div className="text-right">
                       <p className="font-bold text-calories">{day.totals.calories} cal</p>
                       <p className="text-xs text-muted-foreground">
                         P: {day.totals.protein}g · C: {day.totals.carbs}g · F: {day.totals.fats}g
                       </p>
                     </div>
+                  )}
+                  {day.meals.length > 0 && !numbersVisible && !trackingModeLoading && (
+                    <p className="text-sm font-semibold text-foreground">
+                      {day.meals.length} meal{day.meals.length === 1 ? "" : "s"}
+                    </p>
                   )}
                 </div>
 

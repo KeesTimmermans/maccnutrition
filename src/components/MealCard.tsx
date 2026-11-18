@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/lib/i18n";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 
 interface MealData {
   id: string;
@@ -38,13 +40,17 @@ interface MealCardProps {
 
 export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
   const { t } = useLanguage();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Habits mode shows name, time and photo only; edits keep the stored numbers untouched.
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editedMeal, setEditedMeal] = useState(meal);
 
   const handleSaveEdit = () => {
     if (onEdit) {
-      onEdit(editedMeal);
+      // Numbers are hidden in habits mode: send the stored values exactly as they are, only the name changes.
+      onEdit(numbersVisible ? editedMeal : { ...meal, name: editedMeal.name });
     }
     setIsEditing(false);
   };
@@ -89,6 +95,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
             placeholder={t('meal_name')}
             className="bg-muted"
           />
+          {numbersVisible && (
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground">{t('calories')}</label>
@@ -127,6 +134,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
               />
             </div>
           </div>
+          )}
         </div>
       </div>
     );
@@ -161,9 +169,11 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
               <p className="text-sm text-muted-foreground">{meal.time}</p>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-sm font-semibold text-calories bg-accent px-2 py-1 rounded-lg">
-                {meal.calories} cal
-              </span>
+              {numbersVisible && (
+                <span className="text-sm font-semibold text-calories bg-accent px-2 py-1 rounded-lg">
+                  {meal.calories} cal
+                </span>
+              )}
               {(onEdit || onDelete) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -194,6 +204,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
           </div>
           
           {/* Macro Pills */}
+          {numbersVisible && (
           <div className="flex gap-2 mt-2">
             <span className="text-xs font-medium text-protein bg-protein/10 px-2 py-0.5 rounded-full">
               P: {meal.protein}g
@@ -205,6 +216,7 @@ export const MealCard = ({ meal, onEdit, onDelete }: MealCardProps) => {
               F: {meal.fats}g
             </span>
           </div>
+          )}
         </div>
       </div>
 

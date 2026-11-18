@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { getUserBaseline, updateUserSettings, UserBaseline } from "@/lib/userService";
 import { COACHING_TONES } from "@/lib/coachingTones";
 import { normalizeTrackingMode, type TrackingMode } from "@/lib/trackingMode";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
 import { DashboardLayoutSettings } from "@/components/DashboardLayoutSettings";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
@@ -37,7 +38,7 @@ const Settings = () => {
   const [isMetric, setIsMetric] = useState(false);
   const [currency, setCurrency] = useState("GBP");
   const [coachingTone, setCoachingTone] = useState("supportive");
-  const [trackingMode, setTrackingMode] = useState<TrackingMode>("calories");
+  const { mode: trackingMode, loading: trackingModeLoading, setMode: setTrackingMode } = useTrackingMode();
   const [householdSize, setHouseholdSize] = useState(1);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,7 +94,6 @@ const Settings = () => {
         setIsMetric(baselineData.unit_system === "metric");
         setCurrency(baselineData.preferred_currency || "GBP");
         setCoachingTone(baselineData.coaching_tone || "supportive");
-        setTrackingMode(normalizeTrackingMode(baselineData.tracking_mode));
         setHouseholdSize(baselineData.household_size || 1);
         setAnalyticsConsent((baselineData as any).analytics_consent ?? false);
       }
@@ -203,18 +203,16 @@ const Settings = () => {
   ];
 
   // Food approach never recalculates targets — it only changes what the app shows (later).
+  // The shared setter updates every screen at once and reverts by itself if the save fails.
   const handleTrackingModeChange = async (value: string) => {
-    const previous = trackingMode;
     const next = normalizeTrackingMode(value);
-    setTrackingMode(next);
     setIsUpdating(true);
     try {
-      await updateUserSettings({ tracking_mode: next });
+      await setTrackingMode(next);
       toast.success(t('food_approach_updated'));
     } catch (error) {
       console.error("Error updating food approach:", error);
       toast.error(t('error'));
-      setTrackingMode(previous);
     } finally {
       setIsUpdating(false);
     }
@@ -402,7 +400,7 @@ const Settings = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Select value={trackingMode} onValueChange={handleTrackingModeChange} disabled={isUpdating}>
+            <Select value={trackingMode} onValueChange={handleTrackingModeChange} disabled={isUpdating || trackingModeLoading}>
               <SelectTrigger className="w-full" aria-label={t('food_approach')}>
                 <SelectValue />
               </SelectTrigger>

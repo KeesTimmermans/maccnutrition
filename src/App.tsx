@@ -14,6 +14,7 @@ import { AnalyticsConsentBanner } from "@/components/AnalyticsConsentBanner";
 import { initAnalytics, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useAuthAnalytics } from "@/analytics/useAuthAnalytics";
 import { useAuth } from "@/hooks/useAuth";
+import { TrackingModeProvider } from "@/components/TrackingModeProvider";
 
 // Pages
 import Index from "./pages/Index";
@@ -137,6 +138,12 @@ const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </OnboardingContext.Provider>
   );
+};
+
+/** Shares the food approach; re-reads it once onboarding completes (the setting is saved then). */
+const TrackingModeBridge = ({ children }: { children: React.ReactNode }) => {
+  const { onboardingCompleted } = useOnboarding();
+  return <TrackingModeProvider reloadKey={onboardingCompleted}>{children}</TrackingModeProvider>;
 };
 
 // ── Subscription gate — redirects unsubscribed users to /pricing ──
@@ -285,6 +292,7 @@ const App = () => {
         
         <OnboardingProvider>
           <HashRouter>
+           <TrackingModeBridge>
             <ScrollToTop />
             <ConsentGate>
               <SubscriptionGate>
@@ -325,6 +333,7 @@ const App = () => {
                 </OnboardingGate>
               </SubscriptionGate>
             </ConsentGate>
+           </TrackingModeBridge>
           </HashRouter>
         </OnboardingProvider>
       </TooltipProvider>

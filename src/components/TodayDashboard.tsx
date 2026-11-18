@@ -41,6 +41,14 @@ import { useActiveNutritionTargets } from "@/hooks/useActiveNutritionTargets";
 import { buildUnifiedCoachContext, buildEdgeFunctionUserContext } from "@/lib/unifiedCoachContext";
 import { toast } from "sonner";
 import { getMealEncouragement } from "@/lib/encouragementMessages";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import {
+  generateHabitCoachGreeting,
+  generateHabitCoachInsights,
+  generateHabitCoachTip,
+  type HabitCoachInput,
+} from "@/lib/habitCoachCopy";
 
 interface DashboardMeal {
   id: string;
@@ -59,6 +67,9 @@ export const TodayDashboard = () => {
   const { t } = useLanguage();
   const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
   const { targets: activeTargets, loading: targetsLoading, refresh: refreshTargets } = useActiveNutritionTargets();
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  // Calorie/macro numbers only once the mode is known to be calorie tracking.
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
   const [showMealLogger, setShowMealLogger] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined);
@@ -140,7 +151,17 @@ export const TodayDashboard = () => {
   const totalFats = meals.reduce((sum, m) => sum + m.fats, 0);
   const totalSugar = meals.reduce((sum, m) => sum + (m.sugar || 0), 0);
 
+  const habitCoachInput = (): HabitCoachInput => ({
+    hour: new Date().getHours(),
+    firstName,
+    mealsLogged: meals.length,
+    waterMl: totalWaterMl,
+    waterGoalMl: activeTargets.waterLiters * 1000,
+    checkedInToday: hasCheckedInToday,
+  });
+
   const generateCoachGreeting = () => {
+    if (!numbersVisible) return generateHabitCoachGreeting(habitCoachInput());
     const calorieGoal = activeTargets.calories;
     const proteinGoal = activeTargets.protein;
     const waterGoal = activeTargets.waterLiters * 1000;
@@ -208,6 +229,7 @@ export const TodayDashboard = () => {
   };
 
   const generateCoachInsights = (): string[] => {
+    if (!numbersVisible) return generateHabitCoachInsights(habitCoachInput());
     const insights: string[] = [];
     const calorieGoal = activeTargets.calories;
     const proteinGoal = activeTargets.protein;
@@ -277,6 +299,7 @@ export const TodayDashboard = () => {
   };
 
   const generateCoachTip = (): string => {
+    if (!numbersVisible) return generateHabitCoachTip(habitCoachInput());
     const calorieGoal = activeTargets.calories;
     const proteinGoal = activeTargets.protein;
     const waterGoal = activeTargets.waterLiters * 1000;
@@ -495,6 +518,13 @@ export const TodayDashboard = () => {
         
         const updatedMeals = [...meals, newMeal];
         setMeals(updatedMeals);
+
+        // Habits mode (or mode not known yet): no goal toasts, just a neutral confirmation.
+        if (!numbersVisible) {
+          toast.success("Meal logged");
+          refreshCoachingFocusPoints();
+          return;
+        }
         
         const newTotalCalories = updatedMeals.reduce((sum, m) => sum + m.calories, 0);
         const newTotalProtein = updatedMeals.reduce((sum, m) => sum + m.protein, 0);
@@ -602,7 +632,7 @@ export const TodayDashboard = () => {
           <div>
             <h2 className="text-lg font-bold text-foreground">{t('todays_progress')}</h2>
             <p className="text-sm text-muted-foreground">{t('keep_up_great_work')}</p>
-            <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />
+            {numbersVisible && <ActiveTargetSourceBadge source={activeTargets.source} className="mt-1" />}
           </div>
           <CollapsibleTrigger asChild>
             <button
@@ -619,7 +649,7 @@ export const TodayDashboard = () => {
           </CollapsibleTrigger>
         </div>
         <CollapsibleContent>
-          {targetsLoading ? (
+          {trackingMode === "habits" && !trackingModeLoading ? null : targetsLoading || trackingModeLoading ? (
             <div className="mt-6">
               <MacroRingGroupSkeleton />
             </div>
@@ -706,7 +736,7 @@ export const TodayDashboard = () => {
             </Collapsible>
           </div>
         </CollapsibleContent>
-        {!progressOpen && !targetsLoading && (
+        {!progressOpen && !targetsLoading && numbersVisible && (
           <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
             <Flame className="w-4 h-4 text-calories" />
             <span>
@@ -749,7 +779,7 @@ export const TodayDashboard = () => {
           ))
         )}
         
-        {!isLoading && !targetsLoading && (
+        {!isLoading && !targetsLoading && numbersVisible && (
           <LeftTodayCard
             remaining={{
               calories: activeTargets.calories - totalCalories,
@@ -865,7 +895,7 @@ export const TodayDashboard = () => {
         )}
 
         {/* Weekly recap (Sundays and Mondays only) */}
-        {!targetsLoading && (
+        {!targetsLoading && numbersVisible && (
           <WeeklyRecapCard
             targets={{ calories: activeTargets.calories, protein: activeTargets.protein }}
             onAskCoach={(prefill) => {

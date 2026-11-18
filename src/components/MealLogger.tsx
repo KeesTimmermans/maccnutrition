@@ -23,6 +23,9 @@ import { trackMealLogged } from "@/lib/analytics";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { QuickMeals } from "./QuickMeals";
 import { IngredientSearchDialog, type IngredientSearchResult } from "./IngredientSearchDialog";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
+import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 interface DailyTotals {
   calories: number;
@@ -90,6 +93,10 @@ type LoggerStep = 'method' | 'search' | 'barcode' | 'describe' | 'photo' | 'uplo
 
 export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotals, dailyTargets, allowYesterday = false }: MealLoggerProps) => {
   const { t } = useLanguage();
+  // Habits mode hides every calorie/macro figure here; analysis and saving still use the full numbers.
+  const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
+  const numbersVisible = showNumbers(trackingMode, trackingModeLoading);
+  const showNote = (note?: string) => !!note && (numbersVisible || !mentionsNutritionNumbers(note));
   const [step, setStep] = useState<LoggerStep>('method');
   // Which day this meal is logged for; starts at "today" each time the logger opens (it mounts fresh).
   const [logDay, setLogDay] = useState<"today" | "yesterday">("today");
@@ -579,7 +586,9 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         </div>
         <div className="flex-1 text-left">
           <h3 className="font-semibold text-foreground">Scan Barcode</h3>
-          <p className="text-sm text-muted-foreground">Scan a product barcode for instant macros</p>
+          <p className="text-sm text-muted-foreground">
+            {numbersVisible ? "Scan a product barcode for instant macros" : "Scan a product barcode to log it in seconds"}
+          </p>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
       </button>
@@ -825,13 +834,15 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
             >
               <div>
                 <p className="font-medium text-foreground">{food.name}</p>
-                <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
-                  <span>{food.caloriesPer100g} cal/100g</span>
-                  <span>•</span>
-                  <span>P: {food.proteinPer100g}g</span>
-                  <span>C: {food.carbsPer100g}g</span>
-                  <span>F: {food.fatsPer100g}g</span>
-                </div>
+                {numbersVisible && (
+                  <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                    <span>{food.caloriesPer100g} cal/100g</span>
+                    <span>•</span>
+                    <span>P: {food.proteinPer100g}g</span>
+                    <span>C: {food.carbsPer100g}g</span>
+                    <span>F: {food.fatsPer100g}g</span>
+                  </div>
+                )}
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -858,17 +869,21 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
     <div className="animate-slide-up">
       {selectedFood && (
         <div className="bg-card border border-border rounded-2xl p-4 mb-6">
-          <h3 className="font-bold text-lg text-foreground mb-2">{selectedFood.name}</h3>
-          <div className="flex gap-3 text-sm text-muted-foreground">
-            <span>{selectedFood.caloriesPer100g} cal</span>
-            <span>•</span>
-            <span>P: {selectedFood.proteinPer100g}g</span>
-            <span>•</span>
-            <span>C: {selectedFood.carbsPer100g}g</span>
-            <span>•</span>
-            <span>F: {selectedFood.fatsPer100g}g</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">per 100g</p>
+          <h3 className={`font-bold text-lg text-foreground ${numbersVisible ? "mb-2" : ""}`}>{selectedFood.name}</h3>
+          {numbersVisible && (
+            <>
+              <div className="flex gap-3 text-sm text-muted-foreground">
+                <span>{selectedFood.caloriesPer100g} cal</span>
+                <span>•</span>
+                <span>P: {selectedFood.proteinPer100g}g</span>
+                <span>•</span>
+                <span>C: {selectedFood.carbsPer100g}g</span>
+                <span>•</span>
+                <span>F: {selectedFood.fatsPer100g}g</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">per 100g</p>
+            </>
+          )}
         </div>
       )}
 
@@ -907,7 +922,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         ))}
       </div>
 
-      {selectedFood && quantity && parseFloat(quantity) > 0 && (
+      {numbersVisible && selectedFood && quantity && parseFloat(quantity) > 0 && (
         <div className="bg-accent/50 rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-2">Estimated for {quantity}g:</p>
           <div className="grid grid-cols-4 gap-2 text-center">
@@ -1133,6 +1148,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
           </div>
 
           {/* Macro display */}
+          {numbersVisible && (
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 bg-accent rounded-xl text-center">
               <p className="text-2xl font-bold text-calories">{analysisResult.calories}</p>
@@ -1151,13 +1167,14 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
               <p className="text-xs text-muted-foreground">{t('fats')}</p>
             </div>
           </div>
+          )}
 
-          {analysisResult.notes && (
+          {showNote(analysisResult.notes) && (
             <p className="text-xs text-muted-foreground mt-4">{analysisResult.notes}</p>
           )}
 
           {/* Daily total preview - only show if we have current day totals (they are today's) */}
-          {currentDayTotals && !isYesterday && (
+          {numbersVisible && currentDayTotals && !isYesterday && (
             <div className="mt-4 pt-4 border-t border-border">
               <p className="text-sm font-medium text-foreground mb-3">Today's total (after logging):</p>
               <div className="grid grid-cols-4 gap-2 text-center">
@@ -1270,9 +1287,11 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                       {ing.name}
                       <Search className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                     </button>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {ingCalories} cal • P:{ingProtein}g • C:{ingCarbs}g • F:{ingFats}g
-                    </p>
+                    {numbersVisible && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {ingCalories} cal • P:{ingProtein}g • C:{ingCarbs}g • F:{ingFats}g
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => handleRemoveIngredient(index)}
@@ -1316,6 +1335,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
         </div>
 
         {/* Total summary */}
+        {numbersVisible && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
           <p className="text-sm font-medium text-foreground mb-3">Total for this meal:</p>
           <div className="grid grid-cols-4 gap-2 text-center">
@@ -1337,9 +1357,10 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
             </div>
           </div>
         </div>
+        )}
 
         {/* Daily total preview - only show if we have current day totals (they are today's) */}
-        {currentDayTotals && !isYesterday && (
+        {numbersVisible && currentDayTotals && !isYesterday && (
           <div className="bg-accent/50 border border-border rounded-xl p-4">
             <p className="text-sm font-medium text-foreground mb-3">Today's total (after logging):</p>
             <div className="grid grid-cols-4 gap-2 text-center">
@@ -1379,7 +1400,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
           </div>
         )}
 
-        {notes && (
+        {showNote(notes) && (
           <p className="text-xs text-muted-foreground">{notes}</p>
         )}
       </div>
@@ -1424,7 +1445,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                 <span className="font-semibold text-foreground">{analysisResult.defaultServingSize}g</span>
               </div>
             )}
-            <div className="h-px bg-border" />
+            {numbersVisible && <div className="h-px bg-border" />}
+            {numbersVisible && (
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 bg-accent rounded-xl text-center">
                 <p className="text-2xl font-bold text-calories">{analysisResult.calories}</p>
@@ -1443,7 +1465,8 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                 <p className="text-xs text-muted-foreground">{t('fats')}</p>
               </div>
             </div>
-            {analysisResult.notes && (
+            )}
+            {showNote(analysisResult.notes) && (
               <p className="text-xs text-muted-foreground mt-2">{analysisResult.notes}</p>
             )}
           </div>
@@ -1501,12 +1524,14 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
                     onClick={() => handleLogFavorite(fav)}
                   >
                     <p className="font-medium text-foreground">{fav.name}</p>
-                    <div className="flex gap-2 text-xs text-muted-foreground mt-1">
-                      <span>{fav.calories} cal</span>
-                      <span>P: {fav.protein}g</span>
-                      <span>C: {fav.carbs}g</span>
-                      <span>F: {fav.fats}g</span>
-                    </div>
+                    {numbersVisible && (
+                      <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+                        <span>{fav.calories} cal</span>
+                        <span>P: {fav.protein}g</span>
+                        <span>C: {fav.carbs}g</span>
+                        <span>F: {fav.fats}g</span>
+                      </div>
+                    )}
                   </button>
                   <button
                     onClick={() => handleDeleteFavorite(fav.id)}
@@ -1568,7 +1593,7 @@ export const MealLogger = ({ onClose, onSubmit, userDietContext, currentDayTotal
             ) : (
               <Sparkles className="w-5 h-5 mr-2" />
             )}
-            Calculate Nutrition
+            {numbersVisible ? "Calculate Nutrition" : "Continue"}
           </Button>
         )}
 
