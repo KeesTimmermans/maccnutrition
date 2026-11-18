@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   bandForScore,
   CAP_LINE_KEYS,
+  FLOOR_LINE_KEY,
   WEAKEST_LINK_THRESHOLD,
   type PillarResult,
   type ProductScoreResult,
@@ -48,6 +49,11 @@ export function ScoreBreakdown({ result }: { result: ProductScoreResult }) {
                 .replace("{threshold}", String(WEAKEST_LINK_THRESHOLD))}
             </p>
           ))}
+          {result.floor?.applied && (
+            <p className="text-muted-foreground">
+              {t(FLOOR_LINE_KEY).replace("{limit}", String(result.floor.limit))}
+            </p>
+          )}
           <p className="font-semibold text-foreground tabular-nums">
             {t("score_final").replace("{score}", String(result.score))}
           </p>

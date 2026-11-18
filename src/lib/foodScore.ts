@@ -69,6 +69,10 @@ export interface ProductScoreResult {
   pillars: PillarResult[];
   /** Caps whose condition was met; `applied` marks the ones that lowered the score. */
   caps: CapResult[];
+  /** True when the product counts as a whole food (see WHOLE_FOOD_CATEGORIES). */
+  wholeFood: boolean;
+  /** Whole-food floor; `applied` is true only when it raised the final score. */
+  floor: { limit: number; applied: boolean };
 }
 
 /** [value, score] points; scores between points are interpolated linearly. */
@@ -231,6 +235,38 @@ export const PROVISIONAL_CAP = 7;
 /** Pillars that can trigger the weakest-link cap (protein & fibre never does). */
 export const LIMIT_PILLARS: PillarId[] = ["sugar", "salt", "satFat", "processing"];
 
+// ─── Whole-food floor (applied after the caps; pillars and average unchanged) ─
+
+/** Whole foods never score below this overall. */
+export const WHOLE_FOOD_FLOOR = 7;
+/** NOVA groups a whole food may have (the effective group, given or inferred). */
+export const WHOLE_FOOD_NOVA_GROUPS = [1, 2, 3];
+/** NOVA 2–3 products count as whole foods only in these categories… */
+export const WHOLE_FOOD_CATEGORIES = [
+  "en:cheeses",
+  "en:eggs",
+  "en:meats",
+  "en:fresh-meats",
+  "en:fishes",
+  "en:seafood",
+  "en:milks",
+  "en:yogurts",
+  "en:avocados",
+  "en:coconuts",
+];
+/** …and with at most this many ingredients. */
+export const WHOLE_FOOD_MAX_INGREDIENTS = 5;
+/** Never whole foods, whatever else holds. */
+export const WHOLE_FOOD_EXCLUDED = [
+  "en:butters",
+  "en:creams",
+  "en:processed-cheeses",
+  "en:sausages",
+  "en:bacon",
+  "en:cured-meats",
+  "en:charcuteries",
+];
+
 // ─── Pillar definitions (shared by the result screen and the guide) ─────────
 
 export interface PillarDefinition {
@@ -297,6 +333,8 @@ export const CAP_LINE_KEYS: Record<CapId, string> = {
   sweeteners: "score_cap_sweeteners",
   provisional: "score_cap_provisional",
 };
+/** Result-screen line when the whole-food floor raised the score; {limit} is filled in. */
+export const FLOOR_LINE_KEY = "score_floor_whole_food";
 
 // ─── "How scores work" guide, generated from the constants above ────────────
 
@@ -312,6 +350,7 @@ export const SCORING_GUIDE = {
     { id: "sweeteners" as CapId, textKey: "scoring_guide_cap_sweeteners", values: { limit: SWEETENER_CAP } },
     { id: "provisional" as CapId, textKey: "scoring_guide_cap_provisional", values: { limit: PROVISIONAL_CAP } },
   ],
+  wholeFood: { textKey: "scoring_guide_note_whole_food", values: { limit: WHOLE_FOOD_FLOOR } },
   bands: [
     { band: "good" as ScoreBand, min: GOOD_BAND_MIN, max: MAX_SCORE, key: "score_band_good" },
     { band: "balance" as ScoreBand, min: BALANCE_BAND_MIN, max: GOOD_BAND_MIN - 1, key: "score_band_balance" },
@@ -472,6 +511,8 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
       average: null,
       pillars: [],
       caps: [],
+      wholeFood: false,
+      floor: { limit: WHOLE_FOOD_FLOOR, applied: false },
     };
   }
   const confidence: ScoreConfidence = hasSugars && hasIngredientInfo ? "full" : "limited";
@@ -526,6 +567,11 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
   const additiveTags = input.additivesTags ?? [];
   const additiveCount = countAdditives(additiveTags, text);
   const sweetened = hasArtificialSweetener(additiveTags, text);
+  const ingredientCount = isNum(input.ingredientsN) && input.ingredientsN > 0
+    ? input.ingredientsN
+    : text
+      ? topLevelIngredients(text).length
+      : null;
   let processing: PillarResult;
   let effectiveNova = nova;
   const processingNotes: string[] = [];
@@ -545,11 +591,6 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
       raw += additiveStep[1];
       processingNotes.push(PILLAR_NOTE_KEYS.additives);
     }
-    const ingredientCount = isNum(input.ingredientsN) && input.ingredientsN > 0
-      ? input.ingredientsN
-      : text
-        ? topLevelIngredients(text).length
-        : null;
     if (ingredientCount !== null) {
       if (ingredientCount <= SHORT_INGREDIENT_LIST) {
         raw += SHORT_LIST_BONUS;
@@ -606,11 +647,25 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
   }
   if (sweetened) caps.push({ id: "sweeteners", limit: SWEETENER_CAP });
   if (provisional) caps.push({ id: "provisional", limit: PROVISIONAL_CAP });
-  const score = clamp(Math.min(overall, ...caps.map((c) => c.limit)));
+  const capped = clamp(Math.min(overall, ...caps.map((c) => c.limit)));
   const capResults: CapResult[] = caps.map((c) => ({
     ...c,
-    applied: c.limit < overall && c.limit === score,
+    applied: c.limit < overall && c.limit === capped,
   }));
+
+  // Whole-food floor, after the caps. Pillars and the average stay as they are.
+  const noAdditives = additiveTags.length === 0 && (!text || eNumbersInText(text).length === 0) && !sweetened;
+  const wholeFood =
+    !sugarIngredientListed &&
+    noAdditives &&
+    effectiveNova !== null &&
+    WHOLE_FOOD_NOVA_GROUPS.includes(effectiveNova) &&
+    (effectiveNova === 1 ||
+      (WHOLE_FOOD_CATEGORIES.some((c) => tags.includes(c)) &&
+        ingredientCount !== null &&
+        ingredientCount <= WHOLE_FOOD_MAX_INGREDIENTS)) &&
+    !WHOLE_FOOD_EXCLUDED.some((c) => tags.includes(c));
+  const score = wholeFood ? Math.max(capped, WHOLE_FOOD_FLOOR) : capped;
 
   // Reasons: worst pillars first, then the best positive.
   const flags: Array<{ severity: number; key: string }> = [];
@@ -643,5 +698,7 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
     average,
     pillars,
     caps: capResults,
+    wholeFood,
+    floor: { limit: WHOLE_FOOD_FLOOR, applied: score > capped },
   };
 }

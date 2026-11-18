@@ -30,7 +30,8 @@ const scanned = { barcode: "3017620422003", score: 4, categoriesTags: ["en:foods
 describe("pickAlternatives", () => {
   it("keeps only products at least 2 points better and scoring 6+", () => {
     // Salt in the "high" range caps at 5 (weakest link); sweeteners cap at 6.
-    const five = product("1001", "Five", { nutriments: { salt_100g: 1.3 } as never });
+    // One E-number keeps it out of the whole-food floor so the salt cap still shows.
+    const five = product("1001", "Five", { ingredients_text: "water, E330", nutriments: { salt_100g: 1.3 } as never });
     const six = product("1002", "Six", { additives_tags: ["en:e951"] });
     const nine = product("1003", "Nine");
     const r = pickAlternatives(scanned, [five, six, nine]);

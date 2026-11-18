@@ -86,6 +86,9 @@ const ScoringGuide = () => {
                 {t(k)}
               </li>
             ))}
+            <li className="text-sm text-muted-foreground">
+              {fill(t(SCORING_GUIDE.wholeFood.textKey), SCORING_GUIDE.wholeFood.values)}
+            </li>
           </ul>
         </Section>
       </div>

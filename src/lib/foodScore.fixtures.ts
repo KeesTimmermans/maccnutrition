@@ -1,7 +1,16 @@
 import type { ProductScoreInput } from "./foodScore";
 
-/** Realistic Open Food Facts-like inputs with the overall score range each must land in. */
-export const FIXTURES: Array<{ name: string; min: number; max: number; input: ProductScoreInput }> = [
+/**
+ * Realistic Open Food Facts-like inputs with the overall score range each must land in.
+ * `floorApplied`, when set, is whether the whole-food floor must raise the score.
+ */
+export const FIXTURES: Array<{
+  name: string;
+  min: number;
+  max: number;
+  floorApplied?: boolean;
+  input: ProductScoreInput;
+}> = [
   {
     name: "cola",
     min: 1,
@@ -68,8 +77,8 @@ export const FIXTURES: Array<{ name: string; min: number; max: number; input: Pr
   },
   {
     name: "salted crisps",
-    min: 2,
-    max: 4,
+    min: 3,
+    max: 5,
     input: {
       sugars100g: 0.6,
       saturatedFat100g: 2.5,
@@ -103,6 +112,7 @@ export const FIXTURES: Array<{ name: string; min: number; max: number; input: Pr
     name: "wholemeal bread",
     min: 4,
     max: 7,
+    floorApplied: false,
     input: {
       sugars100g: 2.6,
       saturatedFat100g: 0.5,
@@ -120,6 +130,7 @@ export const FIXTURES: Array<{ name: string; min: number; max: number; input: Pr
     name: "baked beans in tomato sauce",
     min: 4,
     max: 7,
+    floorApplied: false,
     input: {
       sugars100g: 4.7,
       saturatedFat100g: 0.1,
@@ -198,8 +209,9 @@ export const FIXTURES: Array<{ name: string; min: number; max: number; input: Pr
   },
   {
     name: "mature cheddar",
-    min: 2,
-    max: 5,
+    min: 7,
+    max: 8,
+    floorApplied: true,
     input: {
       sugars100g: 0.1,
       saturatedFat100g: 21.7,
@@ -225,6 +237,130 @@ export const FIXTURES: Array<{ name: string; min: number; max: number; input: Pr
       novaGroup: 2,
       additivesTags: [],
       categoriesTags: ["en:plant-based-foods", "en:fats", "en:vegetable-fats", "en:vegetable-oils", "en:olive-oils", "en:extra-virgin-olive-oils"],
+    },
+  },
+  {
+    name: "mozzarella",
+    min: 7,
+    max: 9,
+    input: {
+      sugars100g: 1,
+      saturatedFat100g: 15,
+      salt100g: 0.6,
+      proteins100g: 18,
+      ingredientsText: "Mozzarella Cheese (Milk), Salt",
+      novaGroup: 3,
+      additivesTags: [],
+      categoriesTags: ["en:dairies", "en:fermented-foods", "en:cheeses", "en:stretched-curd-cheeses", "en:mozzarella"],
+    },
+  },
+  {
+    name: "eggs",
+    min: 8,
+    max: 10,
+    input: {
+      sugars100g: 0.2,
+      saturatedFat100g: 3.1,
+      salt100g: 0.3,
+      proteins100g: 12.6,
+      ingredientsText: "Free Range Eggs",
+      novaGroup: 1,
+      additivesTags: [],
+      categoriesTags: ["en:farming-products", "en:eggs", "en:chicken-eggs", "en:free-range-chicken-eggs"],
+    },
+  },
+  {
+    name: "plain salmon fillet",
+    min: 8,
+    max: 10,
+    input: {
+      sugars100g: 0,
+      saturatedFat100g: 3,
+      salt100g: 0.1,
+      proteins100g: 20,
+      ingredientsText: "Atlantic Salmon (Salmo salar) (Fish)",
+      novaGroup: 1,
+      additivesTags: [],
+      categoriesTags: ["en:seafood", "en:fishes", "en:fatty-fishes", "en:salmons", "en:salmon-fillets"],
+    },
+  },
+  {
+    name: "fresh pork belly",
+    min: 7,
+    max: 9,
+    input: {
+      sugars100g: 0,
+      saturatedFat100g: 15,
+      salt100g: 0.2,
+      proteins100g: 17,
+      ingredientsText: "Pork Belly",
+      novaGroup: 1,
+      additivesTags: [],
+      categoriesTags: ["en:meats", "en:fresh-meats", "en:pork", "en:pork-belly"],
+    },
+  },
+  {
+    name: "feta",
+    min: 7,
+    max: 8,
+    input: {
+      sugars100g: 0.5,
+      saturatedFat100g: 14,
+      salt100g: 2.7,
+      proteins100g: 15,
+      ingredientsText: "Pasteurised Sheep's Milk, Salt, Cultures",
+      novaGroup: 3,
+      additivesTags: [],
+      categoriesTags: ["en:dairies", "en:fermented-foods", "en:cheeses", "en:sheep-cheeses", "en:feta"],
+    },
+  },
+  {
+    name: "processed cheese slices",
+    min: 1,
+    max: 4,
+    floorApplied: false,
+    input: {
+      sugars100g: 5,
+      saturatedFat100g: 14,
+      salt100g: 1.5,
+      proteins100g: 13,
+      ingredientsText: "Cheese (Milk), Water, Butter (Milk), Milk Proteins, Emulsifying Salts (E339), Salt",
+      novaGroup: 4,
+      additivesTags: ["en:e339"],
+      categoriesTags: ["en:dairies", "en:cheeses", "en:processed-cheeses", "en:cheese-slices"],
+    },
+  },
+  {
+    name: "pork sausages",
+    min: 1,
+    max: 4,
+    floorApplied: false,
+    input: {
+      sugars100g: 1,
+      saturatedFat100g: 8,
+      salt100g: 1.6,
+      proteins100g: 13,
+      ingredientsText:
+        "Pork (70%), Water, Rusk (Wheat Flour, Salt), Pork Fat, Seasoning (Salt, Spices, Dextrose, Preservative: Sodium Metabisulphite), Casing (Beef Collagen)",
+      novaGroup: 4,
+      additivesTags: ["en:e223"],
+      categoriesTags: ["en:meats", "en:prepared-meats", "en:sausages", "en:pork-sausages"],
+    },
+  },
+  {
+    name: "salted butter",
+    min: 1,
+    max: 4,
+    floorApplied: false,
+    input: {
+      sugars100g: 0.6,
+      saturatedFat100g: 51,
+      salt100g: 1.5,
+      proteins100g: 0.6,
+      ingredientsText: "Butter (Milk), Salt (1.5%)",
+      novaGroup: 2,
+      additivesTags: [],
+      categoriesTags: ["en:dairies", "en:spreads", "en:fats", "en:animal-fats", "en:milkfat", "en:butters", "en:salted-butters"],
     },
   },
 ];

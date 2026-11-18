@@ -10,6 +10,7 @@ import {
   hasArtificialSweetener,
   countAdditives,
   SCORING_GUIDE,
+  WHOLE_FOOD_FLOOR,
   type ProductScoreInput,
   type PillarId,
 } from "./foodScore";
@@ -38,20 +39,24 @@ const clean: ProductScoreInput = {
 };
 
 describe("fixture ranges", () => {
-  // Salted crisps miss their 2–4 range (scores 5): marked todo, anchors and weights left unchanged.
-  const MISSES = new Set(["salted crisps"]);
   for (const f of FIXTURES) {
-    if (MISSES.has(f.name)) {
-      it.todo(`${f.name} scores ${f.min}–${f.max}`);
-      continue;
-    }
     it(`${f.name} scores ${f.min}–${f.max}`, () => {
       const r = scoreProduct(f.input);
       expect(r.score).not.toBeNull();
       expect(r.score as number).toBeGreaterThanOrEqual(f.min);
       expect(r.score as number).toBeLessThanOrEqual(f.max);
+      if (f.floorApplied !== undefined) expect(r.floor.applied).toBe(f.floorApplied);
     });
   }
+
+  it("mature cheddar keeps low salt and saturated fat pillars but is raised to 7", () => {
+    const r = scoreProduct(FIXTURES.find((f) => f.name === "mature cheddar")!.input);
+    expect(r.pillars.find((p) => p.id === "salt")!.score).toBeLessThanOrEqual(3);
+    expect(r.pillars.find((p) => p.id === "satFat")!.score).toBeLessThanOrEqual(3);
+    expect(r.score).toBe(7);
+    expect(r.floor).toEqual({ limit: WHOLE_FOOD_FLOOR, applied: true });
+    expect(r.reasons).toContain(REASON_KEYS.highSalt);
+  });
 
   it("diet cola scores the same with proper additive tags as with empty ones", () => {
     const empty = FIXTURES.find((f) => f.name.startsWith("diet cola"))!.input;
@@ -180,7 +185,8 @@ describe("unknown data", () => {
 });
 
 describe("caps", () => {
-  const withSalt = (salt100g: number) => ({ ...clean, salt100g });
+  // One additive in the text keeps every pillar the same but stops the whole-food floor hiding the cap.
+  const withSalt = (salt100g: number) => ({ ...clean, ingredientsText: "Oats, antioxidant (E306)", salt100g });
   it("weakest link: 1 → 3, 2 → 4, 3 → 5", () => {
     expect(pillar(withSalt(2.25), "salt").score).toBe(1);
     expect(scoreProduct(withSalt(2.25)).score).toBe(3);
@@ -222,5 +228,85 @@ describe("reasons and guide", () => {
       [4, 6],
       [1, 3],
     ]);
+  });
+});
+
+describe("whole-food floor", () => {
+  /** Plain cheese: salt and saturated fat cap it at 3 without the floor. */
+  const cheese: ProductScoreInput = {
+    sugars100g: 0.1,
+    saturatedFat100g: 21.7,
+    salt100g: 1.8,
+    proteins100g: 25,
+    ingredientsText: "Cheddar Cheese (Milk)",
+    novaGroup: 3,
+    additivesTags: [],
+    categoriesTags: ["en:dairies", "en:cheeses"],
+  };
+  const floored = (input: ProductScoreInput) => scoreProduct(input).floor.applied;
+
+  it("raises a plain whole food to 7", () => {
+    const r = scoreProduct(cheese);
+    expect(r.wholeFood).toBe(true);
+    expect(r.score).toBe(WHOLE_FOOD_FLOOR);
+    expect(r.band).toBe("good");
+    expect(r.floor.applied).toBe(true);
+  });
+  it("applies to any NOVA 1 food, whatever its category", () => {
+    expect(floored({ ...cheese, novaGroup: 1, categoriesTags: ["en:snacks"] })).toBe(true);
+  });
+  it("does not apply to NOVA 4", () => {
+    expect(floored({ ...cheese, novaGroup: 4 })).toBe(false);
+  });
+  it("does not apply when NOVA is unknown", () => {
+    const r = scoreProduct({ ...cheese, novaGroup: null });
+    expect(r.wholeFood).toBe(false);
+    expect(r.floor.applied).toBe(false);
+  });
+  it("does not apply with additives in the tags or as E-numbers in the text", () => {
+    expect(floored({ ...cheese, additivesTags: ["en:e160b"] })).toBe(false);
+    expect(floored({ ...cheese, ingredientsText: "Cheddar Cheese (Milk), Colour (E160b)" })).toBe(false);
+  });
+  it("does not apply with an artificial sweetener", () => {
+    expect(floored({ ...cheese, ingredientsText: "Cheddar Cheese (Milk), Sweetener (Sucralose)" })).toBe(false);
+  });
+  it("does not apply when a sugar-type ingredient is listed", () => {
+    expect(floored({ ...cheese, ingredientsText: "Cheddar Cheese (Milk), Sugar" })).toBe(false);
+  });
+  it("does not apply in an excluded category", () => {
+    expect(floored({ ...cheese, categoriesTags: ["en:cheeses", "en:processed-cheeses"] })).toBe(false);
+  });
+  it("does not apply when the category is not a whole-food one and NOVA is not 1", () => {
+    expect(floored({ ...cheese, categoriesTags: ["en:snacks"] })).toBe(false);
+  });
+  it("does not apply to NOVA 2–3 whole-food categories with more than 5 ingredients", () => {
+    expect(floored({ ...cheese, ingredientsN: 6 })).toBe(false);
+    expect(floored({ ...cheese, ingredientsN: 5 })).toBe(true);
+  });
+  it("does not apply when confidence is none", () => {
+    const r = scoreProduct({ categoriesTags: ["en:cheeses"], novaGroup: null });
+    expect(r.confidence).toBe("none");
+    expect(r.score).toBeNull();
+    expect(r.floor.applied).toBe(false);
+  });
+  it("never lowers a score and never changes pillars, average, caps or reasons", () => {
+    // "en:creams" excludes the floor without touching any pillar.
+    const notWhole = (input: ProductScoreInput) => ({
+      ...input,
+      categoriesTags: [...(input.categoriesTags ?? []), "en:creams"],
+    });
+    for (const input of [cheese, ...FIXTURES.map((f) => f.input)]) {
+      const withFloor = scoreProduct(input);
+      const without = scoreProduct(notWhole(input));
+      expect(without.floor.applied).toBe(false);
+      expect(withFloor.score as number).toBeGreaterThanOrEqual(without.score as number);
+      expect(withFloor.pillars).toEqual(without.pillars);
+      expect(withFloor.average).toBe(without.average);
+      expect(withFloor.caps).toEqual(without.caps);
+      expect(withFloor.reasons).toEqual(without.reasons);
+    }
+  });
+  it("guide note uses the floor constant", () => {
+    expect(SCORING_GUIDE.wholeFood.values.limit).toBe(WHOLE_FOOD_FLOOR);
   });
 });

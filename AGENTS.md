@@ -19,4 +19,5 @@
 - `product-score` must request `nutriments` without also listing `fruits-vegetables-nuts-estimate-from-ingredients_100g` in `fields`; read that value from inside nutriments. Why: Open Food Facts drops the rest of nutriments when that sub-field is requested on its own.
 - New tools go in the `TOOLS` array in `src/pages/Tools.tsx` (one entry each, no placeholder cards). Why: the Tools tab is a list that grows one tool at a time.
 - Scan & rate alternatives: `product-alternatives` only searches/cleans OFF data (`_shared/off*.ts`); picking is pure `productAlternatives.ts`. On v2 failure it uses search.openfoodfacts.org (Nutri-Score A/B only); the 15-candidate stop counts general A/B hits. Why: v2 mostly 503s; store tags are sparse.
+- Scan & rate whole-food floor (`WHOLE_FOOD_FLOOR`, category/exclusion lists in `foodScore.ts`) runs after all caps and only raises the final score; pillars, average, caps and reasons are never changed by it. Why: scores stay honest per area while unprocessed foods are never shown as poor choices.
 - Score breakdown and /tools/scoring render only from `foodScore.ts` exports. Why: screen, guide and rules must never disagree.
