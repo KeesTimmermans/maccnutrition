@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ListChecks, RotateCcw, Sparkles } from "lucide-react";
+import { Check, Droplet, Leaf, ListChecks, Moon, RotateCcw, Sparkles, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { useTrackingMode } from "@/hooks/useTrackingMode";
@@ -8,6 +8,8 @@ import { mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 import {
   computeProgress,
   isItemDone,
+  itemCategory,
+  type ChecklistCategory,
   localDateString,
   mergeCheckinFocusPoints,
   sortByWhen,
@@ -28,6 +30,13 @@ import {
   WEEKLY_HABIT_CHANGED_EVENT,
   type WeeklyHabit,
 } from "@/lib/weeklyHabitService";
+
+const CATEGORY_ICONS: Record<ChecklistCategory, { icon: LucideIcon; className: string }> = {
+  nutrition: { icon: UtensilsCrossed, className: "text-primary" },
+  sleep: { icon: Moon, className: "text-indigo-500" },
+  stress: { icon: Leaf, className: "text-teal-600" },
+  hydration: { icon: Droplet, className: "text-sky-500" },
+};
 
 interface TodayChecklistCardProps {
   /** True once Today has loaded its own data (meals, water, baseline). */
@@ -257,6 +266,8 @@ export const TodayChecklistCard = ({
           const isAuto = item.kind === "auto";
           const tappable = !isAuto && (item.kind !== "habit" || !!habit);
           const onTap = () => (item.kind === "habit" ? toggleHabit() : toggleManual(item));
+          const category = itemCategory(item);
+          const { icon: CategoryIcon, className: categoryClass } = CATEGORY_ICONS[category];
           return (
             <li key={item.id}>
               <button
@@ -300,12 +311,19 @@ export const TodayChecklistCard = ({
                       </span>
                     )}
                   </span>
-                  <span
-                    className={`block mt-1 font-medium ${isHabit ? "text-base" : "text-sm"} ${
-                      isDone ? "text-muted-foreground line-through decoration-1" : "text-foreground"
-                    }`}
-                  >
-                    {item.title}
+                  <span className="flex items-start gap-1.5 mt-1">
+                    <CategoryIcon
+                      className={`shrink-0 ${isHabit ? "w-4 h-4 mt-1" : "w-3.5 h-3.5 mt-[3px]"} ${categoryClass}`}
+                      aria-label={t(`checklist_category_${category}`)}
+                      role="img"
+                    />
+                    <span
+                      className={`font-medium ${isHabit ? "text-base" : "text-sm"} ${
+                        isDone ? "text-muted-foreground line-through decoration-1" : "text-foreground"
+                      }`}
+                    >
+                      {item.title}
+                    </span>
                   </span>
                   {item.why && <span className="block text-xs text-muted-foreground mt-0.5">{item.why}</span>}
                   {isAuto && !isDone && <span className="block text-xs text-blue-600/80 mt-0.5">{autoHint(item)}</span>}

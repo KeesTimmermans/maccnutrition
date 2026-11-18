@@ -1341,6 +1341,7 @@ export type Database = {
       }
       weekly_habits: {
         Row: {
+          category: string | null
           completed_dates: string[]
           created_at: string
           difficulty_label: string | null
@@ -1353,6 +1354,7 @@ export type Database = {
           week_start_date: string
         }
         Insert: {
+          category?: string | null
           completed_dates?: string[]
           created_at?: string
           difficulty_label?: string | null
@@ -1365,6 +1367,7 @@ export type Database = {
           week_start_date: string
         }
         Update: {
+          category?: string | null
           completed_dates?: string[]
           created_at?: string
           difficulty_label?: string | null

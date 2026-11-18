@@ -1,7 +1,16 @@
 /**
  * Today's checklist — pure helpers (no React, no network), shared by TodayChecklistCard and its tests.
- * Item shape matches supabase/functions/_shared/checklistRules.ts.
+ * Item shape matches supabase/functions/_shared/checklistRules.ts, which also owns the category/exercise rules.
  */
+import {
+  classifyCategory,
+  isChecklistCategory,
+  isExerciseItem,
+  type ChecklistCategory,
+} from "../../supabase/functions/_shared/checklistRules.ts";
+
+export type { ChecklistCategory };
+export { classifyCategory };
 
 export type ChecklistWhen = "morning" | "breakfast" | "lunch" | "afternoon" | "dinner" | "evening" | "anytime";
 export type ChecklistKind = "manual" | "auto" | "habit";
@@ -19,8 +28,13 @@ export interface ChecklistItem {
   when: ChecklistWhen;
   kind: ChecklistKind;
   source: ChecklistSource;
+  category: ChecklistCategory;
   rule?: ChecklistRule;
 }
+
+/** An item's category, classified by keywords if a saved item somehow lacks one. */
+export const itemCategory = (item: Pick<ChecklistItem, "title" | "why"> & { category?: unknown }): ChecklistCategory =>
+  isChecklistCategory(item.category) ? item.category : classifyCategory(`${item.title} ${item.why ?? ""}`);
 
 /** item id -> ISO timestamp, for manual ticks only. */
 export type ChecklistCompleted = Record<string, string>;
@@ -102,7 +116,8 @@ const normalize = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim
 
 /**
  * Adds up to 3 of today's check-in focus points as manual items (source 'checkin', ids ci-1…ci-3),
- * skipping any whose text is already on the list. Returns the same array when nothing changes.
+ * skipping any whose text is already on the list and any about workouts or exercise.
+ * Returns the same array when nothing changes.
  */
 export const mergeCheckinFocusPoints = (
   items: ChecklistItem[],
@@ -115,15 +130,17 @@ export const mergeCheckinFocusPoints = (
   focusPoints.slice(0, 3).forEach((point, index) => {
     const text = (point.text || "").trim();
     const id = `ci-${index + 1}`;
-    if (!text || ids.has(id) || titles.has(normalize(text))) return;
+    const tip = (point.tip || "").trim();
+    if (!text || ids.has(id) || titles.has(normalize(text)) || isExerciseItem(text, tip)) return;
     titles.add(normalize(text));
     added.push({
       id,
       title: text,
-      ...(point.tip ? { why: point.tip.trim() } : {}),
+      ...(tip ? { why: tip } : {}),
       when: "anytime",
       kind: "manual",
       source: "checkin",
+      category: classifyCategory(`${text} ${tip}`),
     });
   });
   return added.length > 0 ? [...items, ...added] : items;

@@ -4,9 +4,14 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { generateChatCompletion } from "npm:@lovable.dev/ai-gateway@0.1.13";
 import { isHabitTrackingMode } from "../_shared/habitGuard.ts";
 import {
+  applyCategoryMix,
+  CHECKLIST_CATEGORIES,
   CHECKLIST_SIZE,
   CHECKLIST_WHENS,
   deterministicItems,
+  isExerciseItem,
+  isStaleChecklist,
+  weakestArea,
   pickFallbacks,
   toAiItem,
   validateChecklistItem,
@@ -58,6 +63,7 @@ const CHECKLIST_TOOL = {
               why: { type: 'string', description: 'One short line, max 90 characters.' },
               when: { type: 'string', enum: CHECKLIST_WHENS },
               kind: { type: 'string', enum: ['manual', 'auto'] },
+              category: { type: 'string', enum: CHECKLIST_CATEGORIES, description: 'nutrition, sleep, stress or hydration.' },
               rule: {
                 type: 'object',
                 description: "Only when kind is 'auto'.",
@@ -70,7 +76,7 @@ const CHECKLIST_TOOL = {
                 required: ['type'],
               },
             },
-            required: ['title', 'why', 'when', 'kind'],
+            required: ['title', 'why', 'when', 'kind', 'category'],
           },
         },
       },
@@ -109,7 +115,15 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .eq('checklist_date', date)
       .maybeSingle();
-    if (existing) return json({ checklist: existing, generated: false });
+    if (existing && !isStaleChecklist(existing.items)) return json({ checklist: existing, generated: false });
+    if (existing) {
+      // Saved before items had a category: replace it with a fresh list.
+      const { error: deleteError } = await supabase.from('daily_checklists').delete().eq('id', existing.id);
+      if (deleteError) {
+        console.error('Failed to remove stale checklist:', deleteError);
+        return json({ checklist: existing, generated: false });
+      }
+    }
 
     // ── Profile + mode (server-side; any error = calories) ───────
     const { data: baseline, error: baselineErr } = await supabase
@@ -125,7 +139,7 @@ serve(async (req) => {
       : null;
 
     const [habitRes, checkinRes, mealsRes, focusRes] = await Promise.all([
-      supabase.from('weekly_habits').select('habit_title, habit_description')
+      supabase.from('weekly_habits').select('habit_title, habit_description, category')
         .eq('user_id', user.id).eq('week_start_date', mondayOf(date)).maybeSingle(),
       supabase.from('daily_checkins').select('energy_level, sleep_quality, stress_level')
         .eq('user_id', user.id).eq('check_in_date', date).maybeSingle(),
@@ -142,9 +156,12 @@ serve(async (req) => {
     // Same rule as the Coach card's "Your Monthly Focus": the latest progress check-in, if within 14 days.
     const focusRow = focusRes.data;
     const focusFresh = focusRow && (Date.now() - new Date(focusRow.created_at).getTime()) / 86400000 <= 14;
+    // Training/workout focus points never become checklist items.
     const monthlyFocus: string[] = focusFresh && Array.isArray(focusRow.coaching_focus_points)
-      ? (focusRow.coaching_focus_points as { text?: string }[]).map((p) => p?.text || '').filter(Boolean)
+      ? (focusRow.coaching_focus_points as { text?: string }[]).map((p) => p?.text || '').filter((t) => t && !isExerciseItem(t))
       : [];
+    const checkin = checkinRes.data;
+    const weakest = weakestArea(checkin);
 
     const profile = {
       dietType: baseline?.diet_type ?? null,
@@ -160,18 +177,31 @@ serve(async (req) => {
         ? `HABITS MODE: this person does NOT track calories or macros. Items must contain NO calories, kcal, macros, grams of nutrients, targets or percentages. Use hand portions (a palm of protein, a fist of carbs, a thumb of fats, a cupped hand), the plate method (half vegetables, a quarter protein, a quarter carbs) and plain actions. kind is 'manual', except meal-logging items where natural ("Log your lunch"), which are kind 'auto' with rule {"type":"meal_logged","meal":"breakfast"|"lunch"|"dinner"}.`
         : `CALORIES MODE: numbers are allowed, but the ONLY number you may use is the protein target${proteinTarget ? ` (${proteinTarget} g protein per day)` : ''}. Never invent calorie or macro numbers. kind is 'manual', or 'auto' for meal logging with rule {"type":"meal_logged","meal":"breakfast"|"lunch"|"dinner"}.${proteinTarget ? ` You may add at most ONE auto item with rule {"type":"protein_by_hour","grams":N,"hour":H} (e.g. 30 g protein by 10), with N well below ${proteinTarget}.` : ''}`;
 
+      const mixRule = mode === 'habits'
+        ? `- Category mix for your ${needed} items: at least one sleep or stress item, and at most 3 nutrition items.`
+        : `- Category mix for your ${needed} items: at least one must be a sleep or stress item.`;
+      const weakestRule = weakest === 'sleep'
+        ? '- Today\'s check-in shows poor sleep: include a sleep item.'
+        : weakest === 'stress'
+          ? '- Today\'s check-in shows high stress: include a stress item.'
+          : weakest === 'hydration'
+            ? '- Today\'s check-in shows low energy: include a hydration or nutrition item.'
+            : '';
       const systemPrompt = `You are Coach Mac. Write today's checklist: exactly ${needed} items the user can do and tick off TODAY.
 Rules:
-- Every item is ONE specific action that names the concrete food, portion, time or count. Good: "Breakfast: a palm of protein (eggs or Greek yoghurt) plus one fruit", "10-minute walk after dinner", "Prep tomorrow's lunch tonight", "Screens off 30 minutes before bed", "Add one extra set to your first compound lift".
+- Every item must be a nutrition, sleep, stress or hydration habit. Never include workouts, exercise, training, lifting, running, steps, cardio, stretching, walking for fitness, or anything that asks the user to train. Eating or drinking AROUND training is nutrition and allowed (e.g. 'Have a banana and a glass of water an hour before you train'), but never tell them to train. Stress items are small calming actions (e.g. 'Take five slow breaths before your first meal', 'Write tomorrow's top three tasks before bed', 'Eat lunch away from your screen'). Sleep items are routines (e.g. 'Screens off 30 minutes before bed', 'Same bedtime as yesterday ±30 minutes', 'No caffeine after 2pm').
+- Give every item its "category": nutrition, sleep, stress or hydration.
+- Don't use the words "sets", "steps", "reps", "run" or "gym" at all, not even figuratively ("sets you up").
+${mixRule}${weakestRule ? `\n${weakestRule}` : ''}
+- Every item is ONE specific action that names the concrete food, portion, time or count. Good: "Breakfast: a palm of protein (eggs or Greek yoghurt) plus one fruit", "Prep tomorrow's lunch tonight", "A glass of water before lunch", "Screens off 30 minutes before bed".
 - Never use vague wording: no "focus on", "maximise", "optimise", "prioritise", "improve", "try to", "aim to", "consider", "be mindful", "work on", "ensure", "enhance".
-- Turn each monthly focus point into a concrete action for today; never copy a vague focus point verbatim.
+- Turn each monthly focus point into a concrete action for today; never copy a vague focus point verbatim. Skip any focus point about training or workouts.
 - Do not repeat the water goal or the weekly habit; they are already on the list.
 - Titles are imperative, at least 4 words, max 80 characters. "why" is one short line, max 90 characters.
 - Respect the diet type, allergies and dislikes. Mix times of day ("when"). Not medical advice.
 - ${modeRules}
 - Write the title and why in ${lang}.`;
 
-      const checkin = checkinRes.data;
       const userPrompt = JSON.stringify({
         primaryGoal: baseline?.primary_goal ?? null,
         secondaryGoals: baseline?.secondary_goals ?? [],
@@ -248,6 +278,7 @@ Rules:
           })
           .slice(0, needed)
           .map((r, i) => toAiItem(r, i));
+        aiItems = applyCategoryMix(aiItems, mode, needed);
       } catch (aiError) {
         console.error('[checklist] AI generation failed, using fallbacks:', aiError);
         aiItems = [];
@@ -259,7 +290,11 @@ Rules:
     const items: ChecklistItem[] = [
       ...baseItems,
       ...aiItems,
-      ...pickFallbacks(mode, needed - aiItems.length, profile, [...baseItems, ...aiItems].map((i) => i.title)),
+      ...pickFallbacks(mode, needed - aiItems.length, profile, [...baseItems, ...aiItems].map((i) => i.title), {
+        chosen: aiItems,
+        prefer: weakest,
+        preferCalm: weakest === 'stress' ? 'stress' : 'sleep',
+      }),
     ];
 
     // ── Insert once; concurrent calls end up with the same row ───

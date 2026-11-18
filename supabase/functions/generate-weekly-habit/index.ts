@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { containsNutritionNumbers, isHabitTrackingMode } from "../_shared/habitGuard.ts";
+import { classifyCategory, isChecklistCategory, isExerciseItem, type ChecklistCategory } from "../_shared/checklistRules.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -73,6 +74,7 @@ const FALLBACK_HABIT = {
   title: "Hit your protein target at breakfast",
   description: "Include at least 25-30g of protein in your first meal of the day, every day this week.",
   difficultyLabel: "Starter",
+  category: "nutrition" as ChecklistCategory,
 };
 
 // Habit mode (no calorie/macro tracking): hand-sizes and plain actions, no nutrient numbers.
@@ -80,6 +82,7 @@ const HABIT_FALLBACK_HABIT = {
   title: "A palm of protein at breakfast, every day",
   description: "Have a palm-sized portion of protein — eggs, Greek yoghurt, fish or tofu — with breakfast every day this week. It keeps you fuller until lunch.",
   difficultyLabel: "Starter",
+  category: "nutrition" as ChecklistCategory,
 };
 
 // Target figures the habits-mode prompt must never see.
@@ -189,6 +192,7 @@ Rules:
 - Keep the title under 60 characters. Keep the description to 1-2 short sentences explaining what to do and why it helps.
 - difficultyLabel is one short word or phrase, e.g. "Starter", "Steady", "Step up", "Challenging".
 - Respect any allergies, conditions, diet type and dislikes.
+- The habit must be about nutrition, sleep, stress or hydration, never about workouts or exercise (eating or drinking around training is fine). Also return a \`category\` field: 'nutrition'|'sleep'|'stress'|'hydration'.
 ${isHabit
   ? `- Never give medical advice.
 - This client uses the simple habits approach and does NOT track calories or macros. The title and description must contain no nutrient numbers, grams, calories, kcal, macros, targets or percentages (never "25-30g protein"). Use hand-sizes (a palm of protein, a fist of carbs, a thumb of fats, two handfuls of vegetables) or plain actions. Example: "A palm of protein at breakfast, every day".`
@@ -197,7 +201,7 @@ ${isHabit
 Progression rule: ${progression}
 
 Respond with JSON only, in this exact shape:
-{"title": "...", "description": "...", "difficultyLabel": "..."}`;
+{"title": "...", "description": "...", "difficultyLabel": "...", "category": "nutrition"|"sleep"|"stress"|"hydration"}`;
 
         const userPrompt = `User context (JSON):\n${JSON.stringify(promptContext)}\n\n${previousBlock}`;
 
@@ -226,13 +230,22 @@ Respond with JSON only, in this exact shape:
           const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
           const parsedHabit = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
           if (parsedHabit?.title && parsedHabit?.description) {
+            const title = String(parsedHabit.title).slice(0, 120);
+            const description = String(parsedHabit.description).slice(0, 500);
             habit = {
-              title: String(parsedHabit.title).slice(0, 120),
-              description: String(parsedHabit.description).slice(0, 500),
+              title,
+              description,
               difficultyLabel: parsedHabit.difficultyLabel
                 ? String(parsedHabit.difficultyLabel).slice(0, 40)
                 : null,
+              category: isChecklistCategory(parsedHabit.category)
+                ? parsedHabit.category
+                : classifyCategory(`${title} ${description}`),
             } as typeof habit;
+            if (isExerciseItem(habit.title, habit.description)) {
+              console.warn('Generated habit was about exercise — using the fallback habit');
+              habit = isHabit ? { ...HABIT_FALLBACK_HABIT } : { ...FALLBACK_HABIT };
+            }
             if (isHabit && containsNutritionNumbers(`${habit.title}. ${habit.description}`)) {
               console.warn('Habit mode: generated habit mentioned nutrition numbers — using the habit fallback');
               habit = { ...HABIT_FALLBACK_HABIT };
@@ -255,6 +268,7 @@ Respond with JSON only, in this exact shape:
         habit_title: habit.title,
         habit_description: habit.description,
         difficulty_label: habit.difficultyLabel ?? null,
+        category: habit.category,
         previous_habit_id: previous?.id ?? null,
       }, { onConflict: 'user_id,week_start_date', ignoreDuplicates: true })
       .select()

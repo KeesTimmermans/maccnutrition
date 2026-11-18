@@ -10,6 +10,8 @@ export interface WeeklyHabit {
   difficulty_label: string | null;
   completed_dates: string[];
   previous_habit_id: string | null;
+  /** nutrition | sleep | stress | hydration; null on habits made before categories existed. */
+  category?: string | null;
   created_at: string;
   updated_at: string;
 }

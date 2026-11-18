@@ -8,6 +8,7 @@ export type ChecklistMode = "habits" | "calories";
 export type ChecklistWhen = "morning" | "breakfast" | "lunch" | "afternoon" | "dinner" | "evening" | "anytime";
 export type ChecklistKind = "manual" | "auto" | "habit";
 export type ChecklistSource = "ai" | "fallback" | "weekly_habit" | "water" | "checkin";
+export type ChecklistCategory = "nutrition" | "sleep" | "stress" | "hydration";
 export type ChecklistRule =
   | { type: "water_goal" }
   | { type: "meal_logged"; meal: "breakfast" | "lunch" | "dinner" | "any" }
@@ -21,11 +22,44 @@ export interface ChecklistItem {
   when: ChecklistWhen;
   kind: ChecklistKind;
   source: ChecklistSource;
+  category: ChecklistCategory;
   rule?: ChecklistRule;
 }
 
 export const CHECKLIST_WHENS: ChecklistWhen[] = ["morning", "breakfast", "lunch", "afternoon", "dinner", "evening", "anytime"];
 export const CHECKLIST_KINDS: ChecklistKind[] = ["manual", "auto", "habit"];
+export const CHECKLIST_CATEGORIES: ChecklistCategory[] = ["nutrition", "sleep", "stress", "hydration"];
+
+// ── Categories and the no-exercise rule ─────────────────────────────
+
+/** Workout/exercise wording. Items may only mention training when they are about eating or drinking around it. */
+export const EXERCISE_PATTERN =
+  /\b(workout|work out|exercise|lift(?:ing)?|squats?|deadlifts?|bench|reps?|sets?|run(?:ning)?|jog(?:ging)?|gym|cardio|steps|stretch(?:ing)?|train(?:ing)? session|hiit|yoga)\b/i;
+export const EATING_PATTERN =
+  /\b(eat|meal|snack|drink|water|protein|carbs?|breakfast|lunch|dinner|fuel|hydrate|banana|oats)\b/i;
+
+/** True when the title (or why) asks for exercise and the title isn't about eating/drinking around it. */
+export const isExerciseItem = (title: string, why = ""): boolean =>
+  (EXERCISE_PATTERN.test(title) || EXERCISE_PATTERN.test(why)) && !EATING_PATTERN.test(title);
+
+export const isChecklistCategory = (value: unknown): value is ChecklistCategory =>
+  typeof value === "string" && (CHECKLIST_CATEGORIES as string[]).includes(value);
+
+const SLEEP_WORDS = /\b(sleep\w*|bed|bedtime|caffeine|coffee|nap|wake|lights?|bedroom)\b|screens? off|wind(?:ing)? down/i;
+const STRESS_WORDS = /\b(breath\w*|calm\w*|relax\w*|stress\w*|journal\w*|write|meditat\w*|mindful\w*|screens?|phone|pause|slowly|tasks?)\b/i;
+const HYDRATION_WORDS = /\b(water|hydrat\w*|drinks?|bottle|fluids?|tea|electrolytes?)\b/i;
+
+/** Keyword classification for items without a category (old weekly habits, check-in points). Defaults to nutrition. */
+export const classifyCategory = (text: string): ChecklistCategory => {
+  if (SLEEP_WORDS.test(text)) return "sleep";
+  if (STRESS_WORDS.test(text)) return "stress";
+  if (HYDRATION_WORDS.test(text)) return "hydration";
+  return "nutrition";
+};
+
+/** A saved list is stale when any item has no valid category (lists made before categories existed). */
+export const isStaleChecklist = (items: unknown): boolean =>
+  !Array.isArray(items) || items.some((i) => !i || typeof i !== "object" || !isChecklistCategory((i as Record<string, unknown>).category));
 const MEALS = ["breakfast", "lunch", "dinner", "any"];
 
 /** Total items per day (deterministic + AI/fallback). */
@@ -78,6 +112,8 @@ export const validateChecklistItem = (item: unknown, mode: ChecklistMode): Valid
   if (typeof it.kind !== "string" || !CHECKLIST_KINDS.includes(it.kind as ChecklistKind)) {
     return { valid: false, reason: "invalid kind" };
   }
+  if (!isChecklistCategory(it.category)) return { valid: false, reason: "missing or invalid category" };
+  if (isExerciseItem(title, why)) return { valid: false, reason: "about workouts or exercise" };
   if (it.kind === "auto") {
     if (!isValidRule(it.rule, mode)) return { valid: false, reason: "invalid rule" };
     if (mode === "habits" && (it.rule as ChecklistRule).type === "protein_by_hour") {
@@ -100,48 +136,70 @@ export const validateChecklistItem = (item: unknown, mode: ChecklistMode): Valid
 /** What a fallback item contains, so it can be skipped for a diet, allergy or dislike. */
 type Contains = "meat" | "fish" | "eggs" | "dairy" | "gluten" | "nuts";
 
-interface FallbackEntry {
+export interface FallbackEntry {
   key: string;
   title: string;
   why: string;
   when: ChecklistWhen;
   kind: "manual" | "auto";
+  category: ChecklistCategory;
   rule?: ChecklistRule;
   contains?: Contains[];
 }
 
+const SHARED_SLEEP: FallbackEntry[] = [
+  { key: "screens-off", title: "Screens off 30 minutes before bed", why: "Less screen light helps you fall asleep sooner.", when: "evening", kind: "manual", category: "sleep" },
+  { key: "no-caffeine", title: "No caffeine after 2pm today", why: "Caffeine late in the day keeps sleep light.", when: "afternoon", kind: "manual", category: "sleep" },
+  { key: "same-bedtime", title: "Go to bed at the same time as yesterday", why: "A steady bedtime makes waking up easier.", when: "evening", kind: "manual", category: "sleep" },
+  { key: "phone-out", title: "Charge your phone outside the bedroom tonight", why: "No late scrolling means more real rest.", when: "evening", kind: "manual", category: "sleep" },
+  { key: "dim-lights", title: "Dim the lights an hour before bed", why: "Lower light tells your body it's nearly bedtime.", when: "evening", kind: "manual", category: "sleep" },
+];
+
+const SHARED_STRESS: FallbackEntry[] = [
+  { key: "five-breaths", title: "Take five slow breaths before your first meal", why: "A calm start makes it easier to eat mindfully.", when: "breakfast", kind: "manual", category: "stress" },
+  { key: "lunch-no-screen", title: "Eat lunch away from your screen", why: "A real break lowers stress and helps you notice fullness.", when: "lunch", kind: "manual", category: "stress" },
+  { key: "top-three", title: "Write tomorrow's top three tasks before bed", why: "Getting them on paper quietens a busy mind.", when: "evening", kind: "manual", category: "stress" },
+  { key: "tea-break", title: "Take a five-minute tea break with no screens this afternoon", why: "A short pause resets an afternoon slump.", when: "afternoon", kind: "manual", category: "stress" },
+];
+
 export const FALLBACK_LIBRARY: Record<ChecklistMode, FallbackEntry[]> = {
   habits: [
-    { key: "h-breakfast-protein", title: "Breakfast: a palm of protein (eggs or Greek yoghurt) plus one fruit", why: "Protein early keeps you fuller until lunch.", when: "breakfast", kind: "manual", contains: ["eggs", "dairy"] },
-    { key: "h-breakfast-veg", title: "Add a handful of vegetables to your breakfast", why: "An easy first portion of veg for the day.", when: "breakfast", kind: "manual" },
-    { key: "h-water-lunch", title: "Drink a glass of water before lunch", why: "Water before meals helps you notice when you're full.", when: "lunch", kind: "manual" },
-    { key: "h-plant-protein-lunch", title: "Add a palm of beans, lentils or tofu to lunch", why: "A simple protein base that works for any diet.", when: "lunch", kind: "manual" },
-    { key: "h-slow-meal", title: "Eat one meal slowly, without your phone", why: "Slower meals make it easier to stop when satisfied.", when: "lunch", kind: "manual" },
-    { key: "h-log-lunch", title: "Log your lunch in the app", why: "Logging as you go keeps your diary honest.", when: "lunch", kind: "auto", rule: { type: "meal_logged", meal: "lunch" } },
-    { key: "h-fruit-snack", title: "Have a piece of fruit with your afternoon snack", why: "Adds fibre and sweetness without a sugar crash.", when: "afternoon", kind: "manual" },
-    { key: "h-swap-drink", title: "Swap one sugary drink for water today", why: "One swap a day adds up over the week.", when: "anytime", kind: "manual" },
-    { key: "h-half-plate", title: "Fill half your dinner plate with vegetables", why: "The plate method keeps dinner balanced without counting.", when: "dinner", kind: "manual" },
-    { key: "h-thumb-fat", title: "Add a thumb of olive oil or avocado to dinner", why: "A little healthy fat makes the meal more satisfying.", when: "dinner", kind: "manual" },
-    { key: "h-stop-full", title: "Stop eating dinner when you feel about 80% full", why: "Pausing before you're stuffed is a habit you can feel.", when: "dinner", kind: "manual" },
-    { key: "h-log-dinner", title: "Log your dinner before bed", why: "A complete diary shows your real patterns.", when: "dinner", kind: "auto", rule: { type: "meal_logged", meal: "dinner" } },
-    { key: "h-walk", title: "Take a 10-minute walk after dinner", why: "Gentle movement after eating helps digestion and sleep.", when: "evening", kind: "manual" },
-    { key: "h-prep-lunch", title: "Prep tomorrow's lunch tonight", why: "A ready lunch beats a rushed choice tomorrow.", when: "evening", kind: "manual" },
-    { key: "h-screens-off", title: "Screens off 30 minutes before bed", why: "Better sleep makes tomorrow's food choices easier.", when: "evening", kind: "manual" },
+    // nutrition
+    { key: "h-breakfast-protein", title: "Breakfast: a palm of protein (eggs or Greek yoghurt) plus one fruit", why: "Protein early keeps you fuller until lunch.", when: "breakfast", kind: "manual", category: "nutrition", contains: ["eggs", "dairy"] },
+    { key: "h-breakfast-veg", title: "Add a handful of vegetables to your breakfast", why: "An easy first portion of veg for the day.", when: "breakfast", kind: "manual", category: "nutrition" },
+    { key: "h-plant-protein-lunch", title: "Add a palm of beans, lentils or tofu to lunch", why: "A simple protein base that works for any diet.", when: "lunch", kind: "manual", category: "nutrition" },
+    { key: "h-log-lunch", title: "Log your lunch in the app", why: "Logging as you go keeps your diary honest.", when: "lunch", kind: "auto", category: "nutrition", rule: { type: "meal_logged", meal: "lunch" } },
+    { key: "h-fruit-snack", title: "Have a piece of fruit with your afternoon snack", why: "Adds fibre and sweetness without a sugar crash.", when: "afternoon", kind: "manual", category: "nutrition" },
+    { key: "h-half-plate", title: "Fill half your dinner plate with vegetables", why: "The plate method keeps dinner balanced without counting.", when: "dinner", kind: "manual", category: "nutrition" },
+    { key: "h-thumb-fat", title: "Add a thumb of olive oil or avocado to dinner", why: "A little healthy fat makes the meal more satisfying.", when: "dinner", kind: "manual", category: "nutrition" },
+    { key: "h-prep-lunch", title: "Prep tomorrow's lunch tonight", why: "A ready lunch beats a rushed choice tomorrow.", when: "evening", kind: "manual", category: "nutrition" },
+    // hydration
+    { key: "h-water-lunch", title: "Drink a glass of water before lunch", why: "Water before meals helps you notice when you're full.", when: "lunch", kind: "manual", category: "hydration" },
+    { key: "h-bottle-3pm", title: "Finish a full bottle of water by 3pm", why: "Front-loading water avoids a late-day catch-up.", when: "afternoon", kind: "manual", category: "hydration" },
+    { key: "h-water-wake", title: "Drink a glass of water when you wake up", why: "You wake up a little dehydrated after the night.", when: "morning", kind: "manual", category: "hydration" },
+    { key: "h-swap-drink", title: "Swap one sugary drink for water today", why: "One swap a day adds up over the week.", when: "anytime", kind: "manual", category: "hydration" },
+    ...SHARED_SLEEP.map((e) => ({ ...e, key: `h-${e.key}` })),
+    ...SHARED_STRESS.map((e) => ({ ...e, key: `h-${e.key}` })),
+    { key: "h-slow-meal", title: "Eat one meal slowly without your phone", why: "Slower meals make it easier to stop when satisfied.", when: "dinner", kind: "manual", category: "stress" },
   ],
   calories: [
-    { key: "c-log-breakfast", title: "Log breakfast before 11 am", why: "An early log sets up the rest of the day.", when: "breakfast", kind: "auto", rule: { type: "meal_logged", meal: "breakfast" } },
-    { key: "c-breakfast-protein", title: "Have eggs or Greek yoghurt with breakfast", why: "A protein-rich start keeps hunger steady.", when: "breakfast", kind: "manual", contains: ["eggs", "dairy"] },
-    { key: "c-log-lunch", title: "Log your lunch in the app", why: "Logging straight away keeps your numbers accurate.", when: "lunch", kind: "auto", rule: { type: "meal_logged", meal: "lunch" } },
-    { key: "c-water-meals", title: "Drink a glass of water before each meal", why: "Helps you tell thirst from hunger.", when: "anytime", kind: "manual" },
-    { key: "c-protein-every-meal", title: "Add a protein source to every meal today", why: "Spreading protein out makes your target easier.", when: "anytime", kind: "manual" },
-    { key: "c-log-every-meal", title: "Log every meal straight after eating", why: "Memory fades fast — log while it's fresh.", when: "anytime", kind: "manual" },
-    { key: "c-fruit-snack", title: "Have fruit instead of a sweet snack this afternoon", why: "Same sweetness, more fibre, fewer surprises.", when: "afternoon", kind: "manual" },
-    { key: "c-half-plate", title: "Fill half your dinner plate with vegetables", why: "Volume without a big change to your numbers.", when: "dinner", kind: "manual" },
-    { key: "c-log-dinner", title: "Log your dinner before bed", why: "A complete day gives you a true picture.", when: "dinner", kind: "auto", rule: { type: "meal_logged", meal: "dinner" } },
-    { key: "c-plan-tomorrow", title: "Plan tomorrow's meals in the app tonight", why: "A plan makes tomorrow's choices automatic.", when: "evening", kind: "manual" },
-    { key: "c-prep-lunch", title: "Prep tomorrow's lunch tonight", why: "A ready lunch is easy to log and hard to skip.", when: "evening", kind: "manual" },
-    { key: "c-walk", title: "Take a 10-minute walk after dinner", why: "Easy movement that helps digestion.", when: "evening", kind: "manual" },
-    { key: "c-screens-off", title: "Screens off 30 minutes before bed", why: "Good sleep keeps appetite in check tomorrow.", when: "evening", kind: "manual" },
+    // nutrition (logging items count as nutrition here)
+    { key: "c-log-breakfast", title: "Log breakfast before 11 am", why: "An early log gives the rest of the day a head start.", when: "breakfast", kind: "auto", category: "nutrition", rule: { type: "meal_logged", meal: "breakfast" } },
+    { key: "c-breakfast-protein", title: "Have eggs or Greek yoghurt with breakfast", why: "A protein-rich start keeps hunger steady.", when: "breakfast", kind: "manual", category: "nutrition", contains: ["eggs", "dairy"] },
+    { key: "c-log-lunch", title: "Log your lunch in the app", why: "Logging straight away keeps your numbers accurate.", when: "lunch", kind: "auto", category: "nutrition", rule: { type: "meal_logged", meal: "lunch" } },
+    { key: "c-protein-every-meal", title: "Add a protein source to every meal today", why: "Spreading protein out makes your target easier.", when: "anytime", kind: "manual", category: "nutrition" },
+    { key: "c-log-every-meal", title: "Log every meal straight after eating", why: "Memory fades fast — log while it's fresh.", when: "anytime", kind: "manual", category: "nutrition" },
+    { key: "c-fruit-snack", title: "Have fruit instead of a sweet snack this afternoon", why: "Same sweetness, more fibre, fewer surprises.", when: "afternoon", kind: "manual", category: "nutrition" },
+    { key: "c-half-plate", title: "Fill half your dinner plate with vegetables", why: "Volume without a big change to your numbers.", when: "dinner", kind: "manual", category: "nutrition" },
+    { key: "c-log-dinner", title: "Log your dinner before bed", why: "A complete day gives you a true picture.", when: "dinner", kind: "auto", category: "nutrition", rule: { type: "meal_logged", meal: "dinner" } },
+    { key: "c-plan-tomorrow", title: "Plan tomorrow's meals in the app tonight", why: "A plan makes tomorrow's choices automatic.", when: "evening", kind: "manual", category: "nutrition" },
+    // hydration
+    { key: "c-water-meals", title: "Drink a glass of water before each meal", why: "Helps you tell thirst from hunger.", when: "anytime", kind: "manual", category: "hydration" },
+    { key: "c-bottle-3pm", title: "Finish a full bottle of water by 3pm", why: "Front-loading water avoids a late-day catch-up.", when: "afternoon", kind: "manual", category: "hydration" },
+    { key: "c-water-wake", title: "Drink a glass of water when you wake up", why: "You wake up a little dehydrated after the night.", when: "morning", kind: "manual", category: "hydration" },
+    { key: "c-swap-drink", title: "Swap one sugary drink for water today", why: "Saves easy calories without feeling hungrier.", when: "anytime", kind: "manual", category: "hydration" },
+    ...SHARED_SLEEP.map((e) => ({ ...e, key: `c-${e.key}` })),
+    ...SHARED_STRESS.map((e) => ({ ...e, key: `c-${e.key}` })),
   ],
 };
 
@@ -172,12 +230,41 @@ const excludedContents = (profile: DietProfile): Set<Contains> => {
 
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
-/** Picks fallback items that fit the user's diet, allergies and dislikes, skipping titles already on the list. */
+const isCalm = (c: ChecklistCategory) => c === "sleep" || c === "stress";
+
+/** Most AI/fallback nutrition items allowed per list (habits mode); calories mode has no cap. */
+export const MAX_NUTRITION_ITEMS: Record<ChecklistMode, number> = { habits: 3, calories: Infinity };
+
+export interface FallbackOptions {
+  /** Items already chosen for the AI/fallback slots (counted for the category mix). */
+  chosen?: Pick<ChecklistItem, "category">[];
+  /** Which calm category to add when the list still has no sleep or stress item. */
+  preferCalm?: "sleep" | "stress";
+  /** The user's weakest area, picked first when it fits. */
+  prefer?: ChecklistCategory | null;
+}
+
+const toFallbackItem = (e: FallbackEntry): ChecklistItem => ({
+  id: `fb-${e.key}`,
+  title: e.title,
+  why: e.why,
+  when: e.when,
+  kind: e.kind,
+  source: "fallback",
+  category: e.category,
+  ...(e.rule ? { rule: e.rule } : {}),
+});
+
+/**
+ * Picks `count` fallback items that fit the user's diet, allergies and dislikes, skipping titles already on the list,
+ * and keeping the category mix: at least one sleep or stress item, nutrition capped in habits mode, categories spread out.
+ */
 export const pickFallbacks = (
   mode: ChecklistMode,
   count: number,
   profile: DietProfile,
   existingTitles: string[] = [],
+  options: FallbackOptions = {},
 ): ChecklistItem[] => {
   if (count <= 0) return [];
   const excluded = excludedContents(profile);
@@ -186,37 +273,96 @@ export const pickFallbacks = (
     .map((d) => d.trim().toLowerCase())
     .filter((d) => d.length >= 3);
   const taken = new Set(existingTitles.map(normalize));
-  const fits = (e: FallbackEntry) =>
-    !(e.contains || []).some((c) => excluded.has(c)) &&
-    !dislikes.some((d) => e.title.toLowerCase().includes(d)) &&
-    !taken.has(normalize(e.title));
+  const pool = FALLBACK_LIBRARY[mode].filter(
+    (e) =>
+      !(e.contains || []).some((c) => excluded.has(c)) &&
+      !dislikes.some((d) => e.title.toLowerCase().includes(d)) &&
+      !taken.has(normalize(e.title)),
+  );
 
-  // Spread picks across the day: take every n-th entry first, then fill in order.
-  const pool = FALLBACK_LIBRARY[mode].filter(fits);
-  const step = Math.max(1, Math.floor(pool.length / count));
+  const chosenCats = (options.chosen || []).map((c) => c.category);
   const picked: FallbackEntry[] = [];
-  for (let i = 0; i < pool.length && picked.length < count; i += step) picked.push(pool[i]);
-  for (const e of pool) {
-    if (picked.length >= count) break;
-    if (!picked.includes(e)) picked.push(e);
+  const cats = () => [...chosenCats, ...picked.map((p) => p.category)];
+  const countOf = (c: ChecklistCategory) => cats().filter((x) => x === c).length;
+  const canTake = (e: FallbackEntry) =>
+    !picked.includes(e) && (e.category !== "nutrition" || countOf("nutrition") < MAX_NUTRITION_ITEMS[mode]);
+  const takeFrom = (category: ChecklistCategory) => {
+    const e = pool.find((p) => p.category === category && canTake(p));
+    if (e) picked.push(e);
+    return !!e;
+  };
+
+  // 1. Guarantee a sleep or stress item.
+  if (!cats().some(isCalm)) {
+    const first = options.preferCalm ?? (options.prefer && isCalm(options.prefer) ? options.prefer : "sleep");
+    if (!takeFrom(first)) takeFrom(first === "sleep" ? "stress" : "sleep");
   }
-  return picked.map((e) => ({
-    id: `fb-${e.key}`,
-    title: e.title,
-    why: e.why,
-    when: e.when,
-    kind: e.kind,
-    source: "fallback" as const,
-    ...(e.rule ? { rule: e.rule } : {}),
-  }));
+  // 2. The weakest area next.
+  if (picked.length < count && options.prefer && countOf(options.prefer) === 0) takeFrom(options.prefer);
+  // 3. Spread the rest: always top up the least-used category.
+  while (picked.length < count) {
+    const order = [...CHECKLIST_CATEGORIES].sort((a, b) => countOf(a) - countOf(b));
+    if (!order.some((c) => takeFrom(c))) break;
+  }
+  return picked.slice(0, count).map(toFallbackItem);
 };
 
-/** The items every list starts with: the water goal, and this week's habit when there is one. */
-export const deterministicItems = (habit?: { habit_title: string; habit_description: string } | null): ChecklistItem[] => {
+/**
+ * Applies the category mix to the valid AI items: caps nutrition in habits mode and, when no sleep or stress item
+ * is present, frees the last slot so a fallback can supply one. Returns the AI items to keep.
+ */
+export const applyCategoryMix = <T extends { category: ChecklistCategory }>(
+  aiItems: T[],
+  mode: ChecklistMode,
+  needed: number,
+): T[] => {
+  let nutrition = 0;
+  const kept = aiItems.filter((i) => {
+    if (i.category !== "nutrition") return true;
+    nutrition += 1;
+    return nutrition <= MAX_NUTRITION_ITEMS[mode];
+  }).slice(0, needed);
+  if (needed > 0 && kept.length > 0 && !kept.some((i) => isCalm(i.category)) && kept.length >= needed) {
+    // Drop the last nutrition (or else hydration) item to make room for a sleep/stress fallback.
+    const idx = [...kept].reverse().findIndex((i) => i.category === "nutrition");
+    const dropAt = idx >= 0 ? kept.length - 1 - idx : kept.length - 1;
+    kept.splice(dropAt, 1);
+  }
+  return kept;
+};
+
+/** The user's weakest area from today's check-in (1–5 scales; higher stress is worse). */
+export const weakestArea = (
+  checkin: { sleep_quality?: number | null; stress_level?: number | null; energy_level?: number | null } | null | undefined,
+): ChecklistCategory | null => {
+  if (!checkin) return null;
+  const sleep = checkin.sleep_quality ?? null;
+  const stress = checkin.stress_level ?? null;
+  const energy = checkin.energy_level ?? null;
+  const scores: { c: ChecklistCategory; bad: number }[] = [];
+  if (sleep != null && sleep <= 2) scores.push({ c: "sleep", bad: 3 - sleep });
+  if (stress != null && stress >= 4) scores.push({ c: "stress", bad: stress - 3 });
+  if (energy != null && energy <= 2) scores.push({ c: "hydration", bad: 3 - energy - 0.5 });
+  scores.sort((a, b) => b.bad - a.bad);
+  return scores[0]?.c ?? null;
+};
+
+export interface WeeklyHabitLike {
+  habit_title: string;
+  habit_description: string;
+  category?: string | null;
+}
+
+/** A weekly habit's category: the stored one, else keyword-classified. */
+export const weeklyHabitCategory = (habit: WeeklyHabitLike): ChecklistCategory =>
+  isChecklistCategory(habit.category) ? habit.category : classifyCategory(`${habit.habit_title} ${habit.habit_description}`);
+
+/** The items every list starts with: the water goal, and this week's habit when there is one (never a workout habit). */
+export const deterministicItems = (habit?: WeeklyHabitLike | null): ChecklistItem[] => {
   const items: ChecklistItem[] = [
-    { id: "water", title: "Reach your water goal today", when: "anytime", kind: "auto", source: "water", rule: { type: "water_goal" } },
+    { id: "water", title: "Reach your water goal today", when: "anytime", kind: "auto", source: "water", category: "hydration", rule: { type: "water_goal" } },
   ];
-  if (habit?.habit_title) {
+  if (habit?.habit_title && !isExerciseItem(habit.habit_title, habit.habit_description || "")) {
     items.push({
       id: "weekly-habit",
       title: habit.habit_title,
@@ -224,6 +370,7 @@ export const deterministicItems = (habit?: { habit_title: string; habit_descript
       when: "anytime",
       kind: "habit",
       source: "weekly_habit",
+      category: weeklyHabitCategory(habit),
     });
   }
   return items;
@@ -237,5 +384,6 @@ export const toAiItem = (raw: Record<string, unknown>, index: number): Checklist
   when: raw.when as ChecklistWhen,
   kind: raw.kind as ChecklistKind,
   source: "ai",
+  category: raw.category as ChecklistCategory,
   ...(raw.kind === "auto" && raw.rule ? { rule: raw.rule as ChecklistRule } : {}),
 });
