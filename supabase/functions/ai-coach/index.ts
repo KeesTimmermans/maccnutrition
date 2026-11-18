@@ -1,6 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { containsNutritionNumbers, guardHabitReply, dropNutritionLines, isHabitTrackingMode } from "../_shared/habitGuard.ts";
+import {
+  HABIT_MODE_BLOCK,
+  HABIT_FINAL_RULE,
+  HABIT_RETRY_INSTRUCTION,
+  HABIT_CORE_REPLACEMENTS,
+  HABIT_PROGRESS_REPLACEMENTS,
+  applyReplacements,
+  habitGoalGuidance,
+  habitCycleDirective,
+  dropCompPrepNutritionLines,
+} from "./habitPrompt.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -546,6 +558,20 @@ serve(async (req) => {
 
     console.log("Authenticated user:", user.id);
 
+    // Food approach is read on the server, never trusted from the client. Any error means calorie tracking.
+    let isHabit = false;
+    try {
+      const { data: modeRow, error: modeErr } = await supabase
+        .from('user_baselines')
+        .select('tracking_mode')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (modeErr) console.error("tracking_mode lookup error:", modeErr.message);
+      isHabit = !modeErr && isHabitTrackingMode(modeRow?.tracking_mode);
+    } catch (modeLookupErr) {
+      console.error("tracking_mode lookup failed:", modeLookupErr);
+    }
+
     // Parse and validate input
     const rawBody = await req.json();
 
@@ -613,7 +639,8 @@ serve(async (req) => {
       const rewrittenText = typeof rawContent === 'string' ? rawContent.trim() : '';
       const rewriteFinish = rewriteData.choices?.[0]?.finish_reason;
       // A cut-off or empty rewrite would replace a good message with a broken one — keep the original instead.
-      const safeRewrite = rewriteFinish === 'length' || !rewrittenText ? originalMessage : rewrittenText;
+      const keptRewrite = rewriteFinish === 'length' || !rewrittenText ? originalMessage : rewrittenText;
+      const safeRewrite = isHabit && containsNutritionNumbers(keptRewrite) ? guardHabitReply(keptRewrite) : keptRewrite;
       console.log(`[ai-coach] rewrite_tone finish_reason=${rewriteFinish} kept_original=${safeRewrite === originalMessage ? 'yes' : 'no'}`);
 
       return new Response(JSON.stringify({ response: safeRewrite }), {
@@ -805,12 +832,21 @@ These focus points will replace their daily coaching plan for the next month. Ma
 - Formatted as short phrases (not full sentences)
 
 This is a milestone moment — match their preferred communication style while being genuine.`;
+      if (isHabit) {
+        progressUpdateContext = applyReplacements(progressUpdateContext, HABIT_PROGRESS_REPLACEMENTS, (from) =>
+          console.warn("[habit] progress replacement missed:", String(from).slice(0, 60)));
+      }
     }
 
     // Build context from today's meals
     let mealsContext = "";
     let mealsAnalysis = "";
-    if (todaysMeals && todaysMeals.length > 0) {
+    if (todaysMeals && todaysMeals.length > 0 && isHabit) {
+      // Habit mode: meal names only — no totals, percentages or gaps.
+      mealsContext = `
+TODAY'S LOGGED MEALS (${todaysMeals.length} meals):
+${todaysMeals.map((m: any) => `- ${m.name}`).join('\n')}`;
+    } else if (todaysMeals && todaysMeals.length > 0) {
       const totalCals = todaysMeals.reduce((sum: number, m: any) => sum + m.calories, 0);
       const totalProtein = todaysMeals.reduce((sum: number, m: any) => sum + m.protein, 0);
       const totalCarbs = todaysMeals.reduce((sum: number, m: any) => sum + m.carbs, 0);
@@ -936,7 +972,9 @@ ${goalContext}`,
         };
 
         const directive = phaseDirectives[todayPhase] || '';
-        if (directive) {
+        if (isHabit) {
+          cycleCoachingDirective = habitCycleDirective(todayPhase);
+        } else if (directive) {
           cycleCoachingDirective = `${directive}
 
 IMPORTANT CYCLE COACHING RULES:
@@ -948,6 +986,24 @@ IMPORTANT CYCLE COACHING RULES:
         }
       }
     }
+
+    const nutritionTargetsBlock = isHabit
+      ? `DAILY BASICS (habit approach — no calorie or macro targets):
+- Water: ${userContext?.waterLiters || 'not set'}L
+- Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
+
+${habitGoalGuidance(userContext?.primaryGoal)}`
+      : `NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your ONLY authoritative targets)' : ''}:
+- Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
+- Protein: ${userContext?.proteinGrams || 'not set'}g
+- Carbs: ${userContext?.carbsGrams || 'not set'}g
+- Fats: ${userContext?.fatsGrams || 'not set'}g
+- Water: ${userContext?.waterLiters || 'not set'}L
+- Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
+- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override, recalculate, or contradict)' : 'Standard baseline'}
+
+⚠️ HARD RULE — NO MACRO RECALCULATION:
+Always use the provided calorie and macro targets EXACTLY as given above. Do NOT recalculate, estimate, round, or modify them. When referencing the user's targets in your response, use EXACTLY these numbers: ${userContext?.targetCalories} kcal, ${userContext?.proteinGrams}g protein, ${userContext?.carbsGrams}g carbs, ${userContext?.fatsGrams}g fats. Any other numbers are WRONG.`;
 
     const userProfile = `
 USER PROFILE:
@@ -967,17 +1023,7 @@ USER PROFILE:
 - Stress Level: ${userContext?.stressLevel || 'not specified'}
 - Occupation: ${userContext?.occupation || 'not specified'}
 
-NUTRITION TARGETS${(userContext as any)?.targetSource === 'competition_prep' ? ' (FROM ACTIVE COMPETITION PREP — these are your ONLY authoritative targets)' : ''}:
-- Daily Calories: ${userContext?.targetCalories || 'not set'} kcal
-- Protein: ${userContext?.proteinGrams || 'not set'}g
-- Carbs: ${userContext?.carbsGrams || 'not set'}g
-- Fats: ${userContext?.fatsGrams || 'not set'}g
-- Water: ${userContext?.waterLiters || 'not set'}L
-- Meals Per Day: ${userContext?.mealsPerDay || 'not set'}
-- Target Source: ${(userContext as any)?.targetSource === 'competition_prep' ? 'COMPETITION PREP ENGINE (authoritative — do NOT override, recalculate, or contradict)' : 'Standard baseline'}
-
-⚠️ HARD RULE — NO MACRO RECALCULATION:
-Always use the provided calorie and macro targets EXACTLY as given above. Do NOT recalculate, estimate, round, or modify them. When referencing the user's targets in your response, use EXACTLY these numbers: ${userContext?.targetCalories} kcal, ${userContext?.proteinGrams}g protein, ${userContext?.carbsGrams}g carbs, ${userContext?.fatsGrams}g fats. Any other numbers are WRONG.
+${nutritionTargetsBlock}
 
 PREFERENCES & RESTRICTIONS:
 - Diet Type: ${userContext?.dietType || 'not specified'}
@@ -1012,11 +1058,11 @@ COACHING PREFERENCES:
 
 ${cycleInfoSection}
 ${cycleCoachingDirective}
-${userContext?.checkInContext || ''}
-${userContext?.wearableContext || ''}
+${isHabit ? dropNutritionLines(userContext?.checkInContext) : userContext?.checkInContext || ''}
+${isHabit ? dropNutritionLines(userContext?.wearableContext) : userContext?.wearableContext || ''}
 ${mealsContext}${mealsAnalysis}
 
-${buildCompPrepSection(userContext)}
+${isHabit ? dropCompPrepNutritionLines(buildCompPrepSection(userContext)) : buildCompPrepSection(userContext)}
 
 USER APP STATE:
 - Meal logging: available (barcode, photo, text description)
@@ -1024,7 +1070,7 @@ USER APP STATE:
 - Daily check-in: available${(userContext as any)?.lastDailyCheckin ? ` (last completed: ${(userContext as any).lastDailyCheckin})` : ''}
 - Progress check-in: available${(userContext as any)?.lastProgressUpdate ? ` (last completed: ${(userContext as any).lastProgressUpdate})` : ''}
 - Competition Prep: ${(userContext as any)?.competitionPrepContext ? 'ACTIVE (see above)' : 'not active'}
-- Targets are live and shown on dashboard`;
+${isHabit ? '- Food approach: simple habits (no calorie or macro tracking)' : '- Targets are live and shown on dashboard'}`;
 
     // Determine response language
     const languageInstructions: Record<string, string> = {
@@ -1071,7 +1117,12 @@ USER APP STATE:
       maxTokens = 4000; // check-ins and progress updates
     }
 
-    const systemPrompt = `${CJT_CORE_SYSTEM}
+    const coreSystem = isHabit
+      ? `${HABIT_MODE_BLOCK}\n\n${applyReplacements(CJT_CORE_SYSTEM, HABIT_CORE_REPLACEMENTS, (from) =>
+          console.warn("[habit] core replacement missed:", String(from).slice(0, 60)))}`
+      : CJT_CORE_SYSTEM;
+
+    const systemPrompt = `${coreSystem}
 
 ${userProfile}
 ${progressUpdateContext}
@@ -1095,13 +1146,13 @@ RESPONSE GUIDELINES:
 - Keep responses conversational — no walls of text
 - Reference their context naturally, not as data dumps
 - ONE clear action item is better than five generic ones
-- Write in plain conversational text. Never use markdown headings (#, ##, ###). Use bullets only when listing 3 or more items, and **bold** only for key numbers.
+- Write in plain conversational text. Never use markdown headings (#, ##, ###). Use bullets only when listing 3 or more items, and **bold** only for ${isHabit ? 'the key action' : 'key numbers'}.
 - If check-in shows changes from yesterday, acknowledge the trajectory
 - Remember: A tired, stressed person doesn't need a lecture — they need empathy and ONE doable step
 - Mention job activity level, training duration, climate, or workout types ONLY when directly relevant to the advice being given (e.g. hydration guidance in a hot climate, meal timing around a physically demanding job). Do not force these details into every response.
 
-CRITICAL FINAL RULE — MACRO NUMBERS:
-When you mention any calorie or macro number in your response, it MUST match the NUTRITION TARGETS above EXACTLY. Do not calculate your own values. Do not estimate. Do not round differently. The app already shows these numbers to the user — your job is to coach around them, not recalculate them.`;
+${isHabit ? HABIT_FINAL_RULE : `CRITICAL FINAL RULE — MACRO NUMBERS:
+When you mention any calorie or macro number in your response, it MUST match the NUTRITION TARGETS above EXACTLY. Do not calculate your own values. Do not estimate. Do not round differently. The app already shows these numbers to the user — your job is to coach around them, not recalculate them.`}`;
 
     // Build messages array for chat
     let apiMessages: any[] = [{ role: "system", content: systemPrompt }];
@@ -1265,7 +1316,9 @@ When you mention any calorie or macro number in your response, it MUST match the
           console.log("meal retry used");
         } else {
           const cleaned = stripBrokenMealBlocks(aiResponse);
-          aiResponse = cleaned || "Here's a quick idea: tell me what ingredients you have and I'll build it around your numbers.";
+          aiResponse = cleaned || (isHabit
+            ? "Here's a quick idea: tell me what ingredients you have and I'll build a meal around them."
+            : "Here's a quick idea: tell me what ingredients you have and I'll build it around your numbers.");
           console.log("meal fallback text");
         }
       } else {
@@ -1311,7 +1364,53 @@ When you mention any calorie or macro number in your response, it MUST match the
       }
     }
 
-    console.log(`[ai-coach] finish_reason=${finishReason} retry=${retried ? "yes" : "no"}`);
+    // Habit mode safety net: the prose (never the ```json meal block) must be number-free.
+    // One rewrite retry; if it still mentions nutrition numbers, strip the offending sentences.
+    if (isHabit && containsNutritionNumbers(aiResponse)) {
+      const hadMealBlock = aiResponse.includes("```json") && mealBlockIsComplete(aiResponse);
+      let guardText = "";
+      let guardFinish: string | undefined;
+      try {
+        const guardResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              ...apiMessages,
+              { role: "assistant", content: aiResponse },
+              { role: "user", content: HABIT_RETRY_INSTRUCTION },
+            ],
+            max_tokens: maxTokens,
+            reasoning_effort: "low",
+          }),
+        });
+        if (guardResponse.ok) {
+          const guardData = await guardResponse.json();
+          guardText = parseResponseText(guardData.choices?.[0]?.message?.content);
+          guardFinish = guardData.choices?.[0]?.finish_reason;
+        } else {
+          console.error("Habit guard retry failed with status", guardResponse.status);
+        }
+      } catch (guardErr) {
+        console.error("Habit guard retry error:", guardErr);
+      }
+
+      const retryUsable = !!guardText && guardFinish !== "length" && mealBlockIsComplete(guardText) &&
+        (!hadMealBlock || guardText.includes("```json"));
+      if (retryUsable && !containsNutritionNumbers(guardText)) {
+        aiResponse = guardText;
+        console.log("[habit] guard retry used");
+      } else {
+        aiResponse = guardHabitReply(retryUsable ? guardText : aiResponse);
+        console.log("[habit] guard stripped sentences");
+      }
+    }
+
+    console.log(`[ai-coach] finish_reason=${finishReason} retry=${retried ? "yes" : "no"} habit=${isHabit ? "yes" : "no"}`);
 
     if (client_message_id) {
       const { error: persistErr } = await supabase

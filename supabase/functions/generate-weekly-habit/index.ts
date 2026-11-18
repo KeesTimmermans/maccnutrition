@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { containsNutritionNumbers, isHabitTrackingMode } from "../_shared/habitGuard.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +75,16 @@ const FALLBACK_HABIT = {
   difficultyLabel: "Starter",
 };
 
+// Habit mode (no calorie/macro tracking): hand-sizes and plain actions, no nutrient numbers.
+const HABIT_FALLBACK_HABIT = {
+  title: "A palm of protein at breakfast, every day",
+  description: "Have a palm-sized portion of protein — eggs, Greek yoghurt, fish or tofu — with breakfast every day this week. It keeps you fuller until lunch.",
+  difficultyLabel: "Starter",
+};
+
+// Target figures the habits-mode prompt must never see.
+const TARGET_KEYS = ['targetCalories', 'proteinGrams', 'carbsGrams', 'fatsGrams', 'sugarGrams', 'targetSource', 'competitionPrepContext'];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -109,6 +120,23 @@ serve(async (req) => {
     }
     const userContext = parsed.data.userContext ?? {};
 
+    // Food approach is read on the server; any error means calorie tracking.
+    let isHabit = false;
+    try {
+      const { data: modeRow, error: modeErr } = await supabase
+        .from('user_baselines')
+        .select('tracking_mode')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (modeErr) console.error('tracking_mode lookup error:', modeErr.message);
+      isHabit = !modeErr && isHabitTrackingMode(modeRow?.tracking_mode);
+    } catch (modeLookupErr) {
+      console.error('tracking_mode lookup failed:', modeLookupErr);
+    }
+    const promptContext = isHabit
+      ? Object.fromEntries(Object.entries(userContext).filter(([key]) => !TARGET_KEYS.includes(key)))
+      : userContext;
+
     const weekStart = currentWeekMonday();
 
     // ── Existing habit for this week? Return it, don't regenerate ─
@@ -137,7 +165,7 @@ serve(async (req) => {
 
     const previousCompletions = previous?.completed_dates?.length ?? 0;
 
-    let habit = { ...FALLBACK_HABIT };
+    let habit = isHabit ? { ...HABIT_FALLBACK_HABIT } : { ...FALLBACK_HABIT };
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (LOVABLE_API_KEY) {
@@ -161,14 +189,17 @@ Rules:
 - Keep the title under 60 characters. Keep the description to 1-2 short sentences explaining what to do and why it helps.
 - difficultyLabel is one short word or phrase, e.g. "Starter", "Steady", "Step up", "Challenging".
 - Respect any allergies, conditions, diet type and dislikes.
-- Never give medical advice and never restate or change their calorie/macro targets.
+${isHabit
+  ? `- Never give medical advice.
+- This client uses the simple habits approach and does NOT track calories or macros. The title and description must contain no nutrient numbers, grams, calories, kcal, macros, targets or percentages (never "25-30g protein"). Use hand-sizes (a palm of protein, a fist of carbs, a thumb of fats, two handfuls of vegetables) or plain actions. Example: "A palm of protein at breakfast, every day".`
+  : `- Never give medical advice and never restate or change their calorie/macro targets.`}
 
 Progression rule: ${progression}
 
 Respond with JSON only, in this exact shape:
 {"title": "...", "description": "...", "difficultyLabel": "..."}`;
 
-        const userPrompt = `User context (JSON):\n${JSON.stringify(userContext)}\n\n${previousBlock}`;
+        const userPrompt = `User context (JSON):\n${JSON.stringify(promptContext)}\n\n${previousBlock}`;
 
         const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -202,6 +233,10 @@ Respond with JSON only, in this exact shape:
                 ? String(parsedHabit.difficultyLabel).slice(0, 40)
                 : null,
             } as typeof habit;
+            if (isHabit && containsNutritionNumbers(`${habit.title}. ${habit.description}`)) {
+              console.warn('Habit mode: generated habit mentioned nutrition numbers — using the habit fallback');
+              habit = { ...HABIT_FALLBACK_HABIT };
+            }
           }
         }
       } catch (aiError) {

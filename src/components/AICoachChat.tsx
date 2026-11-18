@@ -26,6 +26,8 @@ import { CoachFormattedText } from "@/components/CoachFormattedText";
 import { buildUnifiedCoachContext, buildEdgeFunctionUserContext, type UnifiedCoachContext } from "@/lib/unifiedCoachContext";
 import { getAccountAgeDays } from "@/lib/coachingAnalytics";
 import { splitJsonBlocks } from "@/lib/splitJsonBlocks";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { generateHabitCoachGreeting, mentionsNutritionNumbers } from "@/lib/habitCoachCopy";
 
 interface Message {
   role: "user" | "assistant";
@@ -55,6 +57,9 @@ const generateClientMessageId = () => {
 export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived, initialInput }: AICoachChatProps) => {
   const { language } = useLanguage();
   const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
+  const { mode: trackingMode, loading: modeLoading } = useTrackingMode();
+  // Habits mode only once the saved mode is known; while loading the greeting waits (see the init effect).
+  const isHabitMode = !modeLoading && trackingMode === "habits";
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(initialInput ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -100,11 +105,11 @@ export const AICoachChat = ({ onClose, freshCheckIn, onDailyFocusPointsReceived,
   // Wait for the real targets before building the coach context (the hook returns defaults while loading).
   // isInitializing stays true until then, so the existing "Loading your data..." state is shown.
   useEffect(() => {
-    if (targetsLoading || initializedRef.current) return;
+    if (targetsLoading || modeLoading || initializedRef.current) return;
     initializedRef.current = true;
     initializeChat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetsLoading]);
+  }, [targetsLoading, modeLoading]);
 
   // Safety net: always send the CURRENT targets, without mutating the cached context.
   // The comp-prep layer reads its macros from the nutrition layer, so this override covers it too.
@@ -347,10 +352,22 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
         const firstName = userBaseline?.name?.split(' ')[0] || '';
         const greetParts: string[] = [];
         
-        greetParts.push(`Hey${firstName ? ` ${firstName}` : ''}!`);
+        if (isHabitMode) {
+          // Habits mode: a warm line from meals logged, water and check-in — never calories or percentages.
+          greetParts.push(generateHabitCoachGreeting({
+            hour: new Date().getHours(),
+            firstName: firstName || undefined,
+            mealsLogged: meals.length,
+            waterMl: waterIntake,
+            waterGoalMl: Math.round((activeTargets.waterLiters || 0) * 1000),
+            checkedInToday: !!todayCheck,
+          }));
+        } else {
+          greetParts.push(`Hey${firstName ? ` ${firstName}` : ''}!`);
+        }
         
         // Meal progress mention
-        if (meals.length > 0) {
+        if (!isHabitMode && meals.length > 0) {
           const totalCals = meals.reduce((s, m) => s + m.calories, 0);
           const targetCals = activeTargets.calories;
           const percent = Math.round((totalCals / targetCals) * 100);
@@ -736,11 +753,15 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
             )}
 
             {/* Pattern-based insight */}
-            {checkInAnalysis && checkInAnalysis.recommendations.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-primary/10">
-                <p className="text-xs text-primary font-medium">💡 {checkInAnalysis.recommendations[0]}</p>
-              </div>
-            )}
+            {(() => {
+              // Habits mode skips tips that quote protein grams, carb cuts or other nutrition numbers.
+              const tip = checkInAnalysis?.recommendations.find(r => !isHabitMode || !mentionsNutritionNumbers(r));
+              return tip ? (
+                <div className="mt-3 pt-3 border-t border-primary/10">
+                  <p className="text-xs text-primary font-medium">💡 {tip}</p>
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
       )}
@@ -842,7 +863,7 @@ Please give me a comprehensive game plan for my day based on how I'm feeling.`,
                 : "What should I eat for dinner?",
               todaysCheckIn?.sleep_quality && todaysCheckIn.sleep_quality <= 2
                 ? "Foods to help me sleep better?"
-                : "How can I hit my protein goal?",
+                : isHabitMode ? "What should I eat next?" : "How can I hit my protein goal?",
             ].map((suggestion) => (
               <button
                 key={suggestion}

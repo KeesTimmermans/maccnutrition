@@ -14,6 +14,8 @@ import { UtensilsCrossed, Clock, Plus, Pencil, Check, Trash2, AlertTriangle, Loa
 import { saveMeal } from "@/lib/mealService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTrackingMode } from "@/hooks/useTrackingMode";
+import { showNumbers } from "@/lib/trackingMode";
 
 export interface LogPayloadItem {
   ingredient: string;
@@ -108,6 +110,9 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
   const [isLogging, setIsLogging] = useState(false);
   const [logged, setLogged] = useState(false);
   const [showZeroMacroWarning, setShowZeroMacroWarning] = useState(false);
+  const { mode: trackingMode, loading: modeLoading } = useTrackingMode();
+  // Display-only: habits users never see figures, but logging still saves the same numbers.
+  const numbersVisible = showNumbers(trackingMode, modeLoading);
 
   // Edit state
   const [editTitle, setEditTitle] = useState(suggestion.meal.title);
@@ -311,7 +316,7 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
             )}
           </div>
 
-          {macros && (macros.calories || macros.protein_g) && (
+          {numbersVisible && macros && (macros.calories || macros.protein_g) && (
             <div className="flex gap-3 text-xs text-muted-foreground">
               {macros.calories != null && <span>{macros.calories} kcal</span>}
               {macros.protein_g != null && <span>{macros.protein_g}g protein</span>}
@@ -362,7 +367,15 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
           </DialogHeader>
           <div className="space-y-4">
             {/* Zero-macro warning */}
-            {showZeroMacroWarning && (
+            {showZeroMacroWarning && !numbersVisible && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-muted border border-border">
+                <AlertTriangle className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  We couldn't work this meal out. Check the ingredients below, then try again.
+                </p>
+              </div>
+            )}
+            {showZeroMacroWarning && numbersVisible && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
                 <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-destructive">
@@ -509,7 +522,7 @@ export const CoachMealSuggestionCard = ({ suggestion, onLogged }: Props) => {
               {isLogging ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Calculating macros…
+                  {numbersVisible ? "Calculating macros…" : "Saving…"}
                 </>
               ) : (
                 "Log meal"
