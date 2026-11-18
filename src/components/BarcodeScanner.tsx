@@ -3,44 +3,94 @@ import { useZxing } from "react-zxing";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { X, Flashlight, FlashlightOff, ScanBarcode } from "lucide-react";
 import { Button } from "./ui/button";
+import { useLanguage } from "@/lib/i18n";
+
+/** Created once: rebuilding the hints on every render rebuilds the reader and restarts the camera. */
+export const SCANNER_HINTS = new Map<DecodeHintType, unknown>([
+  [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E]],
+  [DecodeHintType.TRY_HARDER, true],
+]);
+
+/** Back camera at a resolution high enough for small barcodes. */
+export const SCANNER_CONSTRAINTS: MediaStreamConstraints = {
+  audio: false,
+  video: {
+    facingMode: { ideal: "environment" },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    frameRate: { ideal: 30 },
+  },
+};
+
+export const SCANNER_DECODE_INTERVAL_MS = 100;
+/** Show the "having trouble?" help after this long without a detection. */
+export const SCANNER_HELP_DELAY_MS = 10_000;
 
 interface BarcodeScannerProps {
   onDetected: (barcode: string) => void;
   onClose: () => void;
+  /** "Type the number instead" in the help banner; falls back to onClose. */
+  onManualEntry?: () => void;
 }
 
-export const BarcodeScanner = ({ onDetected, onClose }: BarcodeScannerProps) => {
+/** Best effort: continuous autofocus where the browser exposes it (iOS doesn't). */
+async function enableContinuousFocus(video: HTMLVideoElement | null) {
+  try {
+    const stream = video?.srcObject as MediaStream | null;
+    const track = stream?.getVideoTracks?.()[0];
+    const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { focusMode?: string[] }) | undefined;
+    if (track && caps?.focusMode?.includes("continuous")) {
+      await track.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] });
+    }
+  } catch {
+    // Not supported here; scanning still works without it.
+  }
+}
+
+export const BarcodeScanner = ({ onDetected, onClose, onManualEntry }: BarcodeScannerProps) => {
+  const { t } = useLanguage();
   const [torchOn, setTorchOn] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const detectedRef = useRef(false);
 
-  const hints = new Map();
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-    BarcodeFormat.EAN_13,
-    BarcodeFormat.EAN_8,
-    BarcodeFormat.UPC_A,
-    BarcodeFormat.UPC_E,
-  ]);
-
   const { ref, torch } = useZxing({
-    hints,
+    hints: SCANNER_HINTS,
+    constraints: SCANNER_CONSTRAINTS,
+    timeBetweenDecodingAttempts: SCANNER_DECODE_INTERVAL_MS,
     onResult(result) {
       if (!detectedRef.current) {
         detectedRef.current = true;
-        const barcode = result.getText();
-        console.log("Barcode detected:", barcode);
-        onDetected(barcode);
+        setShowHelp(false);
+        onDetected(result.getText());
       }
     },
     onError(error) {
       console.error("Scanner error:", error);
       if (error.name === "NotAllowedError") {
-        setErrorMessage("Camera access denied. Please allow camera access in your browser settings.");
+        setErrorKey("barcode_scanner_denied");
       } else if (error.name === "NotFoundError") {
-        setErrorMessage("No camera found on this device.");
+        setErrorKey("barcode_scanner_no_camera");
       }
     },
   });
+
+  // Once the picture is playing, try to switch on continuous focus.
+  useEffect(() => {
+    const video = ref.current;
+    if (!video) return;
+    const onPlaying = () => void enableContinuousFocus(video);
+    video.addEventListener("playing", onPlaying);
+    return () => video.removeEventListener("playing", onPlaying);
+  }, [ref]);
+
+  // Help banner once per opening, after a while with nothing detected.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!detectedRef.current) setShowHelp(true);
+    }, SCANNER_HELP_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   const toggleTorch = () => {
     if (torch.isAvailable) {
@@ -53,16 +103,16 @@ export const BarcodeScanner = ({ onDetected, onClose }: BarcodeScannerProps) => 
     }
   };
 
-  if (errorMessage) {
+  if (errorKey) {
     return (
       <div className="fixed inset-0 bg-background z-50 flex flex-col items-center justify-center p-6">
         <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
           <ScanBarcode className="w-10 h-10 text-destructive" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">Scanner Error</h3>
-        <p className="text-muted-foreground text-center mb-6">{errorMessage}</p>
+        <h3 className="text-lg font-semibold text-foreground mb-2">{t("barcode_scanner_error_title")}</h3>
+        <p className="text-muted-foreground text-center mb-6">{t(errorKey)}</p>
         <Button variant="outline" onClick={onClose}>
-          Go Back
+          {t("barcode_scanner_go_back")}
         </Button>
       </div>
     );
@@ -78,7 +128,7 @@ export const BarcodeScanner = ({ onDetected, onClose }: BarcodeScannerProps) => 
         >
           <X className="w-6 h-6 text-white" />
         </button>
-        <span className="text-white font-medium">Scan Barcode</span>
+        <span className="text-white font-medium">{t("barcode_scanner_title")}</span>
         {torch.isAvailable && (
           <button
             onClick={toggleTorch}
@@ -98,6 +148,8 @@ export const BarcodeScanner = ({ onDetected, onClose }: BarcodeScannerProps) => 
       <div className="flex-1 relative">
         <video
           ref={ref}
+          playsInline
+          muted
           className="absolute inset-0 w-full h-full object-cover"
         />
         
@@ -128,9 +180,17 @@ export const BarcodeScanner = ({ onDetected, onClose }: BarcodeScannerProps) => 
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-black/80 to-transparent space-y-4">
+        {showHelp && (
+          <div role="status" className="rounded-2xl bg-white/15 backdrop-blur-sm p-4 space-y-3">
+            <p className="text-white text-sm text-center">{t("barcode_scanner_trouble")}</p>
+            <Button variant="secondary" className="w-full" onClick={onManualEntry ?? onClose}>
+              {t("barcode_scanner_type_instead")}
+            </Button>
+          </div>
+        )}
         <p className="text-white/80 text-center text-sm">
-          Position the barcode within the frame
+          {t("barcode_scanner_hint")}
         </p>
       </div>
     </div>

@@ -6,7 +6,7 @@
 import { REASON_KEYS, scoreProduct, type ScoreBand } from "@/lib/foodScore";
 import { toScoreInput, type ProductLookup } from "@/lib/productScoreService";
 import { alternateBarcode } from "../../supabase/functions/_shared/offProduct.ts";
-import type { StoreKey } from "../../supabase/functions/_shared/offCategories.ts";
+import { categoriesToTry, type StoreKey } from "../../supabase/functions/_shared/offCategories.ts";
 
 export type AlternativeCandidate = ProductLookup & { inStore: boolean };
 
@@ -30,6 +30,22 @@ export const MAX_ALTERNATIVES = 3;
 export const MIN_SCORE_GAIN = 2;
 /** …and score at least this on its own. */
 export const MIN_ALTERNATIVE_SCORE = 6;
+
+/**
+ * Prepared dishes: a candidate tagged with one of these is a different kind of
+ * product (an egg salad is not a mayonnaise), unless the scanned product has the same tag.
+ */
+export const DISH_CATEGORIES = [
+  "en:salads",
+  "en:prepared-salads",
+  "en:meals",
+  "en:ready-meals",
+  "en:sandwiches",
+  "en:sandwich-fillings",
+  "en:meal-kits",
+  "en:soups",
+  "en:pizzas-pies-and-quiches",
+];
 
 const POSITIVE_REASONS = new Set<string>([
   REASON_KEYS.fibre,
@@ -74,7 +90,10 @@ export function pickAlternatives(
   const scannedCodes = new Set([scanned.barcode]);
   const alt = alternateBarcode(scanned.barcode);
   if (alt) scannedCodes.add(alt);
-  const scannedTags = new Set(scanned.categoriesTags ?? []);
+  const scannedTags = new Set((scanned.categoriesTags ?? []).map((t) => t.trim().toLowerCase()));
+  // Like-for-like: tier 1 shares the most specific category, tier 2 only the next one.
+  const [primary, secondary] = categoriesToTry(scanned.categoriesTags);
+  if (!primary) return { alternatives: [], anyInStore: false, usedStore };
   const minScore = Math.max(scanned.score + MIN_SCORE_GAIN, MIN_ALTERNATIVE_SCORE);
 
   const qualified = candidates
@@ -82,13 +101,20 @@ export function pickAlternatives(
       if (!product?.code || scannedCodes.has(product.code)) return null;
       const name = product.product_name_en || product.product_name;
       if (!name) return null;
+      const tags = (product.categories_tags ?? []).map((t) => t.trim().toLowerCase());
+      const tier = tags.includes(primary) ? 1 : secondary && tags.includes(secondary) ? 2 : null;
+      if (tier === null) return null;
+      if (tags.some((t) => DISH_CATEGORIES.includes(t) && !scannedTags.has(t))) return null;
       const result = scoreProduct(toScoreInput(product));
-      if (result.confidence !== "full" || result.score === null || result.band === null) return null;
+      if (result.confidence !== "full" || result.provisional || result.score === null || result.band === null) {
+        return null;
+      }
       if (result.score < minScore) return null;
-      const sharedTags = (product.categories_tags ?? []).filter((t) => scannedTags.has(t)).length;
+      const sharedTags = tags.filter((t) => scannedTags.has(t)).length;
       const inStore = !!usedStore && product.inStore === true;
       return {
         index,
+        tier,
         sharedTags,
         key: normaliseProductName(name, product.brands),
         alt: {
@@ -100,9 +126,14 @@ export function pickAlternatives(
         } satisfies Alternative,
       };
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  // Tier 2 only when no tier 1 product qualifies.
+  const bestTier = Math.min(...qualified.map((q) => q.tier));
+  const ranked = qualified
+    .filter((q) => q.tier === bestTier)
     .sort(
       (a, b) =>
+        a.tier - b.tier ||
         Number(b.alt.inStore) - Number(a.alt.inStore) ||
         b.alt.score - a.alt.score ||
         b.sharedTags - a.sharedTags ||
@@ -111,7 +142,7 @@ export function pickAlternatives(
 
   const seen = new Set<string>();
   const alternatives: Alternative[] = [];
-  for (const q of qualified) {
+  for (const q of ranked) {
     if (seen.has(q.key)) continue;
     seen.add(q.key);
     alternatives.push(q.alt);

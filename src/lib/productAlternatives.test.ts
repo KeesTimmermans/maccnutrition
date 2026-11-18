@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickAlternatives, type AlternativeCandidate } from "./productAlternatives";
+import { pickAlternatives, DISH_CATEGORIES, type AlternativeCandidate } from "./productAlternatives";
 import { REASON_KEYS } from "./foodScore";
 
 /** A clean, unprocessed product that scores 9 with nothing to flag. */
@@ -59,10 +59,11 @@ describe("pickAlternatives", () => {
     expect(r.anyInStore).toBe(false);
   });
 
-  it("prefers products sharing more of the scanned product's categories, then popularity", () => {
-    const fewer = product("2201", "Fewer", { categories_tags: ["en:foods"] });
+  it("within a tier, prefers products sharing more of the scanned product's categories, then list order", () => {
+    // All tier 1 (en:nut-spreads); scores equal.
+    const fewer = product("2201", "Fewer", { categories_tags: ["en:nut-spreads"] });
     const more = product("2202", "More", { categories_tags: ["en:foods", "en:spreads", "en:nut-spreads"] });
-    const later = product("2203", "Later", { categories_tags: ["en:foods"] });
+    const later = product("2203", "Later", { categories_tags: ["en:nut-spreads"] });
     const r = pickAlternatives(scanned, [fewer, more, later]);
     expect(r.alternatives.map((a) => a.product.code)).toEqual(["2202", "2201", "2203"]);
   });
@@ -102,7 +103,7 @@ describe("pickAlternatives", () => {
   it("uses scoreProduct's beverage thresholds", () => {
     // 9g added sugar: high for a drink (weakest-link cap 5), moderate for a food (8).
     const sugary = { ingredients_text: "water, salt, lemon, sugar", nutriments: { sugars_100g: 9 } as never };
-    const drink = product("7001", "Drink", { ...sugary, categories_tags: ["en:beverages"] });
+    const drink = product("7001", "Drink", { ...sugary, categories_tags: ["en:beverages", "en:spreads"] });
     const food = product("7002", "Food", sugary);
     const r = pickAlternatives(scanned, [drink, food]);
     expect(r.alternatives.map((a) => a.product.code)).toEqual(["7002"]);
@@ -115,5 +116,73 @@ describe("pickAlternatives", () => {
     const r = pickAlternatives(scanned, [fibre, plain]);
     expect(r.alternatives[0].reasonKey).toBe(REASON_KEYS.fibre);
     expect(r.alternatives[1].reasonKey).toBe(REASON_KEYS.lowSugarSaltFat);
+  });
+
+  describe("like-for-like", () => {
+    const mayoTags = ["en:condiments", "en:sauces", "en:dressings", "en:mayonnaises"];
+    const mayo = { barcode: "5000000000100", score: 3, categoriesTags: mayoTags };
+    // Scores 9 (clean default) unless stated.
+    const eggSalad = product("9001", "Egg Salad", {
+      categories_tags: ["en:sauces", "en:prepared-salads", "en:salads", "en:egg-salads"],
+    });
+    const lightMayo = product("9002", "Light Mayonnaise", { categories_tags: mayoTags });
+
+    it("never suggests an egg salad for a mayonnaise, but does suggest a mayonnaise", () => {
+      const r = pickAlternatives(mayo, [eggSalad, lightMayo]);
+      expect(r.alternatives.map((a) => a.product.code)).toEqual(["9002"]);
+    });
+
+    it("uses the second-most specific category only when nothing matches the most specific", () => {
+      const dressing = product("9003", "Vinaigrette", { categories_tags: ["en:sauces", "en:dressings"] });
+      expect(pickAlternatives(mayo, [dressing, lightMayo]).alternatives.map((a) => a.product.code)).toEqual(["9002"]);
+      expect(pickAlternatives(mayo, [dressing]).alternatives.map((a) => a.product.code)).toEqual(["9003"]);
+      // A tier 1 product that doesn't qualify (score too low) leaves tier 2 in use.
+      // (one E-number keeps it out of the whole-food floor)
+      const saltyMayo = product("9004", "Salty Mayo", {
+        categories_tags: mayoTags,
+        ingredients_text: "water, E330",
+        nutriments: { salt_100g: 2.25 } as never,
+      });
+      expect(pickAlternatives(mayo, [saltyMayo, dressing]).alternatives.map((a) => a.product.code)).toEqual(["9003"]);
+    });
+
+    it("drops prepared dishes unless the scanned product is the same kind of dish", () => {
+      const soupTags = ["en:meals", "en:soups", "en:vegetable-soups"];
+      const soup = product("9101", "Tomato Soup", { categories_tags: soupTags });
+      const mayoSoup = product("9102", "Mayo Dip Soup", { categories_tags: [...mayoTags, "en:soups"] });
+      expect(DISH_CATEGORIES).toContain("en:soups");
+      expect(pickAlternatives(mayo, [mayoSoup]).alternatives).toEqual([]);
+      const scannedSoup = { barcode: "5000000000200", score: 3, categoriesTags: soupTags };
+      expect(pickAlternatives(scannedSoup, [soup]).alternatives.map((a) => a.product.code)).toEqual(["9101"]);
+    });
+
+    it("drops provisional candidates", () => {
+      const noSalt = product("9201", "Mayo, salt unknown", { categories_tags: mayoTags, nutriments: { salt_100g: null } as never });
+      expect(pickAlternatives(mayo, [noSalt]).alternatives).toEqual([]);
+    });
+
+    it("orders by tier, then store, then score", () => {
+      // Tier 2, in store, top score: loses to any qualifying tier 1 product.
+      const dressingInStore = product("9301", "Store Dressing", {
+        categories_tags: ["en:sauces", "en:dressings"],
+        inStore: true,
+        nutriments: { fiber_100g: 7 } as never,
+      });
+      const mayoNine = product("9302", "Mayo Nine", { categories_tags: mayoTags });
+      const mayoStore = product("9303", "Mayo Store", {
+        categories_tags: mayoTags,
+        inStore: true,
+        nutriments: { salt_100g: 0.9 } as never,
+      });
+      const mayoTen = product("9304", "Mayo Ten", { categories_tags: mayoTags, nutriments: { fiber_100g: 7 } as never });
+      const r = pickAlternatives(mayo, [dressingInStore, mayoNine, mayoStore, mayoTen], "tesco");
+      expect(r.alternatives.map((a) => a.product.code)).toEqual(["9303", "9304", "9302"]);
+      expect(r.alternatives.map((a) => a.score)).toEqual([8, 10, 9]);
+    });
+
+    it("returns nothing when the scanned product has no usable categories", () => {
+      expect(pickAlternatives({ ...mayo, categoriesTags: ["en:foods", "fr:sauces"] }, [lightMayo]).alternatives).toEqual([]);
+      expect(pickAlternatives({ ...mayo, categoriesTags: null }, [lightMayo]).alternatives).toEqual([]);
+    });
   });
 });

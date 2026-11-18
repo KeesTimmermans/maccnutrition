@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ScanBarcode, Package, WifiOff, SearchX, CameraOff, Loader2 } from "lucide-react";
@@ -73,6 +73,8 @@ function isNetworkError(error: unknown): boolean {
 const ScanRate = () => {
   const { t } = useLanguage();
   const [scanning, setScanning] = useState(false);
+  const manualInputRef = useRef<HTMLInputElement>(null);
+  const focusManualRef = useRef(false);
   const [manual, setManual] = useState("");
   const [manualError, setManualError] = useState<string | null>(null);
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
@@ -140,8 +142,27 @@ const ScanRate = () => {
     void openScanner();
   };
 
+  // After "Type the number instead", put the cursor in the barcode box once the page is back.
+  useEffect(() => {
+    if (!scanning && focusManualRef.current) {
+      focusManualRef.current = false;
+      manualInputRef.current?.focus();
+    }
+  }, [scanning]);
+
+  const openManualEntry = () => {
+    focusManualRef.current = true;
+    setScanning(false);
+  };
+
   if (scanning) {
-    return <BarcodeScanner onDetected={handleDetected} onClose={() => setScanning(false)} />;
+    return (
+      <BarcodeScanner
+        onDetected={handleDetected}
+        onClose={() => setScanning(false)}
+        onManualEntry={openManualEntry}
+      />
+    );
   }
 
   const outcome = lookup.data;
@@ -259,6 +280,7 @@ const ScanRate = () => {
               </Label>
               <div className="flex gap-2">
                 <Input
+                  ref={manualInputRef}
                   id="manual-barcode"
                   inputMode="numeric"
                   autoComplete="off"
