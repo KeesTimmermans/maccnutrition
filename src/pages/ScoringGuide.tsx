@@ -50,6 +50,7 @@ const ScoringGuide = () => {
 
         <Section title={t("scoring_guide_drinks_title")}>
           <p className="text-sm text-muted-foreground">{t(SCORING_GUIDE.drinksKey)}</p>
+          <p className="text-sm text-muted-foreground">{t(SCORING_GUIDE.juiceKey)}</p>
         </Section>
 
         <Section title={t("scoring_guide_caps_title")}>
@@ -86,9 +87,11 @@ const ScoringGuide = () => {
                 {t(k)}
               </li>
             ))}
-            <li className="text-sm text-muted-foreground">
-              {fill(t(SCORING_GUIDE.wholeFood.textKey), SCORING_GUIDE.wholeFood.values)}
-            </li>
+            {SCORING_GUIDE.floors.map((f) => (
+              <li key={f.kind} className="text-sm text-muted-foreground">
+                {fill(t(f.textKey), f.values)}
+              </li>
+            ))}
           </ul>
         </Section>
       </div>

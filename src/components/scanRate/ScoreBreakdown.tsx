@@ -5,8 +5,8 @@ import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   bandForScore,
-  CAP_LINE_KEYS,
-  FLOOR_LINE_KEY,
+  capLineKey,
+  FLOOR_LINE_KEYS,
   WEAKEST_LINK_THRESHOLD,
   type PillarResult,
   type ProductScoreResult,
@@ -18,7 +18,9 @@ export function ScoreBreakdown({ result }: { result: ProductScoreResult }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   if (result.score === null || result.average === null) return null;
-  const capLines = result.caps.filter((c) => c.applied);
+  // The grain cap comes after the floors, so its line goes after the floor line.
+  const capLines = result.caps.filter((c) => c.applied && c.id !== "grain_staple");
+  const grainLine = result.caps.find((c) => c.applied && c.id === "grain_staple");
   const anyUnknown = result.pillars.some((p) => p.applicable && !p.known);
 
   return (
@@ -44,15 +46,18 @@ export function ScoreBreakdown({ result }: { result: ProductScoreResult }) {
           </p>
           {capLines.map((c) => (
             <p key={c.id} className="text-muted-foreground">
-              {t(CAP_LINE_KEYS[c.id])
+              {t(capLineKey(c))
                 .replace("{limit}", String(c.limit))
                 .replace("{threshold}", String(WEAKEST_LINK_THRESHOLD))}
             </p>
           ))}
           {result.floor?.applied && (
             <p className="text-muted-foreground">
-              {t(FLOOR_LINE_KEY).replace("{limit}", String(result.floor.limit))}
+              {t(FLOOR_LINE_KEYS[result.floorKind ?? "whole_food"]).replace("{limit}", String(result.floor.limit))}
             </p>
+          )}
+          {grainLine && (
+            <p className="text-muted-foreground">{t(capLineKey(grainLine)).replace("{limit}", String(grainLine.limit))}</p>
           )}
           <p className="font-semibold text-foreground tabular-nums">
             {t("score_final").replace("{score}", String(result.score))}

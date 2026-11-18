@@ -31,7 +31,8 @@ export interface ProductScoreInput {
 export type ScoreConfidence = "full" | "limited" | "none";
 export type ScoreBand = "good" | "balance" | "occasional";
 export type PillarId = "sugar" | "salt" | "satFat" | "processing" | "proteinFibre";
-export type CapId = "weakest_link" | "sweeteners" | "provisional";
+export type CapId = "weakest_link" | "sweeteners" | "provisional" | "grain_staple";
+export type FloorKind = "whole_food" | "animal_food" | "dark_chocolate";
 
 export interface PillarResult {
   id: PillarId;
@@ -71,8 +72,14 @@ export interface ProductScoreResult {
   caps: CapResult[];
   /** True when the product counts as a whole food (see WHOLE_FOOD_CATEGORIES). */
   wholeFood: boolean;
-  /** Whole-food floor; `applied` is true only when it raised the final score. */
+  /**
+   * Highest floor whose condition was met (whole food, basic meat/fish/dairy or
+   * high-cocoa dark chocolate); `applied` is true only when it raised the final score.
+   * With no floor met, `limit` is WHOLE_FOOD_FLOOR and `applied` is false.
+   */
   floor: { limit: number; applied: boolean };
+  /** Which floor `floor` reports, or null when no floor condition was met. */
+  floorKind: FloorKind | null;
 }
 
 /** [value, score] points; scores between points are interpolated linearly. */
@@ -109,6 +116,8 @@ export const SUGAR_IN_FIRST_INGREDIENTS_PENALTY = -1;
 export const FIRST_INGREDIENTS_CHECKED = 3;
 export const SUGAR_INGREDIENT_PATTERN =
   /\b(sugars?|glucose|fructose|dextrose|invert sugar|syrups?|honey|maltodextrin)\b/i;
+/** Sugars in juice and smoothies are free sugars: never halved as natural sugar. */
+export const FULL_SUGAR_CATEGORIES = ["en:fruit-juices", "en:smoothies"];
 
 // ─── Pillar 2: salt (g per 100g) ────────────────────────────────────────────
 
@@ -142,6 +151,11 @@ export interface SatFatException {
   floor?: number;
   /** Only when no sugar-type ingredient is listed (plain products). */
   plainOnly?: boolean;
+  /**
+   * Also matches, without the categories, when the fruit/veg/nuts estimate is at
+   * least this (in %) with no sugar-type ingredient and no additives.
+   */
+  nutsMin?: number;
   noteKey: string;
 }
 
@@ -158,6 +172,14 @@ export const SAT_FAT_EXCEPTIONS: SatFatException[] = [
       "en:vegetable-fats",
     ],
     fixed: 7,
+    noteKey: "pillar_note_nuts_oils",
+  },
+  {
+    // A floor, not a fixed value: a lower-fat nut butter keeps its higher score.
+    id: "nut_seed_butters",
+    categories: ["en:nut-butters", "en:peanut-butters", "en:tahini", "en:seed-butters"],
+    floor: 7,
+    nutsMin: 60,
     noteKey: "pillar_note_nuts_oils",
   },
   {
@@ -267,6 +289,67 @@ export const WHOLE_FOOD_EXCLUDED = [
   "en:charcuteries",
 ];
 
+// ─── Basic meat, fish and dairy floor (after the caps, like the whole-food floor) ─
+
+/** Basic meat, fish and dairy foods that aren't sweet never score below this. */
+export const ANIMAL_FLOOR = 6;
+export const ANIMAL_FOOD_CATEGORIES = [
+  "en:meats",
+  "en:fishes",
+  "en:seafood",
+  "en:dairies",
+  "en:butters",
+  "en:cheeses",
+  "en:sausages",
+  "en:hams",
+  "en:bacon",
+  "en:eggs",
+];
+/** The sugar pillar must score at least this (sweetened yoghurts and desserts don't qualify). */
+export const ANIMAL_FLOOR_MIN_SUGAR_PILLAR = 8;
+export const ANIMAL_FOOD_EXCLUDED = ["en:processed-cheeses"];
+/** Ready-made dishes never get the animal floor. */
+export const DISH_CATEGORIES_FOR_FLOOR = [
+  "en:salads",
+  "en:prepared-salads",
+  "en:meals",
+  "en:ready-meals",
+  "en:sandwiches",
+  "en:sandwich-fillings",
+  "en:meal-kits",
+  "en:soups",
+  "en:pizzas-pies-and-quiches",
+];
+
+// ─── High-cocoa dark chocolate (sat-fat pillar floor + final floor) ─────────
+
+export const DARK_CHOCOLATE_CATEGORY = "en:dark-chocolates";
+/** The first top-level ingredient (percentages removed) must be one of these. */
+export const DARK_CHOCOLATE_FIRST_INGREDIENT = /^(cocoa mass|cocoa paste|cocoa)$/i;
+export const DARK_CHOCOLATE_MAX_SUGAR = 30;
+/** Cocoa fat: the saturated-fat pillar is at least this. */
+export const DARK_CHOCOLATE_SAT_FAT_FLOOR = 7;
+export const DARK_CHOCOLATE_FLOOR = 6;
+
+// ─── Grain staple cap (applied last, so it wins over every floor) ───────────
+
+export const GRAIN_STAPLE_CATEGORIES = [
+  "en:rices",
+  "en:white-rices",
+  "en:brown-rices",
+  "en:basmati-rices",
+  "en:pastas",
+  "en:wholewheat-pastas",
+  "en:oat-flakes",
+  "en:rolled-oats",
+  "en:oats",
+  "en:couscous",
+];
+/** Fibre (g/100g) below this, or unknown, counts as a refined grain. */
+export const GRAIN_FIBRE_THRESHOLD = 3;
+export const GRAIN_CAP_REFINED = 6;
+export const GRAIN_CAP_WHOLE = 8;
+
 // ─── Pillar definitions (shared by the result screen and the guide) ─────────
 
 export interface PillarDefinition {
@@ -325,6 +408,8 @@ export const PILLAR_NOTE_KEYS = {
   additives: REASON_KEYS.additives,
   shortList: "pillar_note_short_list",
   longList: "pillar_note_long_list",
+  juiceSugar: "pillar_note_juice_sugar",
+  cocoaFat: "pillar_note_cocoa_fat",
 } as const;
 
 /** i18n keys for the cap lines on the result screen; {limit} / {threshold} are filled in. */
@@ -332,15 +417,29 @@ export const CAP_LINE_KEYS: Record<CapId, string> = {
   weakest_link: "score_cap_weakest",
   sweeteners: "score_cap_sweeteners",
   provisional: "score_cap_provisional",
+  grain_staple: "score_cap_grain_whole",
 };
+export const GRAIN_CAP_REFINED_LINE_KEY = "score_cap_grain_refined";
+/** i18n key for a cap's result-screen line (the grain cap has a refined and a whole-grain line). */
+export function capLineKey(cap: Pick<CapResult, "id" | "limit">): string {
+  if (cap.id === "grain_staple" && cap.limit === GRAIN_CAP_REFINED) return GRAIN_CAP_REFINED_LINE_KEY;
+  return CAP_LINE_KEYS[cap.id];
+}
 /** Result-screen line when the whole-food floor raised the score; {limit} is filled in. */
 export const FLOOR_LINE_KEY = "score_floor_whole_food";
+/** Result-screen line per floor kind; {limit} is filled in. */
+export const FLOOR_LINE_KEYS: Record<FloorKind, string> = {
+  whole_food: FLOOR_LINE_KEY,
+  animal_food: "score_floor_animal",
+  dark_chocolate: "score_floor_dark_chocolate",
+};
 
 // ─── "How scores work" guide, generated from the constants above ────────────
 
 export const SCORING_GUIDE = {
   pillars: PILLARS.map((p) => ({ ...p, countsDouble: p.weight > 1 })),
   drinksKey: "scoring_guide_drinks",
+  juiceKey: "scoring_guide_juice",
   caps: [
     {
       id: "weakest_link" as CapId,
@@ -349,8 +448,22 @@ export const SCORING_GUIDE = {
     },
     { id: "sweeteners" as CapId, textKey: "scoring_guide_cap_sweeteners", values: { limit: SWEETENER_CAP } },
     { id: "provisional" as CapId, textKey: "scoring_guide_cap_provisional", values: { limit: PROVISIONAL_CAP } },
+    {
+      id: "grain_staple" as CapId,
+      textKey: "scoring_guide_cap_grain",
+      values: { whole: GRAIN_CAP_WHOLE, refined: GRAIN_CAP_REFINED },
+    },
   ],
   wholeFood: { textKey: "scoring_guide_note_whole_food", values: { limit: WHOLE_FOOD_FLOOR } },
+  floors: [
+    { kind: "whole_food" as FloorKind, textKey: "scoring_guide_note_whole_food", values: { limit: WHOLE_FOOD_FLOOR } },
+    { kind: "animal_food" as FloorKind, textKey: "scoring_guide_note_animal", values: { limit: ANIMAL_FLOOR } },
+    {
+      kind: "dark_chocolate" as FloorKind,
+      textKey: "scoring_guide_note_dark_chocolate",
+      values: { limit: DARK_CHOCOLATE_FLOOR },
+    },
+  ],
   bands: [
     { band: "good" as ScoreBand, min: GOOD_BAND_MIN, max: MAX_SCORE, key: "score_band_good" },
     { band: "balance" as ScoreBand, min: BALANCE_BAND_MIN, max: GOOD_BAND_MIN - 1, key: "score_band_balance" },
@@ -420,6 +533,14 @@ export function firstIngredients(text: string, n = FIRST_INGREDIENTS_CHECKED): s
 
 export function hasSugarInFirstIngredients(text: string): boolean {
   return firstIngredients(text).some((ing) => SUGAR_INGREDIENT_PATTERN.test(ing));
+}
+
+/** True when the first top-level ingredient is cocoa mass, cocoa paste or cocoa. */
+export function startsWithCocoa(text: string): boolean {
+  const first = firstIngredients(text, 1)[0];
+  if (!first) return false;
+  const name = first.replace(/\d+(?:[.,]\d+)?\s*%/g, "").replace(/\s+/g, " ").trim();
+  return DARK_CHOCOLATE_FIRST_INGREDIENT.test(name);
 }
 
 const eCodeNumber = (code: string): number | null => {
@@ -513,12 +634,18 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
       caps: [],
       wholeFood: false,
       floor: { limit: WHOLE_FOOD_FLOOR, applied: false },
+      floorKind: null,
     };
   }
   const confidence: ScoreConfidence = hasSugars && hasIngredientInfo ? "full" : "limited";
   const drink = isBeverage(tags);
   const sugarIngredientListed = !!text && SUGAR_INGREDIENT_PATTERN.test(text);
   const sugarFirst = !!text && hasSugarInFirstIngredients(text);
+  const hasTag = (list: readonly string[]) => list.some((c) => tags.includes(c));
+  const additiveTags = input.additivesTags ?? [];
+  const additiveCount = countAdditives(additiveTags, text);
+  const sweetened = hasArtificialSweetener(additiveTags, text);
+  const noAdditives = additiveTags.length === 0 && (!text || eNumbersInText(text).length === 0) && !sweetened;
 
   // Pillar 1 — sugar
   let sugar: PillarResult;
@@ -526,10 +653,15 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
     const notes: string[] = [];
     const anchors = drink ? SUGAR_ANCHORS_DRINK : SUGAR_ANCHORS_FOOD;
     const full = input.sugars100g as number;
-    const value = text && !sugarIngredientListed ? full * NATURAL_SUGAR_FACTOR : full;
+    const naturalEligible = !!text && !sugarIngredientListed;
+    // Juice and smoothie sugars are free sugars: counted in full.
+    const fullSugarDrink = hasTag(FULL_SUGAR_CATEGORIES);
+    const value = naturalEligible && !fullSugarDrink ? full * NATURAL_SUGAR_FACTOR : full;
     let raw = interpolate(value, anchors);
-    // Mention the gentler treatment only when it actually raised the score.
-    if (raw > interpolate(full, anchors)) notes.push(PILLAR_NOTE_KEYS.naturalSugar);
+    // Mention the gentler treatment (or its removal) only when halving would raise the score.
+    if (naturalEligible && interpolate(full * NATURAL_SUGAR_FACTOR, anchors) > interpolate(full, anchors)) {
+      notes.push(fullSugarDrink ? PILLAR_NOTE_KEYS.juiceSugar : PILLAR_NOTE_KEYS.naturalSugar);
+    }
     if (sugarFirst) {
       raw = Math.max(MIN_SCORE, raw + SUGAR_IN_FIRST_INGREDIENTS_PENALTY);
       notes.push(PILLAR_NOTE_KEYS.sugarFirst);
@@ -545,9 +677,19 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
     : pillar(def("salt"), UNKNOWN_PILLAR_SCORE, false);
 
   // Pillar 3 — saturated fat (with category exceptions)
+  const nutRichPlain = (min: number) =>
+    isNum(input.fruitVegNuts100g) && input.fruitVegNuts100g >= min && !sugarIngredientListed && noAdditives;
   const exception = SAT_FAT_EXCEPTIONS.find(
-    (ex) => ex.categories.some((c) => tags.includes(c)) && (!ex.plainOnly || !sugarIngredientListed),
+    (ex) =>
+      (hasTag(ex.categories) || (ex.nutsMin !== undefined && nutRichPlain(ex.nutsMin))) &&
+      (!ex.plainOnly || !sugarIngredientListed),
   );
+  const highCocoaDark =
+    tags.includes(DARK_CHOCOLATE_CATEGORY) &&
+    !!text &&
+    startsWithCocoa(text) &&
+    hasSugars &&
+    (input.sugars100g as number) <= DARK_CHOCOLATE_MAX_SUGAR;
   let satFat: PillarResult;
   if (exception?.fixed !== undefined) {
     satFat = pillar(def("satFat"), exception.fixed, true, [exception.noteKey]);
@@ -558,15 +700,16 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
       raw = exception.floor;
       notes.push(exception.noteKey);
     }
+    if (highCocoaDark && raw < DARK_CHOCOLATE_SAT_FAT_FLOOR) {
+      raw = DARK_CHOCOLATE_SAT_FAT_FLOOR;
+      notes.push(PILLAR_NOTE_KEYS.cocoaFat);
+    }
     satFat = pillar(def("satFat"), raw, true, notes);
   } else {
     satFat = pillar(def("satFat"), UNKNOWN_PILLAR_SCORE, false);
   }
 
   // Pillar 4 — processing
-  const additiveTags = input.additivesTags ?? [];
-  const additiveCount = countAdditives(additiveTags, text);
-  const sweetened = hasArtificialSweetener(additiveTags, text);
   const ingredientCount = isNum(input.ingredientsN) && input.ingredientsN > 0
     ? input.ingredientsN
     : text
@@ -653,8 +796,7 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
     applied: c.limit < overall && c.limit === capped,
   }));
 
-  // Whole-food floor, after the caps. Pillars and the average stay as they are.
-  const noAdditives = additiveTags.length === 0 && (!text || eNumbersInText(text).length === 0) && !sweetened;
+  // Floors, after the caps. Pillars, the average and reasons stay as they are.
   const wholeFood =
     !sugarIngredientListed &&
     noAdditives &&
@@ -665,7 +807,31 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
         ingredientCount !== null &&
         ingredientCount <= WHOLE_FOOD_MAX_INGREDIENTS)) &&
     !WHOLE_FOOD_EXCLUDED.some((c) => tags.includes(c));
-  const score = wholeFood ? Math.max(capped, WHOLE_FOOD_FLOOR) : capped;
+  const animalFood =
+    hasTag(ANIMAL_FOOD_CATEGORIES) &&
+    sugar.known &&
+    sugar.score >= ANIMAL_FLOOR_MIN_SUGAR_PILLAR &&
+    !hasTag(ANIMAL_FOOD_EXCLUDED) &&
+    !hasTag(DISH_CATEGORIES_FOR_FLOOR);
+  const floors: Array<{ kind: FloorKind; limit: number }> = [];
+  if (wholeFood) floors.push({ kind: "whole_food", limit: WHOLE_FOOD_FLOOR });
+  if (animalFood) floors.push({ kind: "animal_food", limit: ANIMAL_FLOOR });
+  if (highCocoaDark) floors.push({ kind: "dark_chocolate", limit: DARK_CHOCOLATE_FLOOR });
+  // The highest floor wins (ties keep the order above).
+  const topFloor = floors.reduce<(typeof floors)[number] | null>(
+    (best, f) => (best === null || f.limit > best.limit ? f : best),
+    null,
+  );
+  const floored = topFloor ? Math.max(capped, topFloor.limit) : capped;
+
+  // Grain staple cap, last: it wins over every floor.
+  let score = floored;
+  if (hasTag(GRAIN_STAPLE_CATEGORIES)) {
+    const whole = isNum(input.fiber100g) && input.fiber100g >= GRAIN_FIBRE_THRESHOLD;
+    const limit = whole ? GRAIN_CAP_WHOLE : GRAIN_CAP_REFINED;
+    capResults.push({ id: "grain_staple", limit, applied: limit < floored });
+    score = Math.min(floored, limit);
+  }
 
   // Reasons: worst pillars first, then the best positive.
   const flags: Array<{ severity: number; key: string }> = [];
@@ -699,6 +865,7 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
     pillars,
     caps: capResults,
     wholeFood,
-    floor: { limit: WHOLE_FOOD_FLOOR, applied: score > capped },
+    floor: { limit: topFloor?.limit ?? WHOLE_FOOD_FLOOR, applied: score > capped },
+    floorKind: topFloor?.kind ?? null,
   };
 }

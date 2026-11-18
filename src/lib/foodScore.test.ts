@@ -11,6 +11,15 @@ import {
   countAdditives,
   SCORING_GUIDE,
   WHOLE_FOOD_FLOOR,
+  ANIMAL_FLOOR,
+  DARK_CHOCOLATE_FLOOR,
+  GRAIN_CAP_REFINED,
+  GRAIN_CAP_WHOLE,
+  GRAIN_FIBRE_THRESHOLD,
+  GRAIN_STAPLE_CATEGORIES,
+  PILLAR_NOTE_KEYS,
+  capLineKey,
+  startsWithCocoa,
   type ProductScoreInput,
   type PillarId,
 } from "./foodScore";
@@ -40,6 +49,10 @@ const clean: ProductScoreInput = {
 
 describe("fixture ranges", () => {
   for (const f of FIXTURES) {
+    if (f.todo) {
+      it.todo(`${f.name} scores ${f.min}–${f.max} (${f.todo})`);
+      continue;
+    }
     it(`${f.name} scores ${f.min}–${f.max}`, () => {
       const r = scoreProduct(f.input);
       expect(r.score).not.toBeNull();
@@ -243,7 +256,11 @@ describe("whole-food floor", () => {
     additivesTags: [],
     categoriesTags: ["en:dairies", "en:cheeses"],
   };
-  const floored = (input: ProductScoreInput) => scoreProduct(input).floor.applied;
+  /** Whether the whole-food floor (not the basic meat, fish and dairy floor) raised the score. */
+  const floored = (input: ProductScoreInput) => {
+    const r = scoreProduct(input);
+    return r.floor.applied && r.floorKind === "whole_food";
+  };
 
   it("raises a plain whole food to 7", () => {
     const r = scoreProduct(cheese);
@@ -261,7 +278,7 @@ describe("whole-food floor", () => {
   it("does not apply when NOVA is unknown", () => {
     const r = scoreProduct({ ...cheese, novaGroup: null });
     expect(r.wholeFood).toBe(false);
-    expect(r.floor.applied).toBe(false);
+    expect(r.floorKind).not.toBe("whole_food");
   });
   it("does not apply with additives in the tags or as E-numbers in the text", () => {
     expect(floored({ ...cheese, additivesTags: ["en:e160b"] })).toBe(false);
@@ -290,15 +307,17 @@ describe("whole-food floor", () => {
     expect(r.floor.applied).toBe(false);
   });
   it("never lowers a score and never changes pillars, average, caps or reasons", () => {
-    // "en:creams" excludes the floor without touching any pillar.
+    // "en:creams" and "en:processed-cheeses" exclude the whole-food and animal floors
+    // without touching any pillar. (Dark chocolate has its own test below.)
     const notWhole = (input: ProductScoreInput) => ({
       ...input,
-      categoriesTags: [...(input.categoriesTags ?? []), "en:creams"],
+      categoriesTags: [...(input.categoriesTags ?? []), "en:creams", "en:processed-cheeses"],
     });
-    for (const input of [cheese, ...FIXTURES.map((f) => f.input)]) {
+    for (const input of [cheese, ...FIXTURES.filter((f) => !f.name.startsWith("dark chocolate")).map((f) => f.input)]) {
       const withFloor = scoreProduct(input);
       const without = scoreProduct(notWhole(input));
       expect(without.floor.applied).toBe(false);
+      expect(without.floorKind).toBeNull();
       expect(withFloor.score as number).toBeGreaterThanOrEqual(without.score as number);
       expect(withFloor.pillars).toEqual(without.pillars);
       expect(withFloor.average).toBe(without.average);
@@ -310,3 +329,211 @@ describe("whole-food floor", () => {
     expect(SCORING_GUIDE.wholeFood.values.limit).toBe(WHOLE_FOOD_FLOOR);
   });
 });
+
+describe("nut and seed butters (saturated-fat pillar)", () => {
+  const nutButter: ProductScoreInput = {
+    sugars100g: 5,
+    saturatedFat100g: 8,
+    salt100g: 0.03,
+    proteins100g: 28,
+    ingredientsText: "Peanuts (100%)",
+    novaGroup: 3,
+    additivesTags: [],
+    categoriesTags: ["en:spreads", "en:nut-butters"],
+  };
+  it("raises the pillar to at least 7 for nut-butter categories, with the nuts note", () => {
+    for (const tag of ["en:nut-butters", "en:peanut-butters", "en:tahini", "en:seed-butters"]) {
+      const p = pillar({ ...nutButter, categoriesTags: [tag] }, "satFat");
+      expect(p.score).toBe(7);
+      expect(p.noteKeys).toEqual(["pillar_note_nuts_oils"]);
+    }
+  });
+  it("is a floor, not a fixed value: a lower-fat nut butter keeps its higher score", () => {
+    const p = pillar({ ...nutButter, saturatedFat100g: 1 }, "satFat");
+    expect(p.score).toBe(9);
+    expect(p.noteKeys).toEqual([]);
+  });
+  it("also applies to plain products with at least 60% nuts and no category", () => {
+    const plain = { ...nutButter, categoriesTags: ["en:spreads"], fruitVegNuts100g: 60 };
+    expect(pillar(plain, "satFat").score).toBe(7);
+    expect(pillar({ ...plain, fruitVegNuts100g: 59 }, "satFat").score).toBe(2);
+    expect(pillar({ ...plain, ingredientsText: "Peanuts, sugar" }, "satFat").score).toBe(2);
+    expect(pillar({ ...plain, additivesTags: ["en:e322"] }, "satFat").score).toBe(2);
+  });
+  it("does not apply to other categories", () => {
+    expect(pillar({ ...nutButter, categoriesTags: ["en:spreads"] }, "satFat").score).toBe(2);
+  });
+});
+
+describe("grain staple cap", () => {
+  const rice: ProductScoreInput = {
+    sugars100g: 0.5,
+    saturatedFat100g: 0.3,
+    salt100g: 0.01,
+    fiber100g: 1.3,
+    proteins100g: 7.5,
+    ingredientsText: "Long Grain Rice",
+    novaGroup: 1,
+    additivesTags: [],
+    categoriesTags: ["en:rices"],
+  };
+  const grainCap = (input: ProductScoreInput) => scoreProduct(input).caps.find((c) => c.id === "grain_staple");
+
+  it("caps refined grains at 6 and whole grains at 8", () => {
+    expect(scoreProduct(rice).score).toBe(GRAIN_CAP_REFINED);
+    expect(grainCap(rice)).toEqual({ id: "grain_staple", limit: GRAIN_CAP_REFINED, applied: true });
+    expect(scoreProduct({ ...rice, fiber100g: 8 }).score).toBe(GRAIN_CAP_WHOLE);
+  });
+  it("counts unknown fibre as refined, and fibre at the threshold as whole grain", () => {
+    expect(grainCap({ ...rice, fiber100g: null })!.limit).toBe(GRAIN_CAP_REFINED);
+    expect(grainCap({ ...rice, fiber100g: GRAIN_FIBRE_THRESHOLD })!.limit).toBe(GRAIN_CAP_WHOLE);
+    expect(grainCap({ ...rice, fiber100g: 2.9 })!.limit).toBe(GRAIN_CAP_REFINED);
+  });
+  it("covers every grain category, but not breads or breakfast cereals", () => {
+    for (const tag of GRAIN_STAPLE_CATEGORIES) expect(grainCap({ ...rice, categoriesTags: [tag] })).toBeDefined();
+    expect(grainCap({ ...rice, categoriesTags: ["en:breads"] })).toBeUndefined();
+    expect(grainCap({ ...rice, categoriesTags: ["en:breakfast-cereals"] })).toBeUndefined();
+    expect(scoreProduct({ ...rice, categoriesTags: ["en:breads"] }).score).toBe(10);
+  });
+  it("is applied last, so it wins over the whole-food floor", () => {
+    const salty = { ...rice, salt100g: 1.3 }; // weakest link → 5, whole-food floor → 7, grain cap → 6
+    const r = scoreProduct(salty);
+    expect(r.floorKind).toBe("whole_food");
+    expect(r.floor.applied).toBe(true);
+    expect(grainCap(salty)!.applied).toBe(true);
+    expect(r.score).toBe(GRAIN_CAP_REFINED);
+  });
+  it("never raises a score, and is not marked applied when it didn't lower it", () => {
+    const veryProcessed = { ...rice, novaGroup: 4, ingredientsText: "Rice, flavouring, E621", salt100g: 2.25 };
+    const r = scoreProduct(veryProcessed);
+    expect(r.score as number).toBeLessThan(GRAIN_CAP_REFINED);
+    expect(grainCap(veryProcessed)!.applied).toBe(false);
+  });
+  it("never raises any fixture and never changes pillars, average or reasons", () => {
+    for (const f of FIXTURES) {
+      const tags = f.input.categoriesTags ?? [];
+      const stripped = { ...f.input, categoriesTags: tags.filter((t) => !GRAIN_STAPLE_CATEGORIES.includes(t)) };
+      const withCap = scoreProduct(f.input);
+      const without = scoreProduct(stripped);
+      expect(withCap.score as number).toBeLessThanOrEqual(without.score as number);
+      expect(withCap.pillars).toEqual(without.pillars);
+      expect(withCap.average).toBe(without.average);
+      expect(withCap.reasons).toEqual(without.reasons);
+    }
+  });
+  it("has its own line for refined and whole grains", () => {
+    expect(capLineKey({ id: "grain_staple", limit: GRAIN_CAP_REFINED })).toBe("score_cap_grain_refined");
+    expect(capLineKey({ id: "grain_staple", limit: GRAIN_CAP_WHOLE })).toBe("score_cap_grain_whole");
+    expect(capLineKey({ id: "weakest_link", limit: 3 })).toBe("score_cap_weakest");
+  });
+});
+
+describe("basic meat, fish and dairy floor", () => {
+  const sausage = FIXTURES.find((f) => f.name === "pork sausages")!.input;
+  const kind = (input: ProductScoreInput) => scoreProduct(input).floorKind;
+
+  it("raises a basic, unsweetened meat, fish or dairy food to 6", () => {
+    const r = scoreProduct(sausage);
+    expect(r.floorKind).toBe("animal_food");
+    expect(r.floor).toEqual({ limit: ANIMAL_FLOOR, applied: true });
+    expect(r.score).toBe(ANIMAL_FLOOR);
+  });
+  it("does not apply outside the meat, fish and dairy categories", () => {
+    expect(kind({ ...sausage, categoriesTags: ["en:snacks"] })).toBeNull();
+  });
+  it("does not apply when the sugar pillar is below 8", () => {
+    const sweet = { ...sausage, sugars100g: 8, ingredientsText: `${sausage.ingredientsText}, Sugar` };
+    expect(pillar(sweet, "sugar").score).toBeLessThan(8);
+    expect(kind(sweet)).toBeNull();
+  });
+  it("does not apply to processed cheese", () => {
+    expect(kind({ ...sausage, categoriesTags: ["en:cheeses", "en:processed-cheeses"] })).toBeNull();
+  });
+  it("does not apply to ready-made dishes", () => {
+    for (const dish of ["en:salads", "en:meals", "en:sandwiches", "en:soups", "en:pizzas-pies-and-quiches"]) {
+      expect(kind({ ...sausage, categoriesTags: ["en:meats", dish] })).toBeNull();
+    }
+  });
+  it("loses to the whole-food floor of 7", () => {
+    const r = scoreProduct(FIXTURES.find((f) => f.name === "mature cheddar")!.input);
+    expect(r.floorKind).toBe("whole_food");
+    expect(r.floor.limit).toBe(WHOLE_FOOD_FLOOR);
+    expect(r.score).toBe(7);
+  });
+  it("never lowers a higher score", () => {
+    const lean = { ...sausage, salt100g: 0.2, saturatedFat100g: 1, novaGroup: 3, additivesTags: [], ingredientsText: "Pork, salt" };
+    const r = scoreProduct(lean);
+    expect(r.floorKind).toBe("animal_food");
+    expect(r.floor.applied).toBe(false);
+    expect(r.score as number).toBeGreaterThan(ANIMAL_FLOOR);
+  });
+});
+
+describe("high-cocoa dark chocolate", () => {
+  const dark = FIXTURES.find((f) => f.name === "dark chocolate 85%")!.input;
+
+  it("raises the saturated-fat pillar to 7 and the final score to 6", () => {
+    const r = scoreProduct(dark);
+    const satFat = r.pillars.find((p) => p.id === "satFat")!;
+    expect(satFat.score).toBe(7);
+    expect(satFat.noteKeys).toEqual([PILLAR_NOTE_KEYS.cocoaFat]);
+    expect(r.floorKind).toBe("dark_chocolate");
+    expect(r.floor).toEqual({ limit: DARK_CHOCOLATE_FLOOR, applied: true });
+    expect(r.score).toBe(DARK_CHOCOLATE_FLOOR);
+  });
+  it("does not apply when cocoa is not the first ingredient", () => {
+    const r = scoreProduct({ ...dark, ingredientsText: "Sugar, Cocoa Mass, Cocoa Butter" });
+    expect(r.floorKind).toBeNull();
+    expect(r.pillars.find((p) => p.id === "satFat")!.score).toBe(1);
+  });
+  it("does not apply above 30 g sugar", () => {
+    expect(scoreProduct({ ...dark, sugars100g: 31 }).floorKind).toBeNull();
+    expect(scoreProduct({ ...dark, sugars100g: 30 }).floorKind).toBe("dark_chocolate");
+  });
+  it("does not apply to milk chocolate, even with cocoa first", () => {
+    const milk = { ...dark, categoriesTags: ["en:chocolates", "en:milk-chocolates"] };
+    expect(scoreProduct(milk).floorKind).toBeNull();
+    expect(scoreProduct(FIXTURES.find((f) => f.name === "milk chocolate bar")!.input).floorKind).toBeNull();
+  });
+  it("recognises cocoa mass, cocoa paste and cocoa as the first ingredient", () => {
+    expect(startsWithCocoa("Cocoa Mass, Sugar")).toBe(true);
+    expect(startsWithCocoa("Cocoa paste 70%, sugar")).toBe(true);
+    expect(startsWithCocoa("Cocoa (85%), sugar")).toBe(true);
+    expect(startsWithCocoa("Cocoa Butter, Sugar")).toBe(false);
+    expect(startsWithCocoa("Sugar, Cocoa Mass")).toBe(false);
+  });
+  it("never lowers a higher score", () => {
+    const better = { ...dark, novaGroup: 3, additivesTags: [], ingredientsText: "Cocoa mass, cocoa butter, sugar" };
+    const r = scoreProduct(better);
+    expect(r.floorKind).toBe("dark_chocolate");
+    expect(r.floor.applied).toBe(false);
+    expect(r.score as number).toBeGreaterThan(DARK_CHOCOLATE_FLOOR);
+  });
+});
+
+describe("fruit juice and smoothies (sugar pillar)", () => {
+  const juice = FIXTURES.find((f) => f.name === "orange juice not from concentrate")!.input;
+  const asOtherDrink = { ...juice, categoriesTags: ["en:beverages", "en:fruit-based-beverages"] };
+
+  it("counts juice and smoothie sugar in full, with a note", () => {
+    for (const tag of ["en:fruit-juices", "en:smoothies"]) {
+      const p = pillar({ ...juice, categoriesTags: ["en:beverages", tag] }, "sugar");
+      expect(p.raw).toBe(oneDecimal(interpolate(8.5, SUGAR_ANCHORS_DRINK)));
+      expect(p.noteKeys).toEqual([PILLAR_NOTE_KEYS.juiceSugar]);
+    }
+  });
+  it("a non-juice drink keeps the natural-sugar halving", () => {
+    const p = pillar(asOtherDrink, "sugar");
+    expect(p.raw).toBe(oneDecimal(interpolate(8.5 * 0.5, SUGAR_ANCHORS_DRINK)));
+    expect(p.noteKeys).toEqual([PILLAR_NOTE_KEYS.naturalSugar]);
+    expect(p.raw).toBeGreaterThan(pillar(juice, "sugar").raw);
+  });
+  it("shows the note only when halving would have raised the score", () => {
+    expect(pillar({ ...juice, sugars100g: 0 }, "sugar").noteKeys).toEqual([]);
+    expect(pillar({ ...juice, ingredientsText: "Orange juice, sugar" }, "sugar").noteKeys).not.toContain(
+      PILLAR_NOTE_KEYS.juiceSugar,
+    );
+  });
+});
+
+const oneDecimal = (v: number) => Math.round(v * 10) / 10;
