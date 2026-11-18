@@ -42,6 +42,8 @@ import ResetPassword from "./pages/ResetPassword";
 import OAuthConsent from "./pages/OAuthConsent";
 import CompetitionPrep from "./pages/CompetitionPrep";
 import CompetitionPrepSetup from "./pages/CompetitionPrepSetup";
+import Tools from "./pages/Tools";
+import ScanRate from "./pages/ScanRate";
 
 const queryClient = new QueryClient();
 
@@ -305,6 +307,8 @@ const App = () => {
                     <Route path="/meals" element={<Meals />} />
                     <Route path="/metrics" element={<Metrics />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/tools" element={<Tools />} />
+                    <Route path="/tools/scan" element={<ScanRate />} />
                     
                     {/* Secondary routes */}
                     <Route path="/community" element={<Community />} />

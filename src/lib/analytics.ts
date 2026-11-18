@@ -92,3 +92,20 @@ export const trackWaterLogged = () => track("water_logged");
 export const trackCheckinCompleted = () => track("checkin_completed");
 
 export const trackSubscribed = () => track("subscribed");
+
+/**
+ * Scan & rate result. Only the barcode's first 3 digits (the GS1 country
+ * prefix) are sent — never the full barcode or the product.
+ */
+export const trackProductScored = (props: {
+  found: boolean;
+  confidence: string | null;
+  score: number | null;
+  barcodePrefix: string;
+}) =>
+  track("product_scored", {
+    found: props.found,
+    confidence: props.confidence,
+    score: props.score,
+    barcode_prefix: props.barcodePrefix.slice(0, 3),
+  });

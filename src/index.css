@@ -48,6 +48,11 @@
     --calories: 120 55% 38%;
     --sugar: 340 75% 55%;
 
+    /* Scan & rate score bands */
+    --score-good: 120 55% 38%;
+    --score-balance: 36 90% 44%;
+    --score-occasional: 10 65% 55%;
+
     /* Gradients */
     --gradient-hero: linear-gradient(135deg, hsl(120 55% 38%) 0%, hsl(120 50% 45%) 100%);
     --gradient-warm: linear-gradient(135deg, hsl(120 45% 50%) 0%, hsl(120 55% 55%) 100%);
@@ -105,6 +110,10 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --score-good: 120 55% 45%;
+    --score-balance: 38 90% 52%;
+    --score-occasional: 10 65% 60%;
   }
 }
 

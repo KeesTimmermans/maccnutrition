@@ -66,6 +66,11 @@ export default {
         fats: "hsl(var(--fats))",
         calories: "hsl(var(--calories))",
         sugar: "hsl(var(--sugar))",
+        score: {
+          good: "hsl(var(--score-good))",
+          balance: "hsl(var(--score-balance))",
+          occasional: "hsl(var(--score-occasional))",
+        },
         chart: {
           protein: "hsl(var(--protein))",
           carbs: "hsl(var(--carbs))",
