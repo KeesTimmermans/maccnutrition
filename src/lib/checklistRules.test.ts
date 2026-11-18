@@ -164,6 +164,19 @@ describe("training nutrition", () => {
     expect(hasTrainingDays(undefined)).toBe(false);
   });
 
+  it("reads the stored training_days option strings", () => {
+    expect(hasTrainingDays("0-1")).toBe(false);
+    expect(hasTrainingDays("2-3")).toBe(true);
+    expect(hasTrainingDays("4-5")).toBe(true);
+    expect(hasTrainingDays("6+")).toBe(true);
+    expect(hasTrainingDays("0")).toBe(false);
+    expect(hasTrainingDays("5")).toBe(true);
+    expect(hasTrainingDays(null)).toBe(false);
+    expect(hasTrainingDays("")).toBe(false);
+    expect(hasTrainingDays("weekly")).toBe(false);
+    expect(hasTrainingDays("none")).toBe(false);
+  });
+
   const ai = (id: string, title: string, category: "nutrition" | "sleep" | "stress" | "hydration") => ({
     id, title, when: "anytime" as const, kind: "manual" as const, source: "ai" as const, category,
   });

@@ -66,10 +66,18 @@ export const TRAINING_NUTRITION_PREFIX = "If you train today:";
 
 export const isTrainingNutritionTitle = (title: string): boolean => /^\s*if you train today:/i.test(title);
 
+/** Stored values are the onboarding option strings "0-1" | "2-3" | "4-5" | "6+". */
+const TRAINING_NONE_VALUES = new Set(["0", "0-1", "none"]);
+const TRAINING_SOME_VALUES = new Set(["2-3", "4-5", "6+"]);
+
 /** True when the profile has training days set and not zero. */
 export const hasTrainingDays = (trainingDays: unknown): boolean => {
-  const n = typeof trainingDays === "number" ? trainingDays : Number(trainingDays);
-  return Number.isFinite(n) && n > 0;
+  if (trainingDays === null || trainingDays === undefined) return false;
+  const raw = String(trainingDays).trim().toLowerCase();
+  if (raw === "" || TRAINING_NONE_VALUES.has(raw)) return false;
+  if (TRAINING_SOME_VALUES.has(raw)) return true;
+  if (/^\d+(?:\.\d+)?$/.test(raw)) return Number(raw) > 0;
+  return false;
 };
 
 export const isChecklistCategory = (value: unknown): value is ChecklistCategory =>
