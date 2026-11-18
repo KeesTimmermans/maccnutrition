@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineResults, calculateHydration, calculateNutritionTargets } from "@/lib/baselineCalculations";
 import { affectsTargets } from "@/lib/profileSections";
+import { normalizeTrackingMode, type TrackingMode } from "@/lib/trackingMode";
 
 export interface UserBaseline {
   id: string;
@@ -30,6 +31,7 @@ export interface UserBaseline {
   diet_type: string | null;
   food_dislikes: string | null;
   coaching_tone: string | null;
+  tracking_mode: TrackingMode;
   meals_per_day: string | null;
   cycle_regularity: string | null;
   current_phase: string | null;
@@ -148,6 +150,7 @@ export const saveUserBaseline = async (
       diet_type: onboardingData.dietType || null,
       food_dislikes: onboardingData.foodDislikes || null,
       coaching_tone: onboardingData.coachingTone || null,
+      tracking_mode: onboardingData.trackingMode || "calories",
       meals_per_day: onboardingData.mealsPerDay || null,
       cycle_regularity: onboardingData.cycleRegularity || null,
       current_phase: onboardingData.currentPhase || null,
@@ -274,6 +277,7 @@ export const updateUserSettings = async (settings: {
   unit_system?: string; 
   preferred_currency?: string;
   coaching_tone?: string;
+  tracking_mode?: TrackingMode;
   household_size?: number;
   dashboard_layout?: { sections: string[]; hidden: string[] };
 }) => {
@@ -425,6 +429,7 @@ export function baselineToOnboardingData(baseline: UserBaseline): import("@/comp
     secondaryGoals: baseline.secondary_goals || [], dietType: baseline.diet_type || "",
     foodDislikes: baseline.food_dislikes || "",
     coachingTone: baseline.coaching_tone || "",
+    trackingMode: normalizeTrackingMode(baseline.tracking_mode),
     proteinShakesPreference: "",
     cycleRegularity: baseline.cycle_regularity || "", cycleSymptoms: baseline.cycle_symptoms || [],
     preparingForEvent: "", compEventType: "", compEventTypeOther: "", compEventDate: "", compDivision: "", compGoal: "",

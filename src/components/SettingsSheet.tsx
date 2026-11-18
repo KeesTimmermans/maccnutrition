@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Settings, LogOut, Globe, Crown, Brain, Utensils, Target, Eye, Clock, Zap, LayoutGrid, Ruler, Sparkles, History, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, UserBaseline } from "@/lib/userService";
+import { normalizeTrackingMode, type TrackingMode } from "@/lib/trackingMode";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLanguage, Language, languageNames } from "@/lib/i18n";
@@ -40,6 +41,7 @@ export const SettingsSheet = ({
   const [isMetric, setIsMetric] = useState(baseline?.unit_system === "metric");
   const [currency, setCurrency] = useState(baseline?.preferred_currency || "GBP");
   const [coachingTone, setCoachingTone] = useState(baseline?.coaching_tone || "supportive");
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>(normalizeTrackingMode(baseline?.tracking_mode));
   const [isUpdating, setIsUpdating] = useState(false);
   const [open, setOpen] = useState(false);
   const [showProgressUpdate, setShowProgressUpdate] = useState(false);
@@ -102,6 +104,30 @@ export const SettingsSheet = ({
     } catch (error) {
       console.error("Error updating language:", error);
       toast.error(t('error'));
+    }
+  };
+
+  const trackingModes: { value: TrackingMode; label: string; description: string }[] = [
+    { value: "calories", label: t('food_approach_calories'), description: t('food_approach_calories_desc') },
+    { value: "habits", label: t('food_approach_habits'), description: t('food_approach_habits_desc') },
+  ];
+
+  // Food approach never recalculates targets — it only changes what the app shows (later).
+  const handleTrackingModeChange = async (value: string) => {
+    const previous = trackingMode;
+    const next = normalizeTrackingMode(value);
+    setTrackingMode(next);
+    setIsUpdating(true);
+    try {
+      await updateUserSettings({ tracking_mode: next });
+      toast.success(t('food_approach_updated'));
+      onSettingsChange?.();
+    } catch (error) {
+      console.error("Error updating food approach:", error);
+      toast.error(t('error'));
+      setTrackingMode(previous);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -449,6 +475,37 @@ export const SettingsSheet = ({
             
             <TabsContent value="profile" className="mt-0">
               <div className="space-y-6 pb-6">
+                {/* Food Approach Selector */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 pb-2">
+                    <div className="p-2 rounded-xl bg-primary/10">
+                      <Utensils className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">{t('food_approach')}</h3>
+                      <p className="text-xs text-muted-foreground">{t('food_approach_desc')}</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted rounded-xl">
+                    <Select value={trackingMode} onValueChange={handleTrackingModeChange} disabled={isUpdating}>
+                      <SelectTrigger className="w-full" aria-label={t('food_approach')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {trackingModes.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {trackingModes.find(m => m.value === trackingMode)?.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('food_approach_note')}</p>
+                  </div>
+                </div>
+
                 {/* Coaching Style Selector */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 pb-2">

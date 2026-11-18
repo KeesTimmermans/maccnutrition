@@ -848,6 +848,7 @@ export type Database = {
           terms_accepted_at: string | null
           terms_version: string | null
           thigh_cm: number | null
+          tracking_mode: string
           training_days: string | null
           training_duration: string | null
           training_intensity: string | null
@@ -957,6 +958,7 @@ export type Database = {
           terms_accepted_at?: string | null
           terms_version?: string | null
           thigh_cm?: number | null
+          tracking_mode?: string
           training_days?: string | null
           training_duration?: string | null
           training_intensity?: string | null
@@ -1066,6 +1068,7 @@ export type Database = {
           terms_accepted_at?: string | null
           terms_version?: string | null
           thigh_cm?: number | null
+          tracking_mode?: string
           training_days?: string | null
           training_duration?: string | null
           training_intensity?: string | null

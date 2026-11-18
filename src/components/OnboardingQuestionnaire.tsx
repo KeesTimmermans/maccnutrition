@@ -95,6 +95,7 @@ export interface OnboardingData {
   dietType: string;
   foodDislikes: string;
   coachingTone: string;
+  trackingMode?: "calories" | "habits";
   mealsPerDay: string;
   proteinShakesPreference: string;
   
@@ -172,6 +173,7 @@ const initialData: OnboardingData = {
   dietType: "",
   foodDislikes: "",
   coachingTone: "",
+  trackingMode: "calories",
   mealsPerDay: "",
   proteinShakesPreference: "",
   cycleRegularity: "",
@@ -369,6 +371,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       case "food":
         return (
           <div className="space-y-8">
+            <FoodApproachQuestion data={data} updateData={updateData} t={t} />
             <MedicalStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />
             <PreferencesStep data={data} updateData={updateData} t={t} essentialsOnly />
           </div>
@@ -632,6 +635,43 @@ const DemographicsStep = ({ data, updateData, t }: {
     </div>
   </div>
 );
+
+// Signup "Food & health": calorie tracking or simple habits. Optional; defaults to calories.
+const FoodApproachQuestion = ({ data, updateData, t }: {
+  data: OnboardingData;
+  updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  t: (key: string) => string;
+}) => {
+  const selected = data.trackingMode || "calories";
+  const options = [
+    { value: "calories" as const, label: t('food_approach_calories'), desc: t('food_approach_calories_desc') },
+    { value: "habits" as const, label: t('food_approach_habits'), desc: t('food_approach_habits_desc') },
+  ];
+  return (
+    <div className="space-y-3 animate-slide-up">
+      <Label className="text-sm font-semibold">{t('food_approach_question')}</Label>
+      <div className="space-y-2">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => updateData("trackingMode", option.value)}
+            className={`w-full p-4 rounded-xl text-left transition-all ${
+              selected === option.value
+                ? "bg-primary text-primary-foreground shadow-medium"
+                : "bg-card shadow-soft hover:shadow-medium"
+            }`}
+          >
+            <span className="font-semibold block">{option.label}</span>
+            <span className={`text-sm ${selected === option.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+              {option.desc}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const MedicalStep = ({ data, updateData, toggleArrayItem, t }: { 
   data: OnboardingData; 
