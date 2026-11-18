@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, ScanBarcode, type LucideIcon } from "lucide-react";
+import { ChevronRight, Gauge, ScanBarcode, type LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { useLanguage } from "@/lib/i18n";
@@ -18,6 +18,12 @@ const TOOLS: ToolEntry[] = [
     icon: ScanBarcode,
     nameKey: "tool_scan_rate_name",
     descriptionKey: "tool_scan_rate_desc",
+  },
+  {
+    to: "/tools/scoring",
+    icon: Gauge,
+    nameKey: "tool_scoring_name",
+    descriptionKey: "tool_scoring_desc",
   },
 ];
 

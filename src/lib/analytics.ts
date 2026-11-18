@@ -100,12 +100,14 @@ export const trackSubscribed = () => track("subscribed");
 export const trackProductScored = (props: {
   found: boolean;
   confidence: string | null;
+  provisional: boolean | null;
   score: number | null;
   barcodePrefix: string;
 }) =>
   track("product_scored", {
     found: props.found,
     confidence: props.confidence,
+    provisional: props.provisional,
     score: props.score,
     barcode_prefix: props.barcodePrefix.slice(0, 3),
   });

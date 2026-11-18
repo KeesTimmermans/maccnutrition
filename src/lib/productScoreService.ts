@@ -46,6 +46,7 @@ export function toScoreInput(p: ProductLookup): ProductScoreInput {
     proteins100g: p.nutriments?.proteins_100g ?? null,
     fruitVegNuts100g: p.fruits_vegetables_nuts_100g ?? null,
     ingredientsText: p.ingredients_text_en || p.ingredients_text || null,
+    ingredientsN: p.ingredients_n ?? null,
     novaGroup: p.nova_group ?? null,
     additivesTags: p.additives_tags ?? null,
     categoriesTags: p.categories_tags ?? null,

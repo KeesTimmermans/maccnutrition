@@ -1,10 +1,15 @@
 /**
- * Scan & rate — product health score (1–10).
+ * Scan & rate — product health score (1–10), 5-pillar model.
  *
  * Pure, network-free scoring of a packaged product from its Open Food Facts
- * data. The score describes the PRODUCT (per-100g values are used only to
- * compare products fairly) and is never shown with grams or calories.
- * Reasons and bands are i18n keys so the UI can translate them.
+ * data. Each pillar (sugar, salt, saturated fat, processing, protein & fibre) is
+ * scored 1–10, combined into a weighted average, then capped so one weak area or
+ * missing data can't be hidden by "fine by default" areas.
+ *
+ * The score describes the PRODUCT (per-100g values are used only to compare
+ * products fairly) and is never shown with grams or calories. Reasons, pillar
+ * labels and notes are i18n keys. The result screen and the "How scores work"
+ * guide are both generated from the constants below, so they can't disagree.
  */
 
 export interface ProductScoreInput {
@@ -16,6 +21,8 @@ export interface ProductScoreInput {
   /** Fruit / vegetables / nuts estimate from ingredients, in % (0–100). */
   fruitVegNuts100g?: number | null;
   ingredientsText?: string | null;
+  /** Number of ingredients as counted by Open Food Facts. */
+  ingredientsN?: number | null;
   novaGroup?: number | null;
   additivesTags?: string[] | null;
   categoriesTags?: string[] | null;
@@ -23,73 +30,236 @@ export interface ProductScoreInput {
 
 export type ScoreConfidence = "full" | "limited" | "none";
 export type ScoreBand = "good" | "balance" | "occasional";
+export type PillarId = "sugar" | "salt" | "satFat" | "processing" | "proteinFibre";
+export type CapId = "weakest_link" | "sweeteners" | "provisional";
+
+export interface PillarResult {
+  id: PillarId;
+  labelKey: string;
+  weight: number;
+  /** False for protein & fibre on drinks: skipped in the average. */
+  applicable: boolean;
+  /** False when every input was missing (pillar then counts as 5). */
+  known: boolean;
+  /** Unrounded pillar score, 1 decimal. */
+  raw: number;
+  /** Whole-number score 1–10 for display. */
+  score: number;
+  /** i18n keys explaining adjustments (no numbers). */
+  noteKeys: string[];
+}
+
+export interface CapResult {
+  id: CapId;
+  limit: number;
+  /** True only when this cap is what lowered the final score. */
+  applied: boolean;
+}
 
 export interface ProductScoreResult {
   score: number | null;
   band: ScoreBand | null;
-  /** i18n keys, max 3, largest impact first. */
+  /** i18n keys, max 3, worst first. */
   reasons: string[];
   confidence: ScoreConfidence;
+  /** True when some data was missing (limited confidence or an unknown pillar). */
+  provisional: boolean;
+  /** Weighted average of the applicable pillars, 1 decimal (null when unscored). */
+  average: number | null;
+  pillars: PillarResult[];
+  /** Caps whose condition was met; `applied` marks the ones that lowered the score. */
+  caps: CapResult[];
 }
 
-// ─── Tunable weights ────────────────────────────────────────────────────────
+/** [value, score] points; scores between points are interpolated linearly. */
+export type Anchors = ReadonlyArray<readonly [number, number]>;
 
-export const BASE_SCORE = 8;
+// ─── Score range and bands ──────────────────────────────────────────────────
+
 export const MIN_SCORE = 1;
 export const MAX_SCORE = 10;
 export const MAX_REASONS = 3;
+export const GOOD_BAND_MIN = 7;
+export const BALANCE_BAND_MIN = 4;
+/** Score a pillar gets when all of its inputs are missing. */
+export const UNKNOWN_PILLAR_SCORE = 5;
 
-/** Total sugars per 100g: [above this value, penalty]. Checked highest first. */
-export const SUGAR_STEPS: Array<[number, number]> = [
-  [22.5, -4],
-  [15, -3],
-  [10, -2],
-  [5, -1],
+// ─── Pillar 1: sugar (total sugars per 100g / 100ml) ────────────────────────
+
+export const SUGAR_WEIGHT = 2;
+export const SUGAR_ANCHORS_FOOD: Anchors = [
+  [1, 10],
+  [5, 8],
+  [10, 6],
+  [15, 4],
+  [22.5, 1],
 ];
-/** Drinks use half of every sugar threshold. */
+/** Drinks use half of every sugar value in the food table. */
 export const BEVERAGE_SUGAR_FACTOR = 0.5;
-
+export const SUGAR_ANCHORS_DRINK: Anchors = SUGAR_ANCHORS_FOOD.map(
+  ([x, s]) => [x * BEVERAGE_SUGAR_FACTOR, s] as const,
+);
+/** With an ingredient list and no sugar-type ingredient, sugars are natural: count half. */
+export const NATURAL_SUGAR_FACTOR = 0.5;
 export const SUGAR_IN_FIRST_INGREDIENTS_PENALTY = -1;
 export const FIRST_INGREDIENTS_CHECKED = 3;
 export const SUGAR_INGREDIENT_PATTERN =
   /\b(sugars?|glucose|fructose|dextrose|invert sugar|syrups?|honey|maltodextrin)\b/i;
 
-export const SALT_STEPS: Array<[number, number]> = [
-  [1.5, -2],
-  [0.9, -1],
+// ─── Pillar 2: salt (g per 100g) ────────────────────────────────────────────
+
+export const SALT_WEIGHT = 1;
+export const SALT_ANCHORS: Anchors = [
+  [0.1, 10],
+  [0.3, 9],
+  [0.6, 7],
+  [0.9, 5],
+  [1.5, 2],
+  [2.25, 1],
 ];
 
-export const SATURATED_FAT_STEPS: Array<[number, number]> = [
-  [5, -2],
-  [2.5, -1],
+// ─── Pillar 3: saturated fat (g per 100g) ───────────────────────────────────
+
+export const SAT_FAT_WEIGHT = 1;
+export const SAT_FAT_ANCHORS: Anchors = [
+  [0.5, 10],
+  [1.5, 8],
+  [2.5, 6],
+  [5, 3],
+  [10, 1],
 ];
 
-export const NOVA_PENALTY: Record<number, number> = { 4: -2, 3: -1 };
-/** When nova_group is missing: this many additives or more counts as NOVA 4. */
+export interface SatFatException {
+  id: string;
+  categories: string[];
+  /** Pillar is set to this score. */
+  fixed?: number;
+  /** Pillar is at least this score. */
+  floor?: number;
+  /** Only when no sugar-type ingredient is listed (plain products). */
+  plainOnly?: boolean;
+  noteKey: string;
+}
+
+/** Category-based exceptions; the first matching one is used. Add rows to extend. */
+export const SAT_FAT_EXCEPTIONS: SatFatException[] = [
+  {
+    id: "nuts_seeds_oils",
+    categories: [
+      "en:nuts",
+      "en:seeds",
+      "en:nuts-and-their-products",
+      "en:vegetable-oils",
+      "en:olive-oils",
+      "en:vegetable-fats",
+    ],
+    fixed: 7,
+    noteKey: "pillar_note_nuts_oils",
+  },
+  {
+    id: "plain_milk_yoghurt",
+    categories: ["en:milks", "en:yogurts"],
+    floor: 5,
+    plainOnly: true,
+    noteKey: "pillar_note_plain_dairy",
+  },
+];
+
+// ─── Pillar 4: processing ───────────────────────────────────────────────────
+
+export const PROCESSING_WEIGHT = 2;
+export const NOVA_BASE: Record<number, number> = { 1: 10, 2: 8, 3: 6, 4: 3 };
+/** Without a NOVA group: any of these in the ingredients means ultra-processed (4). */
+export const ULTRA_PROCESSED_MARKERS =
+  /\b(flavou?rings?|emulsifiers?|modified\s+\w*\s*starch|modified starch|hydrogenated|colou?rs?)\b/i;
+/** Without a NOVA group: this many additives or more means 4, fewer (but ≥1) means 3. */
 export const NOVA4_ADDITIVE_COUNT = 3;
-
-export const SWEETENER_CODES = new Set([950, 951, 952, 954, 955, 957, 959, 960, 961, 962, 969]);
 export const SWEETENER_PENALTY = -1;
-
+/** [at least this many additives, penalty], checked highest first. */
+export const ADDITIVE_STEPS: Array<[number, number]> = [
+  [6, -2],
+  [3, -1],
+];
 export const MANY_ADDITIVES_COUNT = 3;
-export const MANY_ADDITIVES_PENALTY = -1;
+export const SHORT_INGREDIENT_LIST = 5;
+export const SHORT_LIST_BONUS = 1;
+export const LONG_INGREDIENT_LIST = 16;
+export const LONG_LIST_PENALTY = -1;
+export const E_NUMBER_PATTERN = /\bE\s?\d{3,4}[a-i]?\b/gi;
 
-/** Fibre per 100g: [at least this value, bonus]. Checked highest first. */
-export const FIBRE_STEPS: Array<[number, number]> = [
-  [6, 2],
-  [3, 1],
+export const SWEETENER_CODES = new Set([
+  950, 951, 952, 954, 955, 957, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 969,
+]);
+export const SWEETENER_NAME_PATTERN =
+  /\b(aspartame|acesulfame|sucralose|saccharin|cyclamates?|neotame|steviol glycosides?|sweeteners?)\b/i;
+
+// ─── Pillar 5: protein & fibre (foods only) ─────────────────────────────────
+
+export const PROTEIN_FIBRE_WEIGHT = 1;
+export const PROTEIN_ANCHORS: Anchors = [
+  [0, 4],
+  [3, 5.5],
+  [6, 7],
+  [10, 8.5],
+  [20, 10],
 ];
-
-export const PROTEIN_STEPS: Array<[number, number]> = [[8, 1]];
-
-/** Fruit/veg/nuts estimate (%): [at least this value, bonus]. */
-export const WHOLE_INGREDIENT_STEPS: Array<[number, number]> = [
-  [80, 2],
-  [40, 1],
+export const FIBRE_ANCHORS: Anchors = [
+  [0, 4],
+  [2, 5.5],
+  [3, 6.5],
+  [6, 9],
+  [9, 10],
 ];
+/** Fruit / vegetables / nuts estimate in %. */
+export const WHOLE_INGREDIENT_ANCHORS: Anchors = [
+  [0, 4],
+  [20, 5],
+  [40, 7],
+  [60, 8.5],
+  [80, 10],
+];
+/** Protein & fibre at or above this earns a positive reason chip. */
+export const POSITIVE_PILLAR_MIN = 8;
 
-export const GOOD_BAND_MIN = 7;
-export const BALANCE_BAND_MIN = 4;
+// ─── Caps ───────────────────────────────────────────────────────────────────
+
+/** A limit pillar at or below this caps the final score at that pillar + margin. */
+export const WEAKEST_LINK_THRESHOLD = 3;
+export const WEAKEST_LINK_MARGIN = 2;
+export const SWEETENER_CAP = 6;
+export const PROVISIONAL_CAP = 7;
+/** Pillars that can trigger the weakest-link cap (protein & fibre never does). */
+export const LIMIT_PILLARS: PillarId[] = ["sugar", "salt", "satFat", "processing"];
+
+// ─── Pillar definitions (shared by the result screen and the guide) ─────────
+
+export interface PillarDefinition {
+  id: PillarId;
+  labelKey: string;
+  descriptionKey: string;
+  weight: number;
+  foodsOnly: boolean;
+}
+
+export const PILLARS: PillarDefinition[] = [
+  { id: "sugar", labelKey: "pillar_sugar", descriptionKey: "pillar_desc_sugar", weight: SUGAR_WEIGHT, foodsOnly: false },
+  { id: "salt", labelKey: "pillar_salt", descriptionKey: "pillar_desc_salt", weight: SALT_WEIGHT, foodsOnly: false },
+  { id: "satFat", labelKey: "pillar_sat_fat", descriptionKey: "pillar_desc_sat_fat", weight: SAT_FAT_WEIGHT, foodsOnly: false },
+  {
+    id: "processing",
+    labelKey: "pillar_processing",
+    descriptionKey: "pillar_desc_processing",
+    weight: PROCESSING_WEIGHT,
+    foodsOnly: false,
+  },
+  {
+    id: "proteinFibre",
+    labelKey: "pillar_protein_fibre",
+    descriptionKey: "pillar_desc_protein_fibre",
+    weight: PROTEIN_FIBRE_WEIGHT,
+    foodsOnly: true,
+  },
+];
 
 // ─── Reason keys (fixed phrases, translated in the UI) ──────────────────────
 
@@ -111,24 +281,71 @@ export const REASON_KEYS = {
   lowSugarSaltFat: "score_reason_low_sugar_salt_fat",
 } as const;
 
+export const PILLAR_NOTE_KEYS = {
+  naturalSugar: "pillar_note_natural_sugar",
+  sugarFirst: REASON_KEYS.sugarFirst,
+  novaInferred: "pillar_note_nova_inferred",
+  sweeteners: REASON_KEYS.sweeteners,
+  additives: REASON_KEYS.additives,
+  shortList: "pillar_note_short_list",
+  longList: "pillar_note_long_list",
+} as const;
+
+/** i18n keys for the cap lines on the result screen; {limit} / {threshold} are filled in. */
+export const CAP_LINE_KEYS: Record<CapId, string> = {
+  weakest_link: "score_cap_weakest",
+  sweeteners: "score_cap_sweeteners",
+  provisional: "score_cap_provisional",
+};
+
+// ─── "How scores work" guide, generated from the constants above ────────────
+
+export const SCORING_GUIDE = {
+  pillars: PILLARS.map((p) => ({ ...p, countsDouble: p.weight > 1 })),
+  drinksKey: "scoring_guide_drinks",
+  caps: [
+    {
+      id: "weakest_link" as CapId,
+      textKey: "scoring_guide_cap_weakest",
+      values: { threshold: WEAKEST_LINK_THRESHOLD, margin: WEAKEST_LINK_MARGIN },
+    },
+    { id: "sweeteners" as CapId, textKey: "scoring_guide_cap_sweeteners", values: { limit: SWEETENER_CAP } },
+    { id: "provisional" as CapId, textKey: "scoring_guide_cap_provisional", values: { limit: PROVISIONAL_CAP } },
+  ],
+  bands: [
+    { band: "good" as ScoreBand, min: GOOD_BAND_MIN, max: MAX_SCORE, key: "score_band_good" },
+    { band: "balance" as ScoreBand, min: BALANCE_BAND_MIN, max: GOOD_BAND_MIN - 1, key: "score_band_balance" },
+    { band: "occasional" as ScoreBand, min: MIN_SCORE, max: BALANCE_BAND_MIN - 1, key: "score_band_occasional" },
+  ],
+  noteKeys: [
+    "scoring_guide_note_product",
+    "scoring_guide_note_natural",
+    "scoring_guide_note_data",
+    "scoring_guide_note_medical",
+  ],
+};
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const clamp = (v: number, min = MIN_SCORE, max = MAX_SCORE) => Math.min(max, Math.max(min, v));
+const oneDecimal = (v: number) => Math.round(v * 10) / 10;
+/** Round half up (6.5 → 7). */
+const roundHalfUp = (v: number) => Math.floor(v + 0.5);
 
-/** Penalty for the first step whose threshold the value is strictly above. */
-function penaltyAbove(value: number, steps: Array<[number, number]>, factor = 1): number {
-  for (const [threshold, impact] of steps) {
-    if (value > threshold * factor) return impact;
+/** Piecewise-linear between anchor points, clamped to the end scores outside the range. */
+export function interpolate(value: number, anchors: Anchors): number {
+  if (anchors.length === 0) return UNKNOWN_PILLAR_SCORE;
+  const [firstX, firstS] = anchors[0];
+  if (value <= firstX) return firstS;
+  for (let i = 1; i < anchors.length; i++) {
+    const [x1, s1] = anchors[i];
+    if (value <= x1) {
+      const [x0, s0] = anchors[i - 1];
+      return s0 + ((value - x0) / (x1 - x0)) * (s1 - s0);
+    }
   }
-  return 0;
-}
-
-/** Bonus for the first step whose threshold the value reaches. */
-function bonusAtLeast(value: number, steps: Array<[number, number]>): number {
-  for (const [threshold, impact] of steps) {
-    if (value >= threshold) return impact;
-  }
-  return 0;
+  return anchors[anchors.length - 1][1];
 }
 
 export function isBeverage(categoriesTags?: string[] | null): boolean {
@@ -138,8 +355,8 @@ export function isBeverage(categoriesTags?: string[] | null): boolean {
   });
 }
 
-/** First N top-level ingredients, with bracketed sub-ingredients removed. */
-export function firstIngredients(text: string, n = FIRST_INGREDIENTS_CHECKED): string[] {
+/** Ingredient text with bracketed sub-ingredients removed. */
+function topLevelText(text: string): string {
   let depth = 0;
   let flat = "";
   for (const ch of text) {
@@ -147,23 +364,65 @@ export function firstIngredients(text: string, n = FIRST_INGREDIENTS_CHECKED): s
     else if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
     else if (depth === 0) flat += ch;
   }
-  return flat
+  return flat;
+}
+
+function topLevelIngredients(text: string): string[] {
+  return topLevelText(text)
     .split(/[,;]/)
-    .map((s) => s.replace(/[_*]/g, "").trim())
-    .filter(Boolean)
-    .slice(0, n);
+    .map((s) => s.replace(/[_*.]/g, "").trim())
+    .filter(Boolean);
+}
+
+/** First N top-level ingredients, with bracketed sub-ingredients removed. */
+export function firstIngredients(text: string, n = FIRST_INGREDIENTS_CHECKED): string[] {
+  return topLevelIngredients(text).slice(0, n);
 }
 
 export function hasSugarInFirstIngredients(text: string): boolean {
   return firstIngredients(text).some((ing) => SUGAR_INGREDIENT_PATTERN.test(ing));
 }
 
-export function hasArtificialSweetener(additivesTags?: string[] | null): boolean {
-  return (additivesTags ?? []).some((tag) => {
-    const code = (tag.toLowerCase().split(":").pop() ?? "").trim();
-    const match = code.match(/^e(\d+)/);
-    return !!match && SWEETENER_CODES.has(Number(match[1]));
+const eCodeNumber = (code: string): number | null => {
+  const m = code.toLowerCase().replace(/\s/g, "").match(/^(?:en:)?e(\d+)/);
+  return m ? Number(m[1]) : null;
+};
+
+/** Unique E-numbers written in the ingredient text. */
+export function eNumbersInText(text: string): string[] {
+  const found = text.match(E_NUMBER_PATTERN) ?? [];
+  return [...new Set(found.map((e) => e.toLowerCase().replace(/\s/g, "")))];
+}
+
+/** Sweeteners from additive tags; from the ingredient text only when tags are missing. */
+export function hasArtificialSweetener(additivesTags?: string[] | null, ingredientsText?: string | null): boolean {
+  const tags = additivesTags ?? [];
+  if (tags.length > 0) {
+    return tags.some((tag) => {
+      const n = eCodeNumber(tag.split(":").pop() ?? "");
+      return n !== null && SWEETENER_CODES.has(n);
+    });
+  }
+  if (!ingredientsText) return false;
+  if (SWEETENER_NAME_PATTERN.test(ingredientsText)) return true;
+  return eNumbersInText(ingredientsText).some((e) => {
+    const n = eCodeNumber(e);
+    return n !== null && SWEETENER_CODES.has(n);
   });
+}
+
+/**
+ * Additives from the tags, or from E-numbers in the text when tags are empty.
+ * Sweeteners are left out: they have their own penalty, so they never count twice
+ * (and a product scores the same whether its sweeteners are tagged or only named).
+ */
+export function countAdditives(additivesTags?: string[] | null, ingredientsText?: string | null): number {
+  const tags = additivesTags ?? [];
+  const codes = tags.length > 0 ? tags.map((t) => t.split(":").pop() ?? "") : ingredientsText ? eNumbersInText(ingredientsText) : [];
+  return codes.filter((c) => {
+    const n = eCodeNumber(c);
+    return n === null || !SWEETENER_CODES.has(n);
+  }).length;
 }
 
 export function bandForScore(score: number): ScoreBand {
@@ -172,98 +431,217 @@ export function bandForScore(score: number): ScoreBand {
   return "occasional";
 }
 
-// ─── Main ───────────────────────────────────────────────────────────────────
-
-interface Factor {
-  impact: number;
-  reason: string;
+function pillar(
+  def: PillarDefinition,
+  raw: number,
+  known: boolean,
+  noteKeys: string[] = [],
+  applicable = true,
+): PillarResult {
+  const r = oneDecimal(clamp(raw));
+  return {
+    id: def.id,
+    labelKey: def.labelKey,
+    weight: def.weight,
+    applicable,
+    known,
+    raw: r,
+    score: clamp(roundHalfUp(r)),
+    noteKeys,
+  };
 }
 
+const def = (id: PillarId) => PILLARS.find((p) => p.id === id) as PillarDefinition;
+
+// ─── Main ───────────────────────────────────────────────────────────────────
+
 export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
-  const ingredientsText = input.ingredientsText?.trim() || null;
+  const text = input.ingredientsText?.trim() || null;
+  const tags = input.categoriesTags ?? [];
   const hasSugars = isNum(input.sugars100g);
-  const hasNova = isNum(input.novaGroup);
-  const hasIngredientInfo = !!ingredientsText || hasNova;
+  const nova = isNum(input.novaGroup) && NOVA_BASE[input.novaGroup] !== undefined ? input.novaGroup : null;
+  const hasIngredientInfo = !!text || nova !== null;
 
   if (!hasSugars && !hasIngredientInfo) {
-    return { score: null, band: null, reasons: [], confidence: "none" };
+    return {
+      score: null,
+      band: null,
+      reasons: [],
+      confidence: "none",
+      provisional: true,
+      average: null,
+      pillars: [],
+      caps: [],
+    };
   }
   const confidence: ScoreConfidence = hasSugars && hasIngredientInfo ? "full" : "limited";
+  const drink = isBeverage(tags);
+  const sugarIngredientListed = !!text && SUGAR_INGREDIENT_PATTERN.test(text);
+  const sugarFirst = !!text && hasSugarInFirstIngredients(text);
 
-  const factors: Factor[] = [];
-  const add = (impact: number, reason: string) => {
-    if (impact !== 0) factors.push({ impact, reason });
-  };
-
-  // Sugar
+  // Pillar 1 — sugar
+  let sugar: PillarResult;
   if (hasSugars) {
-    const factor = isBeverage(input.categoriesTags) ? BEVERAGE_SUGAR_FACTOR : 1;
-    const impact = penaltyAbove(input.sugars100g as number, SUGAR_STEPS, factor);
-    add(impact, impact <= -3 ? REASON_KEYS.highSugar : REASON_KEYS.someSugar);
-  }
-
-  // Salt
-  if (isNum(input.salt100g)) {
-    const impact = penaltyAbove(input.salt100g, SALT_STEPS);
-    add(impact, impact <= -2 ? REASON_KEYS.highSalt : REASON_KEYS.someSalt);
-  }
-
-  // Saturated fat
-  if (isNum(input.saturatedFat100g)) {
-    const impact = penaltyAbove(input.saturatedFat100g, SATURATED_FAT_STEPS);
-    add(impact, impact <= -2 ? REASON_KEYS.highSatFat : REASON_KEYS.someSatFat);
-  }
-
-  // Ingredient-based rules only run when ingredient info exists.
-  if (hasIngredientInfo) {
-    if (ingredientsText && hasSugarInFirstIngredients(ingredientsText)) {
-      add(SUGAR_IN_FIRST_INGREDIENTS_PENALTY, REASON_KEYS.sugarFirst);
+    const notes: string[] = [];
+    const anchors = drink ? SUGAR_ANCHORS_DRINK : SUGAR_ANCHORS_FOOD;
+    const full = input.sugars100g as number;
+    const value = text && !sugarIngredientListed ? full * NATURAL_SUGAR_FACTOR : full;
+    let raw = interpolate(value, anchors);
+    // Mention the gentler treatment only when it actually raised the score.
+    if (raw > interpolate(full, anchors)) notes.push(PILLAR_NOTE_KEYS.naturalSugar);
+    if (sugarFirst) {
+      raw = Math.max(MIN_SCORE, raw + SUGAR_IN_FIRST_INGREDIENTS_PENALTY);
+      notes.push(PILLAR_NOTE_KEYS.sugarFirst);
     }
+    sugar = pillar(def("sugar"), raw, true, notes);
+  } else {
+    sugar = pillar(def("sugar"), UNKNOWN_PILLAR_SCORE, false);
+  }
 
-    const additiveCount = (input.additivesTags ?? []).length;
-    let nova = hasNova ? (input.novaGroup as number) : null;
-    if (nova === null) {
-      if (additiveCount >= NOVA4_ADDITIVE_COUNT) nova = 4;
-      else if (additiveCount >= 1) nova = 3;
-    }
-    if (nova !== null) {
-      const impact = NOVA_PENALTY[nova] ?? 0;
-      add(impact, nova === 4 ? REASON_KEYS.ultraProcessed : REASON_KEYS.processed);
-    }
+  // Pillar 2 — salt
+  const salt = isNum(input.salt100g)
+    ? pillar(def("salt"), interpolate(input.salt100g, SALT_ANCHORS), true)
+    : pillar(def("salt"), UNKNOWN_PILLAR_SCORE, false);
 
-    if (hasArtificialSweetener(input.additivesTags)) {
-      add(SWEETENER_PENALTY, REASON_KEYS.sweeteners);
+  // Pillar 3 — saturated fat (with category exceptions)
+  const exception = SAT_FAT_EXCEPTIONS.find(
+    (ex) => ex.categories.some((c) => tags.includes(c)) && (!ex.plainOnly || !sugarIngredientListed),
+  );
+  let satFat: PillarResult;
+  if (exception?.fixed !== undefined) {
+    satFat = pillar(def("satFat"), exception.fixed, true, [exception.noteKey]);
+  } else if (isNum(input.saturatedFat100g)) {
+    let raw = interpolate(input.saturatedFat100g, SAT_FAT_ANCHORS);
+    const notes: string[] = [];
+    if (exception?.floor !== undefined && raw < exception.floor) {
+      raw = exception.floor;
+      notes.push(exception.noteKey);
     }
-    if (additiveCount >= MANY_ADDITIVES_COUNT) {
-      add(MANY_ADDITIVES_PENALTY, REASON_KEYS.additives);
+    satFat = pillar(def("satFat"), raw, true, notes);
+  } else {
+    satFat = pillar(def("satFat"), UNKNOWN_PILLAR_SCORE, false);
+  }
+
+  // Pillar 4 — processing
+  const additiveTags = input.additivesTags ?? [];
+  const additiveCount = countAdditives(additiveTags, text);
+  const sweetened = hasArtificialSweetener(additiveTags, text);
+  let processing: PillarResult;
+  let effectiveNova = nova;
+  const processingNotes: string[] = [];
+  if (effectiveNova === null && text) {
+    if (sweetened || ULTRA_PROCESSED_MARKERS.test(text) || additiveCount >= NOVA4_ADDITIVE_COUNT) effectiveNova = 4;
+    else if (additiveCount >= 1) effectiveNova = 3;
+    if (effectiveNova !== null) processingNotes.push(PILLAR_NOTE_KEYS.novaInferred);
+  }
+  if (effectiveNova !== null) {
+    let raw = NOVA_BASE[effectiveNova];
+    if (sweetened) {
+      raw += SWEETENER_PENALTY;
+      processingNotes.push(PILLAR_NOTE_KEYS.sweeteners);
+    }
+    const additiveStep = ADDITIVE_STEPS.find(([min]) => additiveCount >= min);
+    if (additiveStep) {
+      raw += additiveStep[1];
+      processingNotes.push(PILLAR_NOTE_KEYS.additives);
+    }
+    const ingredientCount = isNum(input.ingredientsN) && input.ingredientsN > 0
+      ? input.ingredientsN
+      : text
+        ? topLevelIngredients(text).length
+        : null;
+    if (ingredientCount !== null) {
+      if (ingredientCount <= SHORT_INGREDIENT_LIST) {
+        raw += SHORT_LIST_BONUS;
+        processingNotes.push(PILLAR_NOTE_KEYS.shortList);
+      } else if (ingredientCount >= LONG_INGREDIENT_LIST) {
+        raw += LONG_LIST_PENALTY;
+        processingNotes.push(PILLAR_NOTE_KEYS.longList);
+      }
+    }
+    processing = pillar(def("processing"), raw, true, processingNotes);
+  } else {
+    processing = pillar(def("processing"), UNKNOWN_PILLAR_SCORE, false);
+  }
+
+  // Pillar 5 — protein & fibre (foods only; highest signal with data)
+  let proteinFibre: PillarResult;
+  let bestPositive: string | null = null;
+  if (drink) {
+    proteinFibre = pillar(def("proteinFibre"), UNKNOWN_PILLAR_SCORE, true, [], false);
+  } else {
+    const signals: Array<[number, string]> = [];
+    if (isNum(input.proteins100g)) signals.push([interpolate(input.proteins100g, PROTEIN_ANCHORS), REASON_KEYS.protein]);
+    if (isNum(input.fiber100g)) signals.push([interpolate(input.fiber100g, FIBRE_ANCHORS), REASON_KEYS.fibre]);
+    if (isNum(input.fruitVegNuts100g)) {
+      signals.push([interpolate(input.fruitVegNuts100g, WHOLE_INGREDIENT_ANCHORS), REASON_KEYS.wholeIngredients]);
+    }
+    if (signals.length > 0) {
+      // Highest signal wins; ties keep the order above (stable sort).
+      const [best, key] = [...signals].sort((a, b) => b[0] - a[0])[0];
+      // The signal is named only when it actually earns a good score.
+      const strong = best >= POSITIVE_PILLAR_MIN - 0.5;
+      proteinFibre = pillar(def("proteinFibre"), best, true, strong ? [key] : []);
+      bestPositive = key;
+    } else {
+      proteinFibre = pillar(def("proteinFibre"), UNKNOWN_PILLAR_SCORE, false);
     }
   }
 
-  // Positives
-  if (isNum(input.fiber100g)) add(bonusAtLeast(input.fiber100g, FIBRE_STEPS), REASON_KEYS.fibre);
-  if (isNum(input.proteins100g)) add(bonusAtLeast(input.proteins100g, PROTEIN_STEPS), REASON_KEYS.protein);
-  if (isNum(input.fruitVegNuts100g)) {
-    add(bonusAtLeast(input.fruitVegNuts100g, WHOLE_INGREDIENT_STEPS), REASON_KEYS.wholeIngredients);
+  const pillars = [sugar, salt, satFat, processing, proteinFibre];
+  const used = pillars.filter((p) => p.applicable);
+  const provisional = confidence === "limited" || used.some((p) => !p.known);
+
+  // Combine
+  const totalWeight = used.reduce((s, p) => s + p.weight, 0);
+  const average = oneDecimal(used.reduce((s, p) => s + p.raw * p.weight, 0) / totalWeight);
+  const overall = clamp(roundHalfUp(average));
+
+  // Caps, in order: weakest link, sweeteners, provisional
+  const caps: Array<{ id: CapId; limit: number }> = [];
+  const limitScores = pillars.filter((p) => LIMIT_PILLARS.includes(p.id) && p.known).map((p) => p.score);
+  if (limitScores.length > 0) {
+    const weakest = Math.min(...limitScores);
+    if (weakest <= WEAKEST_LINK_THRESHOLD) caps.push({ id: "weakest_link", limit: weakest + WEAKEST_LINK_MARGIN });
   }
+  if (sweetened) caps.push({ id: "sweeteners", limit: SWEETENER_CAP });
+  if (provisional) caps.push({ id: "provisional", limit: PROVISIONAL_CAP });
+  const score = clamp(Math.min(overall, ...caps.map((c) => c.limit)));
+  const capResults: CapResult[] = caps.map((c) => ({
+    ...c,
+    applied: c.limit < overall && c.limit === score,
+  }));
 
-  const raw = BASE_SCORE + factors.reduce((sum, f) => sum + f.impact, 0);
-  const score = Math.round(Math.min(MAX_SCORE, Math.max(MIN_SCORE, raw)));
+  // Reasons: worst pillars first, then the best positive.
+  const flags: Array<{ severity: number; key: string }> = [];
+  const flag = (p: PillarResult, high: string, some: string, extra = 0) => {
+    if (!p.known) return;
+    if (p.score <= WEAKEST_LINK_THRESHOLD) flags.push({ severity: p.score + extra, key: high });
+    else if (p.score < GOOD_BAND_MIN) flags.push({ severity: p.score + extra, key: some });
+  };
+  flag(sugar, REASON_KEYS.highSugar, REASON_KEYS.someSugar);
+  if (sugarFirst) flags.push({ severity: sugar.score + 0.1, key: REASON_KEYS.sugarFirst });
+  flag(salt, REASON_KEYS.highSalt, REASON_KEYS.someSalt);
+  flag(satFat, REASON_KEYS.highSatFat, REASON_KEYS.someSatFat);
+  flag(processing, REASON_KEYS.ultraProcessed, REASON_KEYS.processed);
+  if (sweetened) flags.push({ severity: processing.score + 0.2, key: REASON_KEYS.sweeteners });
+  if (additiveCount >= MANY_ADDITIVES_COUNT) flags.push({ severity: processing.score + 0.3, key: REASON_KEYS.additives });
 
-  // Largest absolute impact first; ties keep rule order (stable sort).
-  const reasons = [...factors]
-    .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
-    .slice(0, MAX_REASONS)
-    .map((f) => f.reason);
-
-  // A product with nothing to flag still gets one honest reason.
-  if (
-    reasons.length === 0 &&
-    hasSugars &&
-    isNum(input.salt100g) &&
-    isNum(input.saturatedFat100g)
-  ) {
-    reasons.push(REASON_KEYS.lowSugarSaltFat);
+  const reasons = flags.sort((a, b) => a.severity - b.severity).map((f) => f.key);
+  const nothingFlagged = reasons.length === 0;
+  if (proteinFibre.applicable && proteinFibre.known && proteinFibre.score >= POSITIVE_PILLAR_MIN && bestPositive) {
+    reasons.push(bestPositive);
   }
+  if (nothingFlagged && sugar.known && salt.known && satFat.known) reasons.push(REASON_KEYS.lowSugarSaltFat);
 
-  return { score, band: bandForScore(score), reasons, confidence };
+  return {
+    score,
+    band: bandForScore(score),
+    reasons: [...new Set(reasons)].slice(0, MAX_REASONS),
+    confidence,
+    provisional,
+    average,
+    pillars,
+    caps: capResults,
+  };
 }

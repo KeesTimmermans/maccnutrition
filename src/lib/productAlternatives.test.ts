@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { pickAlternatives, type AlternativeCandidate } from "./productAlternatives";
 import { REASON_KEYS } from "./foodScore";
 
-/** A clean, unprocessed product that scores 8 with nothing to flag. */
+/** A clean, unprocessed product that scores 9 with nothing to flag. */
 const product = (code: string, name: string, over: Partial<AlternativeCandidate> = {}): AlternativeCandidate => ({
   found: true,
   code,
@@ -29,20 +29,21 @@ const scanned = { barcode: "3017620422003", score: 4, categoriesTags: ["en:foods
 
 describe("pickAlternatives", () => {
   it("keeps only products at least 2 points better and scoring 6+", () => {
-    const five = product("1001", "Five", { nutriments: { sugars_100g: 12 } as never, nova_group: 3 }); // 8-2-1 = 5
-    const six = product("1002", "Six", { nutriments: { sugars_100g: 6 } as never, nova_group: 3 }); // 8-1-1 = 6
-    const eight = product("1003", "Eight");
-    const r = pickAlternatives(scanned, [five, six, eight]);
+    // Salt in the "high" range caps at 5 (weakest link); sweeteners cap at 6.
+    const five = product("1001", "Five", { nutriments: { salt_100g: 1.3 } as never });
+    const six = product("1002", "Six", { additives_tags: ["en:e951"] });
+    const nine = product("1003", "Nine");
+    const r = pickAlternatives(scanned, [five, six, nine]);
     expect(r.alternatives.map((a) => a.product.code)).toEqual(["1003", "1002"]);
-    expect(r.alternatives.every((a) => a.score >= 6)).toBe(true);
+    expect(r.alternatives.map((a) => a.score)).toEqual([9, 6]);
 
-    const fromFive = pickAlternatives({ ...scanned, score: 5 }, [six, eight]);
+    const fromFive = pickAlternatives({ ...scanned, score: 5 }, [six, nine]);
     expect(fromFive.alternatives.map((a) => a.product.code)).toEqual(["1003"]); // 6 is only +1
   });
 
   it("ranks store-tagged items first, then by score", () => {
     const best = product("2001", "Best", { nutriments: { fiber_100g: 7 } as never }); // 10
-    const store = product("2002", "Store", { inStore: true }); // 8
+    const store = product("2002", "Store", { inStore: true }); // 9
     const r = pickAlternatives(scanned, [best, store], "tesco");
     expect(r.alternatives.map((a) => a.product.code)).toEqual(["2002", "2001"]);
     expect(r.anyInStore).toBe(true);
@@ -88,7 +89,7 @@ describe("pickAlternatives", () => {
   });
 
   it("returns an empty list when nothing qualifies", () => {
-    const r = pickAlternatives({ ...scanned, score: 9 }, [product("5001", "Eight")]);
+    const r = pickAlternatives({ ...scanned, score: 9 }, [product("5001", "Nine")]);
     expect(r).toEqual({ alternatives: [], anyInStore: false, usedStore: null });
   });
 
@@ -98,14 +99,13 @@ describe("pickAlternatives", () => {
   });
 
   it("uses scoreProduct's beverage thresholds", () => {
-    // 6g sugar: food loses 1 point (7), a drink loses 2 (6, still ≥ 4+2).
-    const drink = product("7001", "Drink", { categories_tags: ["en:beverages"], nutriments: { sugars_100g: 6 } as never });
-    const food = product("7002", "Food", { nutriments: { sugars_100g: 6 } as never });
+    // 9g added sugar: high for a drink (weakest-link cap 5), moderate for a food (8).
+    const sugary = { ingredients_text: "water, salt, lemon, sugar", nutriments: { sugars_100g: 9 } as never };
+    const drink = product("7001", "Drink", { ...sugary, categories_tags: ["en:beverages"] });
+    const food = product("7002", "Food", sugary);
     const r = pickAlternatives(scanned, [drink, food]);
-    expect(r.alternatives.find((a) => a.product.code === "7001")?.score).toBe(6);
-    expect(r.alternatives.find((a) => a.product.code === "7002")?.score).toBe(7);
-    const r5 = pickAlternatives({ ...scanned, score: 5 }, [drink, food]);
-    expect(r5.alternatives.map((a) => a.product.code)).toEqual(["7002"]);
+    expect(r.alternatives.map((a) => a.product.code)).toEqual(["7002"]);
+    expect(r.alternatives[0].score).toBe(8);
   });
 
   it("gives the largest positive reason, or low sugar/salt/fat", () => {

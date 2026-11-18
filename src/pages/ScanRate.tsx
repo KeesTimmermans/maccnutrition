@@ -25,6 +25,7 @@ import type { Alternative } from "@/lib/productAlternatives";
 import { StorePicker, usePreferredStore } from "@/components/scanRate/StorePicker";
 import { BetterOptions } from "@/components/scanRate/BetterOptions";
 import { BAND_STYLES } from "@/components/scanRate/bandStyles";
+import { ScoreBreakdown } from "@/components/scanRate/ScoreBreakdown";
 
 interface ScanOutcome {
   product: ProductLookup;
@@ -87,6 +88,7 @@ const ScanRate = () => {
       trackProductScored({
         found: product.found,
         confidence: result?.confidence ?? null,
+        provisional: result ? result.provisional : null,
         score: result?.score ?? null,
         barcodePrefix: barcode,
       });
@@ -364,6 +366,11 @@ function ResultCard({
               <span className="text-2xl font-semibold opacity-70">/10</span>
             </p>
             <p className={cn("mt-1 font-semibold", band.text)}>{t(band.key)}</p>
+            {result.provisional && (
+              <span className="mt-2 inline-block rounded-full bg-background/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                {t("score_provisional_tag")}
+              </span>
+            )}
           </div>
 
           {result.reasons.length > 0 && (
@@ -378,6 +385,8 @@ function ResultCard({
               ))}
             </div>
           )}
+
+          <ScoreBreakdown result={result} />
 
           {result.confidence === "limited" && (
             <p className="text-xs text-muted-foreground">{t("scan_rate_limited")}</p>
