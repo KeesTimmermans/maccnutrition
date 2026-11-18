@@ -32,20 +32,45 @@ export const CHECKLIST_CATEGORIES: ChecklistCategory[] = ["nutrition", "sleep", 
 
 // ── Categories and the no-exercise rule ─────────────────────────────
 
-/** Exercise words that are always rejected, even when the title also mentions food or a meal. */
-export const HARD_EXERCISE_PATTERN =
-  /\b(walk(?:s|ing)?|stroll(?:s|ing)?|stretch(?:es|ing)?|yoga|pilates|gym|cardio|hiit|steps|reps|sets|workouts?|work out|exercis(?:e|es|ing)|squats?|deadlifts?|bench|jog(?:s|ging)?)\b/i;
-/** Training words that are fine only when the title is about eating or drinking around them. */
-export const SOFT_EXERCISE_PATTERN = /\b(train(?:s|ing)?|run(?:s|ning)?|lift(?:s|ing)?)\b/i;
-/** Eating/drinking actions that excuse a soft word. Meal-time nouns (breakfast, lunch, dinner) deliberately don't count. */
-export const EATING_ACTION_PATTERN =
-  /\b(eat(?:s|ing)?|drink(?:s|ing)?|snacks?|bananas?|oats|protein|carbs?|water|fuel(?:s|ling|ing)?|hydrat(?:e|ed|ing|ion))\b/i;
+/** Exercise actions: always rejected, whatever else the title or why says. */
+export const EXERCISE_ACTION_PATTERN =
+  /\b(walk(?:s|ing)?|stroll(?:s|ing)?|stretch(?:es|ing)?|yoga|pilates|cardio|hiit|reps|sets|squats?|deadlifts?|bench|jog(?:s|ging)?|steps)\b/i;
+/** An instruction to train ("Hit the gym", "Finish your workout", "Go for a run"): always rejected. */
+export const TRAIN_INSTRUCTION_PATTERN =
+  /\b(do|complete|perform|finish|hit|crush|go for|go to|add|start)\b[^.]{0,25}\b(workout|exercise|run|gym|session|lift(?:ing)?|training)\b/i;
+/** Training-timing words: allowed only next to an eating/drinking word ("a banana an hour before your run"). */
+export const TRAINING_TIMING_PATTERN =
+  /\b(pre-workout|post-workout|workouts?|work out|training|trains?|sessions?|gym|runs?|running|lifts?|lifting|exercis(?:e|es|ing))\b/i;
+/** Eating/drinking words that make a training-timing word OK. Meal-time nouns (breakfast, lunch, dinner) deliberately don't count. */
+export const EATING_DRINKING_PATTERN =
+  /\b(eat(?:s|ing)?|drink(?:s|ing)?|sip(?:s|ping)?|snacks?|fuel(?:s|ling|ing)?|refuel(?:s|ling|ing)?|hydrat(?:e|ed|ing|ion)|fruits?|bananas?|oats|oatmeal|porridge|toast|rice|bagels?|yog(?:h)?urts?|shakes?|smoothies?|protein|carbs?|carbohydrates?|water|electrolytes?|sports drinks?|meals?)\b/i;
 
-/** True when the item asks for exercise: a hard word in the title or why, or a soft word in a title that isn't about eating/drinking. */
-export const isExerciseItem = (title: string, why = ""): boolean =>
-  HARD_EXERCISE_PATTERN.test(title) ||
-  HARD_EXERCISE_PATTERN.test(why) ||
-  (SOFT_EXERCISE_PATTERN.test(title) && !EATING_ACTION_PATTERN.test(title));
+const asksToExercise = (text: string): boolean => EXERCISE_ACTION_PATTERN.test(text) || TRAIN_INSTRUCTION_PATTERN.test(text);
+
+/**
+ * True when the item asks the user to exercise: an exercise action or an instruction to train (title or why),
+ * or a training-timing word with no eating/drinking word. Nutrition and hydration around training pass.
+ */
+export const isExerciseItem = (title: string, why = ""): boolean => {
+  if (asksToExercise(title) || asksToExercise(why)) return true;
+  const titleEats = EATING_DRINKING_PATTERN.test(title);
+  if (TRAINING_TIMING_PATTERN.test(title) && !titleEats) return true;
+  if (TRAINING_TIMING_PATTERN.test(why) && !titleEats && !EATING_DRINKING_PATTERN.test(why)) return true;
+  return false;
+};
+
+// ── Nutrition and hydration around training ─────────────────────────
+
+/** Title prefix for the one conditional training-nutrition item (we don't know which days the user trains). */
+export const TRAINING_NUTRITION_PREFIX = "If you train today:";
+
+export const isTrainingNutritionTitle = (title: string): boolean => /^\s*if you train today:/i.test(title);
+
+/** True when the profile has training days set and not zero. */
+export const hasTrainingDays = (trainingDays: unknown): boolean => {
+  const n = typeof trainingDays === "number" ? trainingDays : Number(trainingDays);
+  return Number.isFinite(n) && n > 0;
+};
 
 export const isChecklistCategory = (value: unknown): value is ChecklistCategory =>
   typeof value === "string" && (CHECKLIST_CATEGORIES as string[]).includes(value);
@@ -150,6 +175,8 @@ export interface FallbackEntry {
   category: ChecklistCategory;
   rule?: ChecklistRule;
   contains?: Contains[];
+  /** Training-nutrition entry: only used through trainingNutritionFallback, for users with training days. */
+  trainingOnly?: boolean;
 }
 
 const SHARED_SLEEP: FallbackEntry[] = [
@@ -185,6 +212,10 @@ export const FALLBACK_LIBRARY: Record<ChecklistMode, FallbackEntry[]> = {
     { key: "h-swap-drink", title: "Swap one sugary drink for water today", why: "One swap a day adds up over the week.", when: "anytime", kind: "manual", category: "hydration" },
     ...SHARED_SLEEP.map((e) => ({ ...e, key: `h-${e.key}` })),
     ...SHARED_STRESS.map((e) => ({ ...e, key: `h-${e.key}` })),
+    // training nutrition (only for users with training days)
+    { key: "h-train-fruit", title: "If you train today: eat a piece of fruit 60–90 minutes before", why: "Easy energy without a heavy stomach.", when: "anytime", kind: "manual", category: "nutrition", trainingOnly: true },
+    { key: "h-train-water", title: "If you train today: drink water steadily before, during and after", why: "Small sips keep you hydrated without feeling full.", when: "anytime", kind: "manual", category: "hydration", trainingOnly: true },
+    { key: "h-train-protein", title: "If you train today: have a palm of protein within two hours after", why: "Protein after training helps your muscles recover.", when: "anytime", kind: "manual", category: "nutrition", trainingOnly: true },
     { key: "h-slow-meal", title: "Eat one meal slowly without your phone", why: "Slower meals make it easier to stop when satisfied.", when: "dinner", kind: "manual", category: "stress" },
   ],
   calories: [
@@ -203,6 +234,10 @@ export const FALLBACK_LIBRARY: Record<ChecklistMode, FallbackEntry[]> = {
     { key: "c-bottle-3pm", title: "Finish a full bottle of water by 3pm", why: "Front-loading water avoids a late-day catch-up.", when: "afternoon", kind: "manual", category: "hydration" },
     { key: "c-water-wake", title: "Drink a glass of water when you wake up", why: "You wake up a little dehydrated after the night.", when: "morning", kind: "manual", category: "hydration" },
     { key: "c-swap-drink", title: "Swap one sugary drink for water today", why: "Saves easy calories without feeling hungrier.", when: "anytime", kind: "manual", category: "hydration" },
+    // training nutrition (only for users with training days)
+    { key: "c-train-fruit", title: "If you train today: eat a piece of fruit 60–90 minutes before", why: "Quick carbs give you energy without a heavy stomach.", when: "anytime", kind: "manual", category: "nutrition", trainingOnly: true },
+    { key: "c-train-water", title: "If you train today: drink water steadily before, during and after", why: "Small sips keep you hydrated without feeling full.", when: "anytime", kind: "manual", category: "hydration", trainingOnly: true },
+    { key: "c-train-meal", title: "If you train today: eat a protein-rich meal within two hours after", why: "Protein and a proper meal help you recover.", when: "anytime", kind: "manual", category: "nutrition", trainingOnly: true },
     ...SHARED_SLEEP.map((e) => ({ ...e, key: `c-${e.key}` })),
     ...SHARED_STRESS.map((e) => ({ ...e, key: `c-${e.key}` })),
   ],
@@ -280,6 +315,7 @@ export const pickFallbacks = (
   const taken = new Set(existingTitles.map(normalize));
   const pool = FALLBACK_LIBRARY[mode].filter(
     (e) =>
+      !e.trainingOnly &&
       !(e.contains || []).some((c) => excluded.has(c)) &&
       !dislikes.some((d) => e.title.toLowerCase().includes(d)) &&
       !taken.has(normalize(e.title)),
@@ -334,6 +370,63 @@ export const applyCategoryMix = <T extends { category: ChecklistCategory }>(
     kept.splice(dropAt, 1);
   }
   return kept;
+};
+
+/** The first training-nutrition fallback not already on the list, keeping the habits-mode nutrition cap. */
+export const trainingNutritionFallback = (
+  mode: ChecklistMode,
+  existingTitles: string[] = [],
+  chosen: Pick<ChecklistItem, "category">[] = [],
+): ChecklistItem | null => {
+  const taken = new Set(existingTitles.map(normalize));
+  const nutritionFull = chosen.filter((c) => c.category === "nutrition").length >= MAX_NUTRITION_ITEMS[mode];
+  const entry = FALLBACK_LIBRARY[mode].find(
+    (e) => e.trainingOnly && !taken.has(normalize(e.title)) && !(nutritionFull && e.category === "nutrition"),
+  );
+  return entry ? toFallbackItem(entry) : null;
+};
+
+/**
+ * Exactly one "If you train today:" item for users with training days, none otherwise.
+ * Keeps the first AI training item (nutrition or hydration) or adds a fallback one, making room by dropping the
+ * last non-calm item (a nutrition one when the habits-mode cap would be exceeded). Never exceeds `needed`.
+ */
+export const applyTrainingNutritionRule = (
+  items: ChecklistItem[],
+  opts: {
+    mode: ChecklistMode;
+    needed: number;
+    hasTraining: boolean;
+    existingTitles?: string[];
+    isTraining?: (item: ChecklistItem) => boolean;
+  },
+): ChecklistItem[] => {
+  const isTraining = (i: ChecklistItem) => isTrainingNutritionTitle(i.title) || !!opts.isTraining?.(i);
+  const rest = items.filter((i) => !isTraining(i));
+  if (!opts.hasTraining || opts.needed <= 0) return rest.slice(0, Math.max(0, opts.needed));
+  const fromAi = items.find((i) => isTraining(i) && (i.category === "nutrition" || i.category === "hydration"));
+  const training =
+    fromAi ?? trainingNutritionFallback(opts.mode, [...(opts.existingTitles || []), ...rest.map((i) => i.title)], rest);
+  if (!training) return rest.slice(0, opts.needed);
+
+  const dropLast = (pred: (i: ChecklistItem) => boolean) => {
+    for (let k = rest.length - 1; k >= 0; k -= 1) {
+      if (pred(rest[k])) {
+        rest.splice(k, 1);
+        return true;
+      }
+    }
+    return false;
+  };
+  if (training.category === "nutrition") {
+    while (rest.filter((i) => i.category === "nutrition").length >= MAX_NUTRITION_ITEMS[opts.mode]) {
+      if (!dropLast((i) => i.category === "nutrition")) break;
+    }
+  }
+  while (rest.length >= opts.needed) {
+    if (!dropLast((i) => !isCalm(i.category))) dropLast(() => true);
+  }
+  return [...rest, training];
 };
 
 /** The user's weakest area from today's check-in (1–5 scales; higher stress is worse). */

@@ -3,7 +3,11 @@ import {
   validateChecklistItem,
   FALLBACK_LIBRARY,
   CHECKLIST_CATEGORIES,
-  HARD_EXERCISE_PATTERN,
+  EXERCISE_ACTION_PATTERN,
+  applyTrainingNutritionRule,
+  trainingNutritionFallback,
+  hasTrainingDays,
+  isTrainingNutritionTitle,
   pickFallbacks,
   applyCategoryMix,
   deterministicItems,
@@ -99,22 +103,101 @@ describe("validateChecklistItem", () => {
   });
 
   it.each([
-    "Take a walk and stretch after dinner",
     "Do three sets of squats",
+    "Take a walk and stretch after dinner",
     "Go for a run after lunch",
-  ])("rejects exercise even next to a meal: %s", (title) => {
+    "Finish your workout before breakfast",
+    "Hit the gym after lunch",
+  ])("rejects asking the user to exercise: %s", (title) => {
     expect(isExerciseItem(title)).toBe(true);
+    expect(validateChecklistItem(item({ title, category: "nutrition" }), "habits").valid).toBe(false);
   });
 
   it.each([
-    "Have a banana and water an hour before you train",
+    "Eat a piece of fruit 60–90 minutes pre-workout",
+    "Sip water steadily before and during training",
+    "Have a palm of protein within two hours after your workout",
+    "Eat a banana an hour before your run",
     "Eat a palm of protein at lunch",
-  ])("accepts eating or drinking around training: %s", (title) => {
+  ])("accepts nutrition and hydration around training: %s", (title) => {
     expect(isExerciseItem(title)).toBe(false);
+    expect(validateChecklistItem(item({ title, category: "nutrition", when: "anytime" }), "habits")).toEqual({ valid: true });
   });
 
-  it("still checks the why line for hard exercise words", () => {
-    expect(isExerciseItem("Eat a palm of protein at lunch", "It helps your workout later.")).toBe(true);
+  it("rejects a training word without any eating or drinking word, and exercise actions in the why line", () => {
+    expect(isExerciseItem("Get to bed early before your training day")).toBe(true);
+    expect(isExerciseItem("Go to bed at the same time", "Helps your next session.")).toBe(true);
+    expect(isExerciseItem("Eat a palm of protein at lunch", "Then take a short walk.")).toBe(true);
+    expect(isExerciseItem("Eat a palm of protein at lunch", "Helps you recover from training.")).toBe(false);
+  });
+
+  it("treats time ranges as fine in habits mode but still rejects nutrient grams", () => {
+    expect(
+      validateChecklistItem(item({ title: "If you train today: eat a piece of fruit 60–90 minutes before", category: "nutrition", when: "anytime" }), "habits"),
+    ).toEqual({ valid: true });
+    expect(
+      validateChecklistItem(item({ title: "If you train today: eat 30g protein within two hours after", category: "nutrition", when: "anytime" }), "habits").valid,
+    ).toBe(false);
+  });
+});
+
+describe("training nutrition", () => {
+  it.each(["habits", "calories"] as const)("has 3 training-nutrition fallbacks in %s mode that validate and are never picked as general fallbacks", (mode) => {
+    const training = FALLBACK_LIBRARY[mode].filter((e) => e.trainingOnly);
+    expect(training).toHaveLength(3);
+    for (const e of training) {
+      expect(isTrainingNutritionTitle(e.title)).toBe(true);
+      expect(["nutrition", "hydration"]).toContain(e.category);
+      expect(validateChecklistItem(e, "habits"), e.title).toEqual({ valid: true });
+      expect(validateChecklistItem(e, "calories"), e.title).toEqual({ valid: true });
+    }
+    for (let n = 1; n <= 6; n += 1) {
+      expect(pickFallbacks(mode, n, {}).some((p) => isTrainingNutritionTitle(p.title))).toBe(false);
+    }
+  });
+
+  it("knows when a profile has training days", () => {
+    expect(hasTrainingDays(3)).toBe(true);
+    expect(hasTrainingDays("2")).toBe(true);
+    expect(hasTrainingDays(0)).toBe(false);
+    expect(hasTrainingDays(null)).toBe(false);
+    expect(hasTrainingDays(undefined)).toBe(false);
+  });
+
+  const ai = (id: string, title: string, category: "nutrition" | "sleep" | "stress" | "hydration") => ({
+    id, title, when: "anytime" as const, kind: "manual" as const, source: "ai" as const, category,
+  });
+
+  it("adds exactly one training item for users with training days, making room without dropping the calm item", () => {
+    const items = [
+      ai("ai-1", "Add a handful of vegetables to lunch", "nutrition"),
+      ai("ai-2", "Screens off 30 minutes before bed", "sleep"),
+    ];
+    const out = applyTrainingNutritionRule(items, { mode: "calories", needed: 2, hasTraining: true });
+    expect(out).toHaveLength(2);
+    expect(out.filter((i) => isTrainingNutritionTitle(i.title))).toHaveLength(1);
+    expect(out.some((i) => i.category === "sleep")).toBe(true);
+  });
+
+  it("keeps the AI's training item, drops extra ones, and removes them all without training days", () => {
+    const items = [
+      ai("ai-1", "Si vous vous entraînez : mangez un fruit avant", "nutrition"),
+      ai("ai-2", "If you train today: drink water before and after", "hydration"),
+      ai("ai-3", "Screens off 30 minutes before bed", "sleep"),
+    ];
+    const flagged = (i: { id: string }) => i.id === "ai-1";
+    const withTraining = applyTrainingNutritionRule(items, { mode: "habits", needed: 4, hasTraining: true, isTraining: flagged });
+    expect(withTraining.map((i) => i.id).sort()).toEqual(["ai-1", "ai-3"]);
+    const without = applyTrainingNutritionRule(items, { mode: "habits", needed: 4, hasTraining: false, isTraining: flagged });
+    expect(without.map((i) => i.id)).toEqual(["ai-3"]);
+  });
+
+  it("uses a hydration fallback when habits-mode nutrition is already full", () => {
+    const chosen = [{ category: "nutrition" as const }, { category: "nutrition" as const }, { category: "nutrition" as const }];
+    expect(trainingNutritionFallback("habits", [], chosen)?.category).toBe("hydration");
+    const out = applyTrainingNutritionRule([], { mode: "habits", needed: 4, hasTraining: true });
+    expect(out).toHaveLength(1);
+    expect(out[0].source).toBe("fallback");
   });
 });
 
@@ -127,7 +210,7 @@ describe("fallback library", () => {
       const res = validateChecklistItem(entry, mode);
       expect(res, `${entry.title}: ${res.reason}`).toEqual({ valid: true });
       expect(isExerciseItem(entry.title, entry.why), entry.title).toBe(false);
-      expect(HARD_EXERCISE_PATTERN.test(entry.title) || HARD_EXERCISE_PATTERN.test(entry.why), entry.title).toBe(false);
+      expect(EXERCISE_ACTION_PATTERN.test(entry.title) || EXERCISE_ACTION_PATTERN.test(entry.why), entry.title).toBe(false);
       expect(/\bwalk/i.test(entry.title), entry.title).toBe(false);
     }
   });

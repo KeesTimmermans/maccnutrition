@@ -10,6 +10,10 @@ import {
   CHECKLIST_WHENS,
   deterministicItems,
   isExerciseItem,
+  applyTrainingNutritionRule,
+  hasTrainingDays,
+  isTrainingNutritionTitle,
+  TRAINING_NUTRITION_PREFIX,
   isStaleChecklist,
   weakestArea,
   pickFallbacks,
@@ -64,6 +68,7 @@ const CHECKLIST_TOOL = {
               when: { type: 'string', enum: CHECKLIST_WHENS },
               kind: { type: 'string', enum: ['manual', 'auto'] },
               category: { type: 'string', enum: CHECKLIST_CATEGORIES, description: 'nutrition, sleep, stress or hydration.' },
+              trainingNutrition: { type: 'boolean', description: "true only for the one 'If you train today:' nutrition/hydration item." },
               rule: {
                 type: 'object',
                 description: "Only when kind is 'auto'.",
@@ -162,6 +167,7 @@ serve(async (req) => {
       : [];
     const checkin = checkinRes.data;
     const weakest = weakestArea(checkin);
+    const trains = hasTrainingDays(baseline?.training_days);
 
     const profile = {
       dietType: baseline?.diet_type ?? null,
@@ -170,6 +176,7 @@ serve(async (req) => {
     };
 
     let aiItems: ChecklistItem[] = [];
+    const trainingAiIds = new Set<string>();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (needed > 0 && LOVABLE_API_KEY) {
       const lang = LANGUAGE_NAMES[language || baseline?.preferred_language || 'en'] || 'English';
@@ -187,15 +194,19 @@ serve(async (req) => {
           : weakest === 'hydration'
             ? '- Today\'s check-in shows low energy: include a hydration or nutrition item.'
             : '';
+      const trainingRule = trains
+        ? `- This person trains on some days, but we don't know which. Include exactly ONE nutrition or hydration item about eating or drinking around training, with "trainingNutrition": true. Its title starts with "${TRAINING_NUTRITION_PREFIX}" (translated into ${lang}).${mode === 'habits' ? ' Use hand portions and time ranges, no grams.' : ''} No other item mentions training.`
+        : '- This person has no training days: no item mentions training or workouts.';
       const systemPrompt = `You are Coach Mac. Write today's checklist: exactly ${needed} items the user can do and tick off TODAY.
 Rules:
-- Every item must be a nutrition, sleep, stress or hydration habit. Never include workouts, exercise, training, lifting, running, steps, cardio, stretching, walking for fitness, or anything that asks the user to train. Eating or drinking AROUND training is nutrition and allowed (e.g. 'Have a banana and a glass of water an hour before you train'), but never tell them to train. Stress items are small calming actions (e.g. 'Take five slow breaths before your first meal', 'Write tomorrow's top three tasks before bed', 'Eat lunch away from your screen'). Sleep items are routines (e.g. 'Screens off 30 minutes before bed', 'Same bedtime as yesterday ±30 minutes', 'No caffeine after 2pm').
+- Every item must be a nutrition, sleep, stress or hydration habit. Never ask the user to train or exercise and never give workout instructions. Nutrition and hydration AROUND training are encouraged: pre-workout fuel (e.g. 'a piece of fruit 60–90 minutes before you train'), water before/during/after training, post-workout protein and a proper meal within a couple of hours. Stress items are small calming actions (e.g. 'Take five slow breaths before your first meal', 'Write tomorrow's top three tasks before bed', 'Eat lunch away from your screen'). Sleep items are routines (e.g. 'Screens off 30 minutes before bed', 'Same bedtime as yesterday ±30 minutes', 'No caffeine after 2pm').
 - Give every item its "category": nutrition, sleep, stress or hydration.
-- Don't use the words "sets", "steps", "reps", "run" or "gym" at all, not even figuratively ("sets you up").
+- Don't use the words "sets", "steps", "reps", "walk" or "stretch" at all, not even figuratively ("sets you up").
+${trainingRule}
 ${mixRule}${weakestRule ? `\n${weakestRule}` : ''}
 - Every item is ONE specific action that names the concrete food, portion, time or count. Good: "Breakfast: a palm of protein (eggs or Greek yoghurt) plus one fruit", "Prep tomorrow's lunch tonight", "A glass of water before lunch", "Screens off 30 minutes before bed".
 - Never use vague wording: no "focus on", "maximise", "optimise", "prioritise", "improve", "try to", "aim to", "consider", "be mindful", "work on", "ensure", "enhance".
-- Turn each monthly focus point into a concrete action for today; never copy a vague focus point verbatim. Skip any focus point about training or workouts.
+- Turn each monthly focus point into a concrete action for today; never copy a vague focus point verbatim. A focus point about training or workouts never becomes an item, except as the one nutrition-around-training item.
 - Do not repeat the water goal or the weekly habit; they are already on the list.
 - Titles are imperative, at least 4 words, max 80 characters. "why" is one short line, max 90 characters.
 - Respect the diet type, allergies and dislikes. Mix times of day ("when"). Not medical advice.
@@ -263,7 +274,7 @@ ${mixRule}${weakestRule ? `\n${weakestRule}` : ''}
         }
         const seen = new Set(baseItems.map((i) => i.title.toLowerCase()));
         let proteinRules = 0;
-        aiItems = valid
+        const kept = valid
           .filter((r) => {
             // At most one protein-by-hour item, only with a protein target and never above it.
             const rule = r.rule as { type?: string; grams?: number } | undefined;
@@ -276,8 +287,11 @@ ${mixRule}${weakestRule ? `\n${weakestRule}` : ''}
             seen.add(key);
             return true;
           })
-          .slice(0, needed)
-          .map((r, i) => toAiItem(r, i));
+          .slice(0, needed);
+        aiItems = kept.map((r, i) => toAiItem(r, i));
+        kept.forEach((r, i) => {
+          if (r.trainingNutrition === true || isTrainingNutritionTitle(String(r.title))) trainingAiIds.add(`ai-${i + 1}`);
+        });
         aiItems = applyCategoryMix(aiItems, mode, needed);
       } catch (aiError) {
         console.error('[checklist] AI generation failed, using fallbacks:', aiError);
@@ -286,6 +300,15 @@ ${mixRule}${weakestRule ? `\n${weakestRule}` : ''}
     } else if (needed > 0) {
       console.error('LOVABLE_API_KEY is not configured — using fallback items');
     }
+
+    // Exactly one "If you train today:" item for users with training days, none for everyone else.
+    aiItems = applyTrainingNutritionRule(aiItems, {
+      mode,
+      needed,
+      hasTraining: trains,
+      existingTitles: baseItems.map((i) => i.title),
+      isTraining: (i) => trainingAiIds.has(i.id),
+    });
 
     const items: ChecklistItem[] = [
       ...baseItems,
