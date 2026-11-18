@@ -852,6 +852,7 @@ export type Database = {
           potassium_mg: number | null
           preferred_currency: string | null
           preferred_language: string | null
+          preferred_store: string | null
           primary_goal: string | null
           privacy_policy_accepted: boolean
           privacy_policy_accepted_at: string | null
@@ -962,6 +963,7 @@ export type Database = {
           potassium_mg?: number | null
           preferred_currency?: string | null
           preferred_language?: string | null
+          preferred_store?: string | null
           primary_goal?: string | null
           privacy_policy_accepted?: boolean
           privacy_policy_accepted_at?: string | null
@@ -1072,6 +1074,7 @@ export type Database = {
           potassium_mg?: number | null
           preferred_currency?: string | null
           preferred_language?: string | null
+          preferred_store?: string | null
           primary_goal?: string | null
           privacy_policy_accepted?: boolean
           privacy_policy_accepted_at?: string | null

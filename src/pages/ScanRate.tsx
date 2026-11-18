@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { scoreProduct, type ProductScoreResult, type ScoreBand } from "@/lib/foodScore";
+import { scoreProduct, type ProductScoreResult } from "@/lib/foodScore";
 import {
   isValidBarcode,
   lookupProductForScore,
@@ -21,17 +21,18 @@ import {
   type ProductLookup,
 } from "@/lib/productScoreService";
 import { trackProductScored } from "@/lib/analytics";
+import type { Alternative } from "@/lib/productAlternatives";
+import { StorePicker, usePreferredStore } from "@/components/scanRate/StorePicker";
+import { BetterOptions } from "@/components/scanRate/BetterOptions";
+import { BAND_STYLES } from "@/components/scanRate/bandStyles";
 
 interface ScanOutcome {
   product: ProductLookup;
   result: ProductScoreResult | null;
 }
 
-const BAND_STYLES: Record<ScoreBand, { text: string; bg: string; key: string }> = {
-  good: { text: "text-score-good", bg: "bg-score-good/10", key: "score_band_good" },
-  balance: { text: "text-score-balance", bg: "bg-score-balance/10", key: "score_band_balance" },
-  occasional: { text: "text-score-occasional", bg: "bg-score-occasional/10", key: "score_band_occasional" },
-};
+/** Products scoring below this get a "Better options" section. */
+const BETTER_OPTIONS_BELOW = 7;
 
 type CameraProblem = "denied" | "none" | "unavailable";
 
@@ -76,6 +77,8 @@ const ScanRate = () => {
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
   const [cameraProblem, setCameraProblem] = useState<CameraProblem | null>(null);
   const [checkingCamera, setCheckingCamera] = useState(false);
+  const [viewingAlt, setViewingAlt] = useState<Alternative | null>(null);
+  const { store, loading: storeLoading, setStore } = usePreferredStore();
 
   const lookup = useMutation<ScanOutcome, unknown, string>({
     mutationFn: async (barcode) => {
@@ -94,6 +97,7 @@ const ScanRate = () => {
   const runLookup = (raw: string) => {
     const barcode = raw.replace(/\s+/g, "");
     setLastBarcode(barcode);
+    setViewingAlt(null);
     lookup.mutate(barcode);
   };
 
@@ -115,6 +119,7 @@ const ScanRate = () => {
 
   const reset = () => {
     lookup.reset();
+    setViewingAlt(null);
     setManual("");
     setManualError(null);
     setLastBarcode(null);
@@ -155,6 +160,8 @@ const ScanRate = () => {
           <p className="text-sm text-muted-foreground mt-1">{t("scan_rate_intro")}</p>
         </header>
 
+        <StorePicker store={store} loading={storeLoading} onChange={setStore} />
+
         {lookup.isPending && <ResultSkeleton />}
 
         {lookup.isError && (
@@ -180,8 +187,45 @@ const ScanRate = () => {
           </StateCard>
         )}
 
-        {outcome && outcome.product.found && (
-          <ResultCard product={outcome.product} result={outcome.result} onScanAnother={scanAnother} />
+        {outcome && outcome.product.found && viewingAlt && (
+          <>
+            <button
+              type="button"
+              onClick={() => setViewingAlt(null)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline underline-offset-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {t("scan_rate_back_to").replace(
+                "{name}",
+                productDisplayName(outcome.product) ?? t("scan_rate_unnamed"),
+              )}
+            </button>
+            <ResultCard
+              product={viewingAlt.product}
+              result={scoreProduct(toScoreInput(viewingAlt.product))}
+              onScanAnother={scanAnother}
+            />
+          </>
+        )}
+
+        {outcome && outcome.product.found && !viewingAlt && (
+          <>
+            <ResultCard product={outcome.product} result={outcome.result} onScanAnother={scanAnother} />
+            {outcome.result?.score != null &&
+              outcome.result.score < BETTER_OPTIONS_BELOW &&
+              outcome.result.confidence === "full" && (
+                <BetterOptions
+                  barcode={outcome.product.code ?? lastBarcode ?? ""}
+                  score={outcome.result.score}
+                  categoriesTags={outcome.product.categories_tags}
+                  store={store}
+                  onSelect={(alt) => {
+                    setViewingAlt(alt);
+                    window.scrollTo({ top: 0 });
+                  }}
+                />
+              )}
+          </>
         )}
 
         {lookup.isIdle && (

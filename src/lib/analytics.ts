@@ -109,3 +109,19 @@ export const trackProductScored = (props: {
     score: props.score,
     barcode_prefix: props.barcodePrefix.slice(0, 3),
   });
+
+/** Scan & rate "Better options" shown. Counts and the store/category only. */
+export const trackAlternativesShown = (props: {
+  count: number;
+  inStoreCount: number;
+  hadStore: boolean;
+  store: string | null;
+  sourceCategory: string | null;
+}) =>
+  track("alternatives_shown", {
+    count: props.count,
+    in_store_count: props.inStoreCount,
+    had_store: props.hadStore,
+    store: props.store,
+    source_category: props.sourceCategory,
+  });

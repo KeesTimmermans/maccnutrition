@@ -90,3 +90,6 @@ verify_jwt = false
 
 [functions.product-score]
 verify_jwt = false
+
+[functions.product-alternatives]
+verify_jwt = false

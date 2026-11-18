@@ -3,6 +3,7 @@ import { OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineResults, calculateHydration, calculateNutritionTargets } from "@/lib/baselineCalculations";
 import { affectsTargets } from "@/lib/profileSections";
 import { normalizeTrackingMode, type TrackingMode } from "@/lib/trackingMode";
+import type { StoreKey } from "../../supabase/functions/_shared/offCategories.ts";
 
 export interface UserBaseline {
   id: string;
@@ -32,6 +33,8 @@ export interface UserBaseline {
   food_dislikes: string | null;
   coaching_tone: string | null;
   tracking_mode: TrackingMode;
+  /** Scan & rate: preferred UK store key, or null for no preference. */
+  preferred_store: StoreKey | null;
   meals_per_day: string | null;
   cycle_regularity: string | null;
   current_phase: string | null;
@@ -278,6 +281,7 @@ export const updateUserSettings = async (settings: {
   preferred_currency?: string;
   coaching_tone?: string;
   tracking_mode?: TrackingMode;
+  preferred_store?: StoreKey | null;
   household_size?: number;
   dashboard_layout?: { sections: string[]; hidden: string[] };
 }) => {

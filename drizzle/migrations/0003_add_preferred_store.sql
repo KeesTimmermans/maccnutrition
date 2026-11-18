@@ -1,0 +1,3 @@
+ALTER TABLE public.user_baselines ADD COLUMN IF NOT EXISTS preferred_store text;
+ALTER TABLE public.user_baselines ADD CONSTRAINT user_baselines_preferred_store_check CHECK (preferred_store IS NULL OR preferred_store IN ('tesco','sainsburys','asda','morrisons','aldi','lidl','coop','marks_and_spencer','waitrose','iceland','ocado'));
+COMMENT ON COLUMN public.user_baselines.preferred_store IS 'Scan & rate: the UK store the user shops at, used to prefer store-tagged better options. NULL = no preference.';

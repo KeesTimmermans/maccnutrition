@@ -3,28 +3,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.23.8";
+import {
+  OFF_FIELDS as FIELDS,
+  OFF_USER_AGENT as USER_AGENT,
+  alternateBarcode,
+  toProductScoreData as toResult,
+  type ProductScoreData,
+} from "../_shared/offProduct.ts";
 
-const USER_AGENT = "CJTNutrition - Nutrition Tracking App - contact@cjtnutrition.com";
 const OFF_TIMEOUT_MS = 5000;
-
-const FIELDS = [
-  "code",
-  "product_name",
-  "product_name_en",
-  "brands",
-  "image_url",
-  "ingredients_text",
-  "ingredients_text_en",
-  "ingredients_n",
-  "additives_tags",
-  "nova_group",
-  "nutriscore_grade",
-  "categories_tags",
-  "stores_tags",
-  // The fruit/veg/nuts estimate lives inside nutriments. Asking for it as its own
-  // field makes Open Food Facts drop the rest of nutriments, so it is read from there.
-  "nutriments",
-].join(",");
 
 // ============================================
 // In-memory response cache (edge function lifetime)
@@ -58,79 +45,6 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-
-const num = (v: unknown): number | null => {
-  const n = typeof v === "string" ? parseFloat(v) : v;
-  return typeof n === "number" && Number.isFinite(n) ? n : null;
-};
-const str = (v: unknown): string | null =>
-  typeof v === "string" && v.trim() ? v.trim() : null;
-const strArr = (v: unknown): string[] | null =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : null;
-
-interface ProductScoreData {
-  found: boolean;
-  code: string | null;
-  product_name: string | null;
-  product_name_en: string | null;
-  brands: string | null;
-  image_url: string | null;
-  ingredients_text: string | null;
-  ingredients_text_en: string | null;
-  ingredients_n: number | null;
-  additives_tags: string[] | null;
-  nova_group: number | null;
-  nutriscore_grade: string | null;
-  categories_tags: string[] | null;
-  stores_tags: string[] | null;
-  fruits_vegetables_nuts_100g: number | null;
-  nutriments: {
-    sugars_100g: number | null;
-    saturated_fat_100g: number | null;
-    salt_100g: number | null;
-    fiber_100g: number | null;
-    proteins_100g: number | null;
-  };
-}
-
-// deno-lint-ignore no-explicit-any
-function toResult(p: any): ProductScoreData {
-  const n = p?.nutriments ?? {};
-  return {
-    found: true,
-    code: str(p.code),
-    product_name: str(p.product_name),
-    product_name_en: str(p.product_name_en),
-    brands: str(p.brands),
-    image_url: str(p.image_url),
-    ingredients_text: str(p.ingredients_text),
-    ingredients_text_en: str(p.ingredients_text_en),
-    ingredients_n: num(p.ingredients_n),
-    additives_tags: strArr(p.additives_tags),
-    nova_group: num(p.nova_group),
-    nutriscore_grade: str(p.nutriscore_grade),
-    categories_tags: strArr(p.categories_tags),
-    stores_tags: strArr(p.stores_tags),
-    fruits_vegetables_nuts_100g: num(
-      n["fruits-vegetables-nuts-estimate-from-ingredients_100g"] ??
-        p["fruits-vegetables-nuts-estimate-from-ingredients_100g"],
-    ),
-    nutriments: {
-      sugars_100g: num(n.sugars_100g),
-      saturated_fat_100g: num(n["saturated-fat_100g"]),
-      salt_100g: num(n.salt_100g),
-      fiber_100g: num(n.fiber_100g),
-      proteins_100g: num(n.proteins_100g),
-    },
-  };
-}
-
-/** Same alternate-form rule as the meal logger's scanner retry. */
-function alternateBarcode(code: string): string | null {
-  if (code.length === 12) return `0${code}`;
-  if (code.length === 13 && code.startsWith("0")) return code.slice(1);
-  return null;
-}
 
 // Returns the product, null when OFF has no such product; throws on network/HTTP failure.
 // deno-lint-ignore no-explicit-any
