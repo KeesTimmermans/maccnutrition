@@ -254,7 +254,7 @@ const Index = () => {
     { q: "Do I have to count calories?", a: "No. You choose: follow simple habits, or track calories if you like numbers." },
     { q: "What is Scan & rate?", a: "Scan a food's barcode and get a simple score out of 10, the reasons behind it, and better options from the same aisle." },
     { q: "How does the Nutrition Score work?", a: "Answer 16 quick questions about how you eat, sleep and feel. You get a score out of 100, your focus area and a tip. Retake it every month." },
-    { q: "Is it for me if I only train a few times a week?", a: "Yes. MacNutrition is built for busy parents who train two or three times a week." },
+    { q: "Is it for me?", a: "Yes. MacNutrition is for anyone who wants everyday nutrition to feel simple and stress-free, however much or little you train." },
   ];
   const areas = [
     { label: "Whole foods", value: 82 },
@@ -275,7 +275,7 @@ const Index = () => {
           <div className="flex-1 max-w-lg space-y-5 text-center md:text-left">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground leading-[1.1] tracking-tight">Eating well, made simple.</h1>
             <p className="text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Everyday nutrition for busy parents who train 2-3 times a week. Scan your food, know your score, build better habits.
+              Stress-free everyday nutrition for everyone. Scan your food, know your score, build habits that stick.
             </p>
             {ctaButton("hero")}
           </div>
