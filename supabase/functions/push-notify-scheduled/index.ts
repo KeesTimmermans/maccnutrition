@@ -204,6 +204,38 @@ Deno.serve(async (req) => {
         }
       }
 
+      // ── NUTRITION SCORE RETAKE (10 AM local, once per result) ──
+      if (localHour === 10) {
+        const { data: latestScore } = await supabase
+          .from("nutrition_scores")
+          .select("id, taken_at, reminder_sent_at")
+          .eq("user_id", userId)
+          .order("taken_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const RETAKE_MS = 30 * 24 * 60 * 60 * 1000;
+        if (
+          latestScore && !latestScore.reminder_sent_at &&
+          Date.now() >= new Date(latestScore.taken_at).getTime() + RETAKE_MS
+        ) {
+          let sent = false;
+          for (const sub of subs) {
+            const ok = await sendPush(
+              sub,
+              { title: "MacNutrition", body: "Time to check your nutrition score", url: "/#/nutrition-score" },
+              vapid,
+              supabase
+            );
+            if (ok) sent = true;
+          }
+          if (sent) {
+            await supabase.from("nutrition_scores")
+              .update({ reminder_sent_at: new Date().toISOString() })
+              .eq("id", latestScore.id);
+          }
+        }
+      }
+
       // ── DAYTIME FOLLOW-UPS (11 AM – 9 PM) ──
       if (localHour >= 11 && logRow.followup_count < 4) {
         // Check if user logged any meal or water today

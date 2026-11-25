@@ -50,6 +50,13 @@
       "when": 1795603610818,
       "tag": "0006_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795604884560,
+      "tag": "0007_create_nutrition_scores",
+      "breakpoints": true
     }
   ]
 }

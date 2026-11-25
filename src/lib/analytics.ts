@@ -167,3 +167,8 @@ export const trackLabelRead = (props: {
   outcome: "read" | "unreadable" | "limit" | "error" | "scored";
 }) =>
   track("label_read", { readable: props.readable, fields_filled: props.fieldsFilled, outcome: props.outcome });
+
+/** Nutrition Score check-in. Scores and area only, never answers. */
+export const trackNutritionScoreStarted = () => track("nutrition_score_started", {});
+export const trackNutritionScoreCompleted = (props: { total: number; band: string; focusArea: string; isFirst: boolean }) =>
+  track("nutrition_score_completed", { total: props.total, band: props.band, focus_area: props.focusArea, is_first: props.isFirst });

@@ -14,6 +14,7 @@ import { CheckInTrendsCard } from "@/components/CheckInTrendsCard";
 import { WeeklyHabitCard } from "@/components/WeeklyHabitCard";
 import { TodayChecklistCard } from "@/components/TodayChecklistCard";
 import { ProfileCompletionCard } from "@/components/ProfileCompletionCard";
+import { NutritionScoreCard } from "@/components/NutritionScoreCard";
 import { LeftTodayCard } from "@/components/LeftTodayCard";
 import { WeeklyRecapCard } from "@/components/WeeklyRecapCard";
 import { HabitWeeklyRecapCard } from "@/components/HabitWeeklyRecapCard";
@@ -969,6 +970,9 @@ export const TodayDashboard = () => {
 
         {/* Weekly Habit */}
         <WeeklyHabitCard userContext={habitUserContext} />
+
+        {/* Monthly Nutrition Score check-in */}
+        <NutritionScoreCard />
 
         {/* Complete your profile (questions no longer asked at signup) */}
         {!targetsLoading && baseline && (

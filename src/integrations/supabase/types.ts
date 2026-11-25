@@ -643,6 +643,39 @@ export type Database = {
         }
         Relationships: []
       }
+      nutrition_scores: {
+        Row: {
+          answers: Json
+          area_scores: Json
+          focus_area: string
+          id: string
+          reminder_sent_at: string | null
+          taken_at: string
+          total_score: number
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          area_scores: Json
+          focus_area: string
+          id?: string
+          reminder_sent_at?: string | null
+          taken_at?: string
+          total_score: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          area_scores?: Json
+          focus_area?: string
+          id?: string
+          reminder_sent_at?: string | null
+          taken_at?: string
+          total_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       off_category_cache: {
         Row: {
           fetched_at: string

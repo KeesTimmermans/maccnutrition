@@ -44,6 +44,7 @@ import CompetitionPrep from "./pages/CompetitionPrep";
 import CompetitionPrepSetup from "./pages/CompetitionPrepSetup";
 import Tools from "./pages/Tools";
 import ScanRate from "./pages/ScanRate";
+import NutritionScore from "./pages/NutritionScore";
 import ScoringGuide from "./pages/ScoringGuide";
 
 const queryClient = new QueryClient();
@@ -310,6 +311,7 @@ const App = () => {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/tools" element={<Tools />} />
                     <Route path="/tools/scan" element={<ScanRate />} />
+                    <Route path="/nutrition-score" element={<NutritionScore />} />
                     <Route path="/tools/scoring" element={<ScoringGuide />} />
                     
                     {/* Secondary routes */}
