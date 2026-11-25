@@ -9,6 +9,7 @@ interface SubscriptionStatus {
   isTrialing: boolean;
   trialEnd: string | null;
   trialDaysRemaining: number | null;
+  plan?: "monthly" | "yearly" | null;
 }
 
 export const useAuth = () => {
@@ -95,6 +96,7 @@ export const useAuth = () => {
           isTrialing: data?.is_trialing ?? false,
           trialEnd: data?.trial_end ?? null,
           trialDaysRemaining: data?.trial_days_remaining ?? null,
+          plan: data?.plan ?? null,
         });
         if (!wasSubscribed && nowSubscribed) {
           trackSubscribed();
@@ -210,6 +212,7 @@ export const useAuth = () => {
     isTrialing: subscription.isTrialing,
     trialEnd: subscription.trialEnd,
     trialDaysRemaining: subscription.trialDaysRemaining,
+    plan: subscription.plan ?? null,
     subscriptionLoading,
     subscriptionChecked,
     subscriptionError,

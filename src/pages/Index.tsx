@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
 import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
+import { PlanPicker } from "@/components/PlanPicker";
+import { TRIAL_DAYS, planPriceLabel, type PlanId } from "../../supabase/functions/_shared/plans";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import appMockup from "@/assets/app-mockup.png";
 
@@ -27,6 +29,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
+  const [plan, setPlan] = useState<PlanId>("yearly");
   const [stuckLoading, setStuckLoading] = useState(false);
   const {
     user,
@@ -90,25 +93,6 @@ const Index = () => {
         if (!subscription && !isTrialing) {
           if (!subscriptionChecked || subscriptionError) {
             setLoading(false);
-            return;
-          }
-
-          if (!checkoutUrl) {
-            setCheckoutInitLoading(true);
-            try {
-              const { data: checkoutData, error: checkoutError } = await Promise.race([
-                supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
-                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Checkout timed out")), 8000)),
-              ]);
-              if (!checkoutError && checkoutData?.url) {
-                setCheckoutUrl(checkoutData.url);
-              }
-            } catch (err) {
-              console.error("Checkout error:", err);
-            } finally {
-              setCheckoutInitLoading(false);
-              setLoading(false);
-            }
             return;
           }
 
@@ -324,6 +308,8 @@ const Index = () => {
             </p>
           ) : null}
 
+          <PlanPicker value={plan} onChange={setPlan} />
+
           <div className="space-y-2">
             <Button
               variant="hero"
@@ -333,10 +319,10 @@ const Index = () => {
               onClick={async () => {
                 setCheckoutInitLoading(true);
                 try {
-                  let url = checkoutUrl;
-                  if (!url) {
+                  let url: string | null = null;
+                  {
                     const { data, error } = await Promise.race([
-                      supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl() } }),
+                      supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl(), plan } }),
                       new Promise<never>((_, reject) =>
                         setTimeout(() => reject(new Error("Checkout timed out")), 8000),
                       ),
@@ -463,7 +449,7 @@ const Index = () => {
 
             <div className="space-y-0.5">
               <p className="text-xs text-muted-foreground">
-                £9.99/month · 7-Day Free Trial · Cancel Anytime
+                {planPriceLabel("monthly")} or {planPriceLabel("yearly")} · {TRIAL_DAYS}-day free trial · Cancel anytime
               </p>
               <div className="flex items-center gap-1.5 justify-center md:justify-start">
                 <Lock className="w-3 h-3 text-muted-foreground" />

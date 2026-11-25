@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, Loader2, ExternalLink, Check, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PlanPicker } from "@/components/PlanPicker";
+import type { PlanId } from "../../supabase/functions/_shared/plans";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +24,7 @@ interface SubscriptionCardProps {
   subscriptionEnd: string | null;
   onRefresh: () => void;
   loading: boolean;
+  plan?: PlanId | null;
 }
 
 const features = [
@@ -37,8 +40,10 @@ export const SubscriptionCard = ({
   subscribed, 
   subscriptionEnd, 
   onRefresh, 
-  loading 
+  loading,
+  plan,
 }: SubscriptionCardProps) => {
+  const [chosenPlan, setChosenPlan] = useState<PlanId>("yearly");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -55,7 +60,7 @@ export const SubscriptionCard = ({
     setCheckoutLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { return_url: getCheckoutReturnUrl() },
+        body: { return_url: getCheckoutReturnUrl(), plan: chosenPlan },
       });
       if (error) throw error;
       if (data?.url) {
@@ -152,7 +157,7 @@ export const SubscriptionCard = ({
             </div>
             {subscriptionEnd && (
               <p className="text-center text-sm text-muted-foreground">
-                Next billing date: {new Date(subscriptionEnd).toLocaleDateString()}
+                {plan ? `${plan === "yearly" ? "Yearly" : "Monthly"} · ` : ""}Next billing date: {new Date(subscriptionEnd).toLocaleDateString()}
               </p>
             )}
             <div className="flex flex-col gap-2">
@@ -224,10 +229,7 @@ export const SubscriptionCard = ({
           </>
         ) : (
           <>
-            <div className="text-center">
-              <span className="text-3xl font-bold">£9.99</span>
-              <span className="text-muted-foreground">/month</span>
-            </div>
+            <PlanPicker value={chosenPlan} onChange={setChosenPlan} />
             <ul className="space-y-2">
               {features.map((feature, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">

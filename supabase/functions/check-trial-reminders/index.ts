@@ -58,6 +58,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
       firstName?: string;
       daysRemaining: number;
       trialEndDate: string;
+      amountPence?: number | null;
+      interval?: string | null;
     }> = [];
 
     for (const subscription of subscriptions.data) {
@@ -110,6 +112,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
             firstName,
             daysRemaining,
             trialEndDate: trialEndDate.toISOString(),
+            amountPence: (subscription as any).items?.data?.[0]?.price?.unit_amount ?? null,
+            interval: (subscription as any).items?.data?.[0]?.price?.recurring?.interval ?? null,
           });
         }
       }

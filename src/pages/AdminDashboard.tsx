@@ -145,7 +145,7 @@ const AdminDashboard = () => {
       case "trialing":
         return (
           <div className="flex flex-col gap-0.5">
-            <Badge className="bg-accent text-accent-foreground">7-Day Trial</Badge>
+            <Badge className="bg-accent text-accent-foreground">Trial</Badge>
             {sub.trial_end && (
               <span className="text-[10px] text-muted-foreground">
                 Ends {format(new Date(sub.trial_end), "dd MMM")}

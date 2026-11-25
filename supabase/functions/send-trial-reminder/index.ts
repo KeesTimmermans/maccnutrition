@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { formatGbp } from "../_shared/plans.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -18,9 +19,11 @@ interface TrialReminderRequest {
   firstName?: string;
   daysRemaining: number;
   trialEndDate: string;
+  amountPence?: number | null;
+  interval?: string | null;
 }
 
-const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstName?: string) => {
+const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstName?: string, amountPence?: number | null) => {
   const formattedDate = new Date(trialEndDate).toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -28,6 +31,10 @@ const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstNam
     year: 'numeric',
   });
 
+  const chargeDate = new Date(trialEndDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const chargeLine = typeof amountPence === 'number' && amountPence > 0
+    ? `<p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 24px;">You'll be charged <strong>${formatGbp(amountPence)}</strong> on ${chargeDate} unless you cancel.</p>`
+    : '';
   const isUrgent = daysRemaining <= 3;
   const greeting = firstName ? `Hi ${firstName}! 👋` : 'Hi there! 👋';
 
@@ -65,7 +72,7 @@ const generateEmailHtml = (daysRemaining: number, trialEndDate: string, firstNam
               <p style="margin: 0; color: #64748b; font-size: 14px;">Trial ends on:</p>
               <p style="margin: 8px 0 0; color: #1e293b; font-size: 18px; font-weight: 600;">${formattedDate}</p>
             </div>
-            
+            ${chargeLine}
             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 24px;">
               Don't lose access to:
             </p>
@@ -123,7 +130,7 @@ serve(async (req) => {
     logStep("Function started");
 
 
-    const { email, firstName, daysRemaining, trialEndDate }: TrialReminderRequest = await req.json();
+    const { email, firstName, daysRemaining, trialEndDate, amountPence }: TrialReminderRequest = await req.json();
 
     if (!email || daysRemaining === undefined || !trialEndDate) {
       throw new Error("Missing required fields: email, daysRemaining, trialEndDate");
@@ -140,7 +147,7 @@ serve(async (req) => {
       from: "MacNutrition <onboarding@resend.dev>",
       to: [email],
       subject,
-      html: generateEmailHtml(daysRemaining, trialEndDate, firstName),
+      html: generateEmailHtml(daysRemaining, trialEndDate, firstName, amountPence),
     });
 
     logStep("Email sent successfully", { emailResponse });

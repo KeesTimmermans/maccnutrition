@@ -25,6 +25,7 @@ interface SettingsSheetProps {
   onSettingsChange?: () => void;
   subscribed?: boolean;
   subscriptionEnd?: string | null;
+  plan?: "monthly" | "yearly" | null;
   subscriptionLoading?: boolean;
   onRefreshSubscription?: () => void;
 }
@@ -34,6 +35,7 @@ export const SettingsSheet = ({
   onSettingsChange,
   subscribed = false,
   subscriptionEnd = null,
+  plan = null,
   subscriptionLoading = false,
   onRefreshSubscription = () => {},
 }: SettingsSheetProps) => {
@@ -361,6 +363,7 @@ export const SettingsSheet = ({
                   <SubscriptionCard
                     subscribed={subscribed}
                     subscriptionEnd={subscriptionEnd}
+                    plan={plan}
                     loading={subscriptionLoading}
                     onRefresh={onRefreshSubscription}
                   />

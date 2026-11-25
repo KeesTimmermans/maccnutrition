@@ -70,7 +70,7 @@ interface DashboardMeal {
 export const TodayDashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
+  const { subscription, subscriptionEnd, plan: subscriptionPlan, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
   const { targets: activeTargets, loading: targetsLoading, refresh: refreshTargets } = useActiveNutritionTargets();
   const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
   // Calorie/macro numbers only once the mode is known to be calorie tracking.
@@ -906,6 +906,7 @@ export const TodayDashboard = () => {
               onSettingsChange={loadData}
               subscribed={subscription}
               subscriptionEnd={subscriptionEnd}
+              plan={subscriptionPlan}
               subscriptionLoading={subscriptionLoading}
               onRefreshSubscription={checkSubscription}
             />

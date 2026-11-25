@@ -59,7 +59,7 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
-  const { subscription, subscriptionEnd, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
+  const { subscription, subscriptionEnd, plan: subscriptionPlan, subscriptionLoading, checkSubscription, isTrialing, trialDaysRemaining, trialEnd } = useAuth();
   const { targets: activeTargets, loading: targetsLoading } = useActiveNutritionTargets();
   const { mode: trackingMode, loading: trackingModeLoading } = useTrackingMode();
   // Calorie/macro figures only once the mode is known and it is calorie tracking
@@ -770,6 +770,7 @@ export const Dashboard = () => {
               onSettingsChange={loadData}
               subscribed={subscription}
               subscriptionEnd={subscriptionEnd}
+              plan={subscriptionPlan}
               subscriptionLoading={subscriptionLoading}
               onRefreshSubscription={checkSubscription}
             />

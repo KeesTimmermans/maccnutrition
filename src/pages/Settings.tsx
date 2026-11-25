@@ -45,6 +45,7 @@ const Settings = () => {
   
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [plan, setPlan] = useState<"monthly" | "yearly" | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [analyticsConsent, setAnalyticsConsent] = useState(false);
   const [communityAnonymous, setCommunityAnonymous] = useState(false);
@@ -147,6 +148,7 @@ const Settings = () => {
       
       setSubscribed(data?.subscribed || false);
       setSubscriptionEnd(data?.subscription_end || null);
+      setPlan(data?.plan ?? null);
     } catch (error) {
       console.error("Error checking subscription:", error);
     } finally {
@@ -477,6 +479,7 @@ const Settings = () => {
           <SubscriptionCard
             subscribed={subscribed}
             subscriptionEnd={subscriptionEnd}
+            plan={plan}
             loading={subscriptionLoading}
             onRefresh={checkSubscription}
           />

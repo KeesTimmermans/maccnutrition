@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TRIAL_DAYS } from "../../supabase/functions/_shared/plans";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
@@ -77,7 +78,7 @@ const PostCheckout = () => {
           <>
             <CheckCircle className="w-12 h-12 text-primary mx-auto" />
             <h1 className="text-2xl font-bold text-foreground">You're all set!</h1>
-            <p className="text-muted-foreground">Your 7-day free trial has started. Taking you to your dashboard…</p>
+            <p className="text-muted-foreground">Your {TRIAL_DAYS}-day free trial has started. Taking you to your dashboard…</p>
           </>
         )}
 

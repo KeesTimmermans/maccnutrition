@@ -1,4 +1,5 @@
 import { ArrowLeft } from "lucide-react";
+import { TRIAL_DAYS, planPriceLabel } from "../../supabase/functions/_shared/plans";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -61,12 +62,14 @@ const TermsOfService = () => {
             <h2 className="text-xl font-semibold mb-3">4. Subscriptions &amp; Billing</h2>
             <ul className="list-disc pl-6 space-y-1">
               <li>
-                A free trial period may be available (duration shown at sign-up). After the trial,
-                billing begins automatically.
+                MacNutrition Premium is available as a monthly plan ({planPriceLabel("monthly")}) or a
+                yearly plan ({planPriceLabel("yearly")}). Both start with a {TRIAL_DAYS}-day free trial.
+                A payment card is required at sign-up and you are charged automatically when the
+                trial ends unless you cancel before then.
               </li>
               <li>
-                Subscriptions renew automatically on a recurring basis unless cancelled before the
-                renewal date.
+                Subscriptions renew automatically each month or each year, depending on your plan,
+                unless cancelled before the renewal date. You can cancel anytime from Settings.
               </li>
               <li>
                 All payments are processed securely by Stripe. We do not store payment card

@@ -14,7 +14,7 @@ export interface Plan {
 
 export const PLANS: Record<PlanId, Plan> = {
   monthly: { priceId: "price_1SgrQ5EhSXv7TD1NMX0Yqbt8", pence: 999, interval: "month" },
-  yearly: { priceId: "{{YEARLY_PRICE_ID}}", pence: 8999, interval: "year" },
+  yearly: { priceId: "price_1UfdMsEhSXv7TD1NPtUURVAN", pence: 8999, interval: "year" },
 };
 
 export const DEFAULT_PLAN: PlanId = "monthly";

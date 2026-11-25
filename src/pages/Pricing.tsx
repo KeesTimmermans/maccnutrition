@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Crown, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { PlanPicker } from "@/components/PlanPicker";
+import { TRIAL_DAYS, type PlanId } from "../../supabase/functions/_shared/plans";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 
 const features = [
@@ -15,6 +17,7 @@ const features = [
 
 const Pricing = () => {
   const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState<PlanId>("yearly");
 
   const getCheckoutReturnUrl = () => {
     const basePath = window.location.pathname.endsWith("/")
@@ -34,7 +37,7 @@ const Pricing = () => {
       }
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { return_url: getCheckoutReturnUrl() },
+        body: { return_url: getCheckoutReturnUrl(), plan },
       });
       if (error) throw error;
 
@@ -71,11 +74,7 @@ const Pricing = () => {
             <span className="font-semibold text-lg text-foreground">MacNutrition Premium</span>
           </div>
 
-          <div>
-            <span className="text-3xl font-bold text-foreground">£9.99</span>
-            <span className="text-muted-foreground">/month</span>
-            <p className="text-xs text-muted-foreground mt-1">7-day free trial included</p>
-          </div>
+          <PlanPicker value={plan} onChange={setPlan} />
 
           <ul className="space-y-2 text-left">
             {features.map((f, i) => (
@@ -88,7 +87,7 @@ const Pricing = () => {
 
           <Button onClick={handleSubscribe} className="w-full" size="lg" disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crown className="mr-2 h-4 w-4" />}
-            Start Free Trial
+            Start {TRIAL_DAYS}-day free trial
           </Button>
         </div>
       </div>
