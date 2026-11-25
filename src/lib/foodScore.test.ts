@@ -567,3 +567,33 @@ describe("nutritionLooksImplausible", () => {
     expect(r.reasons[0]).toBe(REASON_KEYS.dataLooksOff);
   });
 });
+
+describe("pure honey and the whole-food floor", () => {
+  const honey = FIXTURES.find((f) => f.name === "pure honey")!.input;
+  const sugarPillar = (input: ProductScoreInput) => scoreProduct(input).pillars.find((p) => p.id === "sugar")?.score;
+  const unexemptSugar = sugarPillar({ ...honey, categoriesTags: ["en:sweeteners", "en:spreads"] });
+
+  for (const nova of [1, 2, 3, null] as const) {
+    it(`scores 7 with the whole-food floor at NOVA ${nova ?? "missing"}`, () => {
+      const r = scoreProduct({ ...honey, novaGroup: nova });
+      expect(r.score).toBe(WHOLE_FOOD_FLOOR);
+      expect(r.floorKind).toBe("whole_food");
+      expect(r.floor.applied).toBe(true);
+      expect(sugarPillar({ ...honey, novaGroup: nova })).toBe(unexemptSugar);
+      expect(sugarPillar({ ...honey, novaGroup: nova })).toBeLessThan(WHOLE_FOOD_FLOOR);
+    });
+  }
+  it("honey with glucose syrup is not floored", () => {
+    const r = scoreProduct(FIXTURES.find((f) => f.name === "honey with glucose syrup")!.input);
+    expect(r.floorKind).not.toBe("whole_food");
+    expect(r.score).toBe(3);
+  });
+  it("a granola listing honey is not floored", () => {
+    const r = scoreProduct({
+      sugars100g: 20, saturatedFat100g: 2, salt100g: 0.1, fiber100g: 7, proteins100g: 9,
+      ingredientsText: "Oat Flakes, Honey", ingredientsN: 2, novaGroup: 3, additivesTags: [],
+      categoriesTags: ["en:breakfast-cereals", "en:granolas", "en:honeys"],
+    });
+    expect(r.floorKind).not.toBe("whole_food");
+  });
+});

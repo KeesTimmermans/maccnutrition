@@ -279,7 +279,13 @@ export const WHOLE_FOOD_CATEGORIES = [
   "en:yogurts",
   "en:avocados",
   "en:coconuts",
+  "en:honeys",
 ];
+/**
+ * Single-ingredient products here may name a sugar-type word (honey) and still be whole foods,
+ * as long as nothing else sugar-like is listed once "honey" is removed.
+ */
+export const WHOLE_FOOD_SUGAR_EXEMPT_CATEGORIES = ["en:honeys"];
 /** …and with at most this many ingredients. */
 export const WHOLE_FOOD_MAX_INGREDIENTS = 5;
 /** Never whole foods, whatever else holds. */
@@ -833,11 +839,18 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
   }));
 
   // Floors, after the caps. Pillars, the average and reasons stay as they are.
+  const sugarExempt =
+    sugarIngredientListed &&
+    WHOLE_FOOD_SUGAR_EXEMPT_CATEGORIES.some((c) => tags.includes(c)) &&
+    ingredientCount === 1 &&
+    !!text &&
+    !SUGAR_INGREDIENT_PATTERN.test(text.replace(/\bhoney\b/gi, " "));
   const wholeFood =
-    !sugarIngredientListed &&
+    (!sugarIngredientListed || sugarExempt) &&
     noAdditives &&
-    effectiveNova !== null &&
-    WHOLE_FOOD_NOVA_GROUPS.includes(effectiveNova) &&
+    // Pure honey with no NOVA group still counts: one ingredient and no additives say enough.
+    (effectiveNova !== null || sugarExempt) &&
+    (effectiveNova === null || WHOLE_FOOD_NOVA_GROUPS.includes(effectiveNova)) &&
     (effectiveNova === 1 ||
       (WHOLE_FOOD_CATEGORIES.some((c) => tags.includes(c)) &&
         ingredientCount !== null &&

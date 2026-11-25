@@ -24,8 +24,9 @@
 - `BarcodeScanner` hints/constraints are module constants; new props optional. Why: rebuilt hints restart the camera; MealLogger shares it.
 - Score breakdown and /tools/scoring render only from `foodScore.ts` exports. Why: screen, guide and rules must never disagree.
 - Scan & rate final-score order in `foodScore.ts`: caps (weakest link, sweeteners, provisional), then floors (highest wins, reported as `floor` + `floorKind`), then the grain-staple cap last; floors and caps change only the final score. Why: grains must never be lifted above their cap, and pillars/reasons stay honest.
-- `off_category_cache` (service role only, no policies) backs `product-alternatives` search: memory → table under 24h → live (v2, then fallback, upsert non-empty) → table up to 30 days; the response reports `source`. Why: Open Food Facts search often 503s.
+- `off_category_cache` (service role only) backs `product-alternatives`: memory → table <24h → live (upsert non-empty) → table ≤30 days; response reports `source`. Why: OFF search often 503s.
 - Better options picking has a strict pass (≥6 and ≥ scanned+2) and, only when it finds nothing, a relaxed pass (≥5 and ≥ scanned+2) flagged `relaxed`. Why: some categories have few good products, but suggestions must stay clearly better.
-- Tier 2 is used only when no candidate at all has the tier-1 tag, and never when the tier-2 tag is in `BROAD_CATEGORIES` (`_shared/offCategories.ts`). Why: broad tags give unlike-for-like swaps.
-- `nutritionLooksImplausible` (foodScore.ts) makes a score provisional with reason `data_looks_off`; such candidates drop out of Better options. Why: bad label data must not be trusted or recommended.
+- Tier 2 only when no candidate has the tier-1 tag, never for `BROAD_CATEGORIES` tags. Why: broad tags give unlike swaps.
+- `nutritionLooksImplausible` (foodScore.ts) makes a score provisional (`data_looks_off`) and drops it from Better options. Why: bad label data must not be trusted.
 - Plans, prices and trial length live only in `supabase/functions/_shared/plans.ts` (pure TS). Why: functions, screens and copy must never disagree on price.
+- Pure single-ingredient honey (`WHOLE_FOOD_SUGAR_EXEMPT_CATEGORIES`) is exempt from the sugar-ingredient block on the whole-food floor. Why: it is a whole food even though sugar is its main nutrient.
