@@ -597,3 +597,24 @@ describe("pure honey and the whole-food floor", () => {
     expect(r.floorKind).not.toBe("whole_food");
   });
 });
+
+describe("pure maple syrup and the whole-food floor", () => {
+  const maple = FIXTURES.find((f) => f.name === "pure maple syrup")!.input;
+  for (const nova of [1, 2, 3, null] as const) {
+    it(`scores 7 with the whole-food floor at NOVA ${nova ?? "missing"}`, () => {
+      const r = scoreProduct({ ...maple, novaGroup: nova });
+      expect(r.score).toBe(WHOLE_FOOD_FLOOR);
+      expect(r.floorKind).toBe("whole_food");
+      expect(r.pillars.find((p) => p.id === "sugar")!.score).toBeLessThan(WHOLE_FOOD_FLOOR);
+    });
+  }
+  it("maple flavoured syrup stays low, even if tagged as maple syrup", () => {
+    const flav = FIXTURES.find((f) => f.name === "maple flavoured syrup")!.input;
+    expect(scoreProduct(flav).score).toBeLessThanOrEqual(4);
+    const r = scoreProduct({ ...flav, categoriesTags: ["en:sweeteners", "en:syrups", "en:maple-syrups"], novaGroup: 2 });
+    expect(r.floorKind).not.toBe("whole_food");
+  });
+  it("honey's word does not exempt maple syrup and vice versa", () => {
+    expect(scoreProduct({ ...maple, ingredientsText: "Honey" }).floorKind).not.toBe("whole_food");
+  });
+});

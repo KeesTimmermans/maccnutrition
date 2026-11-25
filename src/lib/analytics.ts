@@ -112,6 +112,28 @@ export const trackProductScored = (props: {
     barcode_prefix: props.barcodePrefix.slice(0, 3),
   });
 
+/** Scan & rate lookup finished. Data-quality flags and the band only: never the barcode or product. */
+export const trackScanResult = (props: {
+  outcome: "found" | "not_found" | "error";
+  hasIngredients: boolean;
+  hasSugars: boolean;
+  hasNova: boolean;
+  confidence: "full" | "limited" | "none";
+  scoreBand: string | null;
+}) =>
+  track("scan_result", {
+    outcome: props.outcome,
+    has_ingredients: props.hasIngredients,
+    has_sugars: props.hasSugars,
+    has_nova: props.hasNova,
+    confidence: props.confidence,
+    score_band: props.scoreBand,
+  });
+
+/** How a Scan & rate camera session ended. */
+export const trackScanCameraResult = (outcome: "detected" | "timed_out_help_shown" | "typed_manually" | "camera_blocked") =>
+  track("scan_camera_result", { outcome });
+
 /** Scan & rate "Better options" shown. Counts and the store/category only. */
 export const trackAlternativesShown = (props: {
   count: number;

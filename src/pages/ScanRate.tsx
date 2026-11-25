@@ -20,7 +20,7 @@ import {
   toScoreInput,
   type ProductLookup,
 } from "@/lib/productScoreService";
-import { trackProductScored } from "@/lib/analytics";
+import { trackProductScored, trackScanResult, trackScanCameraResult } from "@/lib/analytics";
 import type { Alternative } from "@/lib/productAlternatives";
 import { StorePicker, usePreferredStore } from "@/components/scanRate/StorePicker";
 import { BetterOptions } from "@/components/scanRate/BetterOptions";
@@ -85,8 +85,23 @@ const ScanRate = () => {
 
   const lookup = useMutation<ScanOutcome, unknown, string>({
     mutationFn: async (barcode) => {
-      const product = await lookupProductForScore(barcode);
-      const result = product.found ? scoreProduct(toScoreInput(product)) : null;
+      let product: Awaited<ReturnType<typeof lookupProductForScore>>;
+      try {
+        product = await lookupProductForScore(barcode);
+      } catch (err) {
+        trackScanResult({ outcome: "error", hasIngredients: false, hasSugars: false, hasNova: false, confidence: "none", scoreBand: null });
+        throw err;
+      }
+      const input = product.found ? toScoreInput(product) : null;
+      const result = input ? scoreProduct(input) : null;
+      trackScanResult({
+        outcome: product.found ? "found" : "not_found",
+        hasIngredients: !!input?.ingredientsText?.trim(),
+        hasSugars: typeof input?.sugars100g === "number",
+        hasNova: typeof input?.novaGroup === "number",
+        confidence: result?.confidence ?? "none",
+        scoreBand: result?.band ?? null,
+      });
       trackProductScored({
         found: product.found,
         confidence: result?.confidence ?? null,
@@ -106,6 +121,7 @@ const ScanRate = () => {
   };
 
   const handleDetected = (barcode: string) => {
+    trackScanCameraResult("detected");
     setScanning(false);
     runLookup(barcode);
   };
@@ -134,6 +150,7 @@ const ScanRate = () => {
     const problem = await checkCamera();
     setCheckingCamera(false);
     setCameraProblem(problem);
+    if (problem === "denied") trackScanCameraResult("camera_blocked");
     if (!problem) setScanning(true);
   };
 
@@ -151,6 +168,7 @@ const ScanRate = () => {
   }, [scanning]);
 
   const openManualEntry = () => {
+    trackScanCameraResult("typed_manually");
     focusManualRef.current = true;
     setScanning(false);
   };
@@ -161,6 +179,7 @@ const ScanRate = () => {
         onDetected={handleDetected}
         onClose={() => setScanning(false)}
         onManualEntry={openManualEntry}
+        onHelpShown={() => trackScanCameraResult("timed_out_help_shown")}
       />
     );
   }

@@ -29,4 +29,4 @@
 - Tier 2 only when tier 1 picks nothing after both passes, never for `BROAD_CATEGORIES`. Why: broad tags give unlike swaps.
 - `nutritionLooksImplausible` (foodScore.ts) makes a score provisional (`data_looks_off`) and drops it from Better options. Why: bad label data must not be trusted.
 - Plans, prices and trial length live only in `supabase/functions/_shared/plans.ts` (pure TS). Why: functions, screens and copy must never disagree on price.
-- Pure single-ingredient honey (`WHOLE_FOOD_SUGAR_EXEMPT_CATEGORIES`) is exempt from the sugar-ingredient block on the whole-food floor. Why: it is a whole food even though sugar is its main nutrient.
+- Pure single-ingredient honey and maple syrup (`WHOLE_FOOD_SUGAR_EXEMPT_CATEGORIES`) are exempt from the sugar-ingredient block on the whole-food floor. Why: it is a whole food even though sugar is its main nutrient.

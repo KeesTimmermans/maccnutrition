@@ -31,6 +31,8 @@ interface BarcodeScannerProps {
   onClose: () => void;
   /** "Type the number instead" in the help banner; falls back to onClose. */
   onManualEntry?: () => void;
+  /** Called once when the help banner appears. */
+  onHelpShown?: () => void;
 }
 
 /** Best effort: continuous autofocus where the browser exposes it (iOS doesn't). */
@@ -47,11 +49,13 @@ async function enableContinuousFocus(video: HTMLVideoElement | null) {
   }
 }
 
-export const BarcodeScanner = ({ onDetected, onClose, onManualEntry }: BarcodeScannerProps) => {
+export const BarcodeScanner = ({ onDetected, onClose, onManualEntry, onHelpShown }: BarcodeScannerProps) => {
   const { t } = useLanguage();
   const [torchOn, setTorchOn] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const onHelpShownRef = useRef(onHelpShown);
+  onHelpShownRef.current = onHelpShown;
   const detectedRef = useRef(false);
 
   const { ref, torch } = useZxing({
@@ -87,7 +91,10 @@ export const BarcodeScanner = ({ onDetected, onClose, onManualEntry }: BarcodeSc
   // Help banner once per opening, after a while with nothing detected.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!detectedRef.current) setShowHelp(true);
+      if (!detectedRef.current) {
+        setShowHelp(true);
+        onHelpShownRef.current?.();
+      }
     }, SCANNER_HELP_DELAY_MS);
     return () => clearTimeout(timer);
   }, []);
