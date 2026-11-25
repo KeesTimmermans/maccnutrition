@@ -22,3 +22,10 @@ describe("appStateFor", () => {
   it("sends to onboarding when not complete (partial baseline row)", () => expect(appStateFor(false)).toBe("onboarding"));
   it("keeps loading while the flag is unknown", () => expect(appStateFor(null)).toBe("loading"));
 });
+
+import { landingViewFor } from "./flowRules";
+describe("landingViewFor", () => {
+  it("signed-out visitors see the landing page", () => expect(landingViewFor(false, false)).toBe("landing"));
+  it("signed-in users without a plan see the landing page with the plan button", () => expect(landingViewFor(true, false)).toBe("landing_no_plan"));
+  it("subscribed users get the app", () => expect(landingViewFor(true, true)).toBe("app"));
+});
