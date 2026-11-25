@@ -26,6 +26,9 @@ import { StorePicker, usePreferredStore } from "@/components/scanRate/StorePicke
 import { BetterOptions } from "@/components/scanRate/BetterOptions";
 import { BAND_STYLES } from "@/components/scanRate/bandStyles";
 import { ScoreBreakdown } from "@/components/scanRate/ScoreBreakdown";
+import { LabelReviewForm, ReadLabelButton } from "@/components/scanRate/LabelReader";
+import { countFilled, labelToScoreInput, type LabelValues } from "@/lib/labelReading";
+import { trackLabelRead } from "@/lib/analytics";
 
 interface ScanOutcome {
   product: ProductLookup;
@@ -81,6 +84,20 @@ const ScanRate = () => {
   const [cameraProblem, setCameraProblem] = useState<CameraProblem | null>(null);
   const [checkingCamera, setCheckingCamera] = useState(false);
   const [viewingAlt, setViewingAlt] = useState<Alternative | null>(null);
+  const [labelDraft, setLabelDraft] = useState<LabelValues | null>(null);
+  const [labelResult, setLabelResult] = useState<{ product: ProductLookup; result: ProductScoreResult } | null>(null);
+  const onLabelRead = (v: LabelValues) => { setLabelResult(null); setLabelDraft(v); window.scrollTo({ top: 0 }); };
+  const scoreLabel = (v: LabelValues) => {
+    const result = scoreProduct(labelToScoreInput(v));
+    trackLabelRead({ readable: true, fieldsFilled: countFilled(v), outcome: "scored" });
+    setLabelDraft(null);
+    setLabelResult({ product: { found: true, product_name: v.productName ?? undefined } as unknown as ProductLookup, result });
+  };
+  const needsLabel = (p: ProductLookup, r: ProductScoreResult | null) => {
+    if (!r || r.confidence !== "limited") return false;
+    const input = toScoreInput(p);
+    return typeof input.sugars100g !== "number" || !input.ingredientsText?.trim();
+  };
   const { store, loading: storeLoading, setStore } = usePreferredStore();
 
   const lookup = useMutation<ScanOutcome, unknown, string>({
@@ -155,6 +172,8 @@ const ScanRate = () => {
   };
 
   const scanAnother = () => {
+    setLabelDraft(null);
+    setLabelResult(null);
     reset();
     void openScanner();
   };
@@ -220,8 +239,9 @@ const ScanRate = () => {
           </StateCard>
         )}
 
-        {outcome && !outcome.product.found && (
+        {!labelDraft && !labelResult && outcome && !outcome.product.found && (
           <StateCard icon={SearchX} message={t("scan_rate_not_found")}>
+            <ReadLabelButton onRead={onLabelRead} />
             <Button className="w-full" onClick={scanAnother}>
               <ScanBarcode className="w-4 h-4 mr-2" />
               {t("scan_rate_scan_another")}
@@ -229,7 +249,7 @@ const ScanRate = () => {
           </StateCard>
         )}
 
-        {outcome && outcome.product.found && viewingAlt && (
+        {!labelDraft && !labelResult && outcome && outcome.product.found && viewingAlt && (
           <>
             <button
               type="button"
@@ -250,9 +270,18 @@ const ScanRate = () => {
           </>
         )}
 
-        {outcome && outcome.product.found && !viewingAlt && (
+        {labelDraft && (
+          <LabelReviewForm initial={labelDraft} onScore={scoreLabel} onCancel={scanAnother} />
+        )}
+
+        {labelResult && (
+          <ResultCard product={labelResult.product} result={labelResult.result} onScanAnother={scanAnother} fromLabel />
+        )}
+
+        {!labelDraft && !labelResult && outcome && outcome.product.found && !viewingAlt && (
           <>
-            <ResultCard product={outcome.product} result={outcome.result} onScanAnother={scanAnother} />
+            <ResultCard product={outcome.product} result={outcome.result} onScanAnother={scanAnother}
+              labelAction={needsLabel(outcome.product, outcome.result) ? <ReadLabelButton onRead={onLabelRead} /> : undefined} />
             {outcome.result?.score != null &&
               outcome.result.score < BETTER_OPTIONS_BELOW && (
                 <BetterOptions
@@ -366,10 +395,14 @@ function ResultCard({
   product,
   result,
   onScanAnother,
+  fromLabel = false,
+  labelAction,
 }: {
   product: ProductLookup;
   result: ProductScoreResult | null;
   onScanAnother: () => void;
+  fromLabel?: boolean;
+  labelAction?: React.ReactNode;
 }) {
   const { t } = useLanguage();
   const [imageFailed, setImageFailed] = useState(false);
@@ -431,11 +464,13 @@ function ResultCard({
           {result.confidence === "limited" && (
             <p className="text-xs text-muted-foreground">{t("scan_rate_limited")}</p>
           )}
+          {fromLabel && <p className="text-xs text-muted-foreground">{t("label_based_on_photo")}</p>}
         </>
       ) : (
         <p className="text-sm text-muted-foreground">{t("scan_rate_no_score")}</p>
       )}
 
+      {labelAction}
       <Button className="w-full" onClick={onScanAnother}>
         <ScanBarcode className="w-4 h-4 mr-2" />
         {t("scan_rate_scan_another")}

@@ -159,3 +159,11 @@ export const trackAlternativesShown = (props: {
     store: props.store,
     source_category: props.sourceCategory,
   });
+
+/** Scan & rate label photo read. Counts only: never the image, values or product. */
+export const trackLabelRead = (props: {
+  readable: boolean;
+  fieldsFilled: number;
+  outcome: "read" | "unreadable" | "limit" | "error" | "scored";
+}) =>
+  track("label_read", { readable: props.readable, fields_filled: props.fieldsFilled, outcome: props.outcome });

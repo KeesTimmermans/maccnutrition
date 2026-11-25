@@ -43,6 +43,13 @@
       "when": 1795600637076,
       "tag": "0005_restrict_community_likes_read",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795603610818,
+      "tag": "0006_migration",
+      "breakpoints": true
     }
   ]
 }
