@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { useZxing } from "react-zxing";
-import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { X, Flashlight, FlashlightOff, ScanBarcode } from "lucide-react";
 import { Button } from "./ui/button";
 import { useLanguage } from "@/lib/i18n";
+import {
+  SCANNER_FORMATS,
+  SCANNER_MIN_CROP_WIDTH,
+  createStableReader,
+  getBarcodeDetector,
+  scanBoxCrop,
+} from "@/lib/barcodeDetection";
 
-/** Created once: rebuilding the hints on every render rebuilds the reader and restarts the camera. */
-export const SCANNER_HINTS = new Map<DecodeHintType, unknown>([
-  [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E]],
-  [DecodeHintType.TRY_HARDER, true],
-]);
+export { SCANNER_FORMATS };
 
 /** Back camera at a resolution high enough for small barcodes. */
 export const SCANNER_CONSTRAINTS: MediaStreamConstraints = {
@@ -25,6 +26,8 @@ export const SCANNER_CONSTRAINTS: MediaStreamConstraints = {
 export const SCANNER_DECODE_INTERVAL_MS = 100;
 /** Show the "having trouble?" help after this long without a detection. */
 export const SCANNER_HELP_DELAY_MS = 10_000;
+/** On-screen scan box in CSS pixels (matches w-72 h-48 below). */
+const SCAN_BOX = { width: 288, height: 192 };
 
 interface BarcodeScannerProps {
   onDetected: (barcode: string) => void;
@@ -35,12 +38,14 @@ interface BarcodeScannerProps {
   onHelpShown?: () => void;
 }
 
+type TorchTrack = MediaStreamTrack;
+type ExtraCaps = { torch?: boolean; focusMode?: string[] };
+const capsOf = (track: TorchTrack | null) => (track?.getCapabilities?.() ?? {}) as ExtraCaps;
+
 /** Best effort: continuous autofocus where the browser exposes it (iOS doesn't). */
-async function enableContinuousFocus(video: HTMLVideoElement | null) {
+async function enableContinuousFocus(track: TorchTrack | null) {
   try {
-    const stream = video?.srcObject as MediaStream | null;
-    const track = stream?.getVideoTracks?.()[0];
-    const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { focusMode?: string[] }) | undefined;
+    const caps = capsOf(track);
     if (track && caps?.focusMode?.includes("continuous")) {
       await track.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] });
     }
@@ -52,41 +57,96 @@ async function enableContinuousFocus(video: HTMLVideoElement | null) {
 export const BarcodeScanner = ({ onDetected, onClose, onManualEntry, onHelpShown }: BarcodeScannerProps) => {
   const { t } = useLanguage();
   const [torchOn, setTorchOn] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const onHelpShownRef = useRef(onHelpShown);
   onHelpShownRef.current = onHelpShown;
+  const onDetectedRef = useRef(onDetected);
+  onDetectedRef.current = onDetected;
   const detectedRef = useRef(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const trackRef = useRef<TorchTrack | null>(null);
 
-  const { ref, torch } = useZxing({
-    hints: SCANNER_HINTS,
-    constraints: SCANNER_CONSTRAINTS,
-    timeBetweenDecodingAttempts: SCANNER_DECODE_INTERVAL_MS,
-    onResult(result) {
-      if (!detectedRef.current) {
-        detectedRef.current = true;
-        setShowHelp(false);
-        onDetected(result.getText());
-      }
-    },
-    onError(error) {
-      console.error("Scanner error:", error);
-      if (error.name === "NotAllowedError") {
-        setErrorKey("barcode_scanner_denied");
-      } else if (error.name === "NotFoundError") {
-        setErrorKey("barcode_scanner_no_camera");
-      }
-    },
-  });
-
-  // Once the picture is playing, try to switch on continuous focus.
+  // Camera + scan loop, started once per opening.
   useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    const onPlaying = () => void enableContinuousFocus(video);
-    video.addEventListener("playing", onPlaying);
-    return () => video.removeEventListener("playing", onPlaying);
-  }, [ref]);
+    let cancelled = false;
+    let stream: MediaStream | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const stable = createStableReader();
+
+    const start = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error("no camera"), { name: "NotFoundError" });
+        stream = await navigator.mediaDevices.getUserMedia(SCANNER_CONSTRAINTS);
+        if (cancelled) return stream.getTracks().forEach((tr) => tr.stop());
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        await video.play().catch(() => undefined);
+        const track = (stream.getVideoTracks()[0] ?? null) as TorchTrack | null;
+        trackRef.current = track;
+        setTorchAvailable(!!capsOf(track).torch);
+        void enableContinuousFocus(track);
+      } catch (error) {
+        const name = (error as { name?: string })?.name;
+        console.error("Scanner error:", error);
+        if (name === "NotAllowedError" || name === "SecurityError") setErrorKey("barcode_scanner_denied");
+        else if (name === "NotFoundError" || name === "OverconstrainedError") setErrorKey("barcode_scanner_no_camera");
+        return;
+      }
+
+      let detector;
+      try {
+        detector = await getBarcodeDetector();
+      } catch (error) {
+        console.error("Barcode reader failed to load:", error);
+        return;
+      }
+
+      const tick = async () => {
+        if (cancelled || detectedRef.current) return;
+        const video = videoRef.current;
+        if (video && ctx && video.readyState >= 2 && video.videoWidth > 0) {
+          const crop = scanBoxCrop(
+            { width: video.videoWidth, height: video.videoHeight },
+            { width: video.clientWidth || video.videoWidth, height: video.clientHeight || video.videoHeight },
+            SCAN_BOX,
+          );
+          const up = crop.sw < SCANNER_MIN_CROP_WIDTH ? SCANNER_MIN_CROP_WIDTH / crop.sw : 1;
+          canvas.width = Math.round(crop.sw * up);
+          canvas.height = Math.round(crop.sh * up);
+          ctx.drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, canvas.width, canvas.height);
+          let value: string | null = null;
+          try {
+            const results = await detector.detect(canvas);
+            value = results[0]?.rawValue ?? null;
+          } catch {
+            value = null;
+          }
+          const accepted = stable.push(value);
+          if (accepted && !cancelled && !detectedRef.current) {
+            detectedRef.current = true;
+            setShowHelp(false);
+            onDetectedRef.current(accepted);
+            return;
+          }
+        }
+        timer = setTimeout(tick, SCANNER_DECODE_INTERVAL_MS);
+      };
+      void tick();
+    };
+    void start();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      stream?.getTracks().forEach((tr) => tr.stop());
+      trackRef.current = null;
+    };
+  }, []);
 
   // Help banner once per opening, after a while with nothing detected.
   useEffect(() => {
@@ -100,14 +160,13 @@ export const BarcodeScanner = ({ onDetected, onClose, onManualEntry, onHelpShown
   }, []);
 
   const toggleTorch = () => {
-    if (torch.isAvailable) {
-      if (torchOn) {
-        torch.off();
-      } else {
-        torch.on();
-      }
-      setTorchOn(!torchOn);
-    }
+    const track = trackRef.current;
+    if (!torchAvailable || !track) return;
+    const next = !torchOn;
+    track
+      .applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] })
+      .then(() => setTorchOn(next))
+      .catch(() => undefined);
   };
 
   if (errorKey) {
@@ -136,7 +195,7 @@ export const BarcodeScanner = ({ onDetected, onClose, onManualEntry, onHelpShown
           <X className="w-6 h-6 text-white" />
         </button>
         <span className="text-white font-medium">{t("barcode_scanner_title")}</span>
-        {torch.isAvailable && (
+        {torchAvailable && (
           <button
             onClick={toggleTorch}
             className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
@@ -148,13 +207,13 @@ export const BarcodeScanner = ({ onDetected, onClose, onManualEntry, onHelpShown
             )}
           </button>
         )}
-        {!torch.isAvailable && <div className="w-10" />}
+        {!torchAvailable && <div className="w-10" />}
       </div>
 
       {/* Scanner */}
       <div className="flex-1 relative">
         <video
-          ref={ref}
+          ref={videoRef}
           playsInline
           muted
           className="absolute inset-0 w-full h-full object-cover"
