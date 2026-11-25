@@ -15,3 +15,10 @@ describe("flowRules", () => {
     expect(SUBSCRIPTION_EXEMPT_PATHS).not.toContain("/nutrition-score");
   });
 });
+
+import { appStateFor } from "./flowRules";
+describe("appStateFor", () => {
+  it("shows the dashboard when onboarding is complete", () => expect(appStateFor(true)).toBe("dashboard"));
+  it("sends to onboarding when not complete (partial baseline row)", () => expect(appStateFor(false)).toBe("onboarding"));
+  it("keeps loading while the flag is unknown", () => expect(appStateFor(null)).toBe("loading"));
+});

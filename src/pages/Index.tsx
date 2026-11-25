@@ -7,7 +7,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { getUserBaseline } from "@/lib/userService";
+import { useOnboarding } from "@/App";
+import { appStateFor } from "@/lib/flowRules";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 
 type AppState = "welcome" | "onboarding" | "dashboard";
@@ -26,6 +27,7 @@ const Index = () => {
     subscriptionChecked,
     subscriptionError,
   } = useAuth();
+  const { onboardingCompleted } = useOnboarding();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -84,22 +86,11 @@ const Index = () => {
           return;
         }
 
-        if (baselineCheckedRef.current === user.id) {
-          setLoading(false);
-          return;
-        }
 
-        try {
-          const baseline = await getUserBaseline(user.id);
-          if (baseline) {
-            setAppState("dashboard");
-          } else {
-            setAppState("onboarding");
-          }
-          baselineCheckedRef.current = user.id;
-        } catch (error) {
-          console.error("Error checking baseline:", error);
-        }
+        const decision = appStateFor(onboardingCompleted);
+        if (decision === "loading") return;
+        setAppState(decision);
+        baselineCheckedRef.current = user.id;
       } else {
         if (localStorage.getItem("cjt_onboarded")) {
           setAppState("dashboard");
@@ -117,6 +108,7 @@ const Index = () => {
     isTrialing,
     subscriptionChecked,
     subscriptionError,
+    onboardingCompleted,
   ]);
 
   const handleGetStarted = () => {

@@ -10,3 +10,9 @@ export const postSignupPath = (): string => "/pricing";
 
 export const postCheckoutPath = (onboardingCompleted: boolean): string =>
   onboardingCompleted ? "/dashboard" : "/onboarding";
+
+export type AppStateDecision = "loading" | "onboarding" | "dashboard";
+
+/** Signed-in, subscribed user on "/": the onboarding flag decides, not whether a baseline row exists. */
+export const appStateFor = (onboardingCompleted: boolean | null): AppStateDecision =>
+  onboardingCompleted === null ? "loading" : onboardingCompleted ? "dashboard" : "onboarding";
