@@ -29,3 +29,21 @@ describe("landingViewFor", () => {
   it("signed-in users without a plan get the app, not the landing page", () => expect(landingViewFor(true, false)).toBe("app"));
   it("subscribed users get the app", () => expect(landingViewFor(true, true)).toBe("app"));
 });
+
+import { indexViewFor } from "./flowRules";
+describe("indexViewFor", () => {
+  it("signed-out visitors see the landing page", () =>
+    expect(indexViewFor({ signedIn: false, checked: false, error: false, hasPlan: false })).toBe("landing"));
+  it("signed in, check not finished and no error = loading", () =>
+    expect(indexViewFor({ signedIn: true, checked: false, error: false, hasPlan: false })).toBe("loading"));
+  it("signed in, checked, no error, no plan or trial = pricing", () =>
+    expect(indexViewFor({ signedIn: true, checked: true, error: false, hasPlan: false })).toBe("pricing"));
+  it("signed in, error, no plan = account_error (never pricing or landing)", () =>
+    expect(indexViewFor({ signedIn: true, checked: true, error: true, hasPlan: false })).toBe("account_error"));
+  it("signed in, error before the check finished = account_error", () =>
+    expect(indexViewFor({ signedIn: true, checked: false, error: true, hasPlan: false })).toBe("account_error"));
+  it("signed in with a plan or trial = app", () =>
+    expect(indexViewFor({ signedIn: true, checked: true, error: false, hasPlan: true })).toBe("app"));
+  it("signed in with a plan stays in the app even after an error", () =>
+    expect(indexViewFor({ signedIn: true, checked: true, error: true, hasPlan: true })).toBe("app"));
+});

@@ -22,3 +22,19 @@ export type LandingView = "landing" | "app";
 /** "/" view: the landing page is for signed-out visitors only; signed-in users get the app (the subscription gate sends planless users to /pricing). */
 export const landingViewFor = (signedIn: boolean, _hasPlan: boolean): LandingView =>
   signedIn ? "app" : "landing";
+
+export type IndexView = "landing" | "loading" | "pricing" | "account_error" | "app";
+
+/** "/" view: a signed-in user never sees the landing page — a failed check shows a retry screen, never /pricing. */
+export const indexViewFor = (input: {
+  signedIn: boolean;
+  checked: boolean;
+  error: boolean;
+  hasPlan: boolean;
+}): IndexView => {
+  if (!input.signedIn) return "landing";
+  if (input.hasPlan) return "app";
+  if (input.error) return "account_error";
+  if (!input.checked) return "loading";
+  return "pricing";
+};
