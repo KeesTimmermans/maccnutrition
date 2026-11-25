@@ -1,36 +1,20 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
-import { BaselineSummary } from "@/components/BaselineSummary";
-import { NutritionScoreOffer } from "@/components/NutritionScoreOffer";
 import { Dashboard } from "@/components/Dashboard";
 import { Check, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { getUserBaseline, saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
-import { calculateNutritionTargets, BaselineResults } from "@/lib/baselineCalculations";
 import { useToast } from "@/hooks/use-toast";
-import { PlanPicker } from "@/components/PlanPicker";
-import { TRIAL_DAYS, planPriceLabel, type PlanId } from "../../supabase/functions/_shared/plans";
+import { getUserBaseline } from "@/lib/userService";
+import { TRIAL_DAYS, planPriceLabel } from "../../supabase/functions/_shared/plans";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import appMockup from "@/assets/app-mockup.png";
 
-type AppState = "welcome" | "questionnaire" | "baseline" | "score_offer" | "dashboard";
-
-const getCheckoutReturnUrl = () => {
-  const basePath = window.location.pathname.endsWith("/") ? window.location.pathname : `${window.location.pathname}/`;
-  return `${window.location.origin}${basePath}#/`;
-};
+type AppState = "welcome" | "onboarding" | "dashboard";
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("welcome");
-  const [userData, setUserData] = useState<OnboardingData | null>(null);
-  const [savedBaseline, setSavedBaseline] = useState<BaselineResults | null>(null);
   const [loading, setLoading] = useState(true);
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [checkoutInitLoading, setCheckoutInitLoading] = useState(false);
-  const [plan, setPlan] = useState<PlanId>("yearly");
   const [stuckLoading, setStuckLoading] = useState(false);
   const {
     user,
@@ -41,7 +25,6 @@ const Index = () => {
     checkSubscription,
     subscriptionChecked,
     subscriptionError,
-    signOut,
   } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -111,19 +94,14 @@ const Index = () => {
           if (baseline) {
             setAppState("dashboard");
           } else {
-            setAppState("questionnaire");
+            setAppState("onboarding");
           }
           baselineCheckedRef.current = user.id;
         } catch (error) {
           console.error("Error checking baseline:", error);
         }
       } else {
-        const hasOnboarded = localStorage.getItem("cjt_onboarded");
-        if (hasOnboarded) {
-          const savedData = localStorage.getItem("cjt_user_data");
-          if (savedData) {
-            setUserData(JSON.parse(savedData));
-          }
+        if (localStorage.getItem("cjt_onboarded")) {
           setAppState("dashboard");
         }
       }
@@ -137,68 +115,12 @@ const Index = () => {
     subscription,
     subscriptionLoading,
     isTrialing,
-    checkoutUrl,
     subscriptionChecked,
     subscriptionError,
   ]);
 
   const handleGetStarted = () => {
-    if (user) {
-      setAppState("questionnaire");
-    } else {
-      navigate("/auth");
-    }
-  };
-
-  const handleQuestionnaireComplete = async (data: OnboardingData) => {
-    console.log("Onboarding data:", data);
-    setUserData(data);
-    const baseline = calculateNutritionTargets(data);
-
-    if (user) {
-      try {
-        await saveUserBaseline(user.id, data, baseline);
-
-        if (user.email) {
-          sendBaselineEmail(
-            user.email,
-            user.user_metadata?.full_name || user.email.split("@")[0],
-            baseline,
-            data.primaryGoal,
-            baseline.mealPattern,
-          )
-            .then((result) => {
-              if (result.success) {
-                console.log("Baseline email sent successfully");
-              }
-            })
-            .catch((err) => {
-              console.error("Failed to send baseline email:", err);
-            });
-        }
-
-        toast({
-          title: "Profile saved!",
-          description: "Your personalized baseline has been created. Check your email for a summary!",
-        });
-      } catch (error) {
-        console.error("Error saving baseline:", error);
-        toast({
-          title: "Error saving profile",
-          description: "Your data has been saved locally.",
-          variant: "destructive",
-        });
-      }
-    }
-
-    localStorage.setItem("cjt_user_data", JSON.stringify(data));
-    setSavedBaseline(baseline);
-    setAppState("baseline");
-  };
-
-  const handleBaselineContinue = () => {
-    localStorage.setItem("cjt_onboarded", "true");
-    setAppState("score_offer");
+    navigate(user ? "/onboarding" : "/auth?mode=signup");
   };
 
   useEffect(() => {
@@ -220,7 +142,6 @@ const Index = () => {
         subscriptionLoading,
         subscribed: subscription,
         isTrialing,
-        hasCheckoutUrl: !!checkoutUrl,
       };
 
       return (
@@ -295,119 +216,15 @@ const Index = () => {
   }
 
   if (user && !subscription && !isTrialing) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-medium text-center space-y-4">
-          <h1 className="text-xl font-bold text-foreground">Subscription required</h1>
-          <p className="text-sm text-muted-foreground">
-            Open checkout in a new tab to continue. If nothing opens, allow popups for this site.
-          </p>
-
-          {subscriptionError ? (
-            <p className="text-xs text-muted-foreground">
-              We're having trouble verifying your trial right now. Try refreshing access before starting checkout again.
-            </p>
-          ) : null}
-
-          <PlanPicker value={plan} onChange={setPlan} />
-
-          <div className="space-y-2">
-            <Button
-              variant="hero"
-              size="xl"
-              className="w-full"
-              disabled={checkoutInitLoading}
-              onClick={async () => {
-                setCheckoutInitLoading(true);
-                try {
-                  let url: string | null = null;
-                  {
-                    const { data, error } = await Promise.race([
-                      supabase.functions.invoke("create-checkout", { body: { return_url: getCheckoutReturnUrl(), plan } }),
-                      new Promise<never>((_, reject) =>
-                        setTimeout(() => reject(new Error("Checkout timed out")), 8000),
-                      ),
-                    ]);
-                    if (error) throw error;
-                    url = data?.url ?? null;
-                    if (url) setCheckoutUrl(url);
-                  }
-
-                  if (!url) throw new Error("No checkout URL returned");
-
-                  const opened = window.open(url, "_blank", "noopener,noreferrer");
-                  if (!opened) window.location.assign(url);
-                } catch (err) {
-                  console.error("Checkout error:", err);
-                  toast({
-                    title: "Couldn't start checkout",
-                    description: "Please try again.",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setCheckoutInitLoading(false);
-                }
-              }}
-            >
-              {checkoutInitLoading ? "Preparing..." : "Open Checkout"}
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={subscriptionLoading}
-              onClick={() => checkSubscription({ force: true })}
-            >
-              {subscriptionLoading ? "Refreshing…" : "Refresh access"}
-            </Button>
-
-            <button
-              type="button"
-              className="w-full text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-              onClick={async () => {
-                await signOut();
-                navigate("/auth", { state: { justSignedOut: true } });
-              }}
-            >
-              Sign out and use a different account
-            </button>
-          </div>
-
-          {checkoutUrl ? (
-            <button
-              type="button"
-              className="text-xs text-primary hover:underline break-all"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(checkoutUrl);
-                  toast({ title: "Checkout link copied" });
-                } catch {
-                  // ignore
-                }
-              }}
-            >
-              Copy checkout link
-            </button>
-          ) : null}
-        </div>
-      </div>
-    );
+    return <Navigate to="/pricing" replace />;
   }
 
   if (appState === "dashboard") {
     return <Dashboard />;
   }
 
-  if (appState === "score_offer") {
-    return <NutritionScoreOffer onStart={() => navigate("/nutrition-score")} onLater={() => setAppState("dashboard")} />;
-  }
-
-  if (appState === "baseline" && userData && savedBaseline) {
-    return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} trackingMode={userData.trackingMode} />;
-  }
-
-  if (appState === "questionnaire") {
-    return <OnboardingQuestionnaire onComplete={handleQuestionnaireComplete} />;
+  if (appState === "onboarding") {
+    return <Navigate to="/onboarding" replace />;
   }
 
   // Welcome / Landing screen

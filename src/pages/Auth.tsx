@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import { z } from "zod";
-import { PRIVACY_POLICY_VERSION } from "@/lib/consentConstants";
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/consentConstants";
+import { postSignupPath } from "@/lib/flowRules";
 import { trackSignedUp, trackTrialStarted } from "@/lib/analytics";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -17,7 +18,8 @@ const passwordSchema = z.string().min(6, "Password must be at least 6 characters
 const nameSchema = z.string().min(2, "First name must be at least 2 characters");
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const initialLocation = useLocation();
+  const [isLogin, setIsLogin] = useState(() => new URLSearchParams(initialLocation.search).get("mode") !== "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -103,7 +105,7 @@ const Auth = () => {
   };
 
   const redirectToOnboarding = () => {
-    navigate("/onboarding");
+    navigate(postSignupPath());
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,7 +163,11 @@ const Auth = () => {
           privacy_policy_accepted: true,
           privacy_policy_version: PRIVACY_POLICY_VERSION,
           privacy_policy_accepted_at: now,
+          terms_accepted: true,
+          terms_version: TERMS_VERSION,
+          terms_accepted_at: now,
           health_data_consent: true,
+          health_data_consent_at: now,
           marketing_opt_in: acceptedMarketing,
           marketing_opt_in_at: acceptedMarketing ? now : null,
         },
@@ -172,6 +178,7 @@ const Auth = () => {
         user_id: string; consent_type: string; policy_version: string; accepted: boolean; accepted_at: string;
       }> = [
         { user_id: signUpData.session.user.id, consent_type: "privacy", policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
+        { user_id: signUpData.session.user.id, consent_type: "terms", policy_version: TERMS_VERSION, accepted: true, accepted_at: now },
         { user_id: signUpData.session.user.id, consent_type: "health", policy_version: PRIVACY_POLICY_VERSION, accepted: true, accepted_at: now },
       ];
       if (acceptedMarketing) {
@@ -181,7 +188,7 @@ const Auth = () => {
 
       trackSignedUp();
 
-      // Redirect to onboarding questionnaire (payment comes after)
+      // Payment first: plan + card, then onboarding
       redirectToOnboarding();
     } catch (_error) {
       toast({ title: "Error", description: "An unexpected error occurred. Please try again.", variant: "destructive" });

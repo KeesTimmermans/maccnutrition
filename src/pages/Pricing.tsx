@@ -62,9 +62,9 @@ const Pricing = () => {
       <div className="w-full max-w-sm text-center space-y-6">
         <img src={macLogo} alt="MAC Nutrition" className="h-14 mx-auto" style={{ mixBlendMode: "multiply" }} />
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Your Plan is Ready!</h1>
+          <h1 className="text-2xl font-bold text-foreground">Start your {TRIAL_DAYS}-day free trial</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Start your free trial to unlock your personalized nutrition plan.
+            Pick a plan. You won't be charged until your trial ends, and you can cancel anytime.
           </p>
         </div>
 

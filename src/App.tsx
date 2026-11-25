@@ -8,6 +8,7 @@ import { LanguageProvider } from "@/lib/i18n";
 import { useEffect, useState, createContext, useContext, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/lib/consentConstants";
+import { SUBSCRIPTION_EXEMPT_PATHS } from "@/lib/flowRules";
 import { ReConsentModal } from "@/components/ReConsentModal";
 import { AnalyticsConsentBanner } from "@/components/AnalyticsConsentBanner";
 
@@ -151,7 +152,6 @@ const TrackingModeBridge = ({ children }: { children: React.ReactNode }) => {
 };
 
 // ── Subscription gate — redirects unsubscribed users to /pricing ──
-const SUBSCRIPTION_EXEMPT_PATHS = ["/.lovable/oauth/consent", "/", "/auth", "/privacy-policy", "/privacy", "/terms", "/post-checkout", "/pricing", "/diagnostics", "/onboarding", "/reset-password"];
 
 const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();

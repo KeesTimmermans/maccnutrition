@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useOnboarding } from "@/App";
+import { postCheckoutPath } from "@/lib/flowRules";
 import { TRIAL_DAYS } from "../../supabase/functions/_shared/plans";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +13,17 @@ const PostCheckout = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const sessionId = searchParams.get("session_id");
+  const { onboardingCompleted } = useOnboarding();
+  const [verified, setVerified] = useState(false);
+  const redirectedRef = useRef(false);
+
+  // Once the trial is confirmed and onboarding status is known, go to the next step.
+  useEffect(() => {
+    if (!verified || onboardingCompleted === null || redirectedRef.current) return;
+    redirectedRef.current = true;
+    const t = setTimeout(() => navigate(postCheckoutPath(onboardingCompleted), { replace: true }), 2000);
+    return () => clearTimeout(t);
+  }, [verified, onboardingCompleted, navigate]);
 
   useEffect(() => {
     const verifyAndRedirect = async () => {
@@ -37,9 +50,7 @@ const PostCheckout = () => {
             session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
           );
           // Short delay so user sees the confirmation, then go to app
-          setTimeout(() => {
-            navigate("/dashboard", { replace: true });
-          }, 2000);
+          setVerified(true);
         } else {
           // Subscription not yet active — retry once after a short delay
           // (Stripe webhook may take a moment)
@@ -47,9 +58,7 @@ const PostCheckout = () => {
           const { data: retry } = await supabase.functions.invoke("check-subscription");
           if (retry?.subscribed) {
             setStatus("success");
-            setTimeout(() => {
-              navigate("/dashboard", { replace: true });
-            }, 2000);
+            setVerified(true);
           } else {
             setStatus("error");
           }
@@ -78,7 +87,7 @@ const PostCheckout = () => {
           <>
             <CheckCircle className="w-12 h-12 text-primary mx-auto" />
             <h1 className="text-2xl font-bold text-foreground">You're all set!</h1>
-            <p className="text-muted-foreground">Your {TRIAL_DAYS}-day free trial has started. Taking you to your dashboard…</p>
+            <p className="text-muted-foreground">Your {TRIAL_DAYS}-day free trial has started. Taking you to the next step…</p>
           </>
         )}
 

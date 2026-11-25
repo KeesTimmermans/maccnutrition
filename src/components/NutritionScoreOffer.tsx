@@ -11,7 +11,7 @@ export const NutritionScoreOffer = ({ onStart, onLater }: { onStart: () => void;
       <Sparkles className="w-7 h-7" />
     </div>
     <h1 className="text-2xl font-bold text-foreground text-center">Get your starting Nutrition Score</h1>
-    <p className="text-muted-foreground text-center mt-2">16 quick questions, about 3 minutes, free</p>
+    <p className="text-muted-foreground text-center mt-2">16 quick questions, about 3 minutes, included with your plan.</p>
     <div className="w-full max-w-sm mt-8 space-y-3">
       <Button variant="hero" size="lg" className="w-full" onClick={() => { track("nutrition_score_offer", { choice: "start" }); onStart(); }}>
         Start

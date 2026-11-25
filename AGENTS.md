@@ -18,7 +18,7 @@
 - Scan & rate: the `product-score` function only fetches and cleans Open Food Facts data (no scoring); all scoring lives in pure `src/lib/foodScore.ts` with every weight as a named constant, and reasons/bands are i18n keys. Why: weights stay tunable and unit-tested.
 - New tools go in the `TOOLS` array in `src/pages/Tools.tsx` (one entry each, no placeholders). Why: the Tools tab grows one tool at a time.
 - Scan & rate alternatives: `product-alternatives` only searches/cleans OFF data (`_shared/off*.ts`); picking is pure `productAlternatives.ts`. On v2 failure it uses search.openfoodfacts.org (Nutri-Score A/B only); the 15-candidate stop counts general A/B hits. Why: v2 mostly 503s; store tags are sparse.
-- Scan & rate whole-food floor (`WHOLE_FOOD_FLOOR`, category/exclusion lists in `foodScore.ts`) runs after all caps and only raises the final score; pillars, average, caps and reasons are never changed by it. Why: scores stay honest per area while unprocessed foods are never shown as poor choices.
+- Scan & rate whole-food floor (`WHOLE_FOOD_FLOOR` in `foodScore.ts`) only raises the final score, never pillars or reasons. Why: honest areas, but unprocessed foods never look poor.
 - Better options are like-for-like: tier 1 shares the scanned product's most specific `categoriesToTry` tag, tier 2 the next one; `DISH_CATEGORIES` candidates are dropped unless the scanned product has the same tag; provisional candidates are dropped. Why: broad tags gave unlike swaps.
 - `BarcodeScanner` reads via `lib/barcodeDetection.ts` (native detector, else bundled wasm, no CDN); camera starts once per opening. Why: works offline.
 - Score breakdown and /tools/scoring render only from `foodScore.ts` exports. Why: screen, guide and rules must agree.
@@ -31,3 +31,4 @@
 - Pure single-ingredient honey and maple syrup (`WHOLE_FOOD_SUGAR_EXEMPT_CATEGORIES`) are exempt from the sugar-ingredient block on the whole-food floor. Why: it is a whole food even though sugar is its main nutrient.
 - Label reads: pure conversion in `labelReading.ts`; results carry no categories, so floors and alternatives don't apply. Why: a photo can't tell us the category reliably.
 - Nutrition Score logic lives only in pure `src/lib/nutritionScore.ts`; `nutrition_scores` is insert-only for users. Why: one tested source, history never changes.
+- Signup order is /auth → /pricing → /post-checkout → /onboarding → score offer → /dashboard. Why: payment comes first by design.
