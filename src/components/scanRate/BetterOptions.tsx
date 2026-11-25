@@ -63,6 +63,11 @@ export function BetterOptions({ barcode, score, categoriesTags, store, onSelect 
       hadStore: !!store,
       store,
       sourceCategory: query.data.matchedCategory,
+      candidateCount: query.data.candidates?.length ?? 0,
+      tier: pick.tier ?? null,
+      scoredCount: pick.scoredCount ?? 0,
+      scannedScore: score,
+      source: query.data.source ?? null,
     });
   }, [pick, query.data, barcode, store]);
 

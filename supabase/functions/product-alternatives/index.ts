@@ -4,6 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.23.8";
+import { enrichInBatches, ENRICH_MAX_TRIED_GENERAL, ENRICH_MAX_TRIED_STORE } from "../_shared/offEnrich.ts";
 import {
   OFF_FIELDS,
   OFF_USER_AGENT,
@@ -104,9 +105,6 @@ async function fetchProduct(code: string): Promise<any | null> {
   return product;
 }
 
-/** How many fallback hits are re-read in full (general search / store search). */
-const FALLBACK_ENRICH_GENERAL = 16;
-const FALLBACK_ENRICH_STORE = 8;
 
 const quote = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
 
@@ -141,12 +139,11 @@ async function searchFallback(tag: string, store: StoreKey | null): Promise<any[
   const codes: string[] = data.hits
     .filter((h: { product_name?: unknown; product_name_en?: unknown }) => offStr(h?.product_name) || offStr(h?.product_name_en))
     .map((h: { code?: unknown }) => offStr(h?.code))
-    .filter((c: string | null): c is string => !!c)
-    .slice(0, store ? FALLBACK_ENRICH_STORE : FALLBACK_ENRICH_GENERAL);
-  const full = await Promise.allSettled(codes.map((c) => fetchProduct(c)));
-  return full
-    .map((r) => (r.status === "fulfilled" ? r.value : null))
-    .filter((p) => p !== null);
+    .filter((c: string | null): c is string => !!c);
+  // Re-read in batches of 8 until 12 usable products or the try limit (32, store 12).
+  return await enrichInBatches(codes, (c) => fetchProduct(c), {
+    maxTried: store ? ENRICH_MAX_TRIED_STORE : ENRICH_MAX_TRIED_GENERAL,
+  });
 }
 
 // ============================================

@@ -25,6 +25,10 @@ export interface AlternativesPick {
   usedStore: StoreKey | null;
   /** True when nothing passed the strict bar and the relaxed one was used. */
   relaxed: boolean;
+  /** Category tier the alternatives came from (1 or 2), null when none were picked. */
+  tier?: 1 | 2 | null;
+  /** Candidates that got a full score in the last tier tried (for analytics). */
+  scoredCount?: number;
 }
 
 export const MAX_ALTERNATIVES = 3;
@@ -100,71 +104,79 @@ export function pickAlternatives(
   if (!primary) return { alternatives: [], anyInStore: false, usedStore, relaxed: false };
 
   const tagsOf = (p: AlternativeCandidate) => (p?.categories_tags ?? []).map((t) => t.trim().toLowerCase());
-  // Tier 2 only when no candidate at all shares the most specific category, and
-  // never for a broad category (en:sauces would let an egg salad replace a mayonnaise).
-  const anyTier1 = candidates.some((p) => p && tagsOf(p).includes(primary));
-  const tier2Tag = !anyTier1 && secondary && !BROAD_CATEGORIES.has(secondary) ? secondary : null;
-  const tier = anyTier1 ? 1 : 2;
-  const tierTag = anyTier1 ? primary : tier2Tag;
-  if (!tierTag) return { alternatives: [], anyInStore: false, usedStore, relaxed: false };
+  // Tier 2 only when tier 1 picks nothing after both passes, and never for a broad
+  // category (en:sauces would let an egg salad replace a mayonnaise).
+  const tier2Tag = secondary && !BROAD_CATEGORIES.has(secondary) ? secondary : null;
 
-  const scored = candidates
-    .map((product, index) => {
-      if (!product?.code || scannedCodes.has(product.code)) return null;
-      const name = product.product_name_en || product.product_name;
-      if (!name) return null;
-      const tags = tagsOf(product);
-      if (!tags.includes(tierTag)) return null;
-      if (tags.some((t) => DISH_CATEGORIES.includes(t) && !scannedTags.has(t))) return null;
-      const result = scoreProduct(toScoreInput(product));
-      if (result.confidence !== "full" || result.provisional || result.score === null || result.band === null) {
-        return null;
-      }
-      const sharedTags = tags.filter((t) => scannedTags.has(t)).length;
-      const inStore = !!usedStore && product.inStore === true;
-      return {
-        index,
-        tier,
-        sharedTags,
-        key: normaliseProductName(name, product.brands),
-        alt: {
-          product,
-          score: result.score,
-          band: result.band,
-          reasonKey: reasonFor(result.reasons, product),
-          inStore,
-        } satisfies Alternative,
-      };
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+  const runTier = (tierTag: string, tier: 1 | 2) => {
+    const scored = candidates
+      .map((product, index) => {
+        if (!product?.code || scannedCodes.has(product.code)) return null;
+        const name = product.product_name_en || product.product_name;
+        if (!name) return null;
+        const tags = tagsOf(product);
+        if (!tags.includes(tierTag)) return null;
+        if (tags.some((t) => DISH_CATEGORIES.includes(t) && !scannedTags.has(t))) return null;
+        const result = scoreProduct(toScoreInput(product));
+        if (result.confidence !== "full" || result.provisional || result.score === null || result.band === null) {
+          return null;
+        }
+        const sharedTags = tags.filter((t) => scannedTags.has(t)).length;
+        const inStore = !!usedStore && product.inStore === true;
+        return {
+          index,
+          tier,
+          sharedTags,
+          key: normaliseProductName(name, product.brands),
+          alt: {
+            product,
+            score: result.score,
+            band: result.band,
+            reasonKey: reasonFor(result.reasons, product),
+            inStore,
+          } satisfies Alternative,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
 
-  const gainMin = scanned.score + MIN_SCORE_GAIN;
-  const strict = scored.filter((q) => q.alt.score >= Math.max(gainMin, MIN_ALTERNATIVE_SCORE));
-  const relaxed = strict.length === 0;
-  const qualified = relaxed
-    ? scored.filter((q) => q.alt.score >= Math.max(gainMin, RELAXED_MIN_ALTERNATIVE_SCORE))
-    : strict;
-  const ranked = qualified.sort(
-    (a, b) =>
-      Number(b.alt.inStore) - Number(a.alt.inStore) ||
-      b.alt.score - a.alt.score ||
-      b.sharedTags - a.sharedTags ||
-      a.index - b.index,
-  );
+    const gainMin = scanned.score + MIN_SCORE_GAIN;
+    const strict = scored.filter((q) => q.alt.score >= Math.max(gainMin, MIN_ALTERNATIVE_SCORE));
+    const relaxed = strict.length === 0;
+    const qualified = relaxed
+      ? scored.filter((q) => q.alt.score >= Math.max(gainMin, RELAXED_MIN_ALTERNATIVE_SCORE))
+      : strict;
+    const ranked = qualified.sort(
+      (a, b) =>
+        Number(b.alt.inStore) - Number(a.alt.inStore) ||
+        b.alt.score - a.alt.score ||
+        b.sharedTags - a.sharedTags ||
+        a.index - b.index,
+    );
 
-  const seen = new Set<string>();
-  const alternatives: Alternative[] = [];
-  for (const q of ranked) {
-    if (seen.has(q.key)) continue;
-    seen.add(q.key);
-    alternatives.push(q.alt);
-    if (alternatives.length === MAX_ALTERNATIVES) break;
+    const seen = new Set<string>();
+    const alternatives: Alternative[] = [];
+    for (const q of ranked) {
+      if (seen.has(q.key)) continue;
+      seen.add(q.key);
+      alternatives.push(q.alt);
+      if (alternatives.length === MAX_ALTERNATIVES) break;
+    }
+    return { alternatives, relaxed: relaxed && alternatives.length > 0, scoredCount: scored.length };
+  };
+
+  let run = runTier(primary, 1);
+  let tier: 1 | 2 | null = run.alternatives.length > 0 ? 1 : null;
+  if (tier === null && tier2Tag) {
+    run = runTier(tier2Tag, 2);
+    if (run.alternatives.length > 0) tier = 2;
   }
 
   return {
-    alternatives,
-    anyInStore: alternatives.some((a) => a.inStore),
+    alternatives: run.alternatives,
+    anyInStore: run.alternatives.some((a) => a.inStore),
     usedStore,
-    relaxed: relaxed && alternatives.length > 0,
+    relaxed: run.relaxed,
+    tier,
+    scoredCount: run.scoredCount,
   };
 }

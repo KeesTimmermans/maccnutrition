@@ -119,8 +119,18 @@ export const trackAlternativesShown = (props: {
   hadStore: boolean;
   store: string | null;
   sourceCategory: string | null;
+  candidateCount: number;
+  tier: 1 | 2 | null;
+  scoredCount: number;
+  scannedScore: number;
+  source: string | null;
 }) =>
   track("alternatives_shown", {
+    candidate_count: props.candidateCount,
+    tier: props.tier,
+    scored_count: props.scoredCount,
+    scanned_score: props.scannedScore,
+    response_source: props.source,
     count: props.count,
     in_store_count: props.inStoreCount,
     had_store: props.hadStore,
