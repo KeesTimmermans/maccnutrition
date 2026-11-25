@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
+import { planFromInterval } from "../_shared/plans.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -101,6 +103,7 @@ serve(async (req) => {
     let isTrialing = false;
     let trialEnd: string | null = null;
     let trialDaysRemaining: number | null = null;
+    let plan: string | null = null;
 
     if (hasActiveSub) {
       const subscription = activeOrTrialing[0];
@@ -108,6 +111,7 @@ serve(async (req) => {
       // Guard against Stripe returning null/undefined/string timestamps (prevents "Invalid time value")
       subscriptionEnd = isoFromUnixSeconds((subscription as any).current_period_end);
       isTrialing = subscription.status === "trialing";
+      plan = planFromInterval((subscription as any).items?.data?.[0]?.price?.recurring?.interval ?? null);
 
       if (isTrialing) {
         trialEnd = isoFromUnixSeconds((subscription as any).trial_end);
@@ -142,6 +146,7 @@ serve(async (req) => {
         is_trialing: isTrialing,
         trial_end: trialEnd,
         trial_days_remaining: trialDaysRemaining,
+        plan,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

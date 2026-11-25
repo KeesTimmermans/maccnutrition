@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { PLANS, TRIAL_DAYS, parsePlan } from "../_shared/plans.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,6 +72,23 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { email: user.email });
 
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+
+    const parsedPlan = parsePlan(body?.plan);
+    if (!parsedPlan.ok) {
+      return new Response(JSON.stringify({ error: parsedPlan.error }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+    const plan = parsedPlan.plan;
+    logStep("Plan chosen", { plan });
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -101,13 +119,6 @@ serve(async (req) => {
       }
     }
 
-    let body: any = {};
-    try {
-      body = await req.json();
-    } catch {
-      body = {};
-    }
-
     const requestedReturnUrl = body?.return_url ?? body?.returnUrl ?? null;
     const origin = req.headers.get("origin") ?? "";
 
@@ -124,13 +135,17 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: "price_1SgrQ5EhSXv7TD1NMX0Yqbt8",
+          price: PLANS[plan].priceId,
           quantity: 1,
         },
       ],
       mode: "subscription",
+      payment_method_collection: "always",
       subscription_data: {
-        trial_period_days: 7,
+        trial_period_days: TRIAL_DAYS,
+        trial_settings: {
+          end_behavior: { missing_payment_method: "cancel" },
+        },
       },
       payment_intent_data: undefined,
       allow_promotion_codes: true,
