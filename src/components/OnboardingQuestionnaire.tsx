@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { canProceed as canProceedStep, defaultUnitSystem, MAIN_STEP_COUNT, type OnboardingStepId } from "@/lib/onboardingRules";
+import { track } from "@/lib/analytics";
 import { EVENT_LABELS, EVENT_DIVISIONS, FALLBACK_DIVISIONS, EVENT_GUIDANCE, getCompGoalsForEvent } from "@/lib/competitionPrep/eventProfiles";
 import type { EventType } from "@/lib/competitionPrep/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -172,7 +174,7 @@ const initialData: OnboardingData = {
   secondaryGoals: [],
   dietType: "",
   foodDislikes: "",
-  coachingTone: "",
+  coachingTone: "supportive",
   trackingMode: "calories",
   mealsPerDay: "",
   proteinShakesPreference: "",
@@ -203,13 +205,12 @@ const initialData: OnboardingData = {
   },
 };
 
-// Signup asks only the essentials. The other step components (medical, eating_behavior,
-// challenges, competition_prep, preferences, measurements) stay in this file for reuse later.
-const getSteps = (t: (key: string) => string): { id: StepType; title: string; icon: React.ReactNode }[] => [
+// Signup is 3 screens (rules in lib/onboardingRules.ts). Everything else belongs in the
+// Today "Complete your profile" card, which reuses the step components below.
+const getSteps = (t: (key: string) => string): { id: OnboardingStepId; title: string; icon: React.ReactNode }[] => [
   { id: "demographics", title: t('about_you'), icon: <User className="w-6 h-6" /> },
-  { id: "goals", title: t('your_goals'), icon: <Target className="w-6 h-6" /> },
-  { id: "lifestyle", title: "Your week", icon: <Activity className="w-6 h-6" /> },
-  { id: "food", title: "Food & health", icon: <Utensils className="w-6 h-6" /> },
+  { id: "goals_week", title: "Your goal and week", icon: <Target className="w-6 h-6" /> },
+  { id: "food", title: "Food", icon: <Utensils className="w-6 h-6" /> },
 ];
 
 interface OnboardingQuestionnaireProps {
@@ -221,7 +222,11 @@ const DRAFT_STORAGE_KEY = "cjt_onboarding_draft";
 export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireProps) => {
   const { t } = useLanguage();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [data, setData] = useState<OnboardingData>(initialData);
+  const [data, setData] = useState<OnboardingData>(() => ({
+    ...initialData,
+    unitSystem: defaultUnitSystem(typeof navigator !== "undefined" ? navigator.language : undefined),
+  }));
+  const startedAtRef = useRef(Date.now());
   const [restored, setRestored] = useState(false);
 
   // Restore saved draft on mount
@@ -231,7 +236,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
       if (saved) {
         const draft = JSON.parse(saved) as { data: Partial<OnboardingData>; stepIndex: number };
         if (draft.data) {
-          setData(prev => ({ ...prev, ...draft.data }));
+          setData(prev => ({ ...prev, ...draft.data, coachingTone: draft.data.coachingTone || prev.coachingTone }));
         }
         if (typeof draft.stepIndex === "number" && draft.stepIndex >= 0) {
           setCurrentStepIndex(draft.stepIndex);
@@ -273,6 +278,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   // Clear draft on successful completion
   const handleComplete = (finalData: OnboardingData) => {
     localStorage.removeItem(DRAFT_STORAGE_KEY);
+    track("onboarding_completed", { seconds: Math.round((Date.now() - startedAtRef.current) / 1000) });
     onComplete(finalData);
   };
   
@@ -282,7 +288,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   const allSteps = data.sex === "female" 
     ? [
         ...steps,
-        { id: "female" as StepType, title: t('cycle_info'), icon: <Moon className="w-6 h-6" /> },
+        { id: "female" as OnboardingStepId, title: t('cycle_info'), icon: <Moon className="w-6 h-6" /> },
       ]
     : steps;
 
@@ -310,6 +316,7 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
   };
 
   const handleNext = () => {
+    track("onboarding_step_completed", { step: currentStep.id });
     if (currentStepIndex < allSteps.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -325,55 +332,33 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
     }
   };
 
-  const canProceed = () => {
-    switch (currentStep.id) {
-      case "demographics":
-        const hasHeight = data.unitSystem === "imperial" ? data.heightFeet : data.heightCm;
-        return data.name.trim() && data.age && data.sex && hasHeight && data.weight;
-      case "medical":
-        return true;
-      case "lifestyle":
-        return data.activityLevel && data.sleepHours && data.trainingDays;
-      case "eating_behavior":
-        return data.eatingSpeed && data.hungerPatterns;
-      case "challenges":
-        return data.biggestChallenge && data.mealPrepTime;
-      case "goals":
-        return !!data.primaryGoal;
-      case "food":
-        return data.dietType && data.coachingTone;
-      case "competition_prep":
-        // If they said yes, they need event type and date; otherwise always valid
-        if (data.preparingForEvent === "yes") {
-          const hasEventType = data.compEventType;
-          return !!(hasEventType && data.compEventDate && data.compGoal);
-        }
-        return true;
-      case "preferences":
-        return data.dietType && data.coachingTone;
-      case "female":
-        return data.cycleRegularity;
-      case "measurements":
-        return true; // Measurements are optional
-      default:
-        return true;
-    }
-  };
+  const canProceed = () => canProceedStep(currentStep.id, data);
 
   const renderStepContent = () => {
-    switch (currentStep.id) {
+    switch (currentStep.id as string) {
       case "demographics":
         return <DemographicsStep data={data} updateData={updateData} t={t} />;
       case "medical":
         return <MedicalStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />;
-      case "lifestyle":
-        return <LifestyleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} essentialsOnly />;
+      case "goals_week":
+        return (
+          <div className="space-y-8">
+            <GoalsStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} essentialsOnly />
+            <LifestyleStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} essentialsOnly />
+          </div>
+        );
       case "food":
         return (
           <div className="space-y-8">
             <FoodApproachQuestion data={data} updateData={updateData} t={t} />
-            <MedicalStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />
             <PreferencesStep data={data} updateData={updateData} t={t} essentialsOnly />
+            <div className="space-y-3 border-t border-border pt-6">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Health and allergies <span className="font-normal text-muted-foreground">(optional)</span></p>
+                <p className="text-xs text-muted-foreground">Skip this if nothing applies.</p>
+              </div>
+              <MedicalStep data={data} updateData={updateData} toggleArrayItem={toggleArrayItem} t={t} />
+            </div>
           </div>
         );
       case "eating_behavior":
@@ -422,7 +407,8 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header with Logo */}
       <div className="p-4 flex flex-col items-center safe-pt-4">
-        <img src={macLogo} alt="MAC Nutrition" className="h-12 sm:h-14 mb-3" style={{ mixBlendMode: 'multiply' }} />
+        <img src={macLogo} alt="MacNutrition" className="h-12 sm:h-14 mb-1" style={{ mixBlendMode: 'multiply' }} />
+        <p className="text-xs text-muted-foreground mb-3">Takes about a minute</p>
         
         {/* Progress bar */}
         <div className="w-full max-w-md">
@@ -465,7 +451,9 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-foreground">{currentStep.title}</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                {t('step_x_of_y').replace('{current}', String(currentStepIndex + 1)).replace('{total}', String(allSteps.length))}
+                {currentStep.id === "female"
+                  ? "Optional"
+                  : t('step_x_of_y').replace('{current}', String(currentStepIndex + 1)).replace('{total}', String(MAIN_STEP_COUNT))}
               </p>
             </div>
           </div>
@@ -480,6 +468,11 @@ export const OnboardingQuestionnaire = ({ onComplete }: OnboardingQuestionnaireP
           <Button variant="soft" size="lg" onClick={handleBack} className="flex-1">
             <ChevronLeft className="w-5 h-5 mr-1" />
             {t('back')}
+          </Button>
+        )}
+        {currentStep.id === "female" && (
+          <Button variant="ghost" size="lg" onClick={handleNext} className="flex-1">
+            Skip for now
           </Button>
         )}
         <Button
@@ -803,7 +796,7 @@ export const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentials
   updateData: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
   toggleArrayItem: (key: keyof OnboardingData, item: string) => void;
   t: (key: string) => string;
-  /** Signup: only activity level, training days and sleep. */
+  /** Signup: only activity level and training days. */
   essentialsOnly?: boolean;
   /** Profile completion: only the fields hidden at signup. */
   extrasOnly?: boolean;
@@ -1023,7 +1016,7 @@ export const LifestyleStep = ({ data, updateData, toggleArrayItem, t, essentials
       </div>
       )}
 
-      {!extrasOnly && (
+      {!essentialsOnly && (
       <div className="space-y-3">
         <Label className="text-sm font-semibold">{t('avg_sleep_night')}</Label>
         <div className="grid grid-cols-2 gap-2">

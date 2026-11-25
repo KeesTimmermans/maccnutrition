@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineSummary } from "@/components/BaselineSummary";
+import { NutritionScoreOffer } from "@/components/NutritionScoreOffer";
 import { Dashboard } from "@/components/Dashboard";
 import { Check, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +16,7 @@ import { TRIAL_DAYS, planPriceLabel, type PlanId } from "../../supabase/function
 import macLogo from "@/assets/mac-nutrition-logo.png";
 import appMockup from "@/assets/app-mockup.png";
 
-type AppState = "welcome" | "questionnaire" | "baseline" | "dashboard";
+type AppState = "welcome" | "questionnaire" | "baseline" | "score_offer" | "dashboard";
 
 const getCheckoutReturnUrl = () => {
   const basePath = window.location.pathname.endsWith("/") ? window.location.pathname : `${window.location.pathname}/`;
@@ -197,7 +198,7 @@ const Index = () => {
 
   const handleBaselineContinue = () => {
     localStorage.setItem("cjt_onboarded", "true");
-    setAppState("dashboard");
+    setAppState("score_offer");
   };
 
   useEffect(() => {
@@ -395,6 +396,10 @@ const Index = () => {
 
   if (appState === "dashboard") {
     return <Dashboard />;
+  }
+
+  if (appState === "score_offer") {
+    return <NutritionScoreOffer onStart={() => navigate("/nutrition-score")} onLater={() => setAppState("dashboard")} />;
   }
 
   if (appState === "baseline" && userData && savedBaseline) {

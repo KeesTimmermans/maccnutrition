@@ -76,7 +76,7 @@ const data = {
 describe("sectionToBaselineFields", () => {
   it("maps only the training fields, empty strings to null", () => {
     expect(sectionToBaselineFields("training", data)).toEqual({
-      job_activity_level: "moderate", workout_types: ["hiit"], training_duration: "60_90", climate: "hot", stress_level: null,
+      job_activity_level: "moderate", workout_types: ["hiit"], training_duration: "60_90", climate: "hot", stress_level: null, sleep_hours: null,
     });
   });
 

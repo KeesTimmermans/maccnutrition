@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingQuestionnaire, OnboardingData } from "@/components/OnboardingQuestionnaire";
 import { BaselineSummary } from "@/components/BaselineSummary";
+import { NutritionScoreOffer } from "@/components/NutritionScoreOffer";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboarding } from "@/App";
 import { saveUserBaseline, sendBaselineEmail } from "@/lib/userService";
@@ -18,6 +19,7 @@ const Onboarding = () => {
   const [savedBaseline, setSavedBaseline] = useState<BaselineResults | null>(null);
   const [showBaseline, setShowBaseline] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showOffer, setShowOffer] = useState(false);
   const { user } = useAuth();
   const { markOnboardingCompleted } = useOnboarding();
   const navigate = useNavigate();
@@ -131,8 +133,8 @@ const Onboarding = () => {
         );
       }
 
-      // Navigate to pricing/checkout — app access requires active subscription
-      navigate("/pricing");
+      // Offer the starting Nutrition Score; the route gates still send unsubscribed users to pricing.
+      setShowOffer(true);
     } catch (error: any) {
       if (import.meta.env.DEV) {
         console.error("[Onboarding] markOnboardingCompleted failed:", error);
@@ -144,6 +146,10 @@ const Onboarding = () => {
       });
     }
   };
+
+  if (showOffer) {
+    return <NutritionScoreOffer onStart={() => navigate("/nutrition-score")} onLater={() => navigate("/dashboard")} />;
+  }
 
   if (showBaseline && userData && savedBaseline) {
     return <BaselineSummary userData={userData} baseline={savedBaseline} onContinue={handleBaselineContinue} trackingMode={userData.trackingMode} />;

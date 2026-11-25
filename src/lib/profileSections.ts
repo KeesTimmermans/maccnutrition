@@ -4,7 +4,7 @@ import type { OnboardingData } from "@/components/OnboardingQuestionnaire";
 export type SectionId = "training" | "eating" | "journey" | "food";
 
 export const PROFILE_SECTIONS: { id: SectionId; title: string; description: string; questionCount: number }[] = [
-  { id: "training", title: "Training details", description: "Your job, workouts, climate and stress", questionCount: 5 },
+  { id: "training", title: "Training details", description: "Your job, workouts, climate, stress and sleep", questionCount: 6 },
   { id: "eating", title: "Eating habits", description: "How and when you eat", questionCount: 4 },
   { id: "journey", title: "Your journey", description: "Challenges, past diets and what keeps you going", questionCount: 8 },
   { id: "food", title: "Food preferences", description: "Shakes, snacks, water and dislikes", questionCount: 5 },
@@ -50,6 +50,7 @@ export const sectionToBaselineFields = (id: SectionId, data: OnboardingData): Re
         training_duration: orNull(data.trainingDuration),
         climate: orNull(data.climate),
         stress_level: orNull(data.stressLevel),
+        sleep_hours: orNull(data.sleepHours),
       };
     case "eating":
       return {
@@ -80,7 +81,7 @@ export const sectionToBaselineFields = (id: SectionId, data: OnboardingData): Re
   }
 };
 
-export const TARGET_AFFECTING = ["job_activity_level", "workout_types", "training_duration", "climate", "stress_level"];
+export const TARGET_AFFECTING = ["job_activity_level", "workout_types", "training_duration", "climate", "stress_level", "sleep_hours"];
 
 export const affectsTargets = (fields: Record<string, unknown>): boolean =>
   Object.keys(fields).some((key) => TARGET_AFFECTING.includes(key));
@@ -96,6 +97,7 @@ export const sectionPrefill = (baseline: UserBaseline): Partial<OnboardingData> 
   trainingDuration: baseline.training_duration ?? "",
   climate: baseline.climate ?? "",
   stressLevel: baseline.stress_level ?? "",
+  sleepHours: baseline.sleep_hours ?? "",
   eatingSpeed: baseline.eating_speed ?? "",
   hungerPatterns: baseline.hunger_patterns ?? "",
   cravingsTriggers: baseline.cravings_triggers ?? [],
