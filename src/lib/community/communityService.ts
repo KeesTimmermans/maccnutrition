@@ -85,7 +85,7 @@ export async function fetchPosts({ type, limit = 20, cursor }: FetchPostsParams 
 
   const [profilesRes, likesRes, commentsRes] = await Promise.all([
     supabase.from("profiles").select("user_id, display_name, avatar_url, community_anonymous").in("user_id", userIds),
-    supabase.from("community_likes").select("post_id").in("post_id", postIds),
+    supabase.rpc("get_post_like_counts", { p_post_ids: postIds }),
     supabase.from("community_comments").select("post_id").eq("is_deleted", false).in("post_id", postIds),
   ]);
 
@@ -93,7 +93,7 @@ export async function fetchPosts({ type, limit = 20, cursor }: FetchPostsParams 
 
   const likeCounts = new Map<string, number>();
   for (const l of likesRes.data ?? []) {
-    likeCounts.set(l.post_id, (likeCounts.get(l.post_id) ?? 0) + 1);
+    likeCounts.set(l.post_id, Number(l.like_count));
   }
 
   const commentCounts = new Map<string, number>();

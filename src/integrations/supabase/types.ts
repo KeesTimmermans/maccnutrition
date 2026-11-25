@@ -1465,6 +1465,13 @@ export type Database = {
     Functions: {
       decrypt_token: { Args: { p_ciphertext: string }; Returns: string }
       encrypt_token: { Args: { p_plaintext: string }; Returns: string }
+      get_post_like_counts: {
+        Args: { p_post_ids: string[] }
+        Returns: {
+          like_count: number
+          post_id: string
+        }[]
+      }
       get_wearable_token: {
         Args: { p_connection_id: string }
         Returns: {
