@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Droplet, Leaf, ListChecks, Moon, RotateCcw, Sparkles, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, Droplet, Leaf, ListChecks, Moon, RotateCcw, Sparkles, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { useTrackingMode } from "@/hooks/useTrackingMode";
@@ -12,7 +12,7 @@ import {
   type ChecklistCategory,
   localDateString,
   mergeCheckinFocusPoints,
-  sortByWhen,
+  visibleChecklistItems,
   type ChecklistDayMeal,
   type ChecklistDayState,
   type ChecklistItem,
@@ -154,7 +154,37 @@ export const TodayChecklistCard = ({
     [waterMl, waterGoalMl, meals, hasCheckedInToday, habit, today],
   );
 
-  const items = useMemo(() => (row ? sortByWhen(row.items) : []), [row]);
+  const allItems = useMemo(() => row?.items ?? [], [row]);
+  const doneIds = useMemo(
+    () => new Set(row ? allItems.filter((i) => isItemDone(i, row.completed, day)).map((i) => i.id) : []),
+    [allItems, row, day],
+  );
+
+  // Items that just became done stay on screen (checked) for 1.5s, then the next one moves in.
+  const [graceIds, setGraceIds] = useState<string[]>([]);
+  const prevDone = useRef<Set<string> | null>(null);
+  const graceTimers = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const prev = prevDone.current;
+    prevDone.current = doneIds;
+    if (!prev) return;
+    doneIds.forEach((id) => {
+      if (prev.has(id)) return;
+      window.clearTimeout(graceTimers.current[id]);
+      setGraceIds((g) => (g.includes(id) ? g : [...g, id]));
+      graceTimers.current[id] = window.setTimeout(() => {
+        setGraceIds((g) => g.filter((x) => x !== id));
+        delete graceTimers.current[id];
+      }, 1500);
+    });
+  }, [doneIds]);
+  useEffect(() => () => Object.values(graceTimers.current).forEach((t) => window.clearTimeout(t)), []);
+
+  const { visible: items, done: doneItems, remaining } = useMemo(
+    () => visibleChecklistItems(allItems, (i) => doneIds.has(i.id), new Date(), graceIds),
+    [allItems, doneIds, graceIds],
+  );
+  const [showDone, setShowDone] = useState(false);
   const { done, total } = row ? computeProgress(row.items, row.completed, day) : { done: 0, total: 0 };
   const allDone = total > 0 && done === total;
 
@@ -203,65 +233,7 @@ export const TodayChecklistCard = ({
     }
   };
 
-  if (loading) {
-    return (
-      <section className="bg-card rounded-3xl shadow-medium p-5 space-y-3" aria-busy="true">
-        <div className="h-5 w-40 bg-muted rounded animate-pulse" />
-        <div className="h-2 w-full bg-muted rounded-full animate-pulse" />
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-12 w-full bg-muted rounded-xl animate-pulse" />
-        ))}
-      </section>
-    );
-  }
-
-  if (failed || !row) {
-    return (
-      <section className="bg-card rounded-3xl shadow-medium p-5 flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{t("checklist_load_error")}</p>
-        <button
-          onClick={() => load()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-colors"
-        >
-          <RotateCcw className="w-4 h-4" />
-          {t("checklist_retry")}
-        </button>
-      </section>
-    );
-  }
-
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const progressLabel = t("checklist_progress").replace("{done}", String(done)).replace("{total}", String(total));
-
-  return (
-    <section className={`bg-card rounded-3xl shadow-medium ${isHabit ? "p-6 space-y-5" : "p-5 space-y-3"}`}>
-      <div className="flex items-center gap-4">
-        {isHabit ? (
-          <ProgressRing done={done} total={total} />
-        ) : (
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <ListChecks className="w-5 h-5 text-primary" />
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <h2 className={`font-bold text-foreground ${isHabit ? "text-xl" : "text-base"}`}>{t("checklist_title")}</h2>
-          <p className="text-sm text-muted-foreground" aria-live="polite">{progressLabel}</p>
-        </div>
-      </div>
-
-      <div className="h-2 w-full rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={progressLabel}>
-        <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
-      </div>
-
-      {allDone && (
-        <div className="flex items-center gap-2 rounded-2xl bg-primary/10 text-primary px-4 py-3 text-sm font-semibold">
-          <Sparkles className="w-4 h-4 shrink-0" />
-          {t("checklist_all_done")}
-        </div>
-      )}
-
-      <ul className={isHabit ? "space-y-3" : "space-y-2"}>
-        {items.map((item) => {
+  const renderItem = (item: ChecklistItem) => {
           const isDone = isItemDone(item, row.completed, day);
           const isAuto = item.kind === "auto";
           const tappable = !isAuto && (item.kind !== "habit" || !!habit);
@@ -331,8 +303,87 @@ export const TodayChecklistCard = ({
               </button>
             </li>
           );
-        })}
+        };
+
+  if (loading) {
+    return (
+      <section className="bg-card rounded-3xl shadow-medium p-5 space-y-3" aria-busy="true">
+        <div className="h-5 w-40 bg-muted rounded animate-pulse" />
+        <div className="h-2 w-full bg-muted rounded-full animate-pulse" />
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-12 w-full bg-muted rounded-xl animate-pulse" />
+        ))}
+      </section>
+    );
+  }
+
+  if (failed || !row) {
+    return (
+      <section className="bg-card rounded-3xl shadow-medium p-5 flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{t("checklist_load_error")}</p>
+        <button
+          onClick={() => load()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-colors"
+        >
+          <RotateCcw className="w-4 h-4" />
+          {t("checklist_retry")}
+        </button>
+      </section>
+    );
+  }
+
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const progressLabel = t("checklist_progress").replace("{done}", String(done)).replace("{total}", String(total));
+
+  return (
+    <section className={`bg-card rounded-3xl shadow-medium ${isHabit ? "p-6 space-y-5" : "p-5 space-y-3"}`}>
+      <div className="flex items-center gap-4">
+        {isHabit ? (
+          <ProgressRing done={done} total={total} />
+        ) : (
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <ListChecks className="w-5 h-5 text-primary" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <h2 className={`font-bold text-foreground ${isHabit ? "text-xl" : "text-base"}`}>{t("checklist_title")}</h2>
+          <p className="text-sm text-muted-foreground" aria-live="polite">{progressLabel}</p>
+        </div>
+      </div>
+
+      <div className="h-2 w-full rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={progressLabel}>
+        <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+      </div>
+
+      {allDone && (
+        <div className="flex items-center gap-2 rounded-2xl bg-primary/10 text-primary px-4 py-3 text-sm font-semibold">
+          <Sparkles className="w-4 h-4 shrink-0" />
+          {t("checklist_all_done")}
+        </div>
+      )}
+
+      <ul className={isHabit ? "space-y-3" : "space-y-2"}>
+        {items.map(renderItem)}
       </ul>
+
+      {remaining > 0 && (
+        <p className="text-xs text-muted-foreground text-center">{t("checklist_more_today").replace("{n}", String(remaining))}</p>
+      )}
+
+      {doneItems.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowDone((v) => !v)}
+            aria-expanded={showDone}
+            className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <ChevronDown className={`w-4 h-4 transition-transform ${showDone ? "rotate-180" : ""}`} />
+            {t("checklist_done_today").replace("{n}", String(doneItems.length))}
+          </button>
+          {showDone && <ul className={`mt-2 ${isHabit ? "space-y-3" : "space-y-2"}`}>{doneItems.map(renderItem)}</ul>}
+        </div>
+      )}
     </section>
   );
 };

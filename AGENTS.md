@@ -32,3 +32,4 @@
 - Label reads: pure conversion in `labelReading.ts`; results carry no categories, so floors and alternatives don't apply. Why: a photo can't tell us the category reliably.
 - Nutrition Score logic lives only in pure `src/lib/nutritionScore.ts`; `nutrition_scores` is insert-only for users. Why: one tested source, history never changes.
 - Signup order is /auth → /pricing → /post-checkout → /onboarding → score offer → /dashboard. Why: payment first by design.
+- The checklist card shows at most 5 open items via visibleChecklistItems; the saved row, generation and ticks are unchanged. Why: a short list is easier to act on, and the day's list must stay stable.

@@ -112,6 +112,54 @@ export const sortByWhen = (items: ChecklistItem[]): ChecklistItem[] =>
     .sort((a, b) => WHEN_ORDER.indexOf(a.item.when) - WHEN_ORDER.indexOf(b.item.when) || a.index - b.index)
     .map(({ item }) => item);
 
+export const CHECKLIST_VISIBLE_MAX = 5;
+
+/** Local hour each time slot starts. 'anytime' has no start and is never late. */
+export const SLOT_START_HOURS: Record<Exclude<ChecklistWhen, "anytime">, number> = {
+  morning: 5, breakfast: 7, lunch: 12, afternoon: 15, dinner: 18, evening: 20,
+};
+
+const currentSlotIndex = (now: Date): number => {
+  const h = now.getHours() + now.getMinutes() / 60;
+  let idx = 0;
+  (Object.keys(SLOT_START_HOURS) as (keyof typeof SLOT_START_HOURS)[]).forEach((slot) => {
+    if (h >= SLOT_START_HOURS[slot]) idx = Math.max(idx, WHEN_ORDER.indexOf(slot));
+  });
+  return idx;
+};
+
+const isLate = (item: ChecklistItem, slotIdx: number) =>
+  item.when !== "anytime" && WHEN_ORDER.indexOf(item.when) < slotIdx;
+
+/**
+ * Display-only selection for the checklist card: at most CHECKLIST_VISIBLE_MAX open items
+ * (plus just-done ids in graceIds as candidates). Weekly habit first, then up to 2 check-in
+ * items, then the rest in time order with already-passed slots behind current/upcoming ones.
+ */
+export const visibleChecklistItems = (
+  items: ChecklistItem[],
+  isDone: (item: ChecklistItem) => boolean,
+  now: Date,
+  graceIds: Iterable<string> = [],
+): { visible: ChecklistItem[]; done: ChecklistItem[]; remaining: number } => {
+  const grace = new Set(graceIds);
+  const candidates = items.filter((i) => !isDone(i) || grace.has(i.id));
+  const slotIdx = currentSlotIndex(now);
+  const picked: ChecklistItem[] = [];
+  const take = (i: ChecklistItem) => {
+    if (picked.length < CHECKLIST_VISIBLE_MAX && !picked.includes(i)) picked.push(i);
+  };
+  candidates.filter((i) => i.kind === "habit").forEach(take);
+  candidates.filter((i) => i.source === "checkin").slice(0, 2).forEach(take);
+  const ordered = sortByWhen(candidates);
+  ordered.filter((i) => !isLate(i, slotIdx)).forEach(take);
+  ordered.filter((i) => isLate(i, slotIdx)).forEach(take);
+  const visible = sortByWhen(picked);
+  const done = items.filter((i) => isDone(i) && !picked.includes(i));
+  const remaining = items.filter((i) => !isDone(i) && !picked.includes(i)).length;
+  return { visible, done, remaining };
+};
+
 const normalize = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
 
 /**
