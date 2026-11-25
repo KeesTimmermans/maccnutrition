@@ -20,7 +20,7 @@
 - Scan & rate alternatives: `product-alternatives` only searches/cleans OFF data (`_shared/off*.ts`); picking is pure `productAlternatives.ts`. On v2 failure it uses search.openfoodfacts.org (Nutri-Score A/B only); the 15-candidate stop counts general A/B hits. Why: v2 mostly 503s; store tags are sparse.
 - Scan & rate whole-food floor (`WHOLE_FOOD_FLOOR` in `foodScore.ts`) only raises the final score, never pillars or reasons. Why: honest areas, but unprocessed foods never look poor.
 - Better options are like-for-like: tier 1 shares the scanned product's most specific `categoriesToTry` tag, tier 2 the next one; `DISH_CATEGORIES` candidates are dropped unless the scanned product has the same tag; provisional candidates are dropped. Why: broad tags gave unlike swaps.
-- `BarcodeScanner` reads via `lib/barcodeDetection.ts` (native detector, else bundled wasm, no CDN); camera starts once per opening. Why: works offline.
+- `BarcodeScanner` reads via `lib/barcodeDetection.ts` (native, else bundled wasm); camera starts once. Why: offline.
 - Score breakdown and /tools/scoring render only from `foodScore.ts` exports. Why: screen, guide and rules must agree.
 - Scan & rate final-score order in `foodScore.ts`: caps (weakest link, sweeteners, provisional), then floors (highest wins, reported as `floor` + `floorKind`), then the grain-staple cap last; floors and caps change only the final score. Why: grains never exceed their cap.
 - `off_category_cache` (service role only) backs `product-alternatives`: memory → table <24h → live (upsert non-empty) → table ≤30 days; response reports `source`. Why: OFF search often 503s.
@@ -31,4 +31,4 @@
 - Pure single-ingredient honey and maple syrup (`WHOLE_FOOD_SUGAR_EXEMPT_CATEGORIES`) are exempt from the sugar-ingredient block on the whole-food floor. Why: it is a whole food even though sugar is its main nutrient.
 - Label reads: pure conversion in `labelReading.ts`; results carry no categories, so floors and alternatives don't apply. Why: a photo can't tell us the category reliably.
 - Nutrition Score logic lives only in pure `src/lib/nutritionScore.ts`; `nutrition_scores` is insert-only for users. Why: one tested source, history never changes.
-- Signup order is /auth → /pricing → /post-checkout → /onboarding → score offer → /dashboard. Why: payment comes first by design.
+- Signup order is /auth → /pricing → /post-checkout → /onboarding → score offer → /dashboard. Why: payment first by design.
