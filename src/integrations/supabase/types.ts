@@ -622,6 +622,24 @@ export type Database = {
         }
         Relationships: []
       }
+      off_category_cache: {
+        Row: {
+          fetched_at: string
+          key: string
+          products: Json
+        }
+        Insert: {
+          fetched_at?: string
+          key: string
+          products: Json
+        }
+        Update: {
+          fetched_at?: string
+          key?: string
+          products?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

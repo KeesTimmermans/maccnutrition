@@ -44,6 +44,9 @@ export interface ProductScoreData {
     salt_100g: number | null;
     fiber_100g: number | null;
     proteins_100g: number | null;
+    energy_kcal_100g: number | null;
+    fat_100g: number | null;
+    carbohydrates_100g: number | null;
   };
 }
 
@@ -85,6 +88,9 @@ export function toProductScoreData(p: any): ProductScoreData {
       salt_100g: offNum(n.salt_100g),
       fiber_100g: offNum(n.fiber_100g),
       proteins_100g: offNum(n.proteins_100g),
+      energy_kcal_100g: offNum(n["energy-kcal_100g"]),
+      fat_100g: offNum(n.fat_100g),
+      carbohydrates_100g: offNum(n.carbohydrates_100g),
     },
   };
 }

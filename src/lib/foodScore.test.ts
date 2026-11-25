@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   scoreProduct,
+  nutritionLooksImplausible,
   interpolate,
   REASON_KEYS,
   SUGAR_ANCHORS_FOOD,
@@ -537,3 +538,32 @@ describe("fruit juice and smoothies (sugar pillar)", () => {
 });
 
 const oneDecimal = (v: number) => Math.round(v * 10) / 10;
+
+describe("nutritionLooksImplausible", () => {
+  it("accepts plausible data and ignores nulls", () => {
+    expect(nutritionLooksImplausible({ sugars100g: 10, carbohydrates100g: 50, fat100g: 20, saturatedFat100g: 8, proteins100g: 7, salt100g: 0.5, energyKcal100g: 450 })).toBe(false);
+    expect(nutritionLooksImplausible({ sugars100g: null, fat100g: null })).toBe(false);
+    expect(nutritionLooksImplausible({ sugars100g: 10 })).toBe(false); // carbs unknown
+  });
+  it("flags negative or over-100 g values and kcal over 900", () => {
+    expect(nutritionLooksImplausible({ salt100g: -1 })).toBe(true);
+    expect(nutritionLooksImplausible({ proteins100g: 120 })).toBe(true);
+    expect(nutritionLooksImplausible({ energyKcal100g: 950 })).toBe(true);
+    expect(nutritionLooksImplausible({ energyKcal100g: 900 })).toBe(false);
+  });
+  it("flags a macro sum over 105", () => {
+    expect(nutritionLooksImplausible({ fat100g: 50, carbohydrates100g: 50, proteins100g: 10 })).toBe(true);
+    expect(nutritionLooksImplausible({ fat100g: 50, carbohydrates100g: 50, proteins100g: 5 })).toBe(false);
+  });
+  it("flags sugars above carbs and sat fat above fat (by more than 1)", () => {
+    expect(nutritionLooksImplausible({ sugars100g: 12, carbohydrates100g: 10 })).toBe(true);
+    expect(nutritionLooksImplausible({ sugars100g: 11, carbohydrates100g: 10 })).toBe(false);
+    expect(nutritionLooksImplausible({ saturatedFat100g: 9, fat100g: 5 })).toBe(true);
+  });
+  it("scoreProduct treats implausible data as provisional with the data_looks_off reason", () => {
+    const r = scoreProduct({ sugars100g: 30, carbohydrates100g: 5, ingredientsText: "oats", novaGroup: 1, additivesTags: [] });
+    expect(r.provisional).toBe(true);
+    expect(r.confidence).toBe("limited");
+    expect(r.reasons[0]).toBe(REASON_KEYS.dataLooksOff);
+  });
+});

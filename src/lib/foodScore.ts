@@ -18,6 +18,10 @@ export interface ProductScoreInput {
   salt100g?: number | null;
   fiber100g?: number | null;
   proteins100g?: number | null;
+  /** Only used to spot implausible label data, never scored. */
+  energyKcal100g?: number | null;
+  fat100g?: number | null;
+  carbohydrates100g?: number | null;
   /** Fruit / vegetables / nuts estimate from ingredients, in % (0–100). */
   fruitVegNuts100g?: number | null;
   ingredientsText?: string | null;
@@ -398,7 +402,37 @@ export const REASON_KEYS = {
   protein: "score_reason_protein",
   wholeIngredients: "score_reason_whole",
   lowSugarSaltFat: "score_reason_low_sugar_salt_fat",
+  dataLooksOff: "score_reason_data_looks_off",
 } as const;
+
+// ─── Implausible label data ─────────────────────────────────────────────────
+
+/** Any per-100g gram value above this (or below 0) is impossible. */
+export const IMPLAUSIBLE_MAX_GRAMS = 100;
+export const IMPLAUSIBLE_MAX_KCAL = 900;
+/** fat + carbs + protein + fibre + salt per 100g may not exceed this. */
+export const IMPLAUSIBLE_MAX_SUM = 105;
+/** Sugars may exceed carbs (and sat fat may exceed fat) by at most this. */
+export const IMPLAUSIBLE_PART_MARGIN = 1;
+
+/** True when the label numbers can't all be right. Null values are ignored. */
+export function nutritionLooksImplausible(n: ProductScoreInput | null | undefined): boolean {
+  if (!n) return false;
+  const v = (x: number | null | undefined): number | null => (isNum(x) ? x : null);
+  const grams = [n.sugars100g, n.saturatedFat100g, n.salt100g, n.fiber100g, n.proteins100g, n.fat100g, n.carbohydrates100g].map(v);
+  if (grams.some((g) => g !== null && (g < 0 || g > IMPLAUSIBLE_MAX_GRAMS))) return true;
+  const kcal = v(n.energyKcal100g);
+  if (kcal !== null && (kcal < 0 || kcal > IMPLAUSIBLE_MAX_KCAL)) return true;
+  const sum = [n.fat100g, n.carbohydrates100g, n.proteins100g, n.fiber100g, n.salt100g]
+    .map(v)
+    .reduce<number>((s, g) => s + (g ?? 0), 0);
+  if (sum > IMPLAUSIBLE_MAX_SUM) return true;
+  const sugars = v(n.sugars100g), carbs = v(n.carbohydrates100g);
+  if (sugars !== null && carbs !== null && sugars > carbs + IMPLAUSIBLE_PART_MARGIN) return true;
+  const sat = v(n.saturatedFat100g), fat = v(n.fat100g);
+  if (sat !== null && fat !== null && sat > fat + IMPLAUSIBLE_PART_MARGIN) return true;
+  return false;
+}
 
 export const PILLAR_NOTE_KEYS = {
   naturalSugar: "pillar_note_natural_sugar",
@@ -637,7 +671,9 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
       floorKind: null,
     };
   }
-  const confidence: ScoreConfidence = hasSugars && hasIngredientInfo ? "full" : "limited";
+  // Label data that can't be right is treated like missing data.
+  const implausible = nutritionLooksImplausible(input);
+  const confidence: ScoreConfidence = hasSugars && hasIngredientInfo && !implausible ? "full" : "limited";
   const drink = isBeverage(tags);
   const sugarIngredientListed = !!text && SUGAR_INGREDIENT_PATTERN.test(text);
   const sugarFirst = !!text && hasSugarInFirstIngredients(text);
@@ -849,6 +885,7 @@ export function scoreProduct(input: ProductScoreInput): ProductScoreResult {
   if (additiveCount >= MANY_ADDITIVES_COUNT) flags.push({ severity: processing.score + 0.3, key: REASON_KEYS.additives });
 
   const reasons = flags.sort((a, b) => a.severity - b.severity).map((f) => f.key);
+  if (implausible) reasons.unshift(REASON_KEYS.dataLooksOff);
   const nothingFlagged = reasons.length === 0;
   if (proteinFibre.applicable && proteinFibre.known && proteinFibre.score >= POSITIVE_PILLAR_MIN && bestPositive) {
     reasons.push(bestPositive);

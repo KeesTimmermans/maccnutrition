@@ -23,6 +23,9 @@ export interface ProductLookup {
     salt_100g: number | null;
     fiber_100g: number | null;
     proteins_100g: number | null;
+    energy_kcal_100g?: number | null;
+    fat_100g?: number | null;
+    carbohydrates_100g?: number | null;
   };
 }
 
@@ -44,6 +47,9 @@ export function toScoreInput(p: ProductLookup): ProductScoreInput {
     salt100g: p.nutriments?.salt_100g ?? null,
     fiber100g: p.nutriments?.fiber_100g ?? null,
     proteins100g: p.nutriments?.proteins_100g ?? null,
+    energyKcal100g: p.nutriments?.energy_kcal_100g ?? null,
+    fat100g: p.nutriments?.fat_100g ?? null,
+    carbohydrates100g: p.nutriments?.carbohydrates_100g ?? null,
     fruitVegNuts100g: p.fruits_vegetables_nuts_100g ?? null,
     ingredientsText: p.ingredients_text_en || p.ingredients_text || null,
     ingredientsN: p.ingredients_n ?? null,

@@ -24,3 +24,7 @@
 - `BarcodeScanner` hints/constraints are module-level constants and new props stay optional. Why: rebuilt hints restart the camera, and MealLogger shares the component.
 - Score breakdown and /tools/scoring render only from `foodScore.ts` exports. Why: screen, guide and rules must never disagree.
 - Scan & rate final-score order in `foodScore.ts`: caps (weakest link, sweeteners, provisional), then floors (highest wins, reported as `floor` + `floorKind`), then the grain-staple cap last; floors and caps change only the final score. Why: grains must never be lifted above their cap, and pillars/reasons stay honest.
+- `off_category_cache` (service role only, no policies) backs `product-alternatives` search: memory → table under 24h → live (v2, then fallback, upsert non-empty) → table up to 30 days; the response reports `source`. Why: Open Food Facts search often 503s.
+- Better options picking has a strict pass (≥6 and ≥ scanned+2) and, only when it finds nothing, a relaxed pass (≥5 and ≥ scanned+2) flagged `relaxed`. Why: some categories have few good products, but suggestions must stay clearly better.
+- Tier 2 is used only when no candidate at all has the tier-1 tag, and never when the tier-2 tag is in `BROAD_CATEGORIES` (`_shared/offCategories.ts`). Why: broad tags give unlike-for-like swaps.
+- `nutritionLooksImplausible` (foodScore.ts) makes a score provisional with reason `data_looks_off`; such candidates drop out of Better options. Why: bad label data must not be trusted or recommended.

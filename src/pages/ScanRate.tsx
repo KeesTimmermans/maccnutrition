@@ -235,8 +235,7 @@ const ScanRate = () => {
           <>
             <ResultCard product={outcome.product} result={outcome.result} onScanAnother={scanAnother} />
             {outcome.result?.score != null &&
-              outcome.result.score < BETTER_OPTIONS_BELOW &&
-              outcome.result.confidence === "full" && (
+              outcome.result.score < BETTER_OPTIONS_BELOW && (
                 <BetterOptions
                   barcode={outcome.product.code ?? lastBarcode ?? ""}
                   score={outcome.result.score}

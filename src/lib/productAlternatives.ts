@@ -6,7 +6,7 @@
 import { REASON_KEYS, scoreProduct, type ScoreBand } from "@/lib/foodScore";
 import { toScoreInput, type ProductLookup } from "@/lib/productScoreService";
 import { alternateBarcode } from "../../supabase/functions/_shared/offProduct.ts";
-import { categoriesToTry, type StoreKey } from "../../supabase/functions/_shared/offCategories.ts";
+import { BROAD_CATEGORIES, categoriesToTry, type StoreKey } from "../../supabase/functions/_shared/offCategories.ts";
 
 export type AlternativeCandidate = ProductLookup & { inStore: boolean };
 
@@ -23,6 +23,8 @@ export interface AlternativesPick {
   alternatives: Alternative[];
   anyInStore: boolean;
   usedStore: StoreKey | null;
+  /** True when nothing passed the strict bar and the relaxed one was used. */
+  relaxed: boolean;
 }
 
 export const MAX_ALTERNATIVES = 3;
@@ -30,6 +32,8 @@ export const MAX_ALTERNATIVES = 3;
 export const MIN_SCORE_GAIN = 2;
 /** …and score at least this on its own. */
 export const MIN_ALTERNATIVE_SCORE = 6;
+/** Second pass, used only when the strict pass finds nothing. */
+export const RELAXED_MIN_ALTERNATIVE_SCORE = 5;
 
 /**
  * Prepared dishes: a candidate tagged with one of these is a different kind of
@@ -93,23 +97,29 @@ export function pickAlternatives(
   const scannedTags = new Set((scanned.categoriesTags ?? []).map((t) => t.trim().toLowerCase()));
   // Like-for-like: tier 1 shares the most specific category, tier 2 only the next one.
   const [primary, secondary] = categoriesToTry(scanned.categoriesTags);
-  if (!primary) return { alternatives: [], anyInStore: false, usedStore };
-  const minScore = Math.max(scanned.score + MIN_SCORE_GAIN, MIN_ALTERNATIVE_SCORE);
+  if (!primary) return { alternatives: [], anyInStore: false, usedStore, relaxed: false };
 
-  const qualified = candidates
+  const tagsOf = (p: AlternativeCandidate) => (p?.categories_tags ?? []).map((t) => t.trim().toLowerCase());
+  // Tier 2 only when no candidate at all shares the most specific category, and
+  // never for a broad category (en:sauces would let an egg salad replace a mayonnaise).
+  const anyTier1 = candidates.some((p) => p && tagsOf(p).includes(primary));
+  const tier2Tag = !anyTier1 && secondary && !BROAD_CATEGORIES.has(secondary) ? secondary : null;
+  const tier = anyTier1 ? 1 : 2;
+  const tierTag = anyTier1 ? primary : tier2Tag;
+  if (!tierTag) return { alternatives: [], anyInStore: false, usedStore, relaxed: false };
+
+  const scored = candidates
     .map((product, index) => {
       if (!product?.code || scannedCodes.has(product.code)) return null;
       const name = product.product_name_en || product.product_name;
       if (!name) return null;
-      const tags = (product.categories_tags ?? []).map((t) => t.trim().toLowerCase());
-      const tier = tags.includes(primary) ? 1 : secondary && tags.includes(secondary) ? 2 : null;
-      if (tier === null) return null;
+      const tags = tagsOf(product);
+      if (!tags.includes(tierTag)) return null;
       if (tags.some((t) => DISH_CATEGORIES.includes(t) && !scannedTags.has(t))) return null;
       const result = scoreProduct(toScoreInput(product));
       if (result.confidence !== "full" || result.provisional || result.score === null || result.band === null) {
         return null;
       }
-      if (result.score < minScore) return null;
       const sharedTags = tags.filter((t) => scannedTags.has(t)).length;
       const inStore = !!usedStore && product.inStore === true;
       return {
@@ -127,18 +137,20 @@ export function pickAlternatives(
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
-  // Tier 2 only when no tier 1 product qualifies.
-  const bestTier = Math.min(...qualified.map((q) => q.tier));
-  const ranked = qualified
-    .filter((q) => q.tier === bestTier)
-    .sort(
-      (a, b) =>
-        a.tier - b.tier ||
-        Number(b.alt.inStore) - Number(a.alt.inStore) ||
-        b.alt.score - a.alt.score ||
-        b.sharedTags - a.sharedTags ||
-        a.index - b.index,
-    );
+
+  const gainMin = scanned.score + MIN_SCORE_GAIN;
+  const strict = scored.filter((q) => q.alt.score >= Math.max(gainMin, MIN_ALTERNATIVE_SCORE));
+  const relaxed = strict.length === 0;
+  const qualified = relaxed
+    ? scored.filter((q) => q.alt.score >= Math.max(gainMin, RELAXED_MIN_ALTERNATIVE_SCORE))
+    : strict;
+  const ranked = qualified.sort(
+    (a, b) =>
+      Number(b.alt.inStore) - Number(a.alt.inStore) ||
+      b.alt.score - a.alt.score ||
+      b.sharedTags - a.sharedTags ||
+      a.index - b.index,
+  );
 
   const seen = new Set<string>();
   const alternatives: Alternative[] = [];
@@ -149,5 +161,10 @@ export function pickAlternatives(
     if (alternatives.length === MAX_ALTERNATIVES) break;
   }
 
-  return { alternatives, anyInStore: alternatives.some((a) => a.inStore), usedStore };
+  return {
+    alternatives,
+    anyInStore: alternatives.some((a) => a.inStore),
+    usedStore,
+    relaxed: relaxed && alternatives.length > 0,
+  };
 }

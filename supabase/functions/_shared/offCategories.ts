@@ -14,6 +14,22 @@ export const GENERIC_CATEGORIES = new Set([
   "en:non-alcoholic-beverages",
 ]);
 
+/** Too broad to be the like-for-like match: never used as a tier-2 category. */
+export const BROAD_CATEGORIES = new Set([
+  "en:sauces",
+  "en:condiments",
+  "en:spreads",
+  "en:dairies",
+  "en:meats",
+  "en:desserts",
+  "en:frozen-foods",
+  "en:meals",
+  "en:cereals-and-potatoes",
+  "en:fermented-foods",
+  "en:fermented-milk-products",
+  "en:seafood",
+]);
+
 export const MAX_CATEGORIES_TO_TRY = 3;
 
 /**

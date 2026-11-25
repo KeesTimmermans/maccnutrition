@@ -11,7 +11,7 @@ const product = (code: string, name: string, over: Partial<AlternativeCandidate>
   ingredients_text: "water",
   nova_group: 1,
   additives_tags: [],
-  categories_tags: ["en:foods", "en:spreads"],
+  categories_tags: ["en:foods", "en:spreads", "en:nut-spreads"],
   stores_tags: [],
   inStore: false,
   ...over,
@@ -92,7 +92,7 @@ describe("pickAlternatives", () => {
 
   it("returns an empty list when nothing qualifies", () => {
     const r = pickAlternatives({ ...scanned, score: 9 }, [product("5001", "Nine")]);
-    expect(r).toEqual({ alternatives: [], anyInStore: false, usedStore: null });
+    expect(r).toEqual({ alternatives: [], anyInStore: false, usedStore: null, relaxed: false });
   });
 
   it("caps the list at 3", () => {
@@ -103,7 +103,7 @@ describe("pickAlternatives", () => {
   it("uses scoreProduct's beverage thresholds", () => {
     // 9g added sugar: high for a drink (weakest-link cap 5), moderate for a food (8).
     const sugary = { ingredients_text: "water, salt, lemon, sugar", nutriments: { sugars_100g: 9 } as never };
-    const drink = product("7001", "Drink", { ...sugary, categories_tags: ["en:beverages", "en:spreads"] });
+    const drink = product("7001", "Drink", { ...sugary, categories_tags: ["en:beverages", "en:nut-spreads"] });
     const food = product("7002", "Food", sugary);
     const r = pickAlternatives(scanned, [drink, food]);
     expect(r.alternatives.map((a) => a.product.code)).toEqual(["7002"]);
@@ -136,14 +136,14 @@ describe("pickAlternatives", () => {
       const dressing = product("9003", "Vinaigrette", { categories_tags: ["en:sauces", "en:dressings"] });
       expect(pickAlternatives(mayo, [dressing, lightMayo]).alternatives.map((a) => a.product.code)).toEqual(["9002"]);
       expect(pickAlternatives(mayo, [dressing]).alternatives.map((a) => a.product.code)).toEqual(["9003"]);
-      // A tier 1 product that doesn't qualify (score too low) leaves tier 2 in use.
+      // Any tier 1 candidate, even one that doesn't qualify, blocks tier 2.
       // (one E-number keeps it out of the whole-food floor)
       const saltyMayo = product("9004", "Salty Mayo", {
         categories_tags: mayoTags,
         ingredients_text: "water, E330",
         nutriments: { salt_100g: 2.25 } as never,
       });
-      expect(pickAlternatives(mayo, [saltyMayo, dressing]).alternatives.map((a) => a.product.code)).toEqual(["9003"]);
+      expect(pickAlternatives(mayo, [saltyMayo, dressing]).alternatives).toEqual([]);
     });
 
     it("drops prepared dishes unless the scanned product is the same kind of dish", () => {
@@ -184,5 +184,55 @@ describe("pickAlternatives", () => {
       expect(pickAlternatives({ ...mayo, categoriesTags: ["en:foods", "fr:sauces"] }, [lightMayo]).alternatives).toEqual([]);
       expect(pickAlternatives({ ...mayo, categoriesTags: null }, [lightMayo]).alternatives).toEqual([]);
     });
+  });
+});
+
+describe("pickAlternatives — relaxed pass and tier 2 rules", () => {
+  const nutScanned = { barcode: "3017620422003", score: 3, categoriesTags: ["en:foods", "en:spreads", "en:nut-spreads"] };
+  const tagged = { categories_tags: ["en:nut-spreads"] };
+
+  it("uses the strict pass (6+) when something qualifies, and is not relaxed", () => {
+    const five = product("7001", "Five", { ...tagged, ingredients_text: "water, E330", nutriments: { salt_100g: 1.3 } as never });
+    const nine = product("7002", "Nine", tagged);
+    const r = pickAlternatives(nutScanned, [five, nine]);
+    expect(r.alternatives.map((a) => a.product.code)).toEqual(["7002"]);
+    expect(r.relaxed).toBe(false);
+  });
+
+  it("falls back to the relaxed pass (5+) only when nothing scores 6+", () => {
+    const five = product("7101", "Five", { ...tagged, ingredients_text: "water, E330", nutriments: { salt_100g: 1.3 } as never });
+    const r = pickAlternatives(nutScanned, [five]);
+    expect(r.alternatives.map((a) => a.score)).toEqual([5]);
+    expect(r.relaxed).toBe(true);
+  });
+
+  it("the relaxed pass still needs +2 over the scanned product", () => {
+    const five = product("7201", "Five", { ...tagged, ingredients_text: "water, E330", nutriments: { salt_100g: 1.3 } as never });
+    const r = pickAlternatives({ ...nutScanned, score: 4 }, [five]);
+    expect(r.alternatives).toEqual([]);
+    expect(r.relaxed).toBe(false);
+  });
+
+  it("never uses a BROAD_CATEGORIES tag as tier 2", () => {
+    // Scanned: en:spreads (broad) then en:nut-spreads; candidate shares only en:spreads.
+    const r = pickAlternatives(nutScanned, [product("7301", "Jam", { categories_tags: ["en:spreads"] })]);
+    expect(r.alternatives).toEqual([]);
+  });
+
+  it("allows a narrow tier-2 tag when no candidate shares the tier-1 tag", () => {
+    const s = { barcode: "5000000000001", score: 3, categoriesTags: ["en:foods", "en:mayonnaises", "en:light-mayonnaises"] };
+    const r = pickAlternatives(s, [product("7401", "Mayo", { categories_tags: ["en:mayonnaises"] })]);
+    expect(r.alternatives.map((a) => a.product.code)).toEqual(["7401"]);
+  });
+
+  it("does not use tier 2 when any candidate has the tier-1 tag, even an unqualified one", () => {
+    const s = { barcode: "5000000000001", score: 3, categoriesTags: ["en:foods", "en:mayonnaises", "en:light-mayonnaises"] };
+    const weak = product("7501", "Weak light mayo", {
+      categories_tags: ["en:light-mayonnaises"],
+      ingredients_text: "water, E330",
+      nutriments: { salt_100g: 2.25 } as never,
+    });
+    const r = pickAlternatives(s, [weak, product("7502", "Mayo", { categories_tags: ["en:mayonnaises"] })]);
+    expect(r.alternatives).toEqual([]);
   });
 });

@@ -16,6 +16,7 @@ interface AlternativesResponse {
   candidates: AlternativeCandidate[];
   matchedCategory: string | null;
   error?: boolean;
+  source?: "live" | "cache" | "stale";
 }
 
 interface Props {
@@ -110,6 +111,7 @@ export function BetterOptions({ barcode, score, categoriesTags, store, onSelect 
               <AlternativeCard key={alt.product.code ?? ""} alt={alt} storeName={storeName} onSelect={() => onSelect(alt)} />
             ))}
           </div>
+          {pick.relaxed && <p className="text-sm text-muted-foreground">{t("better_options_best_available")}</p>}
           {store && !pick.anyInStore && (
             <p className="text-sm text-muted-foreground">{t("better_options_unconfirmed").replace("{store}", storeName)}</p>
           )}

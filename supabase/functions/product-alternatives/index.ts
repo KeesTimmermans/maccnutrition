@@ -105,7 +105,7 @@ async function fetchProduct(code: string): Promise<any | null> {
 }
 
 /** How many fallback hits are re-read in full (general search / store search). */
-const FALLBACK_ENRICH_GENERAL = 12;
+const FALLBACK_ENRICH_GENERAL = 16;
 const FALLBACK_ENRICH_STORE = 8;
 
 const quote = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
@@ -115,12 +115,12 @@ const quote = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
  * the time). The newer search service returns popularity-ranked UK barcodes but
  * lacks ingredient text, additives and store tags, so only the top hits are
  * re-read from the product endpoint, and only fully read products are kept so
- * scores stay comparable. Because so few are read, it asks only for products with
- * Nutri-Score A or B: the ones that can plausibly beat a low-scoring product.
+ * scores stay comparable. It asks for Nutri-Score A, B or C, so categories where
+ * few products score well (sauces, spreads) still return something to compare.
  */
 // deno-lint-ignore no-explicit-any
 async function searchFallback(tag: string, store: StoreKey | null): Promise<any[]> {
-  let q = `categories_tags:${quote(tag)} AND countries_tags:"en:united-kingdom" AND nutriscore_grade:(a OR b)`;
+  let q = `categories_tags:${quote(tag)} AND countries_tags:"en:united-kingdom" AND nutriscore_grade:(a OR b OR c)`;
   if (store) q += ` AND stores:(${STORE_SLUGS[store].names.map(quote).join(" OR ")})`;
   const url = new URL("https://search.openfoodfacts.org/search");
   url.searchParams.set("q", q);
@@ -149,23 +149,84 @@ async function searchFallback(tag: string, store: StoreKey | null): Promise<any[
     .filter((p) => p !== null);
 }
 
-/** One UK search page for a category (optionally a store). Throws when both searches fail. */
+// ============================================
+// Persistent cache (off_category_cache), service role only
+// ============================================
+const DB_FRESH_MS = 24 * 60 * 60 * 1000;
+const DB_STALE_MS = 30 * 24 * 60 * 60 * 1000;
+const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+  auth: { persistSession: false },
+});
+
 // deno-lint-ignore no-explicit-any
-async function searchCategory(tag: string, store: StoreKey | null): Promise<any[]> {
+async function readDbCache(key: string, maxAgeMs: number): Promise<any[] | null> {
+  try {
+    const { data, error } = await admin
+      .from("off_category_cache")
+      .select("products, fetched_at")
+      .eq("key", key)
+      .maybeSingle();
+    if (error || !data) return null;
+    if (Date.now() - new Date(data.fetched_at).getTime() > maxAgeMs) return null;
+    return Array.isArray(data.products) && data.products.length > 0 ? data.products : null;
+  } catch (err) {
+    console.warn(`[product-alternatives] cache read failed for ${key}:`, String(err));
+    return null;
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function writeDbCache(key: string, products: any[]) {
+  try {
+    const { error } = await admin
+      .from("off_category_cache")
+      .upsert({ key, products, fetched_at: new Date().toISOString() });
+    if (error) console.warn(`[product-alternatives] cache write failed for ${key}:`, error.message);
+  } catch (err) {
+    console.warn(`[product-alternatives] cache write failed for ${key}:`, String(err));
+  }
+}
+
+type Source = "live" | "cache" | "stale";
+
+/**
+ * One UK search page for a category (optionally a store): memory, then the table
+ * (under 24h), then live search (v2, then fallback), then a table row up to 30 days
+ * old. Throws when nothing is available.
+ */
+// deno-lint-ignore no-explicit-any
+async function searchCategory(tag: string, store: StoreKey | null): Promise<{ products: any[]; source: Source }> {
   const storeTag = store ? STORE_SLUGS[store].query[0] : null;
   const key = `${tag}|${storeTag ?? ""}`;
   const cached = getCached(key);
-  if (cached) return cached;
+  if (cached) return { products: cached, source: "cache" };
+  const fresh = await readDbCache(key, DB_FRESH_MS);
+  if (fresh) {
+    setCache(key, fresh);
+    return { products: fresh, source: "cache" };
+  }
 
   let products;
   try {
-    products = await searchV2(tag, storeTag);
+    try {
+      products = await searchV2(tag, storeTag);
+    } catch (err) {
+      console.warn(`[product-alternatives] v2 search failed for ${key}, trying fallback:`, String(err));
+      products = await searchFallback(tag, store);
+    }
   } catch (err) {
-    console.warn(`[product-alternatives] v2 search failed for ${key}, trying fallback:`, String(err));
-    products = await searchFallback(tag, store);
+    const stale = await readDbCache(key, DB_STALE_MS);
+    if (stale) {
+      console.warn(`[product-alternatives] live searches failed for ${key}, using stale cache`);
+      return { products: stale, source: "stale" };
+    }
+    throw err;
   }
-  if (products.length > 0) setCache(key, products);
-  return products;
+  if (products.length > 0) {
+    setCache(key, products);
+    await writeDbCache(key, products);
+  }
+  return { products, source: "live" };
 }
 
 const isPromising = (p: ProductScoreData) => p.nutriscore_grade === "a" || p.nutriscore_grade === "b";
@@ -230,11 +291,12 @@ Deno.serve(async (req) => {
     // store never narrows the search and a category full of near-copies of the
     // scanned product (e.g. 40 diet colas) doesn't stop it before broader ones.
     let promisingCount = 0;
+    const sources = new Set<Source>();
 
     for (const tag of tags) {
       // Store search first (best effort), then the general UK search, in parallel.
       const results = await Promise.allSettled([
-        store ? searchCategory(tag, store) : Promise.resolve([]),
+        store ? searchCategory(tag, store) : Promise.resolve({ products: [], source: "live" as Source }),
         searchCategory(tag, null),
       ]);
       for (const [i, result] of results.entries()) {
@@ -243,7 +305,8 @@ Deno.serve(async (req) => {
           continue;
         }
         if (i === 1) generalSearchWorked = true;
-        for (const raw of result.value) {
+        sources.add(result.value.source);
+        for (const raw of result.value.products) {
           const code = offStr(raw?.code);
           if (!code || skip.has(code)) continue;
           if (!offStr(raw?.product_name) && !offStr(raw?.product_name_en)) continue;
@@ -257,11 +320,14 @@ Deno.serve(async (req) => {
       if (promisingCount >= ENOUGH_CANDIDATES) break;
     }
 
+    // Worst source used: stale beats cache beats live.
+    const source: Source = sources.has("stale") ? "stale" : sources.has("cache") ? "cache" : "live";
+    console.log(`[product-alternatives] source=${source} candidates=${candidates.length}`);
     // Store results alone are not enough to say "no better options": report an error.
     if (tags.length > 0 && !generalSearchWorked) {
-      return json({ candidates: [], matchedCategory: null, error: true });
+      return json({ candidates: [], matchedCategory: null, error: true, source });
     }
-    return json({ candidates: trimCandidates(candidates), matchedCategory, error: false });
+    return json({ candidates: trimCandidates(candidates), matchedCategory, error: false, source });
   } catch (err) {
     console.error("[product-alternatives] failed:", err);
     return json({ candidates: [], matchedCategory: null, error: true });
