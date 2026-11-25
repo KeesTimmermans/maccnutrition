@@ -17,8 +17,8 @@ export type AppStateDecision = "loading" | "onboarding" | "dashboard";
 export const appStateFor = (onboardingCompleted: boolean | null): AppStateDecision =>
   onboardingCompleted === null ? "loading" : onboardingCompleted ? "dashboard" : "onboarding";
 
-export type LandingView = "landing" | "landing_no_plan" | "app";
+export type LandingView = "landing" | "app";
 
-/** "/" view: signed-out visitors and signed-in users without a plan see the landing page; subscribed users get the app. */
-export const landingViewFor = (signedIn: boolean, hasPlan: boolean): LandingView =>
-  !signedIn ? "landing" : hasPlan ? "app" : "landing_no_plan";
+/** "/" view: the landing page is for signed-out visitors only; signed-in users get the app (the subscription gate sends planless users to /pricing). */
+export const landingViewFor = (signedIn: boolean, _hasPlan: boolean): LandingView =>
+  signedIn ? "app" : "landing";

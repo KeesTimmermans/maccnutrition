@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Crown, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PlanPicker } from "@/components/PlanPicker";
+import { useAuth } from "@/hooks/useAuth";
 import { TRIAL_DAYS, type PlanId } from "../../supabase/functions/_shared/plans";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 
@@ -18,6 +20,13 @@ const features = [
 const Pricing = () => {
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<PlanId>("yearly");
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   const getCheckoutReturnUrl = () => {
     const basePath = window.location.pathname.endsWith("/")
@@ -90,6 +99,13 @@ const Pricing = () => {
             Start {TRIAL_DAYS}-day free trial
           </Button>
         </div>
+
+        <button
+          onClick={handleLogOut}
+          className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          Log out
+        </button>
       </div>
     </div>
   );

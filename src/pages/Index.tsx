@@ -8,7 +8,7 @@ import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useOnboarding } from "@/App";
-import { appStateFor, landingViewFor } from "@/lib/flowRules";
+import { appStateFor } from "@/lib/flowRules";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 
 type AppState = "welcome" | "onboarding" | "dashboard";
@@ -26,7 +26,6 @@ const Index = () => {
     checkSubscription,
     subscriptionChecked,
     subscriptionError,
-    signOut,
   } = useAuth();
   const { onboardingCompleted } = useOnboarding();
   const navigate = useNavigate();
@@ -208,28 +207,31 @@ const Index = () => {
     );
   }
 
-  const view = landingViewFor(!!user, !!subscription || !!isTrialing);
-  const noPlan = view === "landing_no_plan";
+  const hasPlan = !!subscription || !!isTrialing;
 
-  if (!noPlan && appState === "dashboard") {
+  // Signed in with no plan or trial: straight to the plan screen. Unfinished checks and errors keep the loading/retry path.
+  if (user && subscriptionChecked && !subscriptionError && !hasPlan) {
+    return <Navigate to="/pricing" replace />;
+  }
+
+  if (appState === "dashboard") {
     return <Dashboard />;
   }
 
-  if (!noPlan && appState === "onboarding") {
+  if (appState === "onboarding") {
     return <Navigate to="/onboarding" replace />;
   }
 
   // Welcome / Landing screen (signed out)
   const startTrial = (position: "hero" | "final") => {
     track("landing_cta_clicked", { position });
-    if (noPlan) navigate("/pricing");
-    else handleGetStarted();
+    handleGetStarted();
   };
 
   const ctaButton = (position: "hero" | "final") => (
     <div className="space-y-2">
       <Button variant="hero" size="xl" className="w-full sm:w-auto text-base px-8 rounded-2xl shadow-medium" onClick={() => startTrial(position)}>
-        {noPlan ? "Continue to choose your plan" : "Start your 14-day free trial"}
+        Start your 14-day free trial
       </Button>
       <p className="text-xs text-muted-foreground">Card needed to start. You won't be charged until day 14. Cancel anytime.</p>
       <div className="flex items-center gap-1.5 justify-center md:justify-start">
@@ -268,7 +270,7 @@ const Index = () => {
     <div className="min-h-dvh bg-background flex flex-col">
       <nav className="flex items-center justify-between px-5 md:px-12 lg:px-20 py-3 md:py-4">
         <img src={macLogo} alt="MacNutrition" className="h-8 md:h-10 w-auto" style={{ mixBlendMode: "multiply" }} />
-        <Button variant="ghost" className="text-sm font-medium" onClick={() => (noPlan ? signOut() : navigate("/auth"))}>{noPlan ? "Log out" : "Log in"}</Button>
+        <Button variant="ghost" className="text-sm font-medium" onClick={() => navigate("/auth")}>Log in</Button>
       </nav>
 
       <main className="flex-1">
