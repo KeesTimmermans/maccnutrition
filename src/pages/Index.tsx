@@ -8,7 +8,7 @@ import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useOnboarding } from "@/App";
-import { appStateFor } from "@/lib/flowRules";
+import { appStateFor, indexViewFor } from "@/lib/flowRules";
 import macLogo from "@/assets/mac-nutrition-logo.png";
 
 type AppState = "welcome" | "onboarding" | "dashboard";
@@ -26,6 +26,7 @@ const Index = () => {
     checkSubscription,
     subscriptionChecked,
     subscriptionError,
+    signOut,
   } = useAuth();
   const { onboardingCompleted } = useOnboarding();
   const navigate = useNavigate();
@@ -35,6 +36,19 @@ const Index = () => {
 
   const isBootstrapping = loading || authLoading || (user ? !subscriptionChecked && !subscriptionError : false);
   const baselineCheckedRef = useRef<string | null>(null);
+  // A failed account check gets one automatic retry before the error screen asks the user.
+  const retriedRef = useRef(false);
+  useEffect(() => {
+    if (!user) {
+      retriedRef.current = false;
+      return;
+    }
+    if (subscriptionChecked && subscriptionError && !retriedRef.current) {
+      retriedRef.current = true;
+      const id = window.setTimeout(() => void checkSubscription({ force: true }), 1500);
+      return () => window.clearTimeout(id);
+    }
+  }, [user, subscriptionChecked, subscriptionError, checkSubscription]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -208,10 +222,32 @@ const Index = () => {
   }
 
   const hasPlan = !!subscription || !!isTrialing;
+  const view = indexViewFor({ signedIn: !!user, checked: subscriptionChecked, error: !!subscriptionError, hasPlan });
 
-  // Signed in with no plan or trial: straight to the plan screen. Unfinished checks and errors keep the loading/retry path.
-  if (user && subscriptionChecked && !subscriptionError && !hasPlan) {
+  // Signed in with no plan or trial: straight to the plan screen.
+  if (view === "pricing") {
     return <Navigate to="/pricing" replace />;
+  }
+
+  // Signed in but the account check failed: never the landing page, which would loop through Log in.
+  if (view === "account_error") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-medium space-y-4 text-center">
+          <img src={macLogo} alt="MacNutrition" className="h-10 w-auto mx-auto" style={{ mixBlendMode: "multiply" }} />
+          <h1 className="text-lg font-bold text-foreground">We couldn't load your account</h1>
+          <p className="text-xs text-muted-foreground break-words">{subscriptionError}</p>
+          <div className="space-y-2">
+            <Button variant="hero" className="w-full" disabled={subscriptionLoading} onClick={() => void checkSubscription({ force: true })}>
+              {subscriptionLoading ? "Trying again…" : "Try again"}
+            </Button>
+            <Button variant="outline" className="w-full" onClick={async () => { await signOut(); navigate("/"); }}>
+              Log out
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (appState === "dashboard") {
@@ -220,6 +256,15 @@ const Index = () => {
 
   if (appState === "onboarding") {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  // A signed-in user never sees the landing page while the app state is still being decided.
+  if (user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
   }
 
   // Welcome / Landing screen (signed out)
